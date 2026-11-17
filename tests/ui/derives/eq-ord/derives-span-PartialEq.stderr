@@ -8,10 +8,10 @@ LL |         x: Error,
    |         ^^^^^^^^
    |
 note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
+  --> $DIR/derives-span-PartialEq.rs:4:8
    |
 LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
+   |        ^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -28,10 +28,10 @@ LL |         Error,
    |         ^^^^^
    |
 note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
+  --> $DIR/derives-span-PartialEq.rs:4:8
    |
 LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
+   |        ^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -48,10 +48,10 @@ LL |     x: Error,
    |     ^^^^^^^^
    |
 note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
+  --> $DIR/derives-span-PartialEq.rs:4:8
    |
 LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
+   |        ^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -68,10 +68,10 @@ LL |     Error,
    |     ^^^^^
    |
 note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
+  --> $DIR/derives-span-PartialEq.rs:4:8
    |
 LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
+   |        ^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]

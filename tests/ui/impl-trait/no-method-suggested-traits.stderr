@@ -143,10 +143,10 @@ LL |     1u64.method2();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |
@@ -159,10 +159,10 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |
@@ -175,10 +175,10 @@ LL |     no_method_suggested_traits::Foo.method2();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |
@@ -191,10 +191,10 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).metho
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |
@@ -207,10 +207,10 @@ LL |     no_method_suggested_traits::Bar::X.method2();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |
@@ -223,10 +223,10 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).me
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `foo::Bar` defines an item `method2`, perhaps you need to implement it
-  --> $DIR/no-method-suggested-traits.rs:11:5
+  --> $DIR/no-method-suggested-traits.rs:11:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 ...
 LL |         fn method2(&self) {}
    |

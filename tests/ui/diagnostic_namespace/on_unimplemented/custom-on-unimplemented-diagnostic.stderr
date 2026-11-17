@@ -16,16 +16,16 @@ LL | impl<T: ?Sized + ProviderLt> ProviderExt for T {}
    |                  unsatisfied trait bound introduced here
    = note: my note
 note: the trait `ProviderLt` must be implemented
-  --> $DIR/custom-on-unimplemented-diagnostic.rs:6:1
+  --> $DIR/custom-on-unimplemented-diagnostic.rs:6:11
    |
 LL | pub trait ProviderLt {}
-   | ^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `ProviderExt` defines an item `request`, perhaps you need to implement it
-  --> $DIR/custom-on-unimplemented-diagnostic.rs:8:1
+  --> $DIR/custom-on-unimplemented-diagnostic.rs:8:11
    |
 LL | pub trait ProviderExt {
-   | ^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^
 LL |     fn request<R>(&self) {
    |
 

@@ -7,10 +7,10 @@ LL |     let w = u * 3;
    |             Thing
    |
 note: an implementation of `Mul<{integer}>` might be missing for `Thing`
-  --> $DIR/issue-3820.rs:1:1
+  --> $DIR/issue-3820.rs:1:8
    |
 LL | struct Thing {
-   | ^^^^^^^^^^^^ must implement `Mul<{integer}>`
+   |        ^^^^^ must implement `Mul<{integer}>`
 note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

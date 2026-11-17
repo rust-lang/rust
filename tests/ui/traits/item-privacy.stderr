@@ -59,11 +59,11 @@ LL |     S::a(&S);
    = help: items from traits can only be used if the trait is implemented and in scope
    = help: trait `crate::method::A` which provides `a` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
-  --> $DIR/item-privacy.rs:30:9
+  --> $DIR/item-privacy.rs:30:15
    |
 LL |     pub trait B {
 LL |         const B: u8 = 0;
-   |         ^^^^^^^^^^^
+   |               ^
 
 error[E0599]: no associated function or constant named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:81:8
@@ -76,11 +76,11 @@ LL |     S::b(&S);
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is an associated constant `B` with a similar name
-  --> $DIR/item-privacy.rs:30:9
+  --> $DIR/item-privacy.rs:30:15
    |
 LL |     pub trait B {
 LL |         const B: u8 = 0;
-   |         ^^^^^^^^^^^
+   |               ^
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
 LL + use crate::method::B;
@@ -123,11 +123,11 @@ LL |     S::B;
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is a method `b` with a similar name
-  --> $DIR/item-privacy.rs:12:9
+  --> $DIR/item-privacy.rs:12:12
    |
 LL |     pub trait B {
 LL |         fn b(&self) { }
-   |         ^^^^^^^^^^^
+   |            ^
 help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
    |
 LL + use crate::assoc_const::B;

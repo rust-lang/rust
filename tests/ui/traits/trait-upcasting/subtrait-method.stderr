@@ -6,10 +6,10 @@ LL |     bar.c();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it
-  --> $DIR/subtrait-method.rs:25:1
+  --> $DIR/subtrait-method.rs:25:7
    |
 LL | trait Baz: Bar {
-   | ^^^^^^^^^^^^^^
+   |       ^^^
 LL |     fn c(&self) -> i32 {
    |
 help: there is a method `a` with a similar name
@@ -26,10 +26,10 @@ LL |     foo.b();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `b`, perhaps you need to implement it
-  --> $DIR/subtrait-method.rs:15:1
+  --> $DIR/subtrait-method.rs:15:7
    |
 LL | trait Bar: Foo {
-   | ^^^^^^^^^^^^^^
+   |       ^^^
 LL |     fn b(&self) -> i32 {
    |
 help: there is a method `a` with a similar name
@@ -46,10 +46,10 @@ LL |     foo.c();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it
-  --> $DIR/subtrait-method.rs:25:1
+  --> $DIR/subtrait-method.rs:25:7
    |
 LL | trait Baz: Bar {
-   | ^^^^^^^^^^^^^^
+   |       ^^^
 LL |     fn c(&self) -> i32 {
    |
 help: there is a method `a` with a similar name
@@ -66,10 +66,10 @@ LL |     foo.b();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `b`, perhaps you need to implement it
-  --> $DIR/subtrait-method.rs:15:1
+  --> $DIR/subtrait-method.rs:15:7
    |
 LL | trait Bar: Foo {
-   | ^^^^^^^^^^^^^^
+   |       ^^^
 LL |     fn b(&self) -> i32 {
    |
 help: there is a method `a` with a similar name
@@ -86,10 +86,10 @@ LL |     foo.c();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it
-  --> $DIR/subtrait-method.rs:25:1
+  --> $DIR/subtrait-method.rs:25:7
    |
 LL | trait Baz: Bar {
-   | ^^^^^^^^^^^^^^
+   |       ^^^
 LL |     fn c(&self) -> i32 {
    |
 help: there is a method `a` with a similar name

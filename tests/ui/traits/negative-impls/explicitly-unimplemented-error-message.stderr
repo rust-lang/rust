@@ -41,10 +41,10 @@ LL |     0_u32.foo();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/explicitly-unimplemented-error-message.rs:18:1
+  --> $DIR/explicitly-unimplemented-error-message.rs:18:7
    |
 LL | trait Foo {
-   | ^^^^^^^^^
+   |       ^^^
 LL |     fn foo(&self);
    = note: the trait `FooBar` defines an item `foo`, but is explicitly unimplemented
 

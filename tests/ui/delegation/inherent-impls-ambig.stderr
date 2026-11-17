@@ -53,15 +53,15 @@ LL |     reuse X::foo;
    |              ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl for the type `test_1::X<()>`
-  --> $DIR/inherent-impls-ambig.rs:7:9
+  --> $DIR/inherent-impls-ambig.rs:7:12
    |
 LL |         fn foo() {}
-   |         ^^^^^^^^
+   |            ^^^
 note: candidate #2 is defined in an impl for the type `test_1::X<usize>`
-  --> $DIR/inherent-impls-ambig.rs:12:9
+  --> $DIR/inherent-impls-ambig.rs:12:12
    |
 LL |         fn foo() {}
-   |         ^^^^^^^^
+   |            ^^^
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/inherent-impls-ambig.rs:20:14
@@ -70,15 +70,15 @@ LL |     reuse X::foo_self;
    |              ^^^^^^^^ multiple `foo_self` found
    |
 note: candidate #1 is defined in an impl for the type `test_1::X<()>`
-  --> $DIR/inherent-impls-ambig.rs:8:9
+  --> $DIR/inherent-impls-ambig.rs:8:12
    |
 LL |         fn foo_self(self) {}
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^
 note: candidate #2 is defined in an impl for the type `test_1::X<usize>`
-  --> $DIR/inherent-impls-ambig.rs:13:9
+  --> $DIR/inherent-impls-ambig.rs:13:12
    |
 LL |         fn foo_self(self) {}
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/inherent-impls-ambig.rs:27:23
@@ -105,15 +105,15 @@ LL |     reuse X::foo;
    |              ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl for the type `test_2::X<T, ()>`
-  --> $DIR/inherent-impls-ambig.rs:43:9
+  --> $DIR/inherent-impls-ambig.rs:43:12
    |
 LL |         fn foo() {}
-   |         ^^^^^^^^
+   |            ^^^
 note: candidate #2 is defined in an impl for the type `test_2::X<T, usize>`
-  --> $DIR/inherent-impls-ambig.rs:38:9
+  --> $DIR/inherent-impls-ambig.rs:38:12
    |
 LL |         fn foo() {}
-   |         ^^^^^^^^
+   |            ^^^
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/inherent-impls-ambig.rs:56:14
@@ -122,15 +122,15 @@ LL |     reuse X::foo_self;
    |              ^^^^^^^^ multiple `foo_self` found
    |
 note: candidate #1 is defined in an impl for the type `test_2::X<T, ()>`
-  --> $DIR/inherent-impls-ambig.rs:44:9
+  --> $DIR/inherent-impls-ambig.rs:44:12
    |
 LL |         fn foo_self(self) {}
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^
 note: candidate #2 is defined in an impl for the type `test_2::X<T, usize>`
-  --> $DIR/inherent-impls-ambig.rs:39:9
+  --> $DIR/inherent-impls-ambig.rs:39:12
    |
 LL |         fn foo_self(self) {}
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^
 
 error[E0599]: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
   --> $DIR/inherent-impls-ambig.rs:63:28

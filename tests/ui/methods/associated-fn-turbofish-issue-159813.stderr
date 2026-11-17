@@ -6,10 +6,10 @@ LL |     _value.kind();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `Kind`
-  --> $DIR/associated-fn-turbofish-issue-159813.rs:6:5
+  --> $DIR/associated-fn-turbofish-issue-159813.rs:6:8
    |
 LL |     fn kind();
-   |     ^^^^^^^^^^
+   |        ^^^^
 help: use associated function syntax instead
    |
 LL -     _value.kind();

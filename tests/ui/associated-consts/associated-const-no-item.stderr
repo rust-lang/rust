@@ -6,10 +6,10 @@ LL | const X: i32 = <i32>::ID;
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `ID`, perhaps you need to implement it
-  --> $DIR/associated-const-no-item.rs:1:1
+  --> $DIR/associated-const-no-item.rs:1:7
    |
 LL | trait Foo {
-   | ^^^^^^^^^
+   |       ^^^
 LL |     const ID: i32;
    |
 

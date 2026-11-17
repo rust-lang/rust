@@ -18,10 +18,10 @@ LL | impl<T: Iterator + Missing> HasMethod for T {
    |         unsatisfied trait bound introduced here
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `HasMethod` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/iterator-does-not-need-into-iter.rs:4:1
+  --> $DIR/iterator-does-not-need-into-iter.rs:4:7
    |
 LL | trait HasMethod {
-   | ^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^
 LL |     fn foo(self);
    |
 

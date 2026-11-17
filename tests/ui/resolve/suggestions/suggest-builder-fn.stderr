@@ -38,13 +38,13 @@ LL |     let _bar = Bar::new();
 note: if you're trying to build a new `Bar` consider using one of the following associated functions:
       Bar::build
       SomeMod::<impl Bar>::build_public
-  --> $DIR/suggest-builder-fn.rs:23:5
+  --> $DIR/suggest-builder-fn.rs:23:8
    |
 LL |     fn build() -> Self {
-   |     ^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 ...
 LL |         pub fn build_public() -> Self {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

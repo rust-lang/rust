@@ -45,10 +45,10 @@ LL |     S { x: a, y: b } += s;
    |     cannot use `+=` on type `S`
    |
 note: an implementation of `AddAssign` might be missing for `S`
-  --> $DIR/note-unsupported.rs:1:1
+  --> $DIR/note-unsupported.rs:1:8
    |
 LL | struct S { x: u8, y: u8 }
-   | ^^^^^^^^ must implement `AddAssign`
+   |        ^ must implement `AddAssign`
 note: the trait `AddAssign` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

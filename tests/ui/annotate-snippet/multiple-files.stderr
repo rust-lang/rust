@@ -4,10 +4,10 @@ error[E0624]: method `private_method` is private
 LL |     other_file::WithPrivateMethod.private_method();
    |                                   ^^^^^^^^^^^^^^ private method
    |
-  ::: $DIR/auxiliary/other_file.rs:5:5
+  ::: $DIR/auxiliary/other_file.rs:5:8
    |
 LL |     fn private_method(&self) {}
-   |     ------------------------ private method defined here
+   |        -------------- private method defined here
 
 error: aborting due to 1 previous error
 

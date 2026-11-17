@@ -9,10 +9,10 @@ LL |     x.self_ty_ref_hello();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:5
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:8
    |
 LL |     fn self_ty_ref_hello(_: &Self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     x.self_ty_ref_hello();
@@ -30,10 +30,10 @@ LL |     x.self_ty_hello();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:5
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:8
    |
 LL |     fn self_ty_hello(_: Self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     x.self_ty_hello();
@@ -51,10 +51,10 @@ LL |     y.default_hello();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:6:5
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:6:8
    |
 LL |     fn default_hello() {}
-   |     ^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     y.default_hello();
@@ -72,10 +72,10 @@ LL |     y.self_ty_ref_hello();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:5
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:8
    |
 LL |     fn self_ty_ref_hello(_: &Self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     y.self_ty_ref_hello();
@@ -93,10 +93,10 @@ LL |     y.self_ty_hello();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:5
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:8
    |
 LL |     fn self_ty_hello(_: Self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     y.self_ty_hello();

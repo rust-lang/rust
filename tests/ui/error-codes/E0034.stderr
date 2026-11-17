@@ -5,15 +5,15 @@ LL |     Test::foo()
    |           ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `Trait1` for the type `Test`
-  --> $DIR/E0034.rs:12:5
+  --> $DIR/E0034.rs:12:8
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in an impl of the trait `Trait2` for the type `Test`
-  --> $DIR/E0034.rs:16:5
+  --> $DIR/E0034.rs:16:8
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^
+   |        ^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     Test::foo()

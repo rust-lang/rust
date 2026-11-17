@@ -5,11 +5,11 @@ LL |         self.0.read(buf)
    |                ^^^^
    |
 help: there is a method `read1` with a similar name, but with different arguments
-  --> $DIR/dont-suggest-private-dependencies.rs:16:5
+  --> $DIR/dont-suggest-private-dependencies.rs:16:8
    |
 LL | trait DecoyRead {
 LL |     fn read1(&self) {}
-   |     ^^^^^^^^^^^^^^^
+   |        ^^^^^
 
 error[E0599]: no associated function or constant named `cast_from_lossy` found for type `u8` in the current scope
   --> $DIR/dont-suggest-private-dependencies.rs:33:17

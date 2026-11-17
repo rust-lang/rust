@@ -15,18 +15,18 @@ LL | impl<T> Bat for T where T: 'static + Bar + Baz { fn bat(&self) { println!("
    |                                      |
    |                                      unsatisfied trait bound introduced here
 note: the traits `Bar` and `Baz` must be implemented
-  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:2:1
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:2:7
    |
 LL | trait Bar {}
-   | ^^^^^^^^^
+   |       ^^^
 LL | trait Baz {}
-   | ^^^^^^^^^
+   |       ^^^
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bat` defines an item `bat`, perhaps you need to implement it
-  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:4:1
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:4:7
    |
 LL | trait Bat { fn bat(&self); }
-   | ^^^^^^^^^
+   |       ^^^
 
 error: aborting due to 1 previous error
 

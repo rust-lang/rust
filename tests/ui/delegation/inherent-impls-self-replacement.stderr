@@ -111,10 +111,10 @@ LL |     reuse S::<(), 123>::by_box { self.get_s() }
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `get_s`, perhaps you need to implement it
-  --> $DIR/inherent-impls-self-replacement.rs:19:1
+  --> $DIR/inherent-impls-self-replacement.rs:19:7
    |
 LL | trait Trait: Sized {
-   | ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^
 LL |     fn get_s(self) -> S<(), 123>;
    |
 
@@ -126,10 +126,10 @@ LL |     reuse S::<(), 123>::by_rc { self.get_s() }
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `get_s`, perhaps you need to implement it
-  --> $DIR/inherent-impls-self-replacement.rs:19:1
+  --> $DIR/inherent-impls-self-replacement.rs:19:7
    |
 LL | trait Trait: Sized {
-   | ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^
 LL |     fn get_s(self) -> S<(), 123>;
    |
 
@@ -141,10 +141,10 @@ LL |     reuse S::<(), 123>::by_pin { self.get_s() }
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `get_s`, perhaps you need to implement it
-  --> $DIR/inherent-impls-self-replacement.rs:19:1
+  --> $DIR/inherent-impls-self-replacement.rs:19:7
    |
 LL | trait Trait: Sized {
-   | ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^
 LL |     fn get_s(self) -> S<(), 123>;
    |
 

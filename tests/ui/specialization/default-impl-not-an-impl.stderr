@@ -29,10 +29,10 @@ LL |     0u32.f();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `f`, perhaps you need to implement it
-  --> $DIR/default-impl-not-an-impl.rs:27:1
+  --> $DIR/default-impl-not-an-impl.rs:27:7
    |
 LL | trait Foo {
-   | ^^^^^^^^^
+   |       ^^^
 LL |     fn f(&self) -> u32;
    |
 

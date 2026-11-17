@@ -7,10 +7,10 @@ LL |   a += *b;
    |   cannot use `+=` on type `Foo`
    |
 note: an implementation of `AddAssign` might be missing for `Foo`
-  --> $DIR/assignment-operator-unimplemented.rs:1:1
+  --> $DIR/assignment-operator-unimplemented.rs:1:8
    |
 LL | struct Foo;
-   | ^^^^^^^^^^ must implement `AddAssign`
+   |        ^^^ must implement `AddAssign`
 note: the trait `AddAssign` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

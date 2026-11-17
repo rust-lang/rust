@@ -5,15 +5,15 @@ LL |     a.foo()
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `A`
-  --> $DIR/issue-37767.rs:2:5
+  --> $DIR/issue-37767.rs:2:8
    |
 LL |     fn foo(&mut self) {}
-   |     ^^^^^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `B`
-  --> $DIR/issue-37767.rs:6:5
+  --> $DIR/issue-37767.rs:6:8
    |
 LL |     fn foo(&mut self) {}
-   |     ^^^^^^^^^^^^^^^^^
+   |        ^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()
@@ -32,15 +32,15 @@ LL |     a.foo()
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `C`
-  --> $DIR/issue-37767.rs:14:5
+  --> $DIR/issue-37767.rs:14:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `D`
-  --> $DIR/issue-37767.rs:18:5
+  --> $DIR/issue-37767.rs:18:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()
@@ -59,15 +59,15 @@ LL |     a.foo()
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `E`
-  --> $DIR/issue-37767.rs:26:5
+  --> $DIR/issue-37767.rs:26:8
    |
 LL |     fn foo(self) {}
-   |     ^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `F`
-  --> $DIR/issue-37767.rs:30:5
+  --> $DIR/issue-37767.rs:30:8
    |
 LL |     fn foo(self) {}
-   |     ^^^^^^^^^^^^
+   |        ^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()

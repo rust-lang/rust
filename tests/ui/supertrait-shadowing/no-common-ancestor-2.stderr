@@ -5,25 +5,25 @@ LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:8:5
+  --> $DIR/no-common-ancestor-2.rs:8:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:20:5
+  --> $DIR/no-common-ancestor-2.rs:20:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 note: candidate #3 is defined in an impl of the trait `C` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:32:5
+  --> $DIR/no-common-ancestor-2.rs:32:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 note: candidate #4 is defined in an impl of the trait `D` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:48:5
+  --> $DIR/no-common-ancestor-2.rs:48:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();
@@ -91,25 +91,25 @@ LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in the trait `A`
-  --> $DIR/no-common-ancestor-2.rs:12:5
+  --> $DIR/no-common-ancestor-2.rs:12:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #2 is defined in the trait `B`
-  --> $DIR/no-common-ancestor-2.rs:24:5
+  --> $DIR/no-common-ancestor-2.rs:24:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #3 is defined in the trait `C`
-  --> $DIR/no-common-ancestor-2.rs:37:5
+  --> $DIR/no-common-ancestor-2.rs:37:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #4 is defined in the trait `D`
-  --> $DIR/no-common-ancestor-2.rs:53:5
+  --> $DIR/no-common-ancestor-2.rs:53:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = T::CONST;

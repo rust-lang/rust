@@ -5,15 +5,15 @@ LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor.rs:7:5
+  --> $DIR/no-common-ancestor.rs:7:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor.rs:19:5
+  --> $DIR/no-common-ancestor.rs:19:8
    |
 LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();
@@ -55,15 +55,15 @@ LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in the trait `A`
-  --> $DIR/no-common-ancestor.rs:11:5
+  --> $DIR/no-common-ancestor.rs:11:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #2 is defined in the trait `B`
-  --> $DIR/no-common-ancestor.rs:23:5
+  --> $DIR/no-common-ancestor.rs:23:11
    |
 LL |     const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^
+   |           ^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = T::CONST;

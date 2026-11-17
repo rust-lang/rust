@@ -15,10 +15,10 @@ LL |     3i32.test();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `test`, perhaps you need to implement it
-  --> $DIR/trivial-bounds-leak.rs:4:1
+  --> $DIR/trivial-bounds-leak.rs:4:11
    |
 LL | pub trait Foo {
-   | ^^^^^^^^^^^^^
+   |           ^^^
 LL |     fn test(&self);
    |
 

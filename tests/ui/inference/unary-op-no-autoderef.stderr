@@ -5,10 +5,10 @@ LL |     let _ = !wrapper;
    |             ^^^^^^^^ cannot apply unary operator `!`
    |
 note: an implementation of `Not` might be missing for `Wrapper`
-  --> $DIR/unary-op-no-autoderef.rs:33:1
+  --> $DIR/unary-op-no-autoderef.rs:33:8
    |
 LL | struct Wrapper(Inner);
-   | ^^^^^^^^^^^^^^ must implement `Not`
+   |        ^^^^^^^ must implement `Not`
 note: the trait `Not` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
@@ -19,10 +19,10 @@ LL |     let _ = -wrapper;
    |             ^^^^^^^^ cannot apply unary operator `-`
    |
 note: an implementation of `Neg` might be missing for `Wrapper`
-  --> $DIR/unary-op-no-autoderef.rs:33:1
+  --> $DIR/unary-op-no-autoderef.rs:33:8
    |
 LL | struct Wrapper(Inner);
-   | ^^^^^^^^^^^^^^ must implement `Neg`
+   |        ^^^^^^^ must implement `Neg`
 note: the trait `Neg` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

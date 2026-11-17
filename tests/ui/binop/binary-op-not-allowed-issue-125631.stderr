@@ -7,10 +7,10 @@ LL |     (Error::new(ErrorKind::Other, "1"), T1, 1) == (Error::new(ErrorKind::Ot
    |     (std::io::Error, T1, {integer})
    |
 note: an implementation of `PartialEq` might be missing for `T1`
-  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:8
    |
 LL | struct T1;
-   | ^^^^^^^^^ must implement `PartialEq`
+   |        ^^ must implement `PartialEq`
 note: `std::io::Error` does not implement `PartialEq`
   --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
@@ -47,12 +47,12 @@ LL |         == (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2);
    |         ^^ -------------------------------------------------------------- (std::io::Error, Thread, T1, T2)
    |
 note: the following types would have to `impl` their required traits for this operation to be valid
-  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:8
    |
 LL | struct T1;
-   | ^^^^^^^^^ must implement `PartialEq`
+   |        ^^ must implement `PartialEq`
 LL | struct T2;
-   | ^^^^^^^^^ must implement `PartialEq`
+   |        ^^ must implement `PartialEq`
 note: `Thread` does not implement `PartialEq`
   --> $SRC_DIR/std/src/thread/thread.rs:LL:COL
    |

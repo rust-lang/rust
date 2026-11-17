@@ -1773,6 +1773,13 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
+    /// Look up a `Span` appropriate for diagnostics to point at when talking about the item behind
+    /// `def_id`.
+    pub fn item_span(self, def_id: impl IntoQueryKey<DefId>) -> Span {
+        let def_id = def_id.into_query_key();
+        self.opt_item_ident(def_id).map_or_else(|| self.def_span(def_id), |ident| ident.span)
+    }
+
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.

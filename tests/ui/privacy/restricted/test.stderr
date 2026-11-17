@@ -94,10 +94,10 @@ error[E0624]: method `g` is private
 LL |     u.g();
    |       ^ private method
    |
-  ::: $DIR/auxiliary/pub_restricted.rs:12:5
+  ::: $DIR/auxiliary/pub_restricted.rs:12:19
    |
 LL |     pub(crate) fn g(&self) {}
-   |     ---------------------- private method defined here
+   |                   - private method defined here
 
 error[E0624]: method `h` is private
   --> $DIR/test.rs:47:7
@@ -105,10 +105,10 @@ error[E0624]: method `h` is private
 LL |     u.h();
    |       ^ private method
    |
-  ::: $DIR/auxiliary/pub_restricted.rs:13:5
+  ::: $DIR/auxiliary/pub_restricted.rs:13:19
    |
 LL |     pub(crate) fn h(&self) {}
-   |     ---------------------- private method defined here
+   |                   - private method defined here
 
 error: aborting due to 12 previous errors
 

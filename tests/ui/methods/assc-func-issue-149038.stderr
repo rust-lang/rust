@@ -6,10 +6,10 @@ LL |         self.foo();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `S`
-  --> $DIR/assc-func-issue-149038.rs:3:5
+  --> $DIR/assc-func-issue-149038.rs:3:8
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^
+   |        ^^^
 help: use associated function syntax instead
    |
 LL -         self.foo();

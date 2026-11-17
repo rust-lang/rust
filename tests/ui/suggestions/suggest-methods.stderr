@@ -8,11 +8,11 @@ LL |     f.bat(1.0);
    |       ^^^
    |
 help: there is a method `bag` with a similar name, but with different arguments
-  --> $DIR/suggest-methods.rs:9:5
+  --> $DIR/suggest-methods.rs:9:8
    |
 LL | trait FooT {
 LL |     fn bag(&self);
-   |     ^^^^^^^^^^^^^^
+   |        ^^^
 
 error[E0599]: no method named `is_emtpy` found for struct `String` in the current scope
   --> $DIR/suggest-methods.rs:22:15

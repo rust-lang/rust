@@ -20,10 +20,10 @@ LL |     let _ = u == U { a: 0 };
    |             U
    |
 note: an implementation of `PartialEq` might be missing for `U`
-  --> $DIR/union-no-derive-suggestion.rs:5:1
+  --> $DIR/union-no-derive-suggestion.rs:5:7
    |
 LL | union U {
-   | ^^^^^^^ must implement `PartialEq`
+   |       ^ must implement `PartialEq`
 note: the trait `PartialEq` must be implemented
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
@@ -36,10 +36,10 @@ LL |     let _ = u < U { a: 1 };
    |             U
    |
 note: an implementation of `PartialOrd` might be missing for `U`
-  --> $DIR/union-no-derive-suggestion.rs:5:1
+  --> $DIR/union-no-derive-suggestion.rs:5:7
    |
 LL | union U {
-   | ^^^^^^^ must implement `PartialOrd`
+   |       ^ must implement `PartialOrd`
 note: the trait `PartialOrd` must be implemented
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 

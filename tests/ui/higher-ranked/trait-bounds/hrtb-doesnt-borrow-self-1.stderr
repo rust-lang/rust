@@ -17,10 +17,10 @@ LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
-  --> $DIR/hrtb-doesnt-borrow-self-1.rs:64:1
+  --> $DIR/hrtb-doesnt-borrow-self-1.rs:64:11
    |
 LL | pub trait StreamExt
-   | ^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^
 ...
 LL |     fn filterx<F>(self, func: F) -> Filter<Self, F>
    |

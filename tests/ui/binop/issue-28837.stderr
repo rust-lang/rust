@@ -7,10 +7,10 @@ LL |     a + a;
    |     A
    |
 note: an implementation of `Add` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Add`
+   |        ^ must implement `Add`
 note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -23,10 +23,10 @@ LL |     a - a;
    |     A
    |
 note: an implementation of `Sub` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Sub`
+   |        ^ must implement `Sub`
 note: the trait `Sub` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -39,10 +39,10 @@ LL |     a * a;
    |     A
    |
 note: an implementation of `Mul` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Mul`
+   |        ^ must implement `Mul`
 note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -55,10 +55,10 @@ LL |     a / a;
    |     A
    |
 note: an implementation of `Div` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Div`
+   |        ^ must implement `Div`
 note: the trait `Div` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -71,10 +71,10 @@ LL |     a % a;
    |     A
    |
 note: an implementation of `Rem` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Rem`
+   |        ^ must implement `Rem`
 note: the trait `Rem` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -87,10 +87,10 @@ LL |     a & a;
    |     A
    |
 note: an implementation of `BitAnd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `BitAnd`
+   |        ^ must implement `BitAnd`
 note: the trait `BitAnd` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
@@ -103,10 +103,10 @@ LL |     a | a;
    |     A
    |
 note: an implementation of `BitOr` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `BitOr`
+   |        ^ must implement `BitOr`
 note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
@@ -119,10 +119,10 @@ LL |     a << a;
    |     A
    |
 note: an implementation of `Shl` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Shl`
+   |        ^ must implement `Shl`
 note: the trait `Shl` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
@@ -135,10 +135,10 @@ LL |     a >> a;
    |     A
    |
 note: an implementation of `Shr` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `Shr`
+   |        ^ must implement `Shr`
 note: the trait `Shr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
@@ -151,10 +151,10 @@ LL |     a == a;
    |     A
    |
 note: an implementation of `PartialEq` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialEq`
+   |        ^ must implement `PartialEq`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -170,10 +170,10 @@ LL |     a != a;
    |     A
    |
 note: an implementation of `PartialEq` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialEq`
+   |        ^ must implement `PartialEq`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -189,10 +189,10 @@ LL |     a < a;
    |     A
    |
 note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
+   |        ^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
@@ -208,10 +208,10 @@ LL |     a <= a;
    |     A
    |
 note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
+   |        ^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
@@ -227,10 +227,10 @@ LL |     a > a;
    |     A
    |
 note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
+   |        ^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
@@ -246,10 +246,10 @@ LL |     a >= a;
    |     A
    |
 note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
+  --> $DIR/issue-28837.rs:1:8
    |
 LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
+   |        ^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]

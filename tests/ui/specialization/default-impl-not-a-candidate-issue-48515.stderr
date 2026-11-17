@@ -52,10 +52,10 @@ LL |     0u32.contains(());
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Set` defines an item `contains`, perhaps you need to implement it
-  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:44:1
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:44:7
    |
 LL | trait Set<T> {
-   | ^^^^^^^^^^^^
+   |       ^^^
 LL |     fn contains(&self, bit: T);
    |
 

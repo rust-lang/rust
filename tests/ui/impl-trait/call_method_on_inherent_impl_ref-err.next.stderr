@@ -9,10 +9,10 @@ LL |         x.my_debug();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyDebug` defines an item `my_debug`, perhaps you need to implement it
-  --> $DIR/call_method_on_inherent_impl_ref-err.rs:5:1
+  --> $DIR/call_method_on_inherent_impl_ref-err.rs:5:7
    |
 LL | trait MyDebug {
-   | ^^^^^^^^^^^^^
+   |       ^^^^^^^
 LL |     fn my_debug(&self);
    |
 
