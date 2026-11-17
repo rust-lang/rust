@@ -134,14 +134,18 @@ pub(super) struct PassCtx<'sess> {
     session: &'sess Session,
     /// The MIR optimization level for this body; may be overridden by `#[optimize]`.
     body_mir_opt_level: usize,
+    /// Whether this body is optimized above the crate's level; see [`Self::is_raised`].
+    raised: bool,
 }
 
 impl<'sess> PassCtx<'sess> {
     pub(super) fn for_body(tcx: TyCtxt<'sess>, def_id: DefId) -> Self {
+        let mut raised = false;
         let body_mir_opt_level = if !tcx.def_kind(def_id).has_codegen_attrs() {
             tcx.sess.mir_opt_level()
         } else {
-            let attr_opt_level = match tcx.codegen_fn_attrs(def_id).optimize {
+            let optimize = tcx.codegen_fn_attrs(def_id).optimize;
+            let attr_opt_level = match optimize {
                 OptimizeAttr::Default => tcx.sess.mir_opt_level(),
                 OptimizeAttr::Speed => OptLevel::Aggressive.mir_opt_level(),
                 OptimizeAttr::Size => OptLevel::SizeMin.mir_opt_level(),
@@ -153,9 +157,25 @@ impl<'sess> PassCtx<'sess> {
             // consistency, we do something similar for MIR-opts, by letting the attribute only
             // decrease the opt-level, not increase it. (MIR does not distinguish between size and
             // speed optimizations.)
-            attr_opt_level.min(tcx.sess.mir_opt_level())
+            //
+            // The exception is `-Z raise-optimize-speed=...,mir`, under which the LLVM backend
+            // does optimize a `#[optimize(speed)]` function in an unoptimized build, and the
+            // MIR optimizations follow it.
+            raised = optimize == OptimizeAttr::Speed
+                && tcx.sess.raise_optimize_speed().is_some_and(|raise| raise.mir);
+            if raised {
+                attr_opt_level.max(tcx.sess.mir_opt_level())
+            } else {
+                attr_opt_level.min(tcx.sess.mir_opt_level())
+            }
         };
-        Self { session: tcx.sess, body_mir_opt_level }
+        Self { session: tcx.sess, body_mir_opt_level, raised }
+    }
+
+    /// Whether this body is a `#[optimize(speed)]` function's in a crate built without
+    /// optimization, which gets the MIR optimizations of an optimized build all the same.
+    pub(super) fn is_raised(&self) -> bool {
+        self.raised
     }
 
     /// The effective MIR optimization level for this body, including `#[optimize]` overrides.

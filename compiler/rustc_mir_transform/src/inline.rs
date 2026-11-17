@@ -52,9 +52,10 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
                 // in incremental mode to increase incremental effectiveness.
                 // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
                 2 => {
-                    (ctx.opts.optimize == OptLevel::More
-                        || ctx.opts.optimize == OptLevel::Aggressive)
-                        && ctx.opts.incremental.is_none()
+                    ctx.is_raised()
+                        || (ctx.opts.optimize == OptLevel::More
+                            || ctx.opts.optimize == OptLevel::Aggressive)
+                            && ctx.opts.incremental.is_none()
                 }
                 _ => true,
             }),
