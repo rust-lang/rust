@@ -280,6 +280,7 @@ enum class LLVMRustAttributeKind {
   SanitizeRealtimeBlocking = 48,
   Convergent = 49,
   NoFree = 50,
+  NoIpa = 51,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -380,6 +381,12 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Convergent;
   case LLVMRustAttributeKind::NoFree:
     return Attribute::NoFree;
+  case LLVMRustAttributeKind::NoIpa:
+#if LLVM_VERSION_GE(23, 0)
+    return Attribute::NoIPA;
+#else
+    report_fatal_error("the noipa attribute requires LLVM 23");
+#endif
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }

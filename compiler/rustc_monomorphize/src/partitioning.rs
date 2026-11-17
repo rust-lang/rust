@@ -99,7 +99,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::{InlineAttr, Linkage};
+use rustc_attr_ir::{InlineAttr, Linkage, OptimizeAttr};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
@@ -118,7 +118,9 @@ use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_pat
 use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
-use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
+use rustc_session::config::{
+    DumpMonoStatsFormat, RaiseOptimizeSpeed, RaiseOptimizeSpeedForm, SwitchWithOptPath,
+};
 use rustc_span::{Symbol, bug};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
@@ -130,6 +132,23 @@ use crate::graph_checks::target_specific_checks;
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     usage_map: &'a UsageMap<'tcx>,
+    /// How the functions marked `#[optimize(speed)]` are raised above the crate's level, if they
+    /// are; see `Session::raise_optimize_speed`.
+    raise: Option<RaiseOptimizeSpeed>,
+}
+
+impl<'tcx> PartitioningCx<'_, 'tcx> {
+    /// Whether `mono_item` is a function that is optimized though the crate is not: one marked
+    /// `#[optimize(speed)]`, or a closure in one, which inherits the mark.
+    fn is_raised_fn(&self, mono_item: MonoItem<'tcx>) -> bool {
+        match mono_item {
+            MonoItem::Fn(instance) => {
+                self.raise.is_some()
+                    && self.tcx.codegen_instance_attrs(instance.def).optimize == OptimizeAttr::Speed
+            }
+            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
+        }
+    }
 }
 
 struct PlacedMonoItems<'tcx> {
@@ -150,7 +169,7 @@ where
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let cx = &PartitioningCx { tcx, usage_map };
+    let cx = &PartitioningCx { tcx, usage_map, raise: tcx.sess.raise_optimize_speed() };
 
     // Place all mono items into a codegen unit. `place_mono_items` is
     // responsible for initializing the CGU size estimates.
@@ -179,6 +198,21 @@ where
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
 
         debug_dump(tcx, "INTERNALIZE", &codegen_units);
+    }
+
+    // Under the in-place forms of `-Z raise-optimize-speed`, the units are formed as ever, and
+    // the ones that get the optimizing pipeline are marked here: all of them, or those that
+    // hold a function to be optimized.
+    if let Some(raise) = cx.raise
+        && raise.form.is_in_place()
+    {
+        for cgu in codegen_units.iter_mut() {
+            if raise.form == RaiseOptimizeSpeedForm::Crate
+                || cgu.items().keys().any(|&item| cx.is_raised_fn(item))
+            {
+                cgu.mark_raised();
+            }
+        }
     }
 
     // Mark one CGU for dead code, if necessary.

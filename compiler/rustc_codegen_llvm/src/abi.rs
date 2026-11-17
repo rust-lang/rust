@@ -5,6 +5,7 @@ use rustc_abi::{
     ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, InterruptKind, Primitive, Reg, RegKind,
     Size, X86Call,
 };
+use rustc_attr_ir::OptimizeAttr;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::RealPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -807,14 +808,25 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // If the declaration has an associated instance, compute extra attributes based on that.
         if let Some(instance) = instance {
+            let mut codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
+            // A function that is held back in a raised module gets the attributes it would
+            // have if it were marked `#[optimize(none)]`.
+            let held_back = attributes::held_back_in_raised_module(cx, &codegen_fn_attrs);
+            if held_back.is_some() {
+                codegen_fn_attrs.to_mut().optimize = OptimizeAttr::DoNotOptimize;
+            }
             llfn_attrs_from_instance(
                 cx,
                 cx.tcx,
                 llfn,
-                &cx.tcx.codegen_instance_attrs(instance.def),
+                &codegen_fn_attrs,
                 Some(instance),
                 cx.sanitizer_ignorelist.as_ref(),
             );
+            if held_back.is_some_and(|raise| raise.noipa) {
+                let noipa = llvm::AttributeKind::NoIpa.create_attr(cx.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[noipa]);
+            }
         }
     }
 

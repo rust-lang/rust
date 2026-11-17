@@ -11,14 +11,14 @@ use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
 use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts, OptLevel, PAuthKey,
-    PacRet,
+    PacRet, RaiseOptimizeSpeed,
 };
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
-use crate::context::SimpleCx;
+use crate::context::{CodegenCx, SimpleCx};
 use crate::diagnostics::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
@@ -494,6 +494,29 @@ pub(crate) fn default_optimisation_attrs<'ll>(
         _ => {}
     }
     attrs
+}
+
+/// Whether a function with these attributes is held back in `cx`'s module, and under which
+/// settings.
+///
+/// Under the in-place forms of `-Z raise-optimize-speed`, a module of a crate built at
+/// `-C opt-level=0` gets the optimizing pipeline for the sake of the `#[optimize(speed)]`
+/// functions in it. Every other function there is held back: it is compiled as though it were
+/// marked `#[optimize(none)]`, which keeps it as the rest of the crate is. A function that must
+/// always be inlined is left as it is, since LLVM does not accept `alwaysinline` with
+/// `optnone`, and an unoptimized build inlines such a function into its callers too.
+pub(crate) fn held_back_in_raised_module<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+) -> Option<RaiseOptimizeSpeed> {
+    if !cx.codegen_unit.is_raised() {
+        return None;
+    }
+    let raise = cx.tcx.sess.raise_optimize_speed()?;
+    let held_back = raise.form.is_in_place()
+        && codegen_fn_attrs.optimize != OptimizeAttr::Speed
+        && !codegen_fn_attrs.inline.always();
+    held_back.then_some(raise)
 }
 
 fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> llvm::Attribute<'ll> {

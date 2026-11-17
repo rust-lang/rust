@@ -141,6 +141,17 @@ pub(crate) fn compile_codegen_unit(
             {
                 let mut attrs =
                     attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default(), None, None);
+                // The wrapper is no `#[optimize(speed)]` function, so it is held back where
+                // other functions are.
+                if let Some(raise) =
+                    attributes::held_back_in_raised_module(&cx, CodegenFnAttrs::EMPTY)
+                {
+                    attrs.push(llvm::AttributeKind::OptimizeNone.create_attr(cx.llcx));
+                    attrs.push(llvm::AttributeKind::NoInline.create_attr(cx.llcx));
+                    if raise.noipa {
+                        attrs.push(llvm::AttributeKind::NoIpa.create_attr(cx.llcx));
+                    }
+                }
                 // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
                 // also attached to the entry wrapper.
                 //
