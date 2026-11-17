@@ -54,6 +54,7 @@ jobs:
         Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
         .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
         del rustup-init.exe
+        rustup toolchain install
         rustup target add ${env:MATRIX_TARGET}
       env:
         MATRIX_TARGET: ${{ matrix.target }}
@@ -64,6 +65,7 @@ jobs:
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
         sh rustup-init.sh -y --default-toolchain none
+        rustup toolchain install
         rustup target add ${MATRIX_TARGET}
       env:
         MATRIX_TARGET: ${{ matrix.target }}
