@@ -119,7 +119,7 @@ unsafe impl core::alloc::StaticAllocator for Global {}
 ///
 /// Users of this function have to consider that in the future, allocators may be allowed to unwind.
 ///
-/// This function is expected to be deprecated in favor of the `allocate` method of the [`Global`] type.
+/// Calling [`Allocator::allocate`] on `Global` is preferred.
 ///
 /// # Safety
 ///
