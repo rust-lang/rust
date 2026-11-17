@@ -97,16 +97,21 @@ pub struct RaiseOptimizeSpeed {
 }
 
 impl Default for RaiseOptimizeSpeed {
+    /// The settings of a build that is given no `-Z raise-optimize-speed`. On this branch,
+    /// which exists to be measured against its parent, they are those of the design we would
+    /// expect to ship, with the probe that makes every crate hold a marked function:
+    /// `modules,copy-callees,codegen-level,mir,probe=added-unused`. To measure another probe,
+    /// change the probe here.
     fn default() -> Self {
         RaiseOptimizeSpeed {
-            form: RaiseOptimizeSpeedForm::Off,
+            form: RaiseOptimizeSpeedForm::Modules,
             level: OptLevel::Aggressive,
             noipa: false,
-            copy_callees: false,
-            mir: false,
+            copy_callees: true,
+            mir: true,
             import: false,
-            codegen_level: false,
-            probe: RaiseOptimizeSpeedProbe::Off,
+            codegen_level: true,
+            probe: RaiseOptimizeSpeedProbe::AddedUnused,
         }
     }
 }

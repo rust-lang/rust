@@ -2927,7 +2927,8 @@ options! {
     raise_optimize_speed: RaiseOptimizeSpeed = (RaiseOptimizeSpeed::default(),
         parse_raise_optimize_speed, [TRACKED],
         "in a crate built at `-C opt-level=0`, optimize the functions marked \
-        `#[optimize(speed)]`, and say in which form (default: off)"),
+        `#[optimize(speed)]`, and say in which form \
+        (default: `modules,copy-callees,codegen-level,mir,probe=added-unused`)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
     reg_struct_return: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RegStructReturn },
