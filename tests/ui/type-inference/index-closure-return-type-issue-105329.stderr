@@ -1,0 +1,41 @@
+error[E0282]: type annotations needed
+  --> $DIR/index-closure-return-type-issue-105329.rs:9:21
+   |
+LL |     let rows = vec![Vec::new()];
+   |                     ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Vec`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let rows = vec![Vec::</* Type */>::new()];
+   |                        ++++++++++++++
+
+error[E0282]: type annotations needed for `Vec<_>`
+  --> $DIR/index-closure-return-type-issue-105329.rs:15:9
+   |
+LL |     let values = Vec::new();
+   |         ^^^^^^
+LL |
+LL |     let _ = values[0usize].len();
+   |             -------------- type must be known at this point
+   |
+help: consider giving `values` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let values: Vec<T> = Vec::new();
+   |               ++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/index-closure-return-type-issue-105329.rs:29:25
+   |
+LL |     let f = |x: &str| x.parse().unwrap();
+   |                         ^^^^^ cannot infer type of the type parameter `F` declared on the method `parse`
+LL |     vec[f(s)].push(10);
+   |         ---- type must be known at this point
+   |
+help: consider specifying a concrete type for the type parameter `F`
+   |
+LL |     let f = |x: &str| x.parse::</* Type */>().unwrap();
+   |                              ++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

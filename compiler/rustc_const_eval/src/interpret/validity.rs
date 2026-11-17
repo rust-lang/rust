@@ -1006,6 +1006,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Param(..)
             | ty::Alias(..)
             | ty::CoroutineWitness(..) => bug!("Encountered invalid type {:?}", ty),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

@@ -24,6 +24,18 @@
 //! waits until the process terminates, while [`spawn`] will return a [`Child`]
 //! that represents the spawned child process.
 //!
+//! Spawning a command may return an error if:
+//! - The command does not exist, or is not in the platform-specific PATH search list.
+//! - A platform-specific limit on memory, number of processes, or number of threads is reached.
+//! - The current process doesn't have enough permissions to spawn the command.
+//! - A dynamic library required by the command could not be found.
+//!
+//! This list is not exhaustive. Other errors may occur depending on the platform.
+//!
+//! Note that the function will error only while attempting to spawn the child. If the child is
+//! successfully spawned, any error that happens afterwards will be reported through
+//! its [`ExitStatus`].
+//!
 //! # Handling I/O
 //!
 //! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be

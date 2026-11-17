@@ -1217,6 +1217,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1267,6 +1270,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1321,6 +1327,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1490,6 +1499,9 @@ impl<'tcx> Ty<'tcx> {
             }
 
             ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) | ty::UnsafeBinder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1595,6 +1607,9 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

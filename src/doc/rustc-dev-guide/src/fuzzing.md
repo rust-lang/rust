@@ -9,8 +9,8 @@ Fuzzing can be beneficial, because it can find bugs before users run into them.
 It also provides small, self-contained programs that make the bug easier to track down.
 However, some common mistakes can reduce the helpfulness of fuzzing and end up
 making contributors' lives harder.
-To maximize your positive impact on the Rust
-project, please read this guide before reporting fuzzer-generated bugs!
+To maximize your positive impact on the Rust project,
+please read this guide before reporting fuzzer-generated bugs!
 
 ## Guidelines
 
@@ -23,18 +23,20 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Include all of the information requested in the bug report template
 - Search for existing reports with the same message and query stack
 - Format the test case with `rustfmt`
-- Indicate that the bug was found by fuzzing
+- Indicate that the bug was found by fuzzing using `@rustbot label: +S-found-by-fuzzing`
 
 *Please don't:*
 
 - Don't report lots of bugs that use internal features, including but not
   limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
 - Don't seed your fuzzer with inputs that are known to crash rustc (details below).
+- You do not need to report minor bugs you already traced to LLVM.
+  It can go upstream.
 
 ### Discussion
 
-If you're not sure whether or not an ICE is a duplicate of one that's already
-been reported, please go ahead and report it and link to issues you think might be related.
+If you're not sure whether or not an ICE is a duplicate of one that's already been reported,
+please go ahead and report it and link to issues you think might be related.
 In general, ICEs on the same line but with different *query stacks* are usually distinct bugs.
 For example, [#109020] and [#109129] had similar error messages:
 
@@ -65,20 +67,41 @@ end of query stack
 ## Building a corpus
 
 When building a corpus, be sure to avoid collecting tests that are already known to crash rustc.
-A fuzzer that is seeded with such tests is more likely to
-generate bugs with the same root cause.
-The simplest way to avoid this is to loop over each file in the corpus, see if it causes an
-ICE, and remove it if so.
+A fuzzer that is seeded with such tests is more likely to generate bugs with the same root cause.
+The simplest way to avoid this is to loop over each file in the corpus, see if it causes an ICE,
+and remove it if so.
 
 To build a corpus, you may want to use:
 
 - The rustc/rust-analyzer/clippy test suites (or even source code) --- though avoid
-  tests that are already known to cause failures, which often begin with comments
-  like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
+  tests that are already known to cause failures,
+  which often begin with comments like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
 - The already-fixed ICEs in the archived [Glacier] repository --- though
   avoid the unfixed ones in `ices/`!
 
 [glacier]: https://github.com/rust-lang/glacier
+
+## Handling rustc-external issues
+
+Historically,
+Rust has received many bugs for external software like LLVM which we took on as our responsibility.
+For instance, we would patch our fork or send the bug to their tracker,
+and keep a Rust-side bug open to track backports or mitigations in rustc.
+This was when bug reports for miscompilations were rare, mostly "organic" instead of fuzzed,
+and it was not always clear we were using LLVM correctly instead of generating malformed LLVMIR.
+
+We have been tracking LLVM more closely since 2022.
+Updates to our LLVM fork are more frequent and almost always backports or new LLVM releases,
+since we work more closely with LLVM.
+If you trace a miscompilation to LLVM, it is most important the bug is fixed upstream,
+so please try to make sure the bug reaches [llvm-project/issues] first.
+
+Obscure or config-specific miscompilations can usually wait for the next LLVM patch release,
+so we may close fuzzed bugs traced to LLVM if they do not have major impact on Rust code.
+If you aren't certain if the issue is in LLVM, whether it warrants an expedited backport,
+or even just how to file the bug against LLVM, then go ahead and submit the issue anyways.
+
+[llvm-project/issues]: https://github.com/llvm/llvm-project/issues
 
 ## Extra credit
 
@@ -87,8 +110,8 @@ Here are a few things you can do to help the Rust project after filing an ICE:
 - [Bisect][bisect] the bug to figure out when it was introduced.
   If you find the regressing PR / commit, you can mark the issue with the label `S-has-bisection`.
   If not, consider applying `E-needs-bisection` instead.
-- Fix "distractions": problems with the test case that don't contribute to
-  triggering the ICE, such as syntax errors or borrow-checking errors
+- Fix "distractions": problems with the test case that don't contribute to triggering the ICE,
+  such as syntax errors or borrow-checking errors
 - Minimize the test case (see below).
   If successful, you can label the issue with `S-has-mcve`.
   Otherwise, you can apply `E-needs-mcve`.
@@ -97,6 +120,8 @@ Here are a few things you can do to help the Rust project after filing an ICE:
   Please don't forget to mark all relevant issues with `S-bug-has-test` once your PR is merged.
 
 See also [applying and removing labels][labeling].
+Make sure to include `S-found-by-fuzzing` using
+`@rustbot label: +S-found-by-fuzzing` when you create an issue, even if other labels don't apply.
 
 [bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
 [crash test]: tests/compiletest.md#crash-tests
@@ -122,31 +147,29 @@ Generally,
 
 ## Effective fuzzing
 
-When fuzzing rustc, you may want to avoid generating machine code, since this
-is mostly done by LLVM.
+When fuzzing rustc, you may want to avoid generating machine code,
+since this is mostly done by LLVM.
 Try `--emit=mir` instead.
 
 A variety of compiler flags can uncover different issues.
-`-Zmir-opt-level=4` will turn on MIR optimization passes that are not run by default, potentially
-uncovering interesting bugs.
+`-Zmir-opt-level=4` will turn on MIR optimization passes that are not run by default,
+potentially uncovering interesting bugs.
 `-Zvalidate-mir` can help uncover such bugs.
 
 If you're fuzzing a compiler you built, you may want to build it with `-C
 target-cpu=native` or even PGO/BOLT to squeeze out a few more executions per second.
-Of course, it's best to try multiple build configurations and see
-what actually results in superior throughput.
+Of course,
+it's best to try multiple build configurations and see what actually results in superior throughput.
 
-You may want to build rustc from source with debug assertions to find
-additional bugs, though this can slow down fuzzing by
-requiring extra work for every execution.
+You may want to build rustc from source with debug assertions to find additional bugs,
+though this can slow down fuzzing by requiring extra work for every execution.
 To enable debug assertions, add this to `bootstrap.toml` when compiling rustc:
 
 ```toml
 rust.debug-assertions = true
 ```
 
-ICEs that require debug assertions to reproduce should be tagged
-[`requires-debug-assertions`].
+ICEs that require debug assertions to reproduce should be tagged [`requires-debug-assertions`].
 
 [`requires-debug-assertions`]: https://github.com/rust-lang/rust/labels/requires-debug-assertions
 

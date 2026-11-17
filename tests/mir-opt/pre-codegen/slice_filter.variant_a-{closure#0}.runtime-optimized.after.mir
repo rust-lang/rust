@@ -102,7 +102,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         StorageLive(_13);
         // DBG: _24 = &_18;
         // DBG: _25 = &?;
-        _13 = Le(copy _8, copy _7);
+        _13 = Ge(copy _7, copy _8);
         switchInt(move _13) -> [0: bb3, otherwise: bb4];
     }
 

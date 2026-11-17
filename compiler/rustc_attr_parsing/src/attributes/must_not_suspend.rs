@@ -25,6 +25,6 @@ impl SingleAttributeParser for MustNotSuspendParser {
             }
         };
 
-        Some(AttributeKind::MustNotSupend { reason })
+        Some(AttributeKind::MustNotSuspend { reason })
     }
 }

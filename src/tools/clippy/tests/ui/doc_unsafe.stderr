@@ -8,31 +8,31 @@ LL | pub unsafe fn destroy_the_planet() {
    = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:35:5
+  --> tests/ui/doc_unsafe.rs:50:5
    |
 LL |     pub unsafe fn republished() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:46:5
+  --> tests/ui/doc_unsafe.rs:61:5
    |
 LL |     unsafe field: u8,
    |     ^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:52:9
+  --> tests/ui/doc_unsafe.rs:67:9
    |
 LL |         unsafe field: u8,
    |         ^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:58:5
+  --> tests/ui/doc_unsafe.rs:73:5
    |
 LL |     unsafe field: u8,
    |     ^^^^^^^^^^^^^^^^
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:64:5
+  --> tests/ui/doc_unsafe.rs:79:5
    |
 LL |     field: u8,
    |     ^^^^^^^^^
@@ -45,7 +45,7 @@ LL | #![deny(clippy::unnecessary_safety_doc)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:71:9
+  --> tests/ui/doc_unsafe.rs:86:9
    |
 LL |         field: u8,
    |         ^^^^^^^^^
@@ -53,7 +53,7 @@ LL |         field: u8,
    = help: if the field has safety invariants, mark it `unsafe`
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:78:5
+  --> tests/ui/doc_unsafe.rs:93:5
    |
 LL |     field: u8,
    |     ^^^^^^^^^
@@ -61,25 +61,25 @@ LL |     field: u8,
    = help: if the field has safety invariants, mark it `unsafe`
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:83:5
+  --> tests/ui/doc_unsafe.rs:98:5
    |
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe trait missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:90:1
+  --> tests/ui/doc_unsafe.rs:105:1
    |
 LL | pub unsafe trait UnsafeTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:121:5
+  --> tests/ui/doc_unsafe.rs:136:5
    |
 LL |     pub unsafe fn more_undocumented_unsafe() -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:138:9
+  --> tests/ui/doc_unsafe.rs:153:9
    |
 LL | macro_rules! very_unsafe {
 LL |     () => {
@@ -90,7 +90,7 @@ LL | very_unsafe!();
    | -------------- in this macro invocation
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:199:13
+  --> tests/ui/doc_unsafe.rs:214:13
    |
 LL |             pub unsafe fn expanded_unsafe_fn_without_safety() {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

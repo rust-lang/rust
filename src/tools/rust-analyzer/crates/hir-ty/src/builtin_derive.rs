@@ -12,15 +12,18 @@ use hir_def::{
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use rustc_type_ir::{
-    AliasTyKind, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
-    inherent::{GenericArgs as _, IntoKind},
+    AliasTyKind, BoundVar, BoundVarIndexKind, DebruijnIndex, INNERMOST, TypeFlags, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Upcast,
+    inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
 
 use crate::{
     FieldType, GenericPredicates,
     db::HirDatabase,
     next_solver::{
-        AliasTy, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv,
+        AliasTy, Binder, BoundConst, BoundRegion, BoundTy, BoundVarKinds, Clause, Clauses, Const,
+        ConstKind, DbInterner, EarlyBinder, GenericArgs, ParamEnv, Region, RegionKind,
         StoredEarlyBinder, TraitRef, Ty, TyKind, Unnormalized, fold::fold_tys, generics::Generics,
     },
 };
@@ -359,21 +362,39 @@ fn extend_assoc_type_bounds<'db>(
         assoc_type_bounds: &'a mut Vec<Clause<'db>>,
         trait_id: TraitId,
         trait_: BuiltinDeriveImplTrait,
+        bound_generic_params_stack: Vec<BoundVarKinds<'db>>,
     }
 
     impl<'db> TypeVisitor<DbInterner<'db>> for ProjectionFinder<'_, 'db> {
         type Result = ();
 
         fn visit_ty(&mut self, t: Ty<'db>) -> Self::Result {
+            if !t.has_type_flags(TypeFlags::HAS_TY_PROJECTION) {
+                return;
+            }
             if let TyKind::Alias(alias @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) =
                 t.kind()
                 && let TyKind::Param(_) = alias.self_ty().kind()
             {
+                // rustc flattens binders before lowering, so the corresponding rustc
+                // logic just has a flat vec already:
+                // https://github.com/rust-lang/rust/blob/cabb1ea4ced589dfee40c08aeffff3cac78af43b/compiler/rustc_builtin_macros/src/deriving/generic/mod.rs#L396
+                let t = t.fold_with(&mut FlattenBinders {
+                    interner: self.interner,
+                    enclosing_binders: &self.bound_generic_params_stack,
+                    nested_binder_depth: INNERMOST,
+                });
+                let bound_vars = BoundVarKinds::new_from_iter(
+                    self.bound_generic_params_stack.iter().flat_map(|it| it.iter()),
+                );
                 self.assoc_type_bounds.push(
-                    TraitRef::new_from_args(
-                        self.interner,
-                        self.trait_id.into(),
-                        trait_args(self.trait_, t),
+                    Binder::bind_with_vars(
+                        TraitRef::new_from_args(
+                            self.interner,
+                            self.trait_id.into(),
+                            trait_args(self.trait_, t),
+                        ),
+                        bound_vars,
                     )
                     .upcast(self.interner),
                 );
@@ -381,11 +402,110 @@ fn extend_assoc_type_bounds<'db>(
 
             t.super_visit_with(self)
         }
+
+        // Place bound generic params on a stack, to extract them when a type is encountered.
+        fn visit_binder<T: TypeVisitable<DbInterner<'db>>>(
+            &mut self,
+            binder: &Binder<'db, T>,
+        ) -> Self::Result {
+            let stack_len = self.bound_generic_params_stack.len();
+            // Given a field `x: for<'a> fn(T::SomeType<'a>)`, we want to account for `'a` so
+            // that we generate `where for<'a> T::SomeType<'a>: ::core::clone::Clone`. #122622
+            self.bound_generic_params_stack.push(binder.bound_vars());
+
+            binder.super_visit_with(self);
+
+            self.bound_generic_params_stack.truncate(stack_len);
+        }
     }
 
-    let mut visitor = ProjectionFinder { interner, assoc_type_bounds, trait_id, trait_ };
+    let mut visitor = ProjectionFinder {
+        interner,
+        assoc_type_bounds,
+        trait_id,
+        trait_,
+        bound_generic_params_stack: Vec::new(),
+    };
     for (_, field) in fields.iter() {
         field.ty().instantiate_identity().skip_norm_wip().visit_with(&mut visitor);
+    }
+}
+
+/// Transform a projection `for<'a> for<'b> F::Foo<'a, 'b, X>` into
+/// `for<'a, 'b> F::Foo<'a, 'b, X>`. Update de Bruijn indexes for
+/// enclosing binders, but preserve nested binders.
+struct FlattenBinders<'a, 'db> {
+    interner: DbInterner<'db>,
+    enclosing_binders: &'a [BoundVarKinds<'db>],
+    nested_binder_depth: DebruijnIndex,
+}
+
+impl FlattenBinders<'_, '_> {
+    fn flattened_var(&self, debruijn: DebruijnIndex, var: BoundVar) -> Option<BoundVar> {
+        let depth = debruijn.as_usize().checked_sub(self.nested_binder_depth.as_usize())?;
+        let binder = self.enclosing_binders.len().checked_sub(depth + 1)?;
+        let offset = self.enclosing_binders[..binder].iter().map(|it| it.len()).sum::<usize>();
+        Some(BoundVar::from_usize(offset + var.as_usize()))
+    }
+}
+
+impl<'db> TypeFolder<DbInterner<'db>> for FlattenBinders<'_, 'db> {
+    fn cx(&self) -> DbInterner<'db> {
+        self.interner
+    }
+
+    fn fold_binder<T: TypeFoldable<DbInterner<'db>>>(
+        &mut self,
+        binder: Binder<'db, T>,
+    ) -> Binder<'db, T> {
+        self.nested_binder_depth.shift_in(1);
+        let binder = binder.super_fold_with(self);
+        self.nested_binder_depth.shift_out(1);
+        binder
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
+        if !ty.has_bound_vars() {
+            return ty;
+        }
+        if let TyKind::Bound(BoundVarIndexKind::Bound(debruijn), bound_ty) = ty.kind()
+            && let Some(var) = self.flattened_var(debruijn, bound_ty.var)
+        {
+            return Ty::new_bound(
+                self.interner,
+                self.nested_binder_depth,
+                BoundTy { var, kind: bound_ty.kind },
+            );
+        }
+        ty.super_fold_with(self)
+    }
+
+    fn fold_region(&mut self, region: Region<'db>) -> Region<'db> {
+        if !region.has_bound_vars() {
+            return region;
+        }
+        if let RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), bound_region) = region.kind()
+            && let Some(var) = self.flattened_var(debruijn, bound_region.var)
+        {
+            return Region::new_bound(
+                self.interner,
+                self.nested_binder_depth,
+                BoundRegion { var, kind: bound_region.kind },
+            );
+        }
+        region
+    }
+
+    fn fold_const(&mut self, konst: Const<'db>) -> Const<'db> {
+        if !konst.has_bound_vars() {
+            return konst;
+        }
+        if let ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), bound_const) = konst.kind()
+            && let Some(var) = self.flattened_var(debruijn, bound_const.var)
+        {
+            return Const::new_bound(self.interner, self.nested_binder_depth, BoundConst::new(var));
+        }
+        konst.super_fold_with(self)
     }
 }
 

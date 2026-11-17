@@ -2283,7 +2283,7 @@ fn main() {
 //- minicore: asm
 #[inline]
 pub unsafe fn bootstrap() -> ! {
-    builtin#asm(
+    k#asm(
         "blabla",
         "mrs {tmp}, CONTROL",
            // ^^^ read

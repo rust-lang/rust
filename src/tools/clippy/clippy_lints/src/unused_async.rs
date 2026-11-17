@@ -9,7 +9,7 @@ use rustc_hir::{
     Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId,
     ImplItem, ImplItemKind, IsAsync, Node, TraitItem, YieldSource,
 };
-use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass, std_or_core};
 use rustc_middle::hir::nested_filter;
 use rustc_span::Span;
 use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
@@ -277,7 +277,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             visitor.visit_nested_body(body_id);
 
             if !visitor.found_await
-                && let Some(builtin_crate) = clippy_utils::std_or_core(cx)
+                && let Some(builtin_crate) = std_or_core(cx)
                 && let Some(inner) = unpack_async_fn_body(cx, body)
                 // Find the tail expression contained in the async fn (if any),
                 // which will be wrapped in std::future::ready.

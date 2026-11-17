@@ -14,9 +14,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           ASM_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            ASM_KW "asm"
+            ASM_KW "k#asm"
             L_PAREN "("
             LITERAL
               STRING "\"\""
@@ -24,9 +22,7 @@ SOURCE_FILE
           SEMICOLON ";"
         WHITESPACE "\n    "
         ASM_EXPR
-          BUILTIN_KW "builtin"
-          POUND "#"
-          GLOBAL_ASM_KW "global_asm"
+          GLOBAL_ASM_KW "k#global_asm"
           L_PAREN "("
           LITERAL
             STRING "\"\""
@@ -35,9 +31,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           ASM_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            NAKED_ASM_KW "naked_asm"
+            NAKED_ASM_KW "k#naked_asm"
             L_PAREN "("
             LITERAL
               STRING "\"\""

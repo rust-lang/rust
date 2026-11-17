@@ -7,5 +7,4 @@ trait Tr {
 fn main() {
     let _: dyn Tr + ?Foo<Assoc = ()>;
     //~^ ERROR: cannot find trait `Foo` in this scope
-    //~| ERROR: relaxed bounds are not permitted in trait object types
 }

@@ -432,6 +432,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
                 bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         })
     }
 

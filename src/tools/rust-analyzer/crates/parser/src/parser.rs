@@ -189,6 +189,11 @@ impl<'t> Parser<'t> {
         self.inp.contextual_kind(self.pos + n) == kw
     }
 
+    /// Checks if the nth token is a contextual keyword in `kinds`.
+    pub(crate) fn nth_at_contextual_ts(&self, n: usize, kinds: TokenSet) -> bool {
+        kinds.contains(self.inp.contextual_kind(self.pos + n))
+    }
+
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.
@@ -253,6 +258,37 @@ impl<'t> Parser<'t> {
             return;
         }
         self.do_bump(kind, 1);
+    }
+
+    pub(crate) fn start_builtin_kw(&mut self, kw: SyntaxKind) -> Option<Marker> {
+        if self.at(kw) {
+            let m = self.start();
+            self.bump(kw);
+            Some(m)
+        } else if self.at_contextual_kw(T![builtin])
+            && self.nth_at(1, T![#])
+            && self.nth_at_contextual_kw(2, kw)
+        {
+            // FIXME: Remove this once we no longer support Rust versions with `builtin #` syntax.
+            let m = self.start();
+            self.bump_remap(T![builtin]);
+            self.bump(T![#]);
+            self.bump_remap(kw);
+            Some(m)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn eat_builtin_kw(&mut self, kw: SyntaxKind) -> bool {
+        self.start_builtin_kw(kw).map(|m| m.abandon(self)).is_some()
+    }
+
+    pub(crate) fn at_builtin_ts(&mut self, keywords: TokenSet) -> bool {
+        self.at_ts(keywords)
+            || (self.at_contextual_kw(T![builtin])
+                && self.nth_at(1, T![#])
+                && self.nth_at_contextual_ts(2, keywords))
     }
 
     /// Emit error with the `message`

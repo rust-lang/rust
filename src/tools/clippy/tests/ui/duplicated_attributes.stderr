@@ -51,5 +51,39 @@ help: remove this attribute
 LL | #[allow(dead_code)]
    |         ^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: duplicated attribute
+  --> tests/ui/duplicated_attributes.rs:35:9
+   |
+LL | #[allow(dead_code, unused_variables)]
+   |         ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/duplicated_attributes.rs:34:9
+   |
+LL | #[allow(dead_code)]
+   |         ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/duplicated_attributes.rs:35:9
+   |
+LL | #[allow(dead_code, unused_variables)]
+   |         ^^^^^^^^^
+
+error: duplicated attribute
+  --> tests/ui/duplicated_attributes.rs:60:25
+   |
+LL | #[cfg_attr(all(), allow(dead_code))]
+   |                         ^^^^^^^^^
+   |
+note: first defined here
+  --> tests/ui/duplicated_attributes.rs:59:9
+   |
+LL | #[allow(dead_code)]
+   |         ^^^^^^^^^
+help: remove this attribute
+  --> tests/ui/duplicated_attributes.rs:60:25
+   |
+LL | #[cfg_attr(all(), allow(dead_code))]
+   |                         ^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

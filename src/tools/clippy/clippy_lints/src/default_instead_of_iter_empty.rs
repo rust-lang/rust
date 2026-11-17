@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{last_path_segment, std_or_core, sym};
+use clippy_utils::{last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, QPath, TyKind, def};
-use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass, std_or_core};
 use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {

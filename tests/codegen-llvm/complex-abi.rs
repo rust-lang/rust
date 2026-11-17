@@ -110,16 +110,29 @@
 
 #![feature(no_core, lang_items, f16, f128)]
 #![no_core]
-// only Complex<{float}> is guaranteed to be ABI-compatible for now
-#![expect(improper_ctypes_definitions)]
 #![crate_type = "lib"]
+#![deny(improper_ctypes_definitions)]
 
 extern crate minicore;
-#[cfg(target_arch = "powerpc")]
-use minicore::arch::powerpc::ppcf128;
-#[cfg(target_arch = "powerpc64")]
-use minicore::arch::powerpc64::ppcf128;
 use minicore::num::Complex;
+
+minicore::cfg_select! {
+    target_arch = "powerpc" => {
+        use minicore::arch::powerpc::ppcf128;
+    }
+    target_arch = "powerpc64" => {
+        use minicore::arch::powerpc64::ppcf128;
+    }
+    target_arch = "x86" => {
+        use minicore::arch::x86::x87_f80;
+    }
+    target_arch = "x86_64" => {
+        use minicore::arch::x86_64::x87_f80;
+    }
+    _ => {
+        // Nothing else needs target-specific imports.
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
@@ -244,6 +257,19 @@ pub extern "C" fn cplx_ppcf128(x: Complex<ppcf128>) -> Complex<ppcf128> {
 }
 
 #[no_mangle]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub extern "C" fn cplx_x87_f80(x: Complex<x87_f80>) -> Complex<x87_f80> {
+    // I686:           define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([24 x i8]) {{.*}}, ptr {{.*}} byval([24 x i8]) {{.*}})
+    // WIN32_GNU:      define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([24 x i8]) {{.*}}, ptr {{.*}} byval([24 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { x86_fp80, x86_fp80 } @cplx_x87_f80(ptr {{.*}} byval([32 x i8]) {{.*}})
+    x
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
     // AARCH64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i8(i64{{.*}})
@@ -280,6 +306,7 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // AARCH64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i16(i64{{.*}})
@@ -316,6 +343,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
     // AARCH64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i32(i64 {{.*}})
@@ -352,6 +380,7 @@ pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // AARCH64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // AARCH64_DARWIN: define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
@@ -391,6 +420,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
 struct Wrapper<T>(T);
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn wrapper_cplx_i64(
     x: Wrapper<Complex<Wrapper<i64>>>,
 ) -> Wrapper<Complex<Wrapper<i64>>> {

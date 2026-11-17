@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{eager_or_lazy, higher, std_or_core, usage};
+use clippy_utils::{eager_or_lazy, higher, usage};
 use rustc_ast::LitKind;
 use rustc_ast::ast::RangeLimits;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_span::{Span, SyntaxContext};
 
 fn extract_count_with_applicability(

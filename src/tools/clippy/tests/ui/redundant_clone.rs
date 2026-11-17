@@ -66,6 +66,7 @@ fn main() {
     let x = (String::new(),);
     let _ = Some(String::new()).unwrap_or_else(|| x.0.clone()); // ok; closure borrows `x`
 
+    // Other tests are called here to avoid unused code
     with_branch(Alpha, true);
     cannot_double_move(Alpha);
     cannot_move_from_type_with_drop();

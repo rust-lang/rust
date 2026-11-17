@@ -972,7 +972,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
         {
             continue;
         }
-        short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
+        short_path = short_path.trim_prefix(pattern);
         let dst_path = dst.join(short_path);
 
         exec_ctx.do_if_verbose(|| {

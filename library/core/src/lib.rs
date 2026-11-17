@@ -88,6 +88,7 @@
 #![feature(asm_experimental_arch)]
 #![feature(byte_str_internals)]
 #![feature(cfg_target_has_reliable_f16_f128)]
+#![feature(cfg_target_has_reliable_f16b)]
 #![feature(const_cmp)]
 #![feature(const_destruct)]
 #![feature(const_eval_select)]

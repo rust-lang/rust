@@ -5533,7 +5533,7 @@ pub unsafe fn svldnt1_gather_s64index_f64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2f64"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2f64.p0"
         )]
         fn _svldnt1_gather_s64index_f64(
             pg: svbool2_t,
@@ -5561,7 +5561,7 @@ pub unsafe fn svldnt1_gather_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i64"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i64.p0"
         )]
         fn _svldnt1_gather_s64index_s64(
             pg: svbool2_t,
@@ -5657,7 +5657,7 @@ pub unsafe fn svldnt1_gather_s64offset_f64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2f64"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2f64.p0"
         )]
         fn _svldnt1_gather_s64offset_f64(
             pg: svbool2_t,
@@ -5685,7 +5685,7 @@ pub unsafe fn svldnt1_gather_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i64"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i64.p0"
         )]
         fn _svldnt1_gather_s64offset_s64(
             pg: svbool2_t,
@@ -5730,7 +5730,7 @@ pub unsafe fn svldnt1_gather_u32offset_f32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4f32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4f32.p0"
         )]
         fn _svldnt1_gather_u32offset_f32(
             pg: svbool4_t,
@@ -5758,7 +5758,7 @@ pub unsafe fn svldnt1_gather_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i32.p0"
         )]
         fn _svldnt1_gather_u32offset_s32(
             pg: svbool4_t,
@@ -6198,7 +6198,7 @@ pub unsafe fn svldnt1sb_gather_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i8"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i8.p0"
         )]
         fn _svldnt1sb_gather_s64offset_s64(
             pg: svbool2_t,
@@ -6230,7 +6230,7 @@ pub unsafe fn svldnt1sh_gather_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i16.p0"
         )]
         fn _svldnt1sh_gather_s64offset_s64(
             pg: svbool2_t,
@@ -6262,7 +6262,7 @@ pub unsafe fn svldnt1sw_gather_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i32.p0"
         )]
         fn _svldnt1sw_gather_s64offset_s64(
             pg: svbool2_t,
@@ -6345,7 +6345,7 @@ pub unsafe fn svldnt1sb_gather_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i8"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i8.p0"
         )]
         fn _svldnt1sb_gather_u32offset_s32(
             pg: svbool4_t,
@@ -6377,7 +6377,7 @@ pub unsafe fn svldnt1sh_gather_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i16.p0"
         )]
         fn _svldnt1sh_gather_u32offset_s32(
             pg: svbool4_t,
@@ -6940,7 +6940,7 @@ pub unsafe fn svldnt1sh_gather_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i16.p0"
         )]
         fn _svldnt1sh_gather_s64index_s64(
             pg: svbool2_t,
@@ -6968,7 +6968,7 @@ pub unsafe fn svldnt1sw_gather_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i32.p0"
         )]
         fn _svldnt1sw_gather_s64index_s64(
             pg: svbool2_t,
@@ -7257,7 +7257,7 @@ pub unsafe fn svldnt1ub_gather_s64offset_u64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i8"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i8.p0"
         )]
         fn _svldnt1ub_gather_s64offset_u64(
             pg: svbool2_t,
@@ -7287,7 +7287,7 @@ pub unsafe fn svldnt1uh_gather_s64offset_u64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i16.p0"
         )]
         fn _svldnt1uh_gather_s64offset_u64(
             pg: svbool2_t,
@@ -7317,7 +7317,7 @@ pub unsafe fn svldnt1uw_gather_s64offset_u64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.nxv2i32.p0"
         )]
         fn _svldnt1uw_gather_s64offset_u64(
             pg: svbool2_t,
@@ -7381,7 +7381,7 @@ pub unsafe fn svldnt1ub_gather_u32offset_u32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i8"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i8.p0"
         )]
         fn _svldnt1ub_gather_u32offset_u32(
             pg: svbool4_t,
@@ -7412,7 +7412,7 @@ pub unsafe fn svldnt1uh_gather_u32offset_u32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.uxtw.nxv4i16.p0"
         )]
         fn _svldnt1uh_gather_u32offset_u32(
             pg: svbool4_t,
@@ -7969,7 +7969,7 @@ pub unsafe fn svldnt1uh_gather_s64index_u64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i16"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i16.p0"
         )]
         fn _svldnt1uh_gather_s64index_u64(
             pg: svbool2_t,
@@ -7999,7 +7999,7 @@ pub unsafe fn svldnt1uw_gather_s64index_u64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i32"
+            link_name = "llvm.aarch64.sve.ldnt1.gather.index.nxv2i32.p0"
         )]
         fn _svldnt1uw_gather_s64index_u64(
             pg: svbool2_t,
@@ -19506,7 +19506,7 @@ pub unsafe fn svstnt1_scatter_s64index_f64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2f64"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2f64.p0"
         )]
         fn _svstnt1_scatter_s64index_f64(
             data: svfloat64_t,
@@ -19536,7 +19536,7 @@ pub unsafe fn svstnt1_scatter_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i64"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i64.p0"
         )]
         fn _svstnt1_scatter_s64index_s64(
             data: svint64_t,
@@ -19638,7 +19638,7 @@ pub unsafe fn svstnt1_scatter_s64offset_f64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2f64"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2f64.p0"
         )]
         fn _svstnt1_scatter_s64offset_f64(
             data: svfloat64_t,
@@ -19668,7 +19668,7 @@ pub unsafe fn svstnt1_scatter_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i64"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i64.p0"
         )]
         fn _svstnt1_scatter_s64offset_s64(
             data: svint64_t,
@@ -19716,7 +19716,7 @@ pub unsafe fn svstnt1_scatter_u32offset_f32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4f32"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4f32.p0"
         )]
         fn _svstnt1_scatter_u32offset_f32(
             data: svfloat32_t,
@@ -19746,7 +19746,7 @@ pub unsafe fn svstnt1_scatter_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i32"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i32.p0"
         )]
         fn _svstnt1_scatter_u32offset_s32(
             data: svint32_t,
@@ -20208,7 +20208,7 @@ pub unsafe fn svstnt1b_scatter_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i8"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i8.p0"
         )]
         fn _svstnt1b_scatter_s64offset_s64(
             data: nxv2i8,
@@ -20243,7 +20243,7 @@ pub unsafe fn svstnt1h_scatter_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i16"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i16.p0"
         )]
         fn _svstnt1h_scatter_s64offset_s64(
             data: nxv2i16,
@@ -20278,7 +20278,7 @@ pub unsafe fn svstnt1w_scatter_s64offset_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i32"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.nxv2i32.p0"
         )]
         fn _svstnt1w_scatter_s64offset_s64(
             data: nxv2i32,
@@ -20367,7 +20367,7 @@ pub unsafe fn svstnt1b_scatter_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i8"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i8.p0"
         )]
         fn _svstnt1b_scatter_u32offset_s32(
             data: nxv4i8,
@@ -20402,7 +20402,7 @@ pub unsafe fn svstnt1h_scatter_u32offset_s32(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i16"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.uxtw.nxv4i16.p0"
         )]
         fn _svstnt1h_scatter_u32offset_s32(
             data: nxv4i16,
@@ -20996,7 +20996,7 @@ pub unsafe fn svstnt1h_scatter_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i16"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i16.p0"
         )]
         fn _svstnt1h_scatter_s64index_s64(
             data: nxv2i16,
@@ -21031,7 +21031,7 @@ pub unsafe fn svstnt1w_scatter_s64index_s64(
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i32"
+            link_name = "llvm.aarch64.sve.stnt1.scatter.index.nxv2i32.p0"
         )]
         fn _svstnt1w_scatter_s64index_s64(
             data: nxv2i32,

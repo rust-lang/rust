@@ -48,42 +48,6 @@ use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Val
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
-fn call_simple_intrinsic<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    name: Symbol,
-    args: &[OperandRef<'tcx, Value<'ll>>],
-) -> Option<Value<'ll>> {
-    let llvm_version = crate::llvm_util::get_version();
-    // minimum/maximum were broken for f64/f128 before
-    // <https://github.com/llvm/llvm-project/commit/56385af687c3a7a1f67716fb3f819336789a8cab>.
-    // We use the fallback body there.
-    let fixed_minmax = llvm_version >= (23, 0, 0);
-
-    let (base_name, type_params): (&'static str, &[Type<'ll>]) = match name {
-        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
-        sym::minimumf128 if fixed_minmax => ("llvm.minimum", &[bx.type_f128()]),
-
-        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        sym::maximumf64 if fixed_minmax => ("llvm.maximum", &[bx.type_f64()]),
-        sym::maximumf128 if fixed_minmax => ("llvm.maximum", &[bx.type_f128()]),
-
-        sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
-        sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
-        sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
-        sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
-
-        _ => return None,
-    };
-    Some(bx.call_intrinsic(
-        base_name,
-        type_params,
-        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-    ))
-}
-
 impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     fn black_box(&mut self, result: PlaceRef<'tcx, Value<'ll>>, span: Span) {
         let result_val_span = [result.val.llval];
@@ -135,18 +99,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
 
-        let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
-            _ if simple.is_some() => simple.unwrap(),
-            sym::minimum_number_nsz_f16
-            | sym::minimum_number_nsz_f32
-            | sym::minimum_number_nsz_f64
-            | sym::minimum_number_nsz_f128
-            | sym::maximum_number_nsz_f16
-            | sym::maximum_number_nsz_f32
-            | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128 => {
-                let intrinsic_name = if name.as_str().starts_with("min") {
+            sym::minimum_number_nsz | sym::maximum_number_nsz => {
+                let intrinsic_name = if name == sym::minimum_number_nsz {
                     "llvm.minimumnum"
                 } else {
                     "llvm.maximumnum"
@@ -251,9 +206,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 if let CVariadicStatus::Unstable { feature } = stability
                     && !self.tcx.features().enabled(feature)
                 {
-                    let msg =
-                        format!("C-variadic function definitions on this target are unstable");
-                    feature_err(&*self.sess(), feature, span, msg).emit();
+                    let msg = "C-variadic function definitions on this target are unstable";
+                    feature_err(self.sess(), feature, span, msg).emit();
                 }
 
                 let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
@@ -504,7 +458,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs
+            sym::copysign
+            | sym::fabs
             | sym::sqrt
             | sym::powf
             | sym::fma
@@ -521,7 +476,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::log2
             | sym::sin
             | sym::cos
-            | sym::powi => {
+            | sym::powi
+            | sym::minimum
+            | sym::maximum => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -533,6 +490,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 let llty = self.type_float_from_ty(*f);
                 let llvm_name = match name {
+                    sym::copysign => "llvm.copysign",
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
                     sym::powf => "llvm.pow",
@@ -555,6 +513,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
                     sym::powi => "llvm.powi",
+
+                    // minimum/maximum were broken for f64/f128 before
+                    // <https://github.com/llvm/llvm-project/commit/56385af687c3a7a1f67716fb3f819336789a8cab>.
+                    // We use the fallback body there.
+                    sym::minimum | sym::maximum
+                        if llvm_version < (23, 0, 0)
+                            && matches!(f, ty::FloatTy::F64 | ty::FloatTy::F128) =>
+                    {
+                        let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+                    sym::minimum => "llvm.minimum",
+                    sym::maximum => "llvm.maximum",
 
                     _ => bug!(),
                 };
@@ -618,7 +589,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
                 );
                 // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
-                self.sext(cmp, self.type_ix(32))
+                self.sext(cmp, self.type_i32())
             }
 
             sym::black_box => {
@@ -650,7 +621,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 let global = self.declare_global_in_addrspace(
                     name,
-                    self.type_array(self.type_i8(), 0),
+                    self.type_byte_array(Size::ZERO),
                     AddressSpace::GPU_WORKGROUP,
                 );
                 let ty::RawPtr(inner_ty, _) = result_layout.ty.kind() else { unreachable!() };
@@ -857,8 +828,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         self.const_null(ty)
                     }
                     _ => {
-                        let ty = self.type_ix(32);
-                        let val = self.const_int(ty, 0);
+                        let val = self.const_i32(0);
 
                         let type_params: &[Type<'ll>] =
                             if llvm_version < (23, 0, 0) { &[] } else { &[self.type_ptr()] };
@@ -1087,7 +1057,7 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<
         _ if let Some((llvm_element_ty, element_count)) =
             cx.vector_element_type_and_length(llvm_ty) =>
         {
-            if llvm_element_ty == cx.type_bf16() {
+            if llvm_element_ty == cx.type_f16b() {
                 rust_ty == cx.type_vector(cx.type_i16(), element_count)
             } else if llvm_element_ty == cx.type_i1() {
                 let int_width = element_count.next_power_of_two().max(8);
@@ -1441,7 +1411,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_ptr());
         let type_name = bx.const_bytes(b"rust_panic\0");
         let type_info =
-            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
+            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name]);
         let tydesc = bx.declare_global(
             &mangle_internal_symbol(bx.tcx, "__rust_panic_type_info"),
             bx.val_ty(type_info),
@@ -1499,17 +1469,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // WASM's definition of the `rust_try` function.
@@ -1600,17 +1560,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // Definition of the standard `try` function for Rust using the GNU-like model
@@ -1685,17 +1635,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // Helper function to give a Block to a closure to codegen a shim function.
@@ -1755,7 +1695,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
 
     if cx.sess().pointer_authentication() {
         let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
-        let attrs: Vec<&Attribute> =
+        let attrs: Vec<Attribute<'ll>> =
             cfg.fn_attrs().into_iter().map(|name| llvm::CreateAttrString(cx.llcx, name)).collect();
 
         let (_ty, rust_try_fn) = rust_try;
@@ -1838,7 +1778,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     };
 
     let val_arr = get_args_from_tuple(bx, args[2], fn_diff);
-    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
+    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff, LOCAL_CRATE);
 
     let Some(Some(mut diff_attrs)) =
         find_attr!(tcx, fn_diff.def_id(), RustcAutodiff(attr) => attr.clone())
@@ -1940,7 +1880,7 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     let offload_data =
-        gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+        gpu_offload::gen_define_handling(cx, &metadata, target_symbol, offload_globals);
     gpu_offload::gen_call_handling(
         bx,
         &offload_data,
@@ -2173,10 +2113,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    let supports_scalable = match name {
-        sym::simd_cast | sym::simd_select => true,
-        _ => false,
-    };
+    let supports_scalable = matches!(name, sym::simd_cast | sym::simd_select);
 
     // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
     // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
@@ -2298,7 +2235,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Check that the indices are in-bounds.
         let indices = args[2].immediate();
         for i in 0..n {
-            let val = bx.const_get_elt(indices, i as u64);
+            let val = bx.const_get_elt(indices, i);
             let idx = bx
                 .const_to_opt_u128(val, true)
                 .unwrap_or_else(|| bug!("typeck should have already ensured that these are const"));
@@ -2390,7 +2327,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 }),
             };
             let i1 = bx.type_i1();
-            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
+            let i1xn = bx.type_scalable_vector(i1, m_len);
             bx.trunc(args[0].immediate(), i1xn)
         } else {
             let in_elem_bitwidth = require_int_or_uint_ty!(
@@ -2443,7 +2380,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 // Convert the integer to a byte array
                 let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
-                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
+                let array_ty = bx.type_byte_array(Size::from_bytes(expected_bytes));
                 return Ok(bx.load(array_ty, ptr, Align::ONE));
             }
             _ => return_error!(InvalidMonomorphization::CannotReturn {
@@ -3340,7 +3277,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     in_elem
                 }),
             },
-            in_len as u64,
+            in_len,
         );
         let llvm_intrinsic = match name {
             sym::simd_bswap => "llvm.bswap",
@@ -3360,7 +3297,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_bswap if int_size == 8 => Ok(args[0].immediate()),
             sym::simd_ctlz | sym::simd_cttz => {
                 // for the (int, i1 immediate) pair, the second arg adds `(0, true) => poison`
-                let dont_poison_on_zero = bx.const_int(bx.type_i1(), 0);
+                let dont_poison_on_zero = bx.const_bool(false);
                 Ok(bx.call_intrinsic(
                     llvm_intrinsic,
                     &[vec_ty],
@@ -3427,7 +3364,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             if signed { 's' } else { 'u' },
             if is_add { "add" } else { "sub" },
         );
-        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
+        let vec_ty = bx.cx.type_vector(elem_ty, in_len);
 
         return Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }

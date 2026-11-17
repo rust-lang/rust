@@ -72,6 +72,16 @@ pub(crate) fn complete_item_list(
     }
 }
 
+pub(crate) fn complete_keywords_after_const(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_, '_>,
+) {
+    let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
+
+    add_keyword("fn", "fn $1($2) {\n    $0\n}");
+    add_keyword("unsafe", "unsafe $0");
+}
+
 fn add_keywords(
     acc: &mut Completions,
     ctx: &CompletionContext<'_, '_>,

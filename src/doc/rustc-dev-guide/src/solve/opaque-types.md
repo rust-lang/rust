@@ -7,28 +7,32 @@ This should be a self-contained explanation of the behavior in the new solver.
 
 ## Non-Defining vs Defining Uses
 
-The distinction between non-defining and defining uses determines the inference behavior and governs the strictness of the abstraction. A defining use reveals the underlying hidden type, while a non-defining use enforces rigidity, treating the type as an abstract placeholder.
+The distinction between non-defining and defining uses determines the inference behavior and governs the strictness of the abstraction.
+A defining use reveals the underlying hidden type, while a non-defining use enforces rigidity,
+treating the type as an abstract placeholder.
 
 ### Non-defining Use
 
-This concept is what makes an opaque type rigid. By treating the underlying type as unknown, the solver maintains abstraction.
+This concept is what makes an opaque type rigid.
+By treating the underlying type as unknown, the solver maintains abstraction.
 
 ```rust
 fn foo() -> impl Copy {
     let x: u32 = 56;
-    x 
+    x
 }
 
 fn bar() {
     let x = foo();
-    // Even though we know 'foo' returns a u32.The solver enforces 
-    // rigidity here and is a NON-DEFINING use.
+    // Even though we know 'foo' returns a u32.
+    // The solver enforces rigidity here, and it is a NON-DEFINING use.
 }
 ```
 
 ### Defining Use
 
-This is where the opaque type is actually defined. A defining use tells the compiler exactly what the concrete type is behind the abstraction.
+This is where the opaque type is actually defined.
+A defining use tells the compiler exactly what the concrete type is behind the abstraction.
 
 ```rust
 fn foo() -> impl Copy {
@@ -41,18 +45,20 @@ fn foo() -> impl Copy {
 ## opaques are alias types
 
 Opaque types are treated the same as other aliases, most notabily associated types,
-whenever possible. There should be as few divergences in behavior as possible.
+whenever possible.
+There should be as few divergences in behavior as possible.
 
 This is desirable, as they are very similar to other alias types, in that they can be
 normalized to their hidden type and also have the same requirements for completeness.
 Treating them this way also reduces the complexity of the type system by sharing code.
 Having to deal with opaque types separately results in more complex rules and new kinds
-of interactions. As we need to treat them like other aliases in the implicit-negative
-mode, having significant differences between modes also adds complexity.
+of interactions.
+As we need to treat them like other aliases in the implicit-negative mode,
+having significant differences between modes also adds complexity.
 
-*open question: is there an alternative approach here, maybe by treating them more like rigid
-types with more limited places to instantiate them? they would still have to be ordinary
-aliases during coherence*
+*Open question: is there an alternative approach here,
+maybe by treating them more like rigid types with more limited places to instantiate them?
+They would still have to be ordinary aliases during coherence*.
 
 ### `normalizes-to` for opaques
 
@@ -60,33 +66,38 @@ aliases during coherence*
 
 `normalizes-to` is used to define the one-step normalization behavior for aliases in the new
 solver: `<<T as IdInner>::Assoc as IdOuter>::Assoc` first normalizes to `<T as IdInner>::Assoc`
-which then normalizes to `T`. It takes both the `AliasTy` which is getting normalized and the
-expected `Term`. To use `normalizes-to` for actual normalization, the expected term can simply
-be an unconstrained inference variable.
+which then normalizes to `T`.
+It takes both the `AliasTy` (which is getting normalized) and the expected `Term`.
+To use `normalizes-to` for actual normalization,
+the expected term can simply be an unconstrained inference variable.
 
-For opaque types in the defining scope and in the implicit-negative coherence mode, this is
-always done in two steps. Outside of the defining scope `normalizes-to` for opaques always
-returns `Err(NoSolution)`.
+For opaque types in the defining scope and in the implicit-negative coherence mode,
+this is always done in two steps.
+Outside of the defining scope, `normalizes-to` always returns `Err(NoSolution)` for opaques.
 
 We start by trying to assign the expected type as a hidden type.
 
-In the implicit-negative coherence mode, this currently always results in ambiguity without
-interacting with the opaque types storage. We could instead add allow 'defining' all opaque types,
+In the implicit-negative coherence mode,
+this currently always results in ambiguity without interacting with the opaque types storage.
+We could instead add allow 'defining' all opaque types,
 discarding their inferred types at the end, changing the behavior of an opaque type is used
 multiple times during coherence: [example][coherence-example]
 
 Inside of the defining scope we start by checking whether the type and const arguments of the
-opaque are all placeholders: [source][placeholder-ck]. If this check is ambiguous,
-return ambiguity, if it fails, return `Err(NoSolution)`. This check ignores regions which are
-only checked at the end of borrowck. If it succeeds, continue.
+opaque are all placeholders: [source][placeholder-ck].
+If this check is ambiguous,
+return ambiguity, and if it fails, return `Err(NoSolution)`.
+This check ignores regions which are only checked at the end of borrowck.
+If it succeeds, continue.
 
 We then check whether we're able to *semantically* unify the generic arguments of the opaque
-with the arguments of any opaque type already in the opaque types storage. If so, we unify the
+with the arguments of any opaque type already in the opaque types storage.
+If so, we unify the
 previously stored type with the expected type of this `normalizes-to` call: [source][eq-prev][^1].
 
 If not, we insert the expected type in the opaque types storage: [source][insert-storage][^2].
-Finally, we check whether the item bounds of the opaque hold for the expected type:
-[source][item-bounds-ck].
+Finally,
+we check whether the item bounds of the opaque hold for the expected type: [source][item-bounds-ck].
 
 [norm]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L13
 [coherence-example]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/type-alias-impl-trait/coherence/coherence_different_hidden_ty.rs
@@ -107,15 +118,18 @@ Using an `AliasBound` candidate for normalizable aliases is generally not possib
 associated type can have stronger bounds then the resulting type when normalizing via a
 `ParamEnv` candidate.
 
-These candidates would change our exact normalization strategy to be user-facing. It is otherwise
-pretty much unobservable whether we eagerly normalize. Where we normalize is something we likely
-want to change that after removing support for the old solver, so that would be undesirable.
+These candidates would change our exact normalization strategy to be user-facing.
+It is otherwise pretty much unobservable whether we eagerly normalize.
+Where we normalize is something we likely
+want to change after removing support for the old solver, so that would be undesirable.
 
 ## opaque types can be defined anywhere
 
-Opaque types in their defining-scope can be defined anywhere, whether when simply relating types
-or in the trait solver. This removes order dependence and incompleteness. Without this the result
-of a goal can differ due to subtle reasons, e.g. whether we try to evaluate a goal using the
+Opaque types in their defining-scope can be defined anywhere,
+whether when simply relating types or in the trait solver.
+This removes order dependence and incompleteness.
+Without this, the result of a goal can differ due to subtle reasons,
+e.g. whether we try to evaluate a goal using the
 opaque before the first defining use of the opaque.
 
 ## higher ranked opaque types in their defining scope
@@ -123,20 +137,21 @@ opaque before the first defining use of the opaque.
 These are not supported and trying to define them right now should always error.
 
 FIXME: Because looking up opaque types in the opaque type storage can now unify regions,
-we have to eagerly check that the opaque types does not reference placeholders. We otherwise
-end up leaking placeholders.
+we have to eagerly check that the opaque types does not reference placeholders.
+We otherwise end up leaking placeholders.
 
 ## member constraints
 
-The handling of member constraints does not change in the new solver. See the
-[relevant existing chapter][member-constraints] for that.
+The handling of member constraints does not change in the new solver.
+See the [relevant existing chapter][member-constraints] for that.
 
 [member-constraints]: ../borrow-check/region-inference/member-constraints.md
 
 ## calling methods on opaque types
 
 FIXME: We need to continue to support calling methods on still unconstrained
-opaque types in their defining scope. It's unclear how to best do this.
+opaque types in their defining scope.
+It's unclear how to best do this.
 
 ```rust
 use std::future::Future;

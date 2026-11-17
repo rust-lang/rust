@@ -185,6 +185,9 @@ impl MappingFlags {
                     .span_err(rustc_span::DUMMY_SP, format!("type `{ty:?}` cannot be offloaded"));
                 MappingFlags::empty()
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

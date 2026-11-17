@@ -13,11 +13,7 @@ SOURCE_FILE
         L_CURLY "{"
         WHITESPACE " "
         INCLUDE_BYTES_EXPR
-          BUILTIN_KW "builtin"
-          WHITESPACE " "
-          POUND "#"
-          WHITESPACE " "
-          INCLUDE_BYTES_KW "include_bytes"
+          INCLUDE_BYTES_KW "k#include_bytes"
         WHITESPACE " "
         R_CURLY "}"
   WHITESPACE "\n"

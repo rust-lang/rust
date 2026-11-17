@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::ffi::CString;
 
 use rustc_abi::AddressSpace;
@@ -36,7 +35,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         // out the llvm type from the actual evaluated initializer.
         let ty =
             if nested { self.tcx.types.unit } else { instance.ty(self.tcx, self.typing_env()) };
-        let llty = self.type_array(self.type_i8(), self.layout_of(ty).size.bytes());
+        let llty = self.type_byte_array(self.layout_of(ty).size);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
             self.sess()
@@ -78,7 +77,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     fn predefine_without_aliases(
         &self,
         instance: Instance<'tcx>,
-        attrs: &Cow<'_, CodegenFnAttrs>,
+        attrs: &CodegenFnAttrs,
         linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
@@ -167,7 +166,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         aliasee_instance: Instance<'tcx>,
         aliasee: llvm::Value<'ll>,
-        attrs: &Cow<'_, CodegenFnAttrs>,
+        attrs: &CodegenFnAttrs,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
         for (alias, linkage, visibility) in aliases {

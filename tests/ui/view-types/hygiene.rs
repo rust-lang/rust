@@ -26,7 +26,7 @@ struct Bar {
 }
 
 impl Bar {
-    fn f(self: hygiene::view_bar!()) {}
+    fn f(self: &hygiene::view_bar!()) {}
 }
 
 fn main() {}
