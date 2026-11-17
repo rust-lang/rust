@@ -315,10 +315,12 @@ pub mod net {
         }
     }
 
-    /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
-    /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
-        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0))? };
+    /// Create an IPv4 socket of type `socket_type` which is bound to a random port on the local interface.
+    /// Returns the socket file descriptor and the actual socket address the socket is bound to.
+    pub fn make_local_ipv4(
+        socket_type: libc::c_int,
+    ) -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, socket_type, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv4(IPV4_LOCALHOST, 0);
         unsafe {
@@ -329,10 +331,6 @@ pub mod net {
             ))?;
         }
 
-        unsafe {
-            errno_result(libc::listen(sockfd, 16))?;
-        }
-
         // Retrieve actual listener address because we used a randomized port.
         let (_, addr_with_port) =
             sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })?;
@@ -340,10 +338,22 @@ pub mod net {
         Ok((sockfd, addr_with_port))
     }
 
-    /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
+    /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
-        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0))? };
+    pub fn make_tcp_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        let (sockfd, addr_with_port) = make_local_ipv4(libc::SOCK_STREAM)?;
+
+        unsafe { errno_result(libc::listen(sockfd, 16))? };
+
+        Ok((sockfd, addr_with_port))
+    }
+
+    /// Create an IPv6 socket of type `socket_type` which is bound to a random port on the local interface.
+    /// Returns the socket file descriptor and the actual socket address the socket is bound to.
+    pub fn make_local_ipv6(
+        socket_type: libc::c_int,
+    ) -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, socket_type, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv6(IPV6_LOCALHOST, 0);
         unsafe {
@@ -354,13 +364,19 @@ pub mod net {
             ))?;
         }
 
-        unsafe {
-            errno_result(libc::listen(sockfd, 16))?;
-        }
-
         // Retrieve actual listener address because we used a randomized port.
         let (_, addr_with_port) =
             sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })?;
+
+        Ok((sockfd, addr_with_port))
+    }
+
+    /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
+    /// Returns the socket file descriptor and the actual socket address the socket is listening on.
+    pub fn make_tcp_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        let (sockfd, addr_with_port) = make_local_ipv6(libc::SOCK_STREAM)?;
+
+        unsafe { errno_result(libc::listen(sockfd, 16))? };
 
         Ok((sockfd, addr_with_port))
     }
@@ -456,9 +472,10 @@ pub mod net {
     /// Wraps a call to a platform function that returns an IPv4 socket address.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    pub fn sockname_ipv4<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in)>
+    pub fn sockname_ipv4<F, V>(f: F) -> io::Result<(V, libc::sockaddr_in)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let (result, addr) = sockname(f)?;
         let LibcSocketAddr::V4(addr) = addr else { panic!("expected IPv4 address") };
@@ -469,9 +486,10 @@ pub mod net {
     /// Wraps a call to a platform function that returns an IPv6 socket address.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    pub fn sockname_ipv6<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in6)>
+    pub fn sockname_ipv6<F, V>(f: F) -> io::Result<(V, libc::sockaddr_in6)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let (result, addr) = sockname(f)?;
         let LibcSocketAddr::V6(addr) = addr else { panic!("expected IPv6 address") };
@@ -489,9 +507,10 @@ pub mod net {
     /// standard library implementation.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    fn sockname<F>(f: F) -> io::Result<(libc::c_int, LibcSocketAddr)>
+    fn sockname<F, V>(f: F) -> io::Result<(V, LibcSocketAddr)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let mut storage = std::mem::MaybeUninit::<libc::sockaddr_storage>::zeroed();
         let mut len = size_of::<libc::sockaddr_storage>() as libc::socklen_t;
