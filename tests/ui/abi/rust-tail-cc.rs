@@ -6,6 +6,10 @@
 //@ needs-unwind
 //@ ignore-backends: gcc
 
+// FIXME(jchlanda): remove the ignore below when https://github.com/llvm/llvm-project/pull/221009 is
+// present in-tree
+//@ ignore-pauthtest: temporarily ignored until a future LLVM upgrade.
+
 #![feature(rust_tail_cc)]
 
 struct CrateOf<'a> {
