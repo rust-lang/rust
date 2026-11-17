@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 
 use rustc_ast::{AttrStyle, Safety};
-use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::target::{MethodKind, Target};
 use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    UNUSED_DOC_COMMENTS, USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -28,6 +29,7 @@ pub(crate) enum AllowedTargets<'a> {
     ManuallyChecked,
 }
 
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum AllowedResult {
     Allowed,
     Warn,
@@ -181,6 +183,8 @@ impl<'sess> AttributeParser<'sess> {
                     .contains(&cx.target)
                 {
                     USELESS_DEPRECATED
+                } else if cx.attr_path.segments[0] == sym::doc && attribute_args == "" {
+                    UNUSED_DOC_COMMENTS //FIXME this is strange...
                 } else if is_diagnostic_attr {
                     MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
@@ -506,64 +510,3 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
         }
     }
 }
-
-/// This is the list of all targets to which a attribute can be applied
-/// This is used for:
-/// - `rustc_dummy`, which can be applied to all targets
-/// - Attributes that are not parted to the new target system yet can use this list as a placeholder
-pub(crate) const ALL_TARGETS: &[Policy] = {
-    use Policy::Allow;
-    &[
-        Allow(Target::ExternCrate),
-        Allow(Target::Use),
-        Allow(Target::Static),
-        Allow(Target::Const),
-        Allow(Target::Fn),
-        Allow(Target::Closure),
-        Allow(Target::Mod),
-        Allow(Target::ForeignMod),
-        Allow(Target::GlobalAsm),
-        Allow(Target::TyAlias),
-        Allow(Target::Enum),
-        Allow(Target::Variant),
-        Allow(Target::Struct),
-        Allow(Target::Field),
-        Allow(Target::Union),
-        Allow(Target::Trait),
-        Allow(Target::TraitAlias),
-        Allow(Target::Impl { of_trait: false }),
-        Allow(Target::Impl { of_trait: true }),
-        Allow(Target::Expression),
-        Allow(Target::Statement),
-        Allow(Target::Arm),
-        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocConst(AssocCtxt::Trait)),
-        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocTy(AssocCtxt::Trait)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::ForeignTy),
-        Allow(Target::MacroDef),
-        Allow(Target::Param),
-        Allow(Target::PatField),
-        Allow(Target::ExprField),
-        Allow(Target::WherePredicate),
-        Allow(Target::MacroCall),
-        Allow(Target::Crate),
-        Allow(Target::Delegation { mac: false }),
-        Allow(Target::Delegation { mac: true }),
-        Allow(Target::ConstParam),
-        Allow(Target::LifetimeParam),
-        Allow(Target::TypeParam),
-        Allow(Target::Loop),
-        Allow(Target::ForLoop),
-        Allow(Target::While),
-        Allow(Target::Break),
-    ]
-};

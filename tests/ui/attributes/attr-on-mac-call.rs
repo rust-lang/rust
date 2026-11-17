@@ -8,72 +8,95 @@ fn main() {
     #[export_name = "x"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[unsafe(naked)]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[track_caller]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[used]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[target_feature(enable = "x")]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[deprecated]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[inline]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[link_name = "x"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[link_section = "__TEXT,__text"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[link_ordinal(42)]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[non_exhaustive]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[proc_macro]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[cold]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[no_mangle]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[deprecated]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[automatically_derived]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[macro_use]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[must_use]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[no_implicit_prelude]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[path = ""]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[ignore]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[should_panic]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[link_name = "x"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
     #[sanitize(address = "off")]
     //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
