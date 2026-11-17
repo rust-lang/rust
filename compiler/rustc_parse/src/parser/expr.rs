@@ -627,12 +627,19 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Box<Expr>> {
         // At this point we've consumed something like `expr.` and `self.token` holds the token
         // after the dot.
+        let dot_span = self.prev_token.span;
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 let ident_span = self.token.span;
                 self.bump();
-                Ok(self.mk_expr_tuple_field_access(lo, ident_span, base, symbol, suffix))
+                Ok(self.mk_expr_tuple_field_access(
+                    lo.to(dot_span),
+                    ident_span,
+                    base,
+                    symbol,
+                    suffix,
+                ))
             }
             token::Literal(token::Lit { kind: token::Float, symbol, suffix }) => {
                 Ok(match self.break_up_float(symbol, self.token.span) {
@@ -643,17 +650,30 @@ impl<'a> Parser<'a> {
                         // `self.token`.
                         let ident_span = self.token.span;
                         self.bump();
-                        self.mk_expr_tuple_field_access(lo, ident_span, base, sym, suffix)
+                        self.mk_expr_tuple_field_access(
+                            lo.to(dot_span),
+                            ident_span,
+                            base,
+                            sym,
+                            suffix,
+                        )
                     }
                     // 1.
-                    DestructuredFloat::TrailingDot(sym, ident_span, dot_span) => {
+                    DestructuredFloat::TrailingDot(sym, ident_span, trailing_dot_span) => {
                         // `foo.1.`: a single complete dot access and the start of another.
                         // We end up with the `sym` (`1`) token in `self.prev_token` and a dot in
                         // `self.token`.
                         assert!(suffix.is_none());
                         self.token = Token::new(token::Ident(sym, IdentKind::Normal), ident_span);
-                        self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
-                        self.mk_expr_tuple_field_access(lo, ident_span, base, sym, None)
+                        let trailing_dot = Token::new(token::Dot, trailing_dot_span);
+                        self.bump_with((trailing_dot, self.token_spacing));
+                        self.mk_expr_tuple_field_access(
+                            lo.to(dot_span),
+                            ident_span,
+                            base,
+                            sym,
+                            None,
+                        )
                     }
                     // 1.2 | 1.2e3
                     DestructuredFloat::MiddleDot(
@@ -666,13 +686,25 @@ impl<'a> Parser<'a> {
                         // `foo.1.2` (or `foo.1.2e3`): two complete dot accesses. We end up with
                         // the `sym2` (`2` or `2e3`) token in `self.prev_token` and the following
                         // token in `self.token`.
+                        let float_span = self.token.span;
                         let next_token2 =
                             Token::new(token::Ident(sym2, IdentKind::Normal), ident2_span);
                         self.bump_with((next_token2, self.token_spacing));
                         self.bump();
-                        let base1 =
-                            self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
-                        self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
+                        let base1 = self.mk_expr_tuple_field_access(
+                            lo.to(dot_span),
+                            ident1_span,
+                            base,
+                            sym1,
+                            None,
+                        );
+                        self.mk_expr_tuple_field_access(
+                            lo.to(dot_span).to(float_span),
+                            ident2_span,
+                            base1,
+                            sym2,
+                            suffix,
+                        )
                     }
                     DestructuredFloat::Error => base,
                 })
@@ -1063,6 +1095,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: Box<Expr>, lo: Span) -> PResult<'a, Box<Expr>> {
+        let dot_span = self.prev_token.span;
         if self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
@@ -1110,7 +1143,7 @@ impl<'a> Parser<'a> {
             ))
         } else {
             // Field access `expr.f`
-            let span = lo.to(self.prev_token.span);
+            let span = lo.to(dot_span).to(self.prev_token.span);
             if let Some(args) = seg.args {
                 // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
                 self.dcx()
