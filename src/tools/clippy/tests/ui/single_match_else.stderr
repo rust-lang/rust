@@ -247,5 +247,45 @@ LL | |         },
 LL | |     }
    | |_____^ help: try: `Some(&NODE)`
 
-error: aborting due to 12 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:249:9
+   |
+LL | /         match opt {
+LL | |             Some(n) => result.push(n),
+LL | |             None => {
+LL | |                 result.push(0_u8);
+LL | |                 result.push(1_u8);
+LL | |             },
+LL | |         }
+   | |_________^
+   |
+help: try
+   |
+LL ~         if let Some(n) = opt { result.push(n); } else {
+LL +             result.push(0_u8);
+LL +             result.push(1_u8);
+LL +         }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:261:9
+   |
+LL | /         match opt {
+LL | |             Some(n) => n + 1,
+LL | |             None => {
+LL | |                 let _ = "placeholder";
+LL | |                 0
+LL | |             },
+LL | |         }
+   | |_________^
+   |
+help: try
+   |
+LL ~         if let Some(n) = opt { n + 1 } else {
+LL +             let _ = "placeholder";
+LL +             0
+LL +         }
+   |
+
+error: aborting due to 14 previous errors
 

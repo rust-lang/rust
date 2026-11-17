@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::peel_blocks;
+use clippy_utils::{is_empty_block, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{Body, ExprKind, Impl, ImplItemKind, Item, ItemKind, Node};
+use rustc_hir::{Body, Impl, ImplItemKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
@@ -45,10 +45,7 @@ impl LateLintPass<'_> for EmptyDrop {
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
-            && let func_expr = peel_blocks(func_expr)
-            && let ExprKind::Block(block, _) = func_expr.kind
-            && block.stmts.is_empty()
-            && block.expr.is_none()
+            && is_empty_block(peel_blocks(func_expr))
         {
             span_lint_and_then(cx, EMPTY_DROP, item.span, "empty drop implementation", |diag| {
                 diag.span_suggestion_hidden(
