@@ -199,6 +199,7 @@ fn codegen_cgu(tcx: TyCtxt<'_>, cgu_name: Symbol) -> AotModule {
                     item_id,
                 );
             }
+            MonoItem::Const(..) => {}
         }
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module.module, false, cgu.is_primary());

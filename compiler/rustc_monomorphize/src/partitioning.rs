@@ -696,7 +696,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
             Some(def_id)
         }
-        MonoItem::Static(def_id) => Some(def_id),
+        MonoItem::Static(def_id) | MonoItem::Const(def_id) => Some(def_id),
         MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.to_def_id()),
     }
 }
@@ -812,7 +812,9 @@ fn mono_item_visibility<'tcx>(
         MonoItem::Fn(instance) => instance,
 
         // Misc handling for generics and such, but otherwise:
-        MonoItem::Static(def_id) => return static_visibility(tcx, can_be_internalized, *def_id),
+        MonoItem::Static(def_id) | MonoItem::Const(def_id) => {
+            return static_visibility(tcx, can_be_internalized, *def_id);
+        }
         MonoItem::GlobalAsm(item_id) => {
             return static_visibility(tcx, can_be_internalized, item_id.owner_id.to_def_id());
         }

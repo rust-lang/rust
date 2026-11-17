@@ -380,6 +380,11 @@ fn exported_generic_symbols_provider_local<'tcx>(
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
+            if matches!(mono_item, MonoItem::Const(..)) {
+                // Consts do not emit anything that can be linked
+                continue;
+            }
+
             if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
                 // we'll get a linker error

@@ -38,6 +38,9 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             MonoItem::Static(def_id) => {
                 cx.codegen_static(def_id);
             }
+            MonoItem::Const(def_id) => {
+                cx.codegen_const(def_id);
+            }
             MonoItem::GlobalAsm(item_id) => {
                 base::codegen_global_asm(cx, item_id);
             }
@@ -80,7 +83,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                     cx.predefine_fn(instance, linkage, visibility, symbol_name);
                 };
             }
-            MonoItem::GlobalAsm(..) => {}
+            MonoItem::Const(..) | MonoItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}", self, self.to_raw_string(), cgu_name);
@@ -92,6 +95,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 format!("Fn({:?}, {})", instance.def, instance.args.as_slice().as_ptr().addr())
             }
             MonoItem::Static(id) => format!("Static({id:?})"),
+            MonoItem::Const(id) => format!("Const({id:?})"),
             MonoItem::GlobalAsm(id) => format!("GlobalAsm({id:?})"),
         }
     }

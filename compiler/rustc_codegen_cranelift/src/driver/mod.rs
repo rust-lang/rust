@@ -45,7 +45,7 @@ fn predefine_mono_items<'tcx>(
                     }
                     module.declare_function(name, linkage, &sig).unwrap();
                 }
-                MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
+                MonoItem::Static(_) | MonoItem::Const(_) | MonoItem::GlobalAsm(_) => {}
             }
         }
     });
