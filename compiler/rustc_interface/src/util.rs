@@ -15,7 +15,7 @@ use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
-use rustc_data_structures::jobserver::Proxy;
+use rustc_data_structures::jobserver::proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::WorkProductMap;
@@ -252,7 +252,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
     let jobs_frontend = jobs.frontend.limit();
-    let registry = sync::Registry::new(jobs_frontend);
+    let registry = sync::Registry::new(jobs_frontend.saturating_add(jobs.backend.limit().get()));
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
         assert_eq!(jobs_frontend.get(), 1);
@@ -273,7 +273,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx = proof.derive(CurrentGcx::new());
     let current_gcx2 = current_gcx.clone();
 
-    let proxy = Proxy::new();
+    let proxy = proxy();
 
     // Explicitly drop and join helper thread before rustc exits,
     // so all job server tokens are returned.

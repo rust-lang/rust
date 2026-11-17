@@ -100,8 +100,14 @@ pub struct Proxy {
     wake_pending: Condvar,
 }
 
+static PROXY: OnceLock<Arc<Proxy>> = OnceLock::new();
+
+pub fn proxy() -> Arc<Proxy> {
+    PROXY.get_or_init(Proxy::new).clone()
+}
+
 impl Proxy {
-    pub fn new() -> Arc<Self> {
+    fn new() -> Arc<Self> {
         let proxy = Arc::new(Proxy {
             client: client(),
             // Assume that the main thread is actively doing work when it creates the proxy.

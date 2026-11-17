@@ -3,12 +3,13 @@ use std::num::NonZero;
 use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpmc::{Receiver, Sender, channel};
 use std::{assert_matches, fs, io, str, thread};
 
 use rustc_abi::Size;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
+use rustc_data_structures::sync::{self, DynSend, DynSync, IntoDynSyncSend};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagInner, FatalError, FatalErrorMarker, Level,
@@ -425,16 +426,65 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
 
+    let sess = tcx.sess;
+    let prof = sess.prof.clone();
+    let incr_comp_session =
+        tcx.incr_comp_session.map(|incr_comp_session| incr_comp_session.borrow());
+    let stack_size = sess.opts.recommended_stack_size;
+
+    let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
+        let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
+        match result {
+            Ok(dir) => Some(dir),
+            Err(error) => sess.dcx().emit_fatal(ErrorCreatingRemarkDir { error }),
+        }
+    } else {
+        None
+    };
+
+    let parallel = match sess.opts.jobs.backend {
+        JobsMode::Parallel(n) if backend.supports_parallel() => Some(n),
+        _ => None,
+    };
+
+    let cgcx = CodegenContext {
+        crate_types: tcx.crate_types().to_vec(),
+        lto: sess.lto(),
+        use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
+        dylib_lto: sess.opts.unstable_opts.dylib_lto,
+        prefer_dynamic: sess.opts.cg.prefer_dynamic,
+        fewer_names: sess.fewer_names(),
+        save_temps: sess.opts.cg.save_temps,
+        time_trace: sess.opts.unstable_opts.llvm_time_trace,
+        remark: sess.opts.cg.remark.clone(),
+        remark_dir,
+        output_filenames: Arc::clone(tcx.output_filenames(())),
+        module_config: regular_config,
+        msvc_imps_needed: msvc_imps_needed(tcx),
+        is_pe_coff: tcx.sess.target.is_like_windows,
+        target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
+        target_arch: tcx.sess.target.arch.to_string(),
+        target_is_like_darwin: tcx.sess.target.is_like_darwin,
+        target_is_like_aix: tcx.sess.target.is_like_aix,
+        target_is_like_gpu: tcx.sess.target.is_like_gpu,
+        rust_eh_personality_symbol: rustc_symbol_mangling::eh_personality_symbol(tcx),
+        split_debuginfo: tcx.sess.split_debuginfo(),
+        split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
+        parallel,
+        pointer_size: tcx.data_layout.pointer_size(),
+    };
+
+    let work_ctx = LlvmWorkContext { cgcx, prof, incr_comp_session, stack_size, shared_emitter };
+
     let coordinator_thread = start_executing_work(
         backend.clone(),
         tcx,
-        shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        regular_config,
         allocator_config,
         allocator_module,
         coordinator_send.clone(),
+        work_ctx.clone(),
     );
 
     OngoingCodegen {
@@ -448,6 +498,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
             phantom: PhantomData,
         },
         output_filenames: Arc::clone(tcx.output_filenames(())),
+        work_ctx,
     }
 }
 
@@ -1204,19 +1255,16 @@ enum MainThreadState {
 fn start_executing_work<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
-    shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Message<B>>,
-    regular_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     mut allocator_module: Option<ModuleCodegen<B::Module>>,
     coordinator_send: Sender<Message<B>>,
+    work_ctx: LlvmWorkContext,
 ) -> thread::JoinHandle<Result<MaybeLtoModules<B>, ()>> {
     let sess = tcx.sess;
-    let prof = sess.prof.clone();
-    let incr_comp_session =
-        tcx.incr_comp_session.map(|incr_comp_session| incr_comp_session.borrow());
-
+    let LlvmWorkContext { cgcx, prof, incr_comp_session, stack_size, shared_emitter } = work_ctx;
+    let parallel = cgcx.parallel;
     // Compute the set of symbols we need to retain when doing thin local LTO (if we need to)
     let exported_symbols_for_lto =
         if sess.lto() == Lto::ThinLocal { lto::exported_symbols_for_lto(tcx, &[]) } else { vec![] };
@@ -1229,10 +1277,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
-    let parallel = match sess.opts.jobs.backend {
-        JobsMode::Parallel(n) if backend.supports_parallel() => Some(n),
-        _ => None,
-    };
+
     let jobserver_helper = parallel.map(|_| {
         let coordinator_send2 = coordinator_send.clone();
         jobserver::client()
@@ -1243,45 +1288,6 @@ fn start_executing_work<B: WriteBackendMethods>(
     });
 
     let tm_factory = backend.target_machine_factory(tcx.sess);
-
-    let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
-        let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
-        match result {
-            Ok(dir) => Some(dir),
-            Err(error) => sess.dcx().emit_fatal(ErrorCreatingRemarkDir { error }),
-        }
-    } else {
-        None
-    };
-
-    let stack_size = sess.opts.recommended_stack_size;
-
-    let cgcx = CodegenContext {
-        crate_types: tcx.crate_types().to_vec(),
-        lto: sess.lto(),
-        use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
-        dylib_lto: sess.opts.unstable_opts.dylib_lto,
-        prefer_dynamic: sess.opts.cg.prefer_dynamic,
-        fewer_names: sess.fewer_names(),
-        save_temps: sess.opts.cg.save_temps,
-        time_trace: sess.opts.unstable_opts.llvm_time_trace,
-        remark: sess.opts.cg.remark.clone(),
-        remark_dir,
-        output_filenames: Arc::clone(tcx.output_filenames(())),
-        module_config: regular_config,
-        msvc_imps_needed: msvc_imps_needed(tcx),
-        is_pe_coff: tcx.sess.target.is_like_windows,
-        target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
-        target_arch: tcx.sess.target.arch.to_string(),
-        target_is_like_darwin: tcx.sess.target.is_like_darwin,
-        target_is_like_aix: tcx.sess.target.is_like_aix,
-        target_is_like_gpu: tcx.sess.target.is_like_gpu,
-        rust_eh_personality_symbol: rustc_symbol_mangling::eh_personality_symbol(tcx),
-        split_debuginfo: tcx.sess.split_debuginfo(),
-        split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
-        parallel,
-        pointer_size: tcx.data_layout.pointer_size(),
-    };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
     // It's here that we manage parallelism, schedule work, and work with
@@ -1502,15 +1508,18 @@ fn start_executing_work<B: WriteBackendMethods>(
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
                         main_thread_state = MainThreadState::Lending;
+                        if llvm_start_time.is_none() {
+                            llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
+                        }
                         spawn_work(
                             &cgcx,
                             &prof,
                             incr_comp_session.as_ref(),
                             shared_emitter.clone(),
                             coordinator_send.clone(),
-                            &mut llvm_start_time,
                             item,
                             stack_size,
+                            false,
                         );
                     }
                 }
@@ -1529,15 +1538,19 @@ fn start_executing_work<B: WriteBackendMethods>(
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
                             main_thread_state = MainThreadState::Lending;
+                            if llvm_start_time.is_none() {
+                                llvm_start_time =
+                                    Some(prof.verbose_generic_activity("LLVM_passes"));
+                            }
                             spawn_work(
                                 &cgcx,
                                 &prof,
                                 incr_comp_session.as_ref(),
                                 shared_emitter.clone(),
                                 coordinator_send.clone(),
-                                &mut llvm_start_time,
                                 item,
                                 stack_size,
+                                false,
                             );
                         } else {
                             // There is no unstarted work, so let the main thread
@@ -1574,15 +1587,18 @@ fn start_executing_work<B: WriteBackendMethods>(
                 while running_with_own_token < tokens.len()
                     && let Some((item, _)) = work_items.pop()
                 {
+                    if llvm_start_time.is_none() {
+                        llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
+                    }
                     spawn_work(
                         &cgcx,
                         &prof,
                         incr_comp_session.as_ref(),
                         shared_emitter.clone(),
                         coordinator_send.clone(),
-                        &mut llvm_start_time,
                         item,
                         stack_size,
+                        false,
                     );
                     running_with_own_token += 1;
                 }
@@ -1670,7 +1686,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                     if main_thread_state == MainThreadState::Lending {
                         main_thread_state = MainThreadState::Idle;
                     } else {
-                        running_with_own_token -= 1;
+                        running_with_own_token = running_with_own_token.saturating_sub(1)
                     }
 
                     match result {
@@ -1847,14 +1863,10 @@ fn spawn_work<'a, B: WriteBackendMethods>(
     incr_comp_session: Option<&BorrowedIncrCompSession>,
     shared_emitter: SharedEmitter,
     coordinator_send: Sender<Message<B>>,
-    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: WorkItem<B>,
     stack_size: usize,
+    blocking: bool,
 ) {
-    if llvm_start_time.is_none() {
-        *llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
-    }
-
     let old_incr_comp_session_dir = incr_comp_session
         .and_then(|incr_comp_session| incr_comp_session.old_session_directory.clone());
     let new_incr_comp_session_dir =
@@ -1900,11 +1912,15 @@ fn spawn_work<'a, B: WriteBackendMethods>(
         };
         drop(coordinator_send.send(msg));
     };
-    std::thread::Builder::new()
-        .name(name)
-        .stack_size(stack_size)
-        .spawn(f)
-        .expect("failed to spawn work thread");
+    if blocking {
+        f();
+    } else {
+        std::thread::Builder::new()
+            .name(name)
+            .stack_size(stack_size)
+            .spawn(f)
+            .expect("failed to spawn work thread");
+    }
 }
 
 fn spawn_thin_lto_work<B: WriteBackendMethods>(
@@ -1980,6 +1996,13 @@ pub struct InlineAsmError {
 #[derive(Clone)]
 pub struct SharedEmitter {
     sender: Sender<SharedEmitterMessage>,
+}
+
+unsafe impl DynSend for SharedEmitter {}
+unsafe impl DynSync for SharedEmitter {}
+fn _assert_emitter_fields() {
+    sync::assert_dyn_sync::<IntoDynSyncSend<Sender<SharedEmitterMessage>>>();
+    sync::assert_dyn_send::<IntoDynSyncSend<Sender<SharedEmitterMessage>>>();
 }
 
 pub struct SharedEmitterMain {
@@ -2104,6 +2127,16 @@ pub struct OngoingCodegen<B: WriteBackendMethods> {
     pub(crate) coordinator: Coordinator<B>,
     codegen_worker_receive: Receiver<CguMessage>,
     shared_emitter_main: SharedEmitterMain,
+    work_ctx: LlvmWorkContext,
+}
+
+#[derive(Clone)]
+struct LlvmWorkContext {
+    cgcx: CodegenContext,
+    prof: SelfProfilerRef,
+    incr_comp_session: Option<BorrowedIncrCompSession>,
+    stack_size: usize,
+    shared_emitter: SharedEmitter,
 }
 
 impl<B: WriteBackendMethods> OngoingCodegen<B> {
@@ -2113,6 +2146,8 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         incr_comp_session: Option<&IncrCompSession>,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
+        // This contains the last shared emitter sender
+        drop(self.work_ctx);
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2232,53 +2267,66 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
             }
         }
     }
-}
 
-pub(crate) fn submit_codegened_module_to_llvm<B: WriteBackendMethods>(
-    coordinator: &Coordinator<B>,
-    module: ModuleCodegen<B::Module>,
-    cost: u64,
-) {
-    let llvm_work_item = WorkItem::Optimize(module);
-    drop(coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost }));
-}
+    pub(crate) fn submit_codegened_module_to_llvm(
+        &self,
+        module: ModuleCodegen<B::Module>,
+        cost: u64,
+        blocking: bool,
+    ) {
+        let llvm_work_item = WorkItem::Optimize(module);
 
-pub(crate) fn submit_post_lto_module_to_llvm<B: WriteBackendMethods>(
-    coordinator: &Coordinator<B>,
-    module: CachedModuleCodegen,
-) {
-    let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
-    drop(coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost: 0 }));
-}
-
-pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
-    tcx: TyCtxt<'_>,
-    coordinator: &Coordinator<B>,
-    module: CachedModuleCodegen,
-) {
-    let filename = pre_lto_bitcode_filename(&module.name);
-    let old_bitcode_path =
-        in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
-    let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
-
-    match link_or_copy(&old_bitcode_path, &bitcode_path) {
-        Ok(_) => {}
-        Err(error) => {
-            tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
-                source_file: old_bitcode_path,
-                output_path: bitcode_path,
-                error,
-            });
-            return;
+        if blocking {
+            spawn_work(
+                &self.work_ctx.cgcx,
+                &self.work_ctx.prof,
+                self.work_ctx.incr_comp_session.as_ref(),
+                self.work_ctx.shared_emitter.clone(),
+                self.coordinator.sender.clone(),
+                llvm_work_item,
+                self.work_ctx.stack_size,
+                true,
+            );
+        } else {
+            drop(self.coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost }));
         }
     }
 
-    // Schedule the module to be loaded
-    drop(
-        coordinator
-            .sender
-            .send(Message::AddImportOnlyModule::<B> { bitcode_path, work_product: module.source }),
-    );
+    pub(crate) fn submit_post_lto_module_to_llvm(&self, module: CachedModuleCodegen) {
+        let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
+        drop(self.coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost: 0 }));
+    }
+
+    pub(crate) fn submit_pre_lto_module_to_llvm(
+        &self,
+        tcx: TyCtxt<'_>,
+        module: CachedModuleCodegen,
+    ) {
+        let filename = pre_lto_bitcode_filename(&module.name);
+        let old_bitcode_path =
+            in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
+        let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
+
+        match link_or_copy(&old_bitcode_path, &bitcode_path) {
+            Ok(_) => {}
+            Err(error) => {
+                tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
+                    source_file: old_bitcode_path,
+                    output_path: bitcode_path,
+                    error,
+                });
+                return;
+            }
+        }
+
+        // Schedule the module to be loaded
+        drop(
+            self.coordinator.sender.send(Message::AddImportOnlyModule::<B> {
+                bitcode_path,
+                work_product: module.source,
+            }),
+        );
+    }
 }
 
 fn pre_lto_bitcode_filename(module_name: &str) -> String {
