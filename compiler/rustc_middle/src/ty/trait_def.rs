@@ -143,12 +143,9 @@ impl<'tcx> TyCtxt<'tcx> {
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
         let tcx = self;
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
-            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
-                for &impl_def_id in impls_for_type {
-                    try_visit!(f(impl_def_id))
-                }
+            for &impl_def_id in tcx.trait_impls_of_ty((trait_def_id, simp)) {
+                try_visit!(f(impl_def_id))
             }
 
             R::output()
@@ -243,7 +240,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
             // This is only for diagnostics and normally ty vars should be handled by the callers.
             ty::Infer(ty::TyVar(_)) => {
-                for &impl_def_id in trait_impls.non_blanket_impls().values().flatten() {
+                for &impl_def_id in
+                    tcx.trait_impls_of(trait_def_id).non_blanket_impls().values().flatten()
+                {
                     try_visit!(f(impl_def_id));
                 }
             }
@@ -281,16 +280,15 @@ impl<'tcx> TyCtxt<'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> {
-        let impls = self.trait_impls_of(trait_def_id);
         if let Some(simp) =
             fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
         {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                return impls.iter().copied();
-            }
+            self.trait_impls_of_ty((trait_def_id, simp))
+        } else {
+            &[]
         }
-
-        [].iter().copied()
+        .iter()
+        .copied()
     }
 
     /// Returns an iterator containing all impls for `trait_def_id`.

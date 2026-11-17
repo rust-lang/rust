@@ -193,6 +193,17 @@ impl QueryKey for SimplifiedType {
     }
 }
 
+impl QueryKey for (DefId, SimplifiedType) {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.0)
+    }
+
+    #[inline(always)]
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.0)
+    }
+}
+
 impl QueryKey for (DefId, DefId) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)

@@ -2425,6 +2425,10 @@ pub fn provide(providers: &mut Providers) {
     super::util::bug::provide(providers);
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
+        blanket_impls_of: |tcx, trait_id| tcx.trait_impls_of(trait_id).blanket_impls(),
+        trait_impls_of_ty: |tcx, (trait_id, simp)| {
+            tcx.trait_impls_of(trait_id).non_blanket_impls().get(&simp).map_or(&[], |list| list)
+        },
         incoherent_impls: trait_def::incoherent_impls_provider,
         trait_impls_in_crate: trait_def::trait_impls_in_crate_provider,
         traits: trait_def::traits_provider,
