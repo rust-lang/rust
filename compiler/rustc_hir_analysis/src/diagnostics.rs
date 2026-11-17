@@ -1418,9 +1418,7 @@ pub(crate) struct CoerceSharedOmittedSourceFieldNotCopyOrReborrow<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires source and target structs to use the same field style"
-)]
+#[diag("implementing `{$trait_name}` requires source and target types to use the same field style")]
 pub(crate) struct CoerceSharedFieldStyleMismatch {
     #[primary_span]
     pub span: Span,

@@ -1,4 +1,4 @@
-error: implementing `CoerceShared` requires source and target structs to use the same field style
+error: implementing `CoerceShared` requires source and target types to use the same field style
   --> $DIR/invalid-coerce-shared-in-const.rs:14:1
    |
 LL | impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}

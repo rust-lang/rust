@@ -2589,53 +2589,67 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // lifetime definitions to carry the day...? At least all reborrow tests pass without
             // this loop at the time of writing this comment.
             let ty::Adt(src_adt, src_args) = src_ty.kind() else { unreachable!() };
-            let src_fields = src_adt.all_fields().collect::<Vec<_>>();
-            for dst_field in dst_adt.all_fields() {
-                let Some(src_field) = src_fields.iter().find(|f| f.name == dst_field.name) else {
-                    continue;
-                };
-                // These field types can still contain projections from the source or target type
-                // and normalize them before handing them to `NllTypeRelating`
-                let dst_ty = self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
-                let src_ty = self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
 
-                if let (
-                    ty::Ref(src_region, _, Mutability::Mut),
-                    ty::Ref(dst_region, _, Mutability::Not),
-                ) = (src_ty.kind(), dst_ty.kind())
-                {
-                    // FIXME(reborrow): the covariance relations here seem confused even after we
-                    // flipped them around. relate_types does dst <: src while outlives does
-                    // src <: dst. That seems incomprehensible.
-                    self.relate_types(
-                        // dst <: src
-                        src_ty.peel_refs(),
-                        ty::Variance::Covariant,
-                        dst_ty.peel_refs(),
-                        location.to_locations(),
-                        category,
-                    )
-                    .unwrap();
-                    self.constraints.outlives_constraints.push(OutlivesConstraint {
-                        // 'src: 'dst
-                        sup: src_region.as_var(),
-                        sub: dst_region.as_var(),
-                        locations: location.to_locations(),
-                        span: location.to_locations().span(self.body),
-                        category,
-                        variance_info: ty::VarianceDiagInfo::default(),
-                        from_closure: false,
-                    });
+            for dst_variant in dst_adt.variants() {
+                let src_variant = if !src_adt.is_enum() {
+                    src_adt.non_enum_variant()
                 } else {
-                    self.relate_types(
-                        // dst <: src
-                        src_ty,
-                        ty::Variance::Covariant,
-                        dst_ty,
-                        location.to_locations(),
-                        category,
-                    )
-                    .unwrap();
+                    src_adt
+                        .find_variant(dst_variant.name)
+                        .expect("Reborrow target variants should include all source variants")
+                        .1
+                };
+
+                for dst_field in &dst_variant.fields {
+                    let Some((_, src_field)) = src_variant.find_field(dst_field.name) else {
+                        continue;
+                    };
+
+                    // These field types can still contain projections from the source or target type
+                    // and normalize them before handing them to `NllTypeRelating`
+                    let dst_ty =
+                        self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
+                    let src_ty =
+                        self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
+
+                    if let (
+                        ty::Ref(src_region, _, Mutability::Mut),
+                        ty::Ref(dst_region, _, Mutability::Not),
+                    ) = (src_ty.kind(), dst_ty.kind())
+                    {
+                        // FIXME(reborrow): the covariance relations here seem confused even after we
+                        // flipped them around. relate_types does dst <: src while outlives does
+                        // src <: dst. That seems incomprehensible.
+                        self.relate_types(
+                            // dst <: src
+                            src_ty.peel_refs(),
+                            ty::Variance::Covariant,
+                            dst_ty.peel_refs(),
+                            location.to_locations(),
+                            category,
+                        )
+                        .unwrap();
+                        self.constraints.outlives_constraints.push(OutlivesConstraint {
+                            // 'src: 'dst
+                            sup: src_region.as_var(),
+                            sub: dst_region.as_var(),
+                            locations: location.to_locations(),
+                            span: location.to_locations().span(self.body),
+                            category,
+                            variance_info: ty::VarianceDiagInfo::default(),
+                            from_closure: false,
+                        });
+                    } else {
+                        self.relate_types(
+                            // dst <: src
+                            src_ty,
+                            ty::Variance::Covariant,
+                            dst_ty,
+                            location.to_locations(),
+                            category,
+                        )
+                        .unwrap();
+                    }
                 }
             }
         } else {

@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 use std::ops::Index;
 
+use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_index::IndexVec;
@@ -303,97 +304,124 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         source_place: mir::Place<'tcx>,
     ) {
         let mut did_reborrow = false;
-        for (source_idx, source_field) in source_adt.all_fields().enumerate() {
-            let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
-            match source_field_ty.kind() {
-                ty::Ref(source_region, _, source_mutability) if source_mutability.is_mut() => {
-                    if source_region.is_static() {
-                        bug!(
-                            "Cannot implement Reborrow on a type containing a &'static mut T field"
+
+        debug_assert_eq!(source_adt.adt_kind(), target_adt.adt_kind());
+        let is_enum = source_adt.is_enum();
+
+        for (source_variant_idx, source_variant) in source_adt.variants().iter_enumerated() {
+            let (target_variant_idx, target_variant) = if !is_enum {
+                (FIRST_VARIANT, target_adt.non_enum_variant())
+            } else {
+                target_adt
+                    .find_variant(source_variant.name)
+                    .expect("Reborrow target variants should include all source variants")
+            };
+
+            for (source_idx, source_field) in source_variant.fields.iter_enumerated() {
+                let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
+                match source_field_ty.kind() {
+                    ty::Ref(source_region, _, source_mutability) if source_mutability.is_mut() => {
+                        if source_region.is_static() {
+                            bug!(
+                                "Cannot implement Reborrow on a type containing a &'static mut T field"
+                            );
+                        }
+                        let Some((target_idx, target_field)) =
+                            target_variant.find_field(source_field.name)
+                        else {
+                            // Reborrow dropped this field.
+                            continue;
+                        };
+                        let ty::Ref(target_region, _, _) =
+                            target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
+                        else {
+                            bug!(
+                                "Reborrow source field type is &mut T but target field is not a reference"
+                            );
+                        };
+
+                        did_reborrow = true;
+                        let source_field_deref_place = {
+                            let mut more_projections = SmallVec::<[PlaceElem<'tcx>; 3]>::new();
+                            if is_enum {
+                                more_projections.push(PlaceElem::Downcast(
+                                    Some(source_variant.name),
+                                    source_variant_idx,
+                                ));
+                            }
+                            more_projections.extend_from_slice(&[
+                                PlaceElem::Field(source_idx, source_field_ty),
+                                PlaceElem::Deref,
+                            ]);
+
+                            source_place.project_deeper(&more_projections, self.tcx)
+                        };
+                        let target_field_place = target_place.project_to_variant_field(
+                            target_variant_idx,
+                            target_idx,
+                            &self.body.local_decls,
+                            self.tcx,
+                        );
+                        v.push(BorrowData {
+                            kind,
+                            region: target_region.as_var(),
+                            reserve_location: location,
+                            activation_location: TwoPhaseActivation::NotTwoPhase,
+                            borrowed_place: source_field_deref_place,
+                            assigned_place: target_field_place,
+                        });
+                    }
+                    ty::Adt(source_field_adt, source_field_args)
+                        if source_field_args.get(0).is_some_and(|f| f.as_region().is_some())
+                            && !self.tcx.type_is_copy_modulo_regions(
+                                self.body.typing_env(self.tcx),
+                                self.tcx.erase_and_anonymize_regions(source_field_ty),
+                            ) =>
+                    {
+                        let Some((target_idx, target_field)) =
+                            target_variant.find_field(source_field.name)
+                        else {
+                            // Reborrow dropped this field.
+                            continue;
+                        };
+                        let ty::Adt(target_field_adt, target_field_args) =
+                            target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
+                        else {
+                            bug!(
+                                "Reborrow source field type is a !Copy ADT but target field is not"
+                            );
+                        };
+
+                        did_reborrow = true;
+                        let source_field_place = source_place.project_to_variant_field(
+                            source_variant_idx,
+                            source_idx,
+                            &self.body.local_decls,
+                            self.tcx,
+                        );
+                        let target_field_place = target_place.project_to_variant_field(
+                            target_variant_idx,
+                            target_idx,
+                            &self.body.local_decls,
+                            self.tcx,
+                        );
+                        self.gather_reborrows(
+                            v,
+                            kind,
+                            location,
+                            *target_field_adt,
+                            *target_field_args,
+                            target_field_place,
+                            *source_field_adt,
+                            *source_field_args,
+                            source_field_place,
                         );
                     }
-                    let Some((target_idx, target_field)) = target_adt
-                        .all_fields()
-                        .enumerate()
-                        .find(|(_, f)| f.name == source_field.name)
-                    else {
-                        // Reborrow dropped this field.
-                        continue;
-                    };
-                    let ty::Ref(target_region, _, _) =
-                        target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
-                    else {
-                        bug!(
-                            "Reborrow source field type is &mut T but target field is not a reference"
-                        );
-                    };
-
-                    did_reborrow = true;
-                    let source_field_deref_place = source_place.project_deeper(
-                        &[PlaceElem::Field(source_idx.into(), source_field_ty), PlaceElem::Deref],
-                        self.tcx,
-                    );
-                    let target_field_place = target_place.project_to_field(
-                        target_idx.into(),
-                        &self.body.local_decls,
-                        self.tcx,
-                    );
-                    v.push(BorrowData {
-                        kind,
-                        region: target_region.as_var(),
-                        reserve_location: location,
-                        activation_location: TwoPhaseActivation::NotTwoPhase,
-                        borrowed_place: source_field_deref_place,
-                        assigned_place: target_field_place,
-                    });
+                    _ => continue,
                 }
-                ty::Adt(source_field_adt, source_field_args)
-                    if source_field_args.get(0).is_some_and(|f| f.as_region().is_some())
-                        && !self.tcx.type_is_copy_modulo_regions(
-                            self.body.typing_env(self.tcx),
-                            self.tcx.erase_and_anonymize_regions(source_field_ty),
-                        ) =>
-                {
-                    let Some((target_idx, target_field)) = target_adt
-                        .all_fields()
-                        .enumerate()
-                        .find(|(_, f)| f.name == source_field.name)
-                    else {
-                        // Reborrow dropped this field.
-                        continue;
-                    };
-                    let ty::Adt(target_field_adt, target_field_args) =
-                        target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
-                    else {
-                        bug!("Reborrow source field type is a !Copy ADT but target field is not");
-                    };
-
-                    did_reborrow = true;
-                    let source_field_place = source_place.project_to_field(
-                        source_idx.into(),
-                        &self.body.local_decls,
-                        self.tcx,
-                    );
-                    let target_field_place = target_place.project_to_field(
-                        target_idx.into(),
-                        &self.body.local_decls,
-                        self.tcx,
-                    );
-                    self.gather_reborrows(
-                        v,
-                        kind,
-                        location,
-                        *target_field_adt,
-                        *target_field_args,
-                        target_field_place,
-                        *source_field_adt,
-                        *source_field_args,
-                        source_field_place,
-                    );
-                }
-                _ => continue,
             }
         }
+
         if !did_reborrow {
             // Key point: if source contained no reference, a phantom dereference must be performed
             // to avoid capturing the local variable's place.
