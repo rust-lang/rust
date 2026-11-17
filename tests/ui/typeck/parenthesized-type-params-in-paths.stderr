@@ -71,10 +71,10 @@ LL + fn issue_161062() -> A<impl Sized> {}
    |
 
 error: parenthesized generic arguments cannot be used in associated type constraints
-  --> $DIR/parenthesized-type-params-in-paths.rs:52:58
+  --> $DIR/parenthesized-type-params-in-paths.rs:52:63
    |
 LL | fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
-   |                                                          ^^^^^^^^^^^^^^^^^
+   |                                                               ^^^^^^^^^^^^
    |
 help: use angle brackets instead
    |
