@@ -392,6 +392,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn fptrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fpext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn ptrtoint(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn ptrtoaddr(&mut self, value: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;

@@ -3041,6 +3041,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
+    llvm_ptrtoaddr: bool = (false, parse_bool, [TRACKED],
+        "emit LLVM's `ptrtoaddr` for transmutes from pointers to integers (default: no)"),
     llvm_tpde: Option<LlvmTpde> = (None, parse_llvm_tpde, [TRACKED], "enable the experimental TPDE-LLVM codegen backend for debug builds"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),

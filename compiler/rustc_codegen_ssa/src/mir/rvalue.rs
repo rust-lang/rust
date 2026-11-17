@@ -1121,17 +1121,13 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
         (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
-        (Pointer(..), Int(..)) => {
-            // FIXME: this exposes the provenance, which shouldn't be necessary.
-            bx.ptrtoint(imm, to_backend_ty)
-        }
+        (Pointer(..), Int(..)) => bx.ptrtoaddr(imm, to_backend_ty),
         (Float(_), Pointer(..)) => {
             let int_imm = bx.bitcast(imm, bx.cx().type_isize());
             bx.inttoptr(int_imm, to_backend_ty)
         }
         (Pointer(..), Float(_)) => {
-            // FIXME: this exposes the provenance, which shouldn't be necessary.
-            let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
+            let int_imm = bx.ptrtoaddr(imm, bx.type_isize());
             bx.bitcast(int_imm, to_backend_ty)
         }
     };

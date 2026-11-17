@@ -18,8 +18,8 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
-    TyAndLayout,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
+    LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
@@ -1079,6 +1079,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn ptrtoint(&mut self, val: Value<'ll>, dest_ty: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMBuildPtrToInt(self.llbuilder(), val, dest_ty, UNNAMED) }
+    }
+
+    fn ptrtoaddr(&mut self, val: Value<'ll>, dest_ty: Type<'ll>) -> Value<'ll> {
+        if self.tcx().sess.opts.unstable_opts.llvm_ptrtoaddr {
+            let addr = unsafe { llvm::LLVMRustBuildPtrToAddr(self.llbuilder(), val, UNNAMED) };
+            self.intcast(addr, dest_ty, false)
+        } else {
+            self.ptrtoint(val, dest_ty)
+        }
     }
 
     fn inttoptr(&mut self, val: Value<'ll>, dest_ty: Type<'ll>) -> Value<'ll> {

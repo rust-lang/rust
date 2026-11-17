@@ -1328,6 +1328,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         set_rvalue_location(self, self.context.new_cast(self.location, value, dest_ty))
     }
 
+    fn ptrtoaddr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
+        self.ptrtoint(value, dest_ty)
+    }
+
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         let usize_value = self.cx.context.new_cast(None, value, self.cx.type_isize());
         self.intcast(usize_value, dest_ty, false)
