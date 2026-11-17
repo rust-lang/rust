@@ -997,7 +997,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   };
 
   ModulePassManager MPM;
-  bool NeedThinLTOBufferPasses = true;
+  bool NeedThinLTOBufferPasses = ThinLTOBufferRef != nullptr;
   auto ThinLTOBuffer = std::make_unique<LLVMRustBuffer>();
   auto ThinLTOSummaryBuffer = std::make_unique<LLVMRustBuffer>();
   raw_string_ostream ThinLTODataOS(ThinLTOBuffer->data);
@@ -1631,6 +1631,8 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
       PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
       ModulePassManager MPM;
+      MPM.addPass(CanonicalizeAliasesPass());
+      MPM.addPass(NameAnonGlobalPass());
 #if LLVM_VERSION_GE(23, 0)
       MPM.addPass(AssignGUIDPass());
 #endif
