@@ -24,18 +24,7 @@ error: fn_abi_of(pass_rust_zst) = FnAbi {
                            randomization_seed: 0,
                        },
                    },
-                   mode: Indirect {
-                       attrs: ArgAttributes {
-                           regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
-                           arg_ext: None,
-                           pointee_size: Size(0 bytes),
-                           pointee_align: Some(
-                               Align(1 bytes),
-                           ),
-                       },
-                       address_space: None,
-                       mode: Pointer,
-                   },
+                   mode: Ignore,
                },
            ],
            ret: ArgAbi {
