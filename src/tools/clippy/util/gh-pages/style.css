@@ -1,6 +1,6 @@
 body {
     --icon-filter: initial;
-    --label-background: #777;
+    --label-background: #4D4D4D;
 }
 
 body.ayu {
@@ -183,7 +183,7 @@ button:hover {
     display: inline-block;
     min-width: 10px;
     padding: 3px 7px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     line-height: 1;
     text-align: center;
@@ -390,7 +390,7 @@ article:hover .panel-title-name .anchor { display: inline;}
 
 .label {
     padding: 0.3em 0.6em;
-    font-size: 75%;
+    font-size: 15px;
     font-weight: 700;
     line-height: 1;
     color: #fff;
@@ -405,13 +405,13 @@ article:hover .panel-title-name .anchor { display: inline;}
     min-width: 4em;
 }
 .level-allow {
-    background-color: #5cb85c;
+    background-color: #327132;
 }
 .level-warn {
-    background-color: #f0ad4e;
+    background-color: #C64600;
 }
 .level-deny {
-    background-color: #d9534f;
+    background-color: #A51D2D;
 }
 .level-none {
     background-color: #777777;
@@ -482,18 +482,30 @@ article:hover .panel-title-name .anchor { display: inline;}
 }
 
 .applicability {
-    background-color: #777777;
-    margin: auto 5px;
+    background-color: var(--label-background);
+    margin: auto 7px;
+}
+
+.applicability-MachineApplicable {
+    background-color: #17643D;
+}
+
+.applicability-HasPlaceholders {
+    background-color: #613583;
+}
+
+.applicability-MaybeIncorrect {
+    background-color: #943400;
 }
 
 .label-version {
-    background-color: #777777;
-    margin: auto 5px;
+    background-color: var(--label-background);
+    margin: auto 7px;
     font-family: monospace;
 }
 
 pre {
-    padding: 0;
+    padding: 4;
 }
 
 summary {
@@ -698,6 +710,7 @@ pre, hr {
 }
 
 :not(pre) > code {
+    padding: 4px;
     color: var(--inline-code-color);
     background-color: var(--inline-code-bg);
 }

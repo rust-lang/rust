@@ -140,7 +140,7 @@ Otherwise, have a great day =^.^=
                             <button class="reset-none">None</button> {# #}
                         </li> {# #}
                         <li role="separator" class="divider"></li> {# #}
-                        {% for applicability in ["Unspecified", "MachineApplicable", "MaybeIncorrect", "HasPlaceholders"] %}
+                        {% for applicability in ["Unspecified", "Machine applicable", "May be incorrect", "Suggestion contains placeholders"] %}
                             <li class="checkbox"> {# #}
                                 <label> {# #}
                                     <input type="checkbox" name="{{ applicability }}" checked />
@@ -194,7 +194,7 @@ Otherwise, have a great day =^.^=
                         {# Applicability #}
                         <div> {# #}
                             Applicability: {#+ #}
-                            <span class="label applicability">{{ lint.applicability_str() }}</span> {# #}
+                            <span class="label applicability applicability-{{ lint.applicability_id() }}">{{ lint.applicability_str() }}</span> {# #}
                             <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a> {# #}
                         </div>
                         {# Clippy version #}
