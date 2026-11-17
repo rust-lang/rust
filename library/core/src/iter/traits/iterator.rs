@@ -3590,6 +3590,8 @@ pub const trait Iterator {
     /// from the beginning. After iterating again, it will start at the
     /// beginning again. And again. And again. Forever. Note that in case the
     /// original iterator is empty, the resulting iterator will also be empty.
+    /// Similarly, if a later clone of the original iterator is empty, the
+    /// resulting iterator will end.
     ///
     /// # Examples
     ///
