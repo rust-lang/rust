@@ -22,6 +22,7 @@ use rustc_session::Session;
 use rustc_session::config::{self, Lto, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::output::OutputType;
 use rustc_span::{BytePos, DUMMY_SP, InnerSpan, Pos, RemapPathScopeComponents};
+use rustc_structures::CrateType;
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
@@ -826,30 +827,37 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
     // `<crate>.ptx` (NVPTX) or `<crate>.elf` (AMDGPU) artifact.
     // The user is supposed to provide us with a path to this artifact,
     // we don't need any other artifacts from the previous run.
-    if !cgcx.target_is_like_gpu && is_final_stage {
+    if !cgcx.target_is_like_gpu
+        && is_final_stage
+        && cgcx.crate_types.iter().any(|c| c != &CrateType::Rlib)
+    {
         if let Some(device_path) = config
             .offload
             .iter()
             .find_map(|o| if let config::Offload::Host(path) = o { Some(path) } else { None })
         {
-            let device_pathbuf = PathBuf::from(device_path);
-            if device_pathbuf.is_relative() {
-                dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
-            } else if !matches!(
-                device_pathbuf.extension().and_then(|e| e.to_str()),
-                Some("ptx" | "elf")
-            ) {
-                dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
-            } else if !device_pathbuf.exists() {
-                dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
-            }
-            let device_image_c = path_to_c_string(device_pathbuf.as_path());
-            let ok = unsafe {
-                llvm::RustOffloadWrapper::get_instance()
-                    .llvm_rust_offload_wrap_images(llmod, device_image_c.as_c_str())
-            };
-            if !ok {
-                dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
+            if let Some(device_path) = device_path {
+                let device_pathbuf = PathBuf::from(device_path);
+                if device_pathbuf.is_relative() {
+                    dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
+                } else if !matches!(
+                    device_pathbuf.extension().and_then(|e| e.to_str()),
+                    Some("ptx" | "elf")
+                ) {
+                    dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
+                } else if !device_pathbuf.exists() {
+                    dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
+                }
+                let device_image_c = path_to_c_string(device_pathbuf.as_path());
+                let ok = unsafe {
+                    llvm::RustOffloadWrapper::get_instance()
+                        .llvm_rust_offload_wrap_images(llmod, device_image_c.as_c_str())
+                };
+                if !ok {
+                    dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
+                }
+            } else {
+                dcx.emit_err(crate::diagnostics::OffloadMissingPath);
             }
         }
     }

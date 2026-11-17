@@ -250,7 +250,10 @@ pub enum Offload {
     /// don't need to track their instantiations.
     Device(String),
     /// Third step in the offload pipeline, generates the host code to call kernels.
-    Host(String),
+    ///
+    /// When this rustc call is one that will create anything else than an rlib it needs
+    /// to contain the path to a device binary. If it only creates an rlib it may be None.
+    Host(Option<String>),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
     /// First step in the offload pipeline: compile for the host but only emit a manifest of

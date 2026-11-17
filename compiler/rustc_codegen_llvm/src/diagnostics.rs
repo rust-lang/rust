@@ -94,6 +94,10 @@ pub(crate) struct OffloadWithoutAbsPath;
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
+#[diag("the path/file to `<crate>.ptx` or `<crate>.elf` must be provided unless building an rlib")]
+pub(crate) struct OffloadMissingPath;
+
+#[derive(Diagnostic)]
 #[diag(
     "the given path/file to `<crate>.ptx` or `<crate>.elf` does not exist. Did you forget to run the device compilation first?"
 )]

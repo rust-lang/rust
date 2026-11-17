@@ -1596,9 +1596,9 @@ pub mod parse {
             let variant = match key {
                 "Host" => {
                     if let Some(p) = arg {
-                        Offload::Host(p.to_string())
+                        Offload::Host(Some(p.to_string()))
                     } else {
-                        return false;
+                        Offload::Host(None)
                     }
                 }
                 "HostMetadata" => {
