@@ -70,15 +70,9 @@ pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 #[cfg(not(target_vendor = "win7"))]
 const MAX_WRITE_HEAP_LEN: usize = 64 * 1024; // In u16 -> 128KiB
 
-pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
+pub fn get_handle(handle_id: u32) -> Option<c::HANDLE> {
     let handle = unsafe { c::GetStdHandle(handle_id) };
-    if handle == c::INVALID_HANDLE_VALUE {
-        Err(io::Error::last_os_error())
-    } else if handle.is_null() {
-        Err(io::Error::from_raw_os_error(c::ERROR_INVALID_HANDLE as i32))
-    } else {
-        Ok(handle)
-    }
+    if handle.is_null() || handle == c::INVALID_HANDLE_VALUE { None } else { Some(handle) }
 }
 
 /// Returns true if `handle` refers to a proper console (aka conhost).
@@ -115,7 +109,8 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
         return Ok(0);
     }
 
-    let handle = get_handle(handle_id)?;
+    // If no handle is available, treat it like writing to NUL
+    let Some(handle) = get_handle(handle_id) else { return Ok(data.len()) };
 
     // At the time of writing, console IO on Windows is high latency:
     // Windows has no TTY buffers, making every call a fully synchronous RPC.
@@ -267,7 +262,8 @@ impl Stdin {
 
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let handle = get_handle(c::STD_INPUT_HANDLE)?;
+        // If no handle is available then treat it as if reading from NUL
+        let Some(handle) = get_handle(c::STD_INPUT_HANDLE) else { return Ok(0) };
         if !is_console(handle) {
             unsafe {
                 let handle = Handle::from_raw_handle(handle);
