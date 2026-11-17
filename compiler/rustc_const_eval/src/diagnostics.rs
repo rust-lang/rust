@@ -5,7 +5,7 @@ use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Diag, DiagArgValue, MultiSpan, Subdiagnostic, msg};
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{Mutability, Ty};
+use rustc_middle::ty::{Intrinsic, Mutability, Ty};
 use rustc_span::{Span, Symbol};
 
 use crate::interpret::InternKind;
@@ -167,7 +167,7 @@ pub(crate) struct UnstableConstTrait {
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Intrinsic,
     pub feature: Symbol,
     #[suggestion(
         "add `#![feature({$feature})]` to the crate attributes to enable",
@@ -243,7 +243,7 @@ pub(crate) struct NonConstFnCall {
 pub(crate) struct NonConstIntrinsic {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Intrinsic,
     pub kind: ConstContext,
 }
 
