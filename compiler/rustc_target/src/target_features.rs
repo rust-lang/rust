@@ -1524,7 +1524,15 @@ impl Target {
                 // There's no SPE for PowerPC64, and we currently don't support any soft-float
                 // targets. (If we ever add one, we need to match on `RustcAbi::Softfloat` similar
                 // to other targets above.)
-                FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+                match self.llvm_abiname {
+                    // The ELFv2 ABI requires vector registers for passing f128 and any future
+                    // 16-byte aligned types.
+                    LlvmAbi::ElfV2 => FeatureConstraints {
+                        required: &["hard-float", "altivec"],
+                        incompatible: &["spe"],
+                    },
+                    _ => FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] },
+                }
             }
             Arch::Sparc => {
                 // We currently don't have a soft-float target for SPARC.

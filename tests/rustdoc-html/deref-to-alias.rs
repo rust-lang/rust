@@ -18,10 +18,12 @@ impl Foo<u32> {
 pub type X = Foo<i32>;
 
 //@ has 'foo/struct.Bar.html'
-// FIXME: Only `get_i32` should be listed, this is a bug.
-//@ count - '//*[@id="deref-methods-X-1"]//h4' 2
+// Only `get_i32` should be listed.
+//@ count - '//*[@id="deref-methods-X-1"]//h4' 1
 //@ has - '//*[@id="deref-methods-X-1"]//h4' 'get_i32'
-//@ has - '//*[@id="deref-methods-X-1"]//h4' 'get_u32'
+// We check only `get_i32` is listed in the sidebar as well.
+//@ count - '//*[@class="block deref-methods"]//a' 1
+//@ has - '//*[@class="block deref-methods"]//a[@href="#method.get_i32"]' 'get_i32'
 pub struct Bar;
 
 impl Deref for Bar {

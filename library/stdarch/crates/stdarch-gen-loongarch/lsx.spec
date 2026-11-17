@@ -1723,21 +1723,25 @@ asm-fmts = vd, vj
 data-types = V2DI, V2DI
 
 /// lsx_vclo_b
+impl = portable
 name = lsx_vclo_b
 asm-fmts = vd, vj
 data-types = V16QI, V16QI
 
 /// lsx_vclo_h
+impl = portable
 name = lsx_vclo_h
 asm-fmts = vd, vj
 data-types = V8HI, V8HI
 
 /// lsx_vclo_w
+impl = portable
 name = lsx_vclo_w
 asm-fmts = vd, vj
 data-types = V4SI, V4SI
 
 /// lsx_vclo_d
+impl = portable
 name = lsx_vclo_d
 asm-fmts = vd, vj
 data-types = V2DI, V2DI
