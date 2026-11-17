@@ -168,7 +168,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C) -> Self {
+    fn new(cx: &C, _conv: CanonAbi) -> Self {
         let abi = match cx.target_spec().options.llvm_abiname {
             LlvmAbi::ElfV1 => ELFv1,
             LlvmAbi::ElfV2 => ELFv2,
@@ -180,17 +180,11 @@ where
         Self { abi }
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         classify(cx, ret, self.abi, true);
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify(cx, arg, self.abi, false);
     }
 }

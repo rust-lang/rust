@@ -116,6 +116,7 @@ where
 
 pub(crate) struct ArmCallConv<const C_VARIADIC: bool> {
     abi_kind: ArmAbiKind,
+    conv: CanonAbi,
 }
 
 impl<const C_VARIADIC: bool> ArmCallConv<C_VARIADIC> {
@@ -139,7 +140,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C) -> Self {
+    fn new(cx: &C, conv: CanonAbi) -> Self {
         let target = cx.target_spec();
         let abi_kind = if target.os == Os::WatchOs {
             ArmAbiKind::Aapcs16Vfp
@@ -148,21 +149,20 @@ where
         } else {
             ArmAbiKind::Aapcs
         };
-        ArmCallConv { abi_kind }
+        ArmCallConv { abi_kind, conv }
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
-        classify_ret(cx, ret, self.abi_kind, !C_VARIADIC && self.is_effectively_vfp(conv, true));
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(
+            cx,
+            ret,
+            self.abi_kind,
+            !C_VARIADIC && self.is_effectively_vfp(self.conv, true),
+        );
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
-        let is_arg_vfp = !C_VARIADIC && self.is_effectively_vfp(conv, false);
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
+        let is_arg_vfp = !C_VARIADIC && self.is_effectively_vfp(self.conv, false);
         classify_arg(cx, arg, self.abi_kind, is_arg_vfp);
     }
 }

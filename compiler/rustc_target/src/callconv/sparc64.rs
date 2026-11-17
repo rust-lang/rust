@@ -212,39 +212,31 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C) -> Self {
+    fn new(cx: &C, _conv: CanonAbi) -> Self {
         // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         let passes_zsts = matches!(cx.target_spec().os, Os::Linux);
 
         Self { passes_zsts, double_word_count: 0 }
     }
 
-    fn passes_zst(&self) -> bool {
-        true
+    fn passes_zsts(&self) -> bool {
+        self.passes_zsts
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() && ret.layout.is_sized() {
             // A return value of 32 bytes or smaller is passed via registers.
             classify_arg(cx, ret, Size::from_bytes(32), &mut 0);
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         if !arg.layout.is_sized() {
             return;
         }
         if arg.is_ignore() {
-            if self.passes_zsts {
-                arg.make_indirect_from_ignore();
-                self.double_word_count += 1;
-            }
+            arg.make_indirect_from_ignore();
+            self.double_word_count += 1;
             return;
         }
         // An argument of 16 bytes or smaller is passed via registers.

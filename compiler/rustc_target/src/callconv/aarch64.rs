@@ -167,7 +167,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C) -> Self {
+    fn new(cx: &C, _conv: CanonAbi) -> Self {
         let kind = if cx.target_spec().is_like_darwin {
             AbiKind::DarwinPCS
         } else if cx.target_spec().is_like_windows {
@@ -178,17 +178,11 @@ where
         AArch64CallConv { kind }
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         classify_ret(cx, ret, self.kind);
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_vararg: bool) {
         // On Arm64EC the variadic portion of a c-variadic call follows the MS x64 ABI:
         // "Any argument that doesn't fit in 8 bytes, or is not 1, 2, 4, or 8 bytes, must
         // be passed by reference".

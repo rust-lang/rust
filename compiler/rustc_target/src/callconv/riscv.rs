@@ -428,7 +428,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C) -> Self {
+    fn new(cx: &C, _conv: CanonAbi) -> Self {
         let flen = match &cx.target_spec().llvm_abiname {
             LlvmAbi::Ilp32f | LlvmAbi::Lp64f => 32,
             LlvmAbi::Ilp32d | LlvmAbi::Lp64d => 64,
@@ -442,19 +442,13 @@ where
         Self { flen, xlen, avail_gprs, avail_fprs }
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if classify_ret(cx, ret, self.xlen, self.flen) {
             self.avail_gprs -= 1;
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_vararg: bool) {
         classify_arg(
             cx,
             arg,

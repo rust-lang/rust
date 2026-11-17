@@ -123,21 +123,15 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self { regs_left: ARG_REGS }
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         classify_ret(cx, ret);
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify_arg(cx, arg, &mut self.regs_left);
     }
 }

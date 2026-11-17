@@ -57,31 +57,27 @@ where
     }
 }
 
-pub(crate) struct AmdGpuCallConv;
+pub(crate) struct AmdGpuCallConv {
+    conv: CanonAbi,
+}
 
 impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for AmdGpuCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C) -> Self {
-        Self
+    fn new(_cx: &C, conv: CanonAbi) -> Self {
+        Self { conv }
     }
 
-    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, _ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, _cx: &C, _ret: &mut ArgAbi<'a, Ty>) {
         // Kernels cannot return values, so do not handle return types
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         // Try to fill first registers with values and pass by_ref pointers for later indirect arguments
 
-        if conv == CanonAbi::GpuKernel {
+        if self.conv == CanonAbi::GpuKernel {
             if arg.layout.is_aggregate() {
                 if let Some(uniform) = single_element_struct_to_reg(cx, arg.layout) {
                     // Single element structs are passed directly as the inner type

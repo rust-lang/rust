@@ -40,27 +40,21 @@ impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for MSP430CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self
     }
 
-    fn passes_zst(&self) -> bool {
+    fn passes_zsts(&self) -> bool {
         true
     }
 
-    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() {
             classify_ret(ret);
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify_arg(cx, arg);
     }
 }

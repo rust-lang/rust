@@ -686,7 +686,7 @@ where
     CC: ComputeCallConv<'a, Ty, C>,
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    let mut cc = CC::new(cx);
+    let mut cc = CC::new(cx, fn_abi.conv);
 
     // Some ABIs pass ZSTs by pointer indirection rather than ignoring them. We follow
     // that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them), but
@@ -701,7 +701,7 @@ where
             return false;
         }
 
-        if !cc.passes_zst() {
+        if !cc.passes_zsts() {
             // ZSTs ignored by callconv
             return true;
         }
@@ -711,7 +711,7 @@ where
     }
 
     if !ignore_zst(&cc, &fn_abi.ret) {
-        cc.compute_ret_abi(cx, fn_abi.conv, &mut fn_abi.ret);
+        cc.compute_ret_abi(cx, &mut fn_abi.ret);
     }
 
     let c_variadic = fn_abi.c_variadic;
@@ -721,7 +721,7 @@ where
             continue;
         }
 
-        cc.compute_arg_abi(cx, fn_abi.conv, arg, c_variadic && idx >= fixed_count);
+        cc.compute_arg_abi(cx, arg, c_variadic && idx >= fixed_count);
     }
 }
 
@@ -729,20 +729,14 @@ trait ComputeCallConv<'a, Ty, C>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    fn new(cx: &C) -> Self;
+    fn new(cx: &C, conv: CanonAbi) -> Self;
 
-    fn passes_zst(&self) -> bool {
+    fn passes_zsts(&self) -> bool {
         false
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>);
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        is_vararg: bool,
-    );
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>);
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_vararg: bool);
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {

@@ -144,27 +144,21 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasTargetSpec,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self { gprs_in_use: 0 }
     }
 
-    fn passes_zst(&self) -> bool {
+    fn passes_zsts(&self) -> bool {
         true
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() {
             classify_ret(cx, ret, &mut self.gprs_in_use);
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify_arg(cx, arg, &mut self.gprs_in_use);
     }
 }

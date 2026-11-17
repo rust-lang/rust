@@ -53,7 +53,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasTargetSpec,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self
     }
 
@@ -62,11 +62,11 @@ where
     // We follow that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them),
     // but `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
 
-    fn passes_zst(&self) -> bool {
+    fn passes_zsts(&self) -> bool {
         true
     }
 
-    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if ret.is_ignore() {
             ret.make_indirect_from_ignore();
         } else {
@@ -74,13 +74,7 @@ where
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         if arg.is_ignore() {
             arg.make_indirect_from_ignore();
 

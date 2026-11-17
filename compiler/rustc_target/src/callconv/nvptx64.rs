@@ -94,23 +94,17 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self
     }
 
-    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() {
             classify_ret(ret);
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         if arg.is_ignore() {
             return;
         }
@@ -125,23 +119,17 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi) -> Self {
         Self
     }
 
-    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+    fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.layout.is_unit() && !ret.layout.is_never() {
             panic!("Kernels should not return anything other than () or !");
         }
     }
 
-    fn compute_arg_abi(
-        &mut self,
-        cx: &C,
-        _conv: CanonAbi,
-        arg: &mut ArgAbi<'a, Ty>,
-        _is_vararg: bool,
-    ) {
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         if arg.is_ignore() {
             return;
         }
