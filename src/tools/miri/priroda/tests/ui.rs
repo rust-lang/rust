@@ -60,6 +60,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ` as variant#1.0`): it says which field or variant of the local the row
     // reads. `print <id>` echoes are rewritten too, so they stop pinning the id.
     let local_id_regex = Regex::new(r"Id: _[0-9]+").unwrap();
+    // An unnamed `<dead>` row has no name and no rendered value, so it only pins
+    // rustc's temporary inventory and that slot's `Ty:` string. Named locals stay
+    // asserted even when dead. `Name:` scoping leaves `print <id>` rows alone,
+    // since they have no such field. The `(priroda) ` prompt must match too, or
+    // dropping the first row of a block would splice the next row onto the
+    // prompt; no fixture covers that yet. Matching the id as `[^,]+` keeps this
+    // rule independent of the order the two rules run in.
+    let unnamed_dead_local_regex =
+        Regex::new(r"(?:\(priroda\) )?Name: <none>, Id: [^,]+, [^\n]*Value: <dead>\n?").unwrap();
     config.comment_defaults.base().normalize_stdout.extend([
         (manifest_dir_regex.into(), b"{MANIFEST_DIR}".to_vec()),
         (miri_dir_regex.into(), b"{MIRI_DIR}".to_vec()),
@@ -68,6 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // DAP frames use CRLF headers; keep checked-in stdout fixtures readable.
         (crlf_regex.into(), b"\n".to_vec()),
         (content_length_regex.into(), b"Content-Length: {CONTENT_LENGTH}".to_vec()),
+        (unnamed_dead_local_regex.into(), b"".to_vec()),
         (local_id_regex.into(), b"Id: _{LOCAL}".to_vec()),
     ]);
 

@@ -4,53 +4,17 @@
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: target, Id: _{LOCAL}, Ty: [u8; 2], Value: [[0a], [14]]
 Name: pointer_at_offset0, Id: _{LOCAL}, Ty: PointerAtOffset0<'_>, Value: PointerAtOffset0 { ptr: [{ALLOC_PTR}] }
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: bool, Value: true
 Name: pointer_after_bytes, Id: _{LOCAL}, Ty: PointerAfterBytes<'_>, Value: PointerAfterBytes { bytes: [[01], [02], [03]], ptr: [{ALLOC_PTR}] }
-Name: <none>, Id: _{LOCAL}, Ty: [u8; 3], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: bool, Value: true
 Name: pointer_at_end, Id: _{LOCAL}, Ty: PointerAtEnd<'_>, Value: PointerAtEnd { byte: [04], ptr: [{ALLOC_PTR}] }
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: bool, Value: true
 Name: uninit_around_pointer, Id: _{LOCAL}, Ty: UninitAroundPointer<'_>, Value: UninitAroundPointer { before: [__ __], ptr: [{ALLOC_PTR}], after: [__ __] }
-Name: <none>, Id: _{LOCAL}, Ty: std::mem::MaybeUninit<[u8; 2]>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: bool, Value: true
-Name: <none>, Id: _{LOCAL}, Ty: std::mem::MaybeUninit<[u8; 2]>, Value: <dead>
 Name: integer_and_pointer, Id: _{LOCAL}, Ty: IntegerAndPointer<'_>, Value: IntegerAndPointer { integer: [11 22 33 44], ptr: [{ALLOC_PTR}] }
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: bool, Value: true
 Name: fixed_addr_ptr, Id: _{LOCAL}, Ty: *const u8, Value: [0x1234[wildcard]]
 Name: short_pointer_bytes, Id: _{LOCAL}, Ty: [u8; 1], Value: [[34]]
 Name: bytes, Id: _{LOCAL}, Ty: std::mem::MaybeUninit<[u8; 1]>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: *const u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: *const *const u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &*const u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: *mut u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: *mut [u8; 1], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &mut std::mem::MaybeUninit<[u8; 1]>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: std::mem::MaybeUninit<[u8; 1]>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (&PointerAtOffset0<'_>, &PointerAfterBytes<'_>, &PointerAtEnd<'_>, &UninitAroundPointer<'_>, &IntegerAndPointer<'_>, &*const u8, &[u8; 1]), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (&PointerAtOffset0<'_>, &PointerAfterBytes<'_>, &PointerAtEnd<'_>, &UninitAroundPointer<'_>, &IntegerAndPointer<'_>, &*const u8, &[u8; 1]), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &PointerAtOffset0<'_>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &PointerAfterBytes<'_>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &PointerAtEnd<'_>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &UninitAroundPointer<'_>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &IntegerAndPointer<'_>, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &*const u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 1], Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: PointerAtOffset0<'_>, Value: PointerAtOffset0 { ptr: [{ALLOC_PTR}] }
 (priroda) quitting

@@ -5,21 +5,15 @@
 {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:4
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: slice, Id: _{LOCAL}, Ty: [u8], Value: []
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: [u8], Value: []
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:8
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: slice, Id: _{LOCAL}, Ty: [u8], Value: [[1a]]
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: [u8], Value: [[1a]]
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:12
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: slice, Id: _{LOCAL}, Ty: [u8], Value: [[1b], [1c]]
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: [u8], Value: [[1b], [1c]]
 (priroda) quitting

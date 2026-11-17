@@ -6,5 +6,4 @@ Name: <none>, Id: _{LOCAL}, Ty: Outer, Value: <uninit>
 Name: <none>, Id: _{LOCAL}, Ty: Inner, Value: <uninit>
 Name: <none>, Id: _{LOCAL}, Ty: Inner, Value: <uninit>
 Name: x.inner.value, Id: _{LOCAL}, Ty: u8, Value: 7_u8
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
 (priroda) quitting

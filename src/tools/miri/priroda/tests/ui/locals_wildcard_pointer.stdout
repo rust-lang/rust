@@ -4,8 +4,5 @@
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: ptr, Id: _{LOCAL}, Ty: *const u8, Value: {&_: *const u8}
 Name: wildcard, Id: _{LOCAL}, Ty: WildcardPointer, Value: WildcardPointer { ptr: [0x1234[wildcard]] }
-Name: <none>, Id: _{LOCAL}, Ty: *const u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &WildcardPointer, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &WildcardPointer, Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: WildcardPointer, Value: WildcardPointer { ptr: [0x1234[wildcard]] }
 (priroda) quitting

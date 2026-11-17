@@ -9,6 +9,4 @@ Name: <none>, Id: _{LOCAL}, Ty: (Leaf,), Value: <uninit>
 Name: <none>, Id: _{LOCAL}, Ty: Leaf, Value: <uninit>
 Name: <none>, Id: _{LOCAL}, Ty: Leaf, Value: <uninit>
 Name: x.inner.0.field, Id: _{LOCAL}, Ty: u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
 (priroda) quitting

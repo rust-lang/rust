@@ -4,7 +4,4 @@
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: x, Id: _{LOCAL}, Ty: i32, Value: 1_i32
 Name: y, Id: _{LOCAL}, Ty: bool, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (i32, bool), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: i32, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: bool, Value: <dead>
 (priroda) quitting

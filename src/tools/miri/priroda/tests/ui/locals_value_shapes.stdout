@@ -4,8 +4,6 @@
 (priroda) Name: <none>, Id: _{LOCAL}, Ty: (), Value: <uninit>
 Name: dead_box, Id: _{LOCAL}, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: consumed, Id: _{LOCAL}, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
-Name: <none>, Id: _{LOCAL}, Ty: (), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: std::boxed::Box<u8>, Value: <dead>
 Name: pointed_box, Id: _{LOCAL}, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: pointer_box, Id: _{LOCAL}, Ty: &std::boxed::Box<u8>, Value: {&_: &std::boxed::Box<u8>}
 Name: scalar, Id: _{LOCAL}, Ty: u8, Value: 42_u8
@@ -13,35 +11,16 @@ Name: pointed, Id: _{LOCAL}, Ty: u8, Value: [33]
 Name: scalar_pointer, Id: _{LOCAL}, Ty: &u8, Value: {&_: &u8}
 Name: scalar_pair, Id: _{LOCAL}, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000002): &[u8]
 Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000002): &[u8]
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 2], Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: [u8; 2], Value: <uninit>
-Name: <none>, Id: _{LOCAL}, Ty: std::ops::RangeFull, Value: <dead>
 Name: mplace, Id: _{LOCAL}, Ty: Aggregate, Value: Aggregate { byte: [2a], word: [34 12] }
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
 Name: tuple, Id: _{LOCAL}, Ty: (u8, u16), Value: ([01], [03 02])
 Name: tuple_struct, Id: _{LOCAL}, Ty: TupleAggregate, Value: TupleAggregate([04], [06 05])
 Name: array, Id: _{LOCAL}, Ty: [u8; 3], Value: [[07], [08], [09]]
 Name: nested, Id: _{LOCAL}, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: ([01], [03 02]) }
-Name: <none>, Id: _{LOCAL}, Ty: Aggregate, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (u8, u16), Value: <dead>
 Name: unit_variant, Id: _{LOCAL}, Ty: Choice, Value: Choice::Unit
 Name: tuple_variant, Id: _{LOCAL}, Ty: Choice, Value: Choice::Tuple([0d], [0f 0e])
 Name: struct_variant, Id: _{LOCAL}, Ty: Choice, Value: Choice::Struct { n: [13 12 11 10], ok: [01] }
 Name: uninit_scalar, Id: _{LOCAL}, Ty: u32, Value: <uninit>
-Name: <none>, Id: _{LOCAL}, Ty: (u8, &u8, usize, &Aggregate, &(u8, u16), &TupleAggregate, &[u8; 3], &Nested, &Choice, &Choice, &Choice), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (u8, &u8, usize, &Aggregate, &(u8, u16), &TupleAggregate, &[u8; 3], &Nested, &Choice, &Choice, &Choice), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &u8, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: usize, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Aggregate, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &(u8, u16), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &TupleAggregate, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 3], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Nested, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Choice, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Choice, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Choice, Value: <dead>
 Name: <none>, Id: _{LOCAL}, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
 (priroda) Id: _{LOCAL}, Ty: (), Value: <uninit>
 (priroda) Id: _{LOCAL}, Ty: std::boxed::Box<u8>, Value: <dead>

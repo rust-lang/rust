@@ -20,27 +20,6 @@ Name: variant_single_tuple, Id: _{LOCAL}, Ty: Variants, Value: Variants::SingleT
 Name: variant_struct, Id: _{LOCAL}, Ty: Variants, Value: Variants::Struct { n: [14 15 16 17], ok: [00] }
 Name: variant_empty_struct, Id: _{LOCAL}, Ty: Variants, Value: Variants::EmptyStruct {}
 Name: raw_union, Id: _{LOCAL}, Ty: RawUnion, Value: [18 19]
-Name: <none>, Id: _{LOCAL}, Ty: (&Named, &EmptyBraced, &UnitStruct, &TupleStruct, &SingleTupleStruct, &ZeroTupleStruct, &(), &(u8,), &(u8, u16), &[u8; 0], &[u8; 1], &[u8; 3], &Variants, &Variants, &Variants, &Variants, &Variants, &RawUnion), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: (&Named, &EmptyBraced, &UnitStruct, &TupleStruct, &SingleTupleStruct, &ZeroTupleStruct, &(), &(u8,), &(u8, u16), &[u8; 0], &[u8; 1], &[u8; 3], &Variants, &Variants, &Variants, &Variants, &Variants, &RawUnion), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Named, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &EmptyBraced, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &UnitStruct, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &TupleStruct, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &SingleTupleStruct, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &ZeroTupleStruct, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &(), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &(u8,), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &(u8, u16), Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 0], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 1], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &[u8; 3], Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Variants, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Variants, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Variants, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Variants, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &Variants, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: &RawUnion, Value: <dead>
-Name: <none>, Id: _{LOCAL}, Ty: u8, Value: <dead>
 (priroda) Id: _{LOCAL}, Ty: Named, Value: Named { a: [01], b: [02 03] }
 (priroda) Id: _{LOCAL}, Ty: EmptyBraced, Value: EmptyBraced {}
 (priroda) Id: _{LOCAL}, Ty: UnitStruct, Value: UnitStruct
