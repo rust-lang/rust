@@ -11,13 +11,16 @@ macro_rules! mac {
 mac!();
 
 /// a //~ ERROR unused doc comment
-#[doc(test(attr(allow(dead_code))))] //~ ERROR unused doc comment
+#[doc(test(attr(allow(dead_code))))]
+//~^ ERROR `doc` attribute cannot be used on
+//~| WARN previously accepted
 unsafe extern "C" { }
 
 fn foo() {
     /// a //~ ERROR unused doc comment
     #[doc(test(attr(allow(dead_code))))]
-    //~^ ERROR unused doc comment
+    //~^ ERROR `doc` attribute cannot be used on
+    //~| WARN previously accepted
     let x = 12;
 
     /// multi-line //~ ERROR unused doc comment
@@ -27,7 +30,8 @@ fn foo() {
         /// c //~ ERROR unused doc comment
         1 => {},
         #[doc(test(attr(allow(dead_code))))]
-        //~^ ERROR unused doc comment
+        //~^ ERROR `doc` attribute cannot be used on
+        //~| WARN previously accepted
         _ => {}
     }
 
@@ -42,7 +46,8 @@ fn foo() {
     mac!();
 
     #[doc(test(attr(allow(dead_code))))]
-    //~^ ERROR unused doc comment
+    //~^ ERROR `doc` attribute cannot be used on
+    //~| WARN previously accepted
     let x = /** comment */ 47; //~ ERROR unused doc comment
 
     /// dox //~ ERROR unused doc comment
