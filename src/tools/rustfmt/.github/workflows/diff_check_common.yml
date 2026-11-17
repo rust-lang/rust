@@ -31,6 +31,11 @@ on:
         type: string
         required: false
         default: stable
+      result_artifact:
+        description: 'Upload job status as an artifact with the given name (if set)'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -80,3 +85,22 @@ jobs:
           --style-edition "${GITHUB_EVENT_INPUTS_STYLE_EDITION}" \
           --release-channel "${GITHUB_EVENT_INPUTS_RELEASE_CHANNEL}" \
           "${OPTIONS[@]}"
+
+    # A matrix of reusable workflow jobs give only one combined outcome, so we
+    # need to track outcome of individual matrix jobs.
+    - name: Record result
+      if: ${{ always() && inputs.result_artifact != '' }}
+      env:
+        JOB_STATUS: ${{ job.status }}
+      run: echo "${JOB_STATUS}" > "${RUNNER_TEMP}/result.txt"
+
+    - name: Upload result
+      if: ${{ always() && inputs.result_artifact != '' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.result_artifact }}
+        path: ${{ runner.temp }}/result.txt
+        retention-days: 1
+        # Allow overwriting so that rerunning a matrix job can upload artifact
+        # with same name.
+        overwrite: true
