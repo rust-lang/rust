@@ -111,7 +111,7 @@ pub fn __cpuid(leaf: u32) -> CpuidResult {
 /// Returns the EAX and EBX register after calling CPUID with the provided `leaf`,
 /// with `sub_leaf` set to 0.
 ///
-/// If `leaf` if 0 or `0x80000000`, the first tuple argument contains the maximum
+/// If `leaf` is 0 or `0x80000000`, the first tuple argument contains the maximum
 /// supported basic or extended leaf, respectively.
 ///
 /// See also [`__cpuid`](fn.__cpuid.html) and

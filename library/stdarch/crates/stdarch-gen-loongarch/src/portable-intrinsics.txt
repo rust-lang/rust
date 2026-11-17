@@ -131,6 +131,10 @@ lsx_vclz_b
 lsx_vclz_h
 lsx_vclz_w
 lsx_vclz_d
+lsx_vclo_b
+lsx_vclo_h
+lsx_vclo_w
+lsx_vclo_d
 lsx_vreplgr2vr_b
 lsx_vreplgr2vr_h
 lsx_vreplgr2vr_w
@@ -430,6 +434,10 @@ lasx_xvclz_b
 lasx_xvclz_h
 lasx_xvclz_w
 lasx_xvclz_d
+lasx_xvclo_b
+lasx_xvclo_h
+lasx_xvclo_w
+lasx_xvclo_d
 lasx_xvreplgr2vr_b
 lasx_xvreplgr2vr_h
 lasx_xvreplgr2vr_w
