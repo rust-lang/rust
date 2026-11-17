@@ -1061,13 +1061,6 @@ pub(crate) struct DocAttrNotCrateLevel {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[doc(...)]` isn't allowed on parameters")]
-pub(crate) struct DocAttrNotParameters {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("nonexistent keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`")]
 #[help("only existing keywords are allowed in core/std")]
 pub(crate) struct DocKeywordNotKeyword {
@@ -2270,4 +2263,24 @@ pub(crate) struct UnknownLintHelper {
     #[primary_span]
     pub span: Span,
     pub unknown: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unused doc comment")]
+pub(crate) struct BuiltinUnusedDocComment {
+    #[subdiagnostic]
+    pub sub: BuiltinUnusedDocCommentSub,
+    pub target: &'static str,
+    #[label("rustdoc does not generate documentation for {$target}")]
+    pub label: Span,
+    #[context]
+    pub context: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum BuiltinUnusedDocCommentSub {
+    #[help("use `//` for a plain comment")]
+    PlainHelp,
+    #[help("use `/* */` for a plain comment")]
+    BlockHelp,
 }
