@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
                 let sugg = Sugg::hir_with_context(cx, non_lit_expr, macro_call.span.ctxt(), "..", &mut applicability);
                 let sugg = if bool_value ^ eq_macro {
                     !sugg.maybe_paren()
-                } else if ty::Bool == *non_lit_ty.kind() {
+                } else if ty::Bool == non_lit_ty.kind() {
                     sugg
                 } else {
                     !!sugg.maybe_paren()

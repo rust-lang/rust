@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     );
                 }
                 sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
-                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                    if let ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
                         && inner_ty.is_ref()
                         && !drop_is_single_call_in_arm =>
                 {
@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     );
                 }
                 sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
-                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                    if let ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
                         && cx.type_is_copy_modulo_regions(inner_ty)
                         && !drop_is_single_call_in_arm =>
                 {
@@ -272,7 +272,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     );
                 }
                 sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
-                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                    if let ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
                         && let ty::Adt(adt, _) = inner_ty.kind()
                         && adt.is_manually_drop()
                         && let Some(krate) = std_or_core(cx) =>

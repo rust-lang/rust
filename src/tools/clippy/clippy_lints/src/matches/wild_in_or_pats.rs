@@ -10,7 +10,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arms: &[Arm<'_>]) {
     // first check if we are matching on an enum that has the non_exhaustive attribute
     let ty = cx.typeck_results().expr_ty(expr).peel_refs();
     if let ty::Adt(adt_def, _) = ty.kind()
-        && has_non_exhaustive_attr(cx.tcx, *adt_def)
+        && has_non_exhaustive_attr(cx.tcx, adt_def)
     {
         return;
     }

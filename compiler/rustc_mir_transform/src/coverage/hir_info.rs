@@ -36,7 +36,7 @@ pub(crate) fn extract_hir_info<'tcx>(
         // Use the original coroutine body instead. These synthetic bodies are
         // created with a coroutine type, so we can inspect that type as-is.
         if tcx.is_synthetic_mir(def_id) {
-            match *tcx.type_of(def_id).instantiate_identity().skip_normalization().kind() {
+            match tcx.type_of(def_id).instantiate_identity().skip_normalization().kind() {
                 ty::Coroutine(coroutine_def_id, _) => def_id = coroutine_def_id.expect_local(),
                 _ => def_id = tcx.local_parent(def_id),
             }

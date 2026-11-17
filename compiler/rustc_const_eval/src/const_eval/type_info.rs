@@ -94,7 +94,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                                 self.project_downcast_named(&field_dest, sym::Slice)?;
                             variant
                         }
-                        ty::Adt(adt_def, _) => self.write_adt_type_info(&field_dest, *adt_def)?,
+                        ty::Adt(adt_def, _) => self.write_adt_type_info(&field_dest, adt_def)?,
                         ty::Bool => {
                             let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Bool)?;
@@ -139,7 +139,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             let (variant, variant_place) =
                                 self.project_downcast_named(&field_dest, sym::DynTrait)?;
                             let dyn_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
+                            self.write_dyn_trait_type_info(dyn_place, predicates, region)?;
                             variant
                         }
                         ty::FnPtr(_, _) => {
@@ -239,7 +239,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         place: &impl Writeable<'tcx, CtfeProvenance>,
         ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
-        let generics: ty::Binder<'_, ty::GenericArgs<'_>> = match *ty.kind() {
+        let generics: ty::Binder<'_, ty::GenericArgs<'_>> = match ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

@@ -89,7 +89,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Canonical, bound_ty) => {
                 self.var_values[bound_ty.var.as_usize()].expect_ty()
             }
@@ -167,7 +167,7 @@ fn highest_var_in_clauses<'tcx>(c: ty::Clauses<'tcx>) -> usize {
     }
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HighestVarInClauses {
         fn visit_ty(&mut self, t: Ty<'tcx>) {
-            if let ty::Bound(ty::BoundVarIndexKind::Canonical, bound_ty) = *t.kind() {
+            if let ty::Bound(ty::BoundVarIndexKind::Canonical, bound_ty) = t.kind() {
                 self.max_var = self.max_var.max(bound_ty.var.as_usize());
             } else if t.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
                 t.super_visit_with(self);

@@ -494,7 +494,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 self.report_closure_move_error(
                     span,
                     move_place,
-                    *def_id,
+                    def_id,
                     closure_args.as_closure().kind_ty(),
                     upvar_field,
                     ty::Asyncness::No,
@@ -503,14 +503,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             ty::CoroutineClosure(def_id, closure_args)
                 if def_id.as_local() == Some(self.mir_def_id())
                     && let Some(upvar_field) = upvar_field
-                    && self
-                        .get_closure_bound_clause_span(*def_id, ty::Asyncness::Yes)
-                        .is_some() =>
+                    && self.get_closure_bound_clause_span(def_id, ty::Asyncness::Yes).is_some() =>
             {
                 self.report_closure_move_error(
                     span,
                     move_place,
-                    *def_id,
+                    def_id,
                     closure_args.as_coroutine_closure().kind_ty(),
                     upvar_field,
                     ty::Asyncness::Yes,
@@ -647,7 +645,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let gen_clauses = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
                 let ty = typeck_result.node_type_opt(callee.hir_id)?;
-                let ty::FnDef(fn_def_id, args) = *ty.kind() else { return None };
+                let ty::FnDef(fn_def_id, args) = ty.kind() else { return None };
                 context.push(tcx.def_span(fn_def_id).shrink_to_lo());
                 if tcx.def_kind(fn_def_id) == DefKind::AssocFn {
                     context.push(tcx.def_span(tcx.parent(fn_def_id)).shrink_to_lo());
@@ -702,7 +700,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             ty::Asyncness::No => tcx.fn_trait_kind_from_def_id(clause.def_id()),
         }?;
         match clause.self_ty().skip_binder().kind() {
-            ty::Closure(id, _) | ty::CoroutineClosure(id, _) if *id == def_id => Some(kind),
+            ty::Closure(id, _) | ty::CoroutineClosure(id, _) if id == def_id => Some(kind),
             _ => None,
         }
     }

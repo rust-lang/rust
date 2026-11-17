@@ -192,7 +192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut actual_value_place = place;
 
                 match value.ty.kind() {
-                    &ty::Pat(base, _) => {
+                    ty::Pat(base, _) => {
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);

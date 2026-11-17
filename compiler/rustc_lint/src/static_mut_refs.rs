@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
                     cx,
                     static_mut.err_span,
                     static_mut.err_span.shrink_to_lo(),
-                    *m,
+                    m,
                     false,
                     static_mut.def_id,
                 );

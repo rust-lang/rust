@@ -76,7 +76,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if !layout.is_1zst() {
             return interp_ok(false);
         }
-        match *layout.ty.kind() {
+        match layout.ty.kind() {
             // Trivially trivial-ABI types (because Rust makes no promises about their ABI).
             ty::Tuple(..)
             | ty::Never
@@ -125,7 +125,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: TyAndLayout<'tcx>,
         may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        match *layout.ty.kind() {
+        match layout.ty.kind() {
             ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(adt_def) => {
                 assert_matches!(layout.variants, rustc_abi::Variants::Single { .. });
                 // Look for non-trivial-ABI field(s).
@@ -176,7 +176,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let all_fields_1zst = |variant: &VariantDef| -> InterpResult<'tcx, _> {
             for field in &variant.fields {
-                let ty = field.ty(*self.tcx, *args).skip_norm_wip();
+                let ty = field.ty(*self.tcx, args).skip_norm_wip();
                 let layout = self.layout_of(ty)?;
                 if !layout.is_1zst() {
                     return interp_ok(false);
@@ -202,7 +202,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(layout);
         }
         let inner =
-            relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, *args).skip_norm_wip();
+            relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, args).skip_norm_wip();
         let inner = self.layout_of(inner)?;
 
         // Check if the inner type is one of the NPO-guaranteed ones.
@@ -218,7 +218,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Option<&T> behaves like &T, and same for fn()
                 inner
             }
-            ty::Adt(def, _) if is_npo(*def) => {
+            ty::Adt(def, _) if is_npo(def) => {
                 // Once we found a `nonnull_optimization_guaranteed` type, further strip off
                 // newtype structs from it to find the underlying ABI type.
                 self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())?
@@ -265,7 +265,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // They must have equal `repr`, and it must be `repr(C)`.
             && (caller_adt.repr().c() && caller_adt.repr().equal_up_to_seed(&callee_adt.repr()))
             // They must have the same name.
-            && abi_name(*caller_adt) == abi_name(*callee_adt)
+            && abi_name(caller_adt) == abi_name(callee_adt)
         ) {
             return false;
         }
@@ -283,8 +283,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let normalized_field_ty = |field: &FieldDef, args| {
                     self.tcx.normalize_erasing_regions(self.typing_env, field.ty(*self.tcx, args))
                 };
-                let caller_ty = normalized_field_ty(caller_field, *caller_args);
-                let callee_ty = normalized_field_ty(callee_field, *callee_args);
+                let caller_ty = normalized_field_ty(caller_field, caller_args);
+                let callee_ty = normalized_field_ty(callee_field, callee_args);
                 self.identical_c_types(caller_ty, callee_ty)
             })
     }
@@ -340,8 +340,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
             interp_ok(Some(match ty.kind() {
-                ty::Ref(_, ty, _) => *ty,
-                ty::RawPtr(ty, _) => *ty,
+                ty::Ref(_, ty, _) => ty,
+                ty::RawPtr(ty, _) => ty,
                 // We only accept `Box` with the default allocator.
                 _ if ty.is_box_global(*self.tcx) => ty.expect_boxed_ty(),
                 _ => return interp_ok(None),
@@ -363,8 +363,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `char` counts as `u32.`
         let int_ty = |ty: Ty<'tcx>| {
             Some(match ty.kind() {
-                ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
-                ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
+                ty::Int(ity) => (Integer::from_int_ty(&self.tcx, ity), /* signed */ true),
+                ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, uty), /* signed */ false),
                 ty::Char => (Integer::I32, /* signed */ false),
                 _ => return None,
             })

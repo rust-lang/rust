@@ -10,7 +10,7 @@ use rustc_middle::ty;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: Option<&Expr<'_>>, expr: &Expr<'_>, recv: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(recv);
-    let (is_ref, ty) = match *ty.kind() {
+    let (is_ref, ty) = match ty.kind() {
         ty::Ref(_, ty, _) => (true, ty),
         _ => (false, ty),
     };

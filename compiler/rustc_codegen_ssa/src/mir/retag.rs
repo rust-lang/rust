@@ -79,11 +79,11 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         }
         // Check the type of this value to see what to do with it (retag, or recurse).
         match layout.ty.kind() {
-            &ty::Ref(_, pointee, mt) => {
+            ty::Ref(_, pointee, mt) => {
                 let pointee_layout = bx.layout_of(pointee);
                 Self::emit_retag(bx, pointee_layout, Some(mt), is_fn_entry)
             }
-            &ty::RawPtr(_, _) => None,
+            ty::RawPtr(_, _) => None,
             // `Box` needs special handling, since the innermost pointer is what gets retagged, but
             //  the outermost `Box` is what determines the permission that gets created.
             ty::Adt(adt, _) if adt.is_box() => Self::visit_box(bx, layout, is_fn_entry),

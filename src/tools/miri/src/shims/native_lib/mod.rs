@@ -416,7 +416,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         Ok(match layout.ty.kind() {
             // Scalar types have already been handled above.
-            ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, *adt_def, *args)?,
+            ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, adt_def, args)?,
             // Rust uses `()` as return type for `void` function, which becomes `Tuple([])`.
             ty::Tuple(t_list) if t_list.len() == 0 => FfiType::void(),
             _ => return Err(layout.ty),

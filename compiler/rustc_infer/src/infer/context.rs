@@ -455,7 +455,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
         let folded = match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let vid = self.infcx.root_var(*vid);
+                let vid = self.infcx.root_var(vid);
                 let probe = self.infcx.inner.borrow_mut().type_variables().probe(vid);
                 match probe {
                     TypeVariableValue::Known { value: u } => u.super_fold_with(self),

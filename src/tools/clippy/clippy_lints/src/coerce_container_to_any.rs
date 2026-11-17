@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
         }
 
         let expr_ty = cx.typeck_results().expr_ty(e);
-        let ty::Ref(_, expr_ref_ty, _) = *expr_ty.kind() else {
+        let ty::Ref(_, expr_ref_ty, _) = expr_ty.kind() else {
             return;
         };
         // ... but it's not actually `&dyn Any` ...
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
             ExprKind::AddrOf(_, _, referent) => (referent, depth),
             _ => (e, depth + 1),
         };
-        let ty::Ref(_, _, mutability) = *cx.typeck_results().expr_ty_adjusted(e).kind() else {
+        let ty::Ref(_, _, mutability) = cx.typeck_results().expr_ty_adjusted(e).kind() else {
             return;
         };
         let sugg = sugg::make_unop(
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
 }
 
 fn is_ref_dyn_any(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
-    let ty::Ref(_, ref_ty, _) = *ty.kind() else {
+    let ty::Ref(_, ref_ty, _) = ty.kind() else {
         return false;
     };
     is_dyn_any(tcx, ref_ty)

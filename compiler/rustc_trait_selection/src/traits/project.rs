@@ -1569,10 +1569,10 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
         sym::Item
     );
 
-    let ty::Adt(_poll_adt, args) = *yield_ty.kind() else {
+    let ty::Adt(_poll_adt, args) = yield_ty.kind() else {
         bug!();
     };
-    let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else {
+    let ty::Adt(_option_adt, args) = args.type_at(0).kind() else {
         bug!();
     };
     let item_ty = args.type_at(0);
@@ -1642,7 +1642,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         let ty::Adt(def, args) = self_ty.kind() else {
             bug!("only field representing types can implement `Field`")
         };
-        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(tcx, *args) else {
+        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(tcx, args) else {
             bug!("only field representing types can implement `Field`")
         };
         if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
@@ -1698,7 +1698,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let closure_sig = match *self_ty.kind() {
+    let closure_sig = match self_ty.kind() {
         ty::Closure(_, args) => Unnormalized::new_wip(args.as_closure().sig()),
 
         // Construct a "normal" `FnOnce` signature for coroutine-closure. This is
@@ -1788,7 +1788,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
     };
     let item_name = tcx.item_name(obligation.predicate.expect_projection_def_id());
 
-    let poly_cache_entry = match *self_ty.kind() {
+    let poly_cache_entry = match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
             let sig = args.coroutine_closure_sig().skip_binder();

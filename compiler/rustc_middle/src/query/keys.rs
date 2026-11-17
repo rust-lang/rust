@@ -407,7 +407,7 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
 /// Visited set is needed to avoid full iteration over
 /// deeply nested tuples that have no DefId.
 fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Option<DefId> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did()),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),

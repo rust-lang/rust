@@ -1464,7 +1464,7 @@ impl<'tcx> ExtraComments<'tcx> {
 }
 
 fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
@@ -1956,14 +1956,14 @@ fn pretty_print_const_value_tcx<'tcx>(
         }
         (_, ty::Ref(_, inner_ty, _))
             if let ty::Slice(t) = inner_ty.kind()
-                && *t == u8_type =>
+                && t == u8_type =>
         {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 pretty_print_byte_str(fmt, data)?;
                 return Ok(());
             }
         }
-        (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
+        (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if t == u8_type => {
             let n = n.try_to_target_usize(tcx).unwrap();
             let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
             // cast is ok because we already checked for pointer size (32 or 64 bit) above
@@ -1984,7 +1984,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
             if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
                 let fields: Vec<(ConstValue, Ty<'_>)> = contents.fields.to_vec();
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
                         comma_sep(tcx, fmt, fields)?;
@@ -2049,7 +2049,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_value_path(*d, s.no_bound_vars().unwrap())?;
+            p.pretty_print_value_path(d, s.no_bound_vars().unwrap())?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

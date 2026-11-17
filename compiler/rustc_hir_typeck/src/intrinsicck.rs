@@ -16,7 +16,7 @@ use tracing::trace;
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let ty::Adt(def, args) = *ty.kind() else { return ty };
+    let ty::Adt(def, args) = ty.kind() else { return ty };
 
     if def.variants().len() == 2 && !def.repr().c() && def.repr().int.is_none() {
         let data_idx;
@@ -147,7 +147,7 @@ fn contains_nested_offload_region<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool
         }
         is_root = false;
 
-        if let ty::Adt(def, args) = *ty.kind()
+        if let ty::Adt(def, args) = ty.kind()
             && visited.insert(def.did())
         {
             stack.extend(def.all_fields().map(|field| field.ty(tcx, args).skip_norm_wip()));
@@ -167,7 +167,7 @@ fn check_offload<'tcx>(
     hir_id: HirId,
 ) -> Result<(), ErrorGuaranteed> {
     let span = tcx.hir_span(hir_id);
-    let ty::FnDef(kernel_def_id, kernel_args) = *kernel_ty.kind() else {
+    let ty::FnDef(kernel_def_id, kernel_args) = kernel_ty.kind() else {
         let guar = tcx
             .sess
             .dcx()
@@ -183,7 +183,7 @@ fn check_offload<'tcx>(
         tcx.fn_sig(kernel_def_id).instantiate(tcx, kernel_args.skip_binder()).skip_norm_wip();
     let kernel_sig = tcx.instantiate_bound_regions_with_erased(kernel_sig);
 
-    let ty::Tuple(tuple_fields) = *args_ty.kind() else {
+    let ty::Tuple(tuple_fields) = args_ty.kind() else {
         let guar = tcx
             .sess
             .dcx()

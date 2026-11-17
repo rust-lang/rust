@@ -205,8 +205,8 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
     iter::zip(fn_sig.inputs(), hir_tys)
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
-            if let ty::Ref(_, ty, mutability) = *ty.kind()
-                && let  ty::Adt(adt, args) = *ty.kind()
+            if let ty::Ref(_, ty, mutability) = ty.kind()
+                && let  ty::Adt(adt, args) = ty.kind()
                 && let TyKind::Ref(lt, inner_ty, _) = hir_ty.kind
                 && let TyKind::Path(QPath::Resolved(None, path)) = inner_ty.kind
                 // Check that the name as typed matches the actual name of the type.

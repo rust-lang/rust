@@ -532,7 +532,7 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+    if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
         if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
@@ -751,7 +751,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
         if match tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
             ty::RawPtr(_, _) => false,
-            ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
+            ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, adt_def, args),
             _ => true,
         } {
             tcx.dcx().emit_err(diagnostics::LinkageType { span: tcx.def_span(def_id) });
@@ -1494,7 +1494,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         }
 
         let array_field = &fields[FieldIdx::ZERO];
-        let array_ty = array_field.ty(tcx, *args).skip_norm_wip();
+        let array_ty = array_field.ty(tcx, args).skip_norm_wip();
         let ty::Array(element_ty, len_const) = array_ty.kind() else {
             struct_span_code_err!(
                 tcx.dcx(),
@@ -1601,7 +1601,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 
     match scalable {
         ScalableElt::ElementCount(..) => {
-            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, *args).skip_norm_wip();
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip();
 
             // Check that `element_ty` only uses types valid in the lanes of a scalable vector
             // register: scalar types which directly match a "machine" type - integers, floats and
@@ -1623,7 +1623,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
         ScalableElt::Container => {
             let mut prev_field_ty = None;
             for field in fields.iter() {
-                let element_ty = field.ty(tcx, *args).skip_norm_wip();
+                let element_ty = field.ty(tcx, args).skip_norm_wip();
                 if let ty::Adt(def, _) = element_ty.kind()
                     && def.repr().scalable()
                 {
@@ -1764,7 +1764,7 @@ fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, *args).skip_norm_wip().kind()
+                if let ty::Adt(def, _) = field.ty(tcx, args).skip_norm_wip().kind()
                     && !stack.contains(&def.did())
                     && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)
                 {
@@ -1836,7 +1836,7 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
             tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
             ty::Tuple(list) => list.iter().try_for_each(|t| is_trivial(tcx, typing_env, t)),
-            ty::Array(ty, _) => is_trivial(tcx, typing_env, *ty),
+            ty::Array(ty, _) => is_trivial(tcx, typing_env, ty),
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
@@ -1853,7 +1853,7 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
                     return ControlFlow::Break(NonTrivialReason::ReprC { ty });
                 }
                 def.all_fields()
-                    .map(|field| field.ty(tcx, *args).skip_norm_wip())
+                    .map(|field| field.ty(tcx, args).skip_norm_wip())
                     .try_for_each(|t| is_trivial(tcx, typing_env, t))
             }
             _ => ControlFlow::Continue(()),
@@ -2235,7 +2235,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 }
                 impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) {
-                        match *t.kind() {
+                        match t.kind() {
                             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
                                 self.opaques.push(def);
                             }
@@ -2275,7 +2275,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                                         kind: ty::Opaque { def_id: captured_def_id },
                                         ..
                                     },
-                                ) = *ty.kind()
+                                ) = ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

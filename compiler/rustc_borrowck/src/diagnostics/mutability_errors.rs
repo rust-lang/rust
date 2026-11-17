@@ -474,7 +474,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if suggest {
                     self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
                     let tcx = self.infcx.tcx;
-                    if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
+                    if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
                         self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                     }
                 }
@@ -528,7 +528,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
-                    && let ty::Closure(id, _) = *ty.kind()
+                    && let ty::Closure(id, _) = ty.kind()
                 {
                     self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                 }
@@ -708,7 +708,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     fn count_ty_refs<'tcx>(mut ty: Ty<'tcx>) -> usize {
                         let mut count = 0;
                         while let ty::Ref(_, inner_ty, _) = ty.kind() {
-                            ty = *inner_ty;
+                            ty = inner_ty;
                             count += 1;
                         }
                         count
@@ -1261,7 +1261,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     {
                         let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
                         Some((
-                            *def_id,
+                            def_id,
                             expr.span,
                             arg_pos,
                             arg_pos,
@@ -1933,7 +1933,7 @@ fn suggest_ampmut<'tcx>(
             if let Either::Right(call) = body.stmt_at(*assign)
                 && let TerminatorKind::Call { func: Operand::Constant(const_operand), args, .. } =
                     &call.kind
-                && let ty::FnDef(method_def_id, method_args) = *const_operand.ty().kind()
+                && let ty::FnDef(method_def_id, method_args) = const_operand.ty().kind()
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
                 && tcx.is_lang_item(trait_, LangItem::Index)
             {

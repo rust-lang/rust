@@ -464,7 +464,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // The first argument is the coroutine type passed by value
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let movable = match *coroutine_ty.kind() {
+    let movable = match coroutine_ty.kind() {
         ty::Coroutine(def_id, _) => tcx.coroutine_movability(def_id) == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
@@ -586,7 +586,7 @@ fn check_must_not_suspend_ty<'tcx>(
 
     debug!("Checking must_not_suspend for {}", ty);
 
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(_, args) if ty.is_box() => {
             let boxed_ty = args.type_at(0);
             let allocator_ty = args.type_at(1);

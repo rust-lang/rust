@@ -197,7 +197,7 @@ fn is_same_generics<'tcx>(
         .skip(1) // skip `Self` implicit arg
         .all(|(arg_index, arg)| {
             if let Some(ty) = arg.as_type() {
-                if let &ty::Param(ty::ParamTy { index, .. }) = ty.kind()
+                if let ty::Param(ty::ParamTy { index, .. }) = ty.kind()
                     // `index == 0` means that it's referring to `Self`,
                     // in which case we don't try to substitute it
                     && index != 0

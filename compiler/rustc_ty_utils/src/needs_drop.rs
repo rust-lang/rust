@@ -71,7 +71,7 @@ fn filter_array_elements<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
     move |ty| match ty {
-        Ok(ty) => match *ty.kind() {
+        Ok(ty) => match ty.kind() {
             ty::Array(elem, _) => tcx.needs_drop_raw(typing_env.as_query_input(elem)),
             _ => true,
         },
@@ -83,7 +83,7 @@ fn filter_array_elements_async<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
     move |ty| match ty {
-        Ok(ty) => match *ty.kind() {
+        Ok(ty) => match ty.kind() {
             ty::Array(elem, _) => tcx.needs_async_drop_raw(typing_env.as_query_input(elem)),
             _ => true,
         },
@@ -199,7 +199,7 @@ where
             };
 
             for component in components {
-                match *component.kind() {
+                match component.kind() {
                     // The information required to determine whether a coroutine has drop is
                     // computed on MIR, while this very method is used to build MIR.
                     // To avoid cycles, we consider that coroutines always require drop.

@@ -689,7 +689,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let field_place = self.cat_projection(
                             with_expr.hir_id,
                             with_place.clone(),
-                            with_field.ty(self.cx.tcx(), *args).skip_norm_wip(),
+                            with_field.ty(self.cx.tcx(), args).skip_norm_wip(),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.consume_or_copy(&field_place, field_place.hir_id);
@@ -1486,7 +1486,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let ty::Ref(region, _, mutbl) =
-            *self.cx.structurally_resolve_type(base.span, base_ty).kind()
+            self.cx.structurally_resolve_type(base.span, base_ty).kind()
         else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };

@@ -937,7 +937,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             let ty = if local_decl.is_nonref_binding() {
                 local_decl.ty
-            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
+            } else if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
                 // If we have a binding of the form `let ref x: T = ..`
                 // then remove the outermost reference so we can check the
                 // type annotation for the remaining type.
@@ -1041,8 +1041,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_ty = op.ty(self.body, tcx);
                         let mut src_sig = src_ty.fn_sig(tcx);
-                        if let ty::FnDef(def_id, _) = *src_ty.kind()
-                            && let ty::FnPtr(_, target_hdr) = *ty.kind()
+                        if let ty::FnDef(def_id, _) = src_ty.kind()
+                            && let ty::FnPtr(_, target_hdr) = ty.kind()
                             && tcx.codegen_fn_attrs(def_id).safe_target_features
                             && target_hdr.safety().is_safe()
                             && let Some(safe_sig) = tcx.adjust_target_feature_sig(
@@ -1073,7 +1073,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // We check that this signature is WF before subtyping the signature with
                         // the target fn sig.
                         if src_sig.has_bound_regions()
-                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
+                            && let ty::FnPtr(target_fn_tys, target_hdr) = ty.kind()
                             && let target_sig = target_fn_tys.with(target_hdr)
                             && let Some(target_sig) = target_sig.no_bound_vars()
                         {
@@ -1267,8 +1267,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
-                            *ty_from,
-                            *ty_to,
+                            ty_from,
+                            ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast {
                                 is_raw_ptr_dyn_type_cast: false,
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                         let opt_ty_elem_mut = match ty_from.kind() {
                             ty::RawPtr(array_ty, array_mut) => match array_ty.kind() {
-                                ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
+                                ty::Array(ty_elem, _) => Some((ty_elem, array_mut)),
                                 _ => None,
                             },
                             _ => None,
@@ -1309,7 +1309,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
 
                         let (ty_to, ty_to_mut) = match ty.kind() {
-                            ty::RawPtr(ty_to, ty_to_mut) => (ty_to, *ty_to_mut),
+                            ty::RawPtr(ty_to, ty_to_mut) => (ty_to, ty_to_mut),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1334,8 +1334,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
-                            *ty_elem,
-                            *ty_to,
+                            ty_elem,
+                            ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast {
                                 is_raw_ptr_dyn_type_cast: false,
@@ -1504,9 +1504,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 },
                             );
                         } else if let ty::Dynamic(src_tty, src_lt) =
-                            *self.struct_tail(src.ty, location).kind()
+                            self.struct_tail(src.ty, location).kind()
                             && let ty::Dynamic(dst_tty, dst_lt) =
-                                *self.struct_tail(dst.ty, location).kind()
+                                self.struct_tail(dst.ty, location).kind()
                         {
                             match (src_tty.principal(), dst_tty.principal()) {
                                 (Some(_), Some(_)) => {
@@ -1593,7 +1593,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     CastKind::Transmute => {
                         let ty_from = op.ty(self.body, tcx);
                         match ty_from.kind() {
-                            ty::Pat(base, _) if base == ty => {}
+                            ty::Pat(base, _) if base == *ty => {}
                             _ => span_mirbug!(
                                 self,
                                 rvalue,
@@ -1674,7 +1674,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             Rvalue::WrapUnsafeBinder(op, ty) => {
                 let operand_ty = op.ty(self.body, self.tcx());
-                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                let ty::UnsafeBinder(binder_ty) = ty.kind() else {
                     unreachable!();
                 };
                 let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
@@ -1835,7 +1835,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
             }
 
-            if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
+            if let ty::FnDef(def_id, args) = constant.const_.ty().kind() {
                 let args = args.no_bound_vars().unwrap();
                 let instantiated_clauses = tcx.clauses_of(def_id).instantiate(tcx, args);
                 self.normalize_and_prove_instantiated_clauses(
@@ -1926,7 +1926,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 .unwrap();
             }
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
+                let ty::UnsafeBinder(binder_ty) = base_ty.ty.kind() else {
                     unreachable!();
                 };
                 let found_ty = self.infcx.instantiate_binder_with_fresh_vars(
@@ -2028,7 +2028,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         let func_ty = func.ty(self.body, self.infcx.tcx);
-        if let ty::FnDef(def_id, _) = *func_ty.kind() {
+        if let ty::FnDef(def_id, _) = func_ty.kind() {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a
             // constant. (Eventually this should use const-generics, but those are not up for the
             // task yet: https://github.com/rust-lang/rust/issues/85229.)
@@ -2595,8 +2595,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 // These field types can still contain projections from the source or target type
                 // and normalize them before handing them to `NllTypeRelating`
-                let dst_ty = self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
-                let src_ty = self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
+                let dst_ty = self.normalize(dst_field.ty(tcx, dst_args), location.to_locations());
+                let src_ty = self.normalize(src_field.ty(tcx, src_args), location.to_locations());
 
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),

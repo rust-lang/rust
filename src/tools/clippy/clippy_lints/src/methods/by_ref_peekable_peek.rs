@@ -32,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>) {
                 let span = by_ref_recv.span.shrink_to_hi().with_hi(expr.span.hi());
                 if let ty::Ref(_, iter_ty, _) = cx.typeck_results().expr_ty_adjusted(by_ref_recv).kind()
                     && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
-                    && implements_trait(cx, *iter_ty, clone_trait, &[])
+                    && implements_trait(cx, iter_ty, clone_trait, &[])
                 {
                     diag.span_suggestion_verbose(
                         span,

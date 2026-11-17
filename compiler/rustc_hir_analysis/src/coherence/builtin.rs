@@ -185,7 +185,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     }
 
     if !tcx.features().adt_const_params() {
-        match *self_type.kind() {
+        match self_type.kind() {
             ty::Adt(adt, _) if adt.is_struct() => {
                 let struct_vis = tcx.visibility(adt.did());
                 for variant in adt.variants() {
@@ -328,7 +328,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
     match (source.kind(), target.kind()) {
-        (&ty::Pat(_, pat_a), &ty::Pat(_, pat_b)) => {
+        (ty::Pat(_, pat_a), ty::Pat(_, pat_b)) => {
             if pat_a != pat_b {
                 return Err(tcx.dcx().emit_err(diagnostics::CoerceSamePatKind {
                     span,
@@ -340,13 +340,13 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             Ok(())
         }
 
-        (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
-            if r_a == *r_b && mutbl_a == *mutbl_b =>
+        (ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
+            if r_a == r_b && mutbl_a == mutbl_b =>
         {
             Ok(())
         }
-        (&ty::RawPtr(_, a_mutbl), &ty::RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+        (ty::RawPtr(_, a_mutbl), ty::RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
+        (ty::Adt(def_a, args_a), ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
             if def_a != def_b {
@@ -485,7 +485,7 @@ pub(crate) fn reborrow_info<'tcx>(
     assert!(!source.has_escaping_bound_vars());
 
     let (def, args) = match source.kind() {
-        &ty::Adt(def, args) if def.is_struct() => (def, args),
+        ty::Adt(def, args) if def.is_struct() => (def, args),
         _ => {
             // Note: reusing error here as it takes trait_name as argument.
             return Err(tcx
@@ -695,7 +695,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         (mt_a.ty, mt_b.ty, unsize_trait, None, span)
     };
     let (source, target, trait_def_id, kind, field_span) = match (source.kind(), target.kind()) {
-        (&ty::Pat(ty_a, pat_a), &ty::Pat(ty_b, pat_b)) => {
+        (ty::Pat(ty_a, pat_a), ty::Pat(ty_b, pat_b)) => {
             if pat_a != pat_b {
                 return Err(tcx.dcx().emit_err(diagnostics::CoerceSamePatKind {
                     span,
@@ -707,7 +707,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             (ty_a, ty_b, coerce_unsized_trait, None, span)
         }
 
-        (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
+        (ty::Ref(r_a, ty_a, mutbl_a), ty::Ref(r_b, ty_b, mutbl_b)) => {
             infcx.sub_regions(
                 SubregionOrigin::RelateObjectBound(span),
                 r_b,
@@ -719,14 +719,14 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
-        | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
+        (ty::Ref(_, ty_a, mutbl_a), ty::RawPtr(ty_b, mutbl_b))
+        | (ty::RawPtr(ty_a, mutbl_a), ty::RawPtr(ty_b, mutbl_b)) => {
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
         }
 
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+        (ty::Adt(def_a, args_a), ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
             if def_a != def_b {

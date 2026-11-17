@@ -68,7 +68,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
 
             // Don't transform the type of the array length and keep it as `usize`.
             // This is required for `try_to_target_usize` to work correctly.
-            &ty::Array(inner, len) => {
+            ty::Array(inner, len) => {
                 let inner = self.fold_ty(inner);
                 Ty::new_array_with_const_len(self.tcx, inner, len)
             }
@@ -157,7 +157,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     if let Some(field) = field {
                         let ty0 = self.tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            field.ty(self.tcx, *args),
+                            field.ty(self.tcx, args),
                         );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that

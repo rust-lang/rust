@@ -140,7 +140,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
         if let ty::Alias(
             _,
             alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_ty_def_id }, .. },
-        ) = *clause_ty.kind()
+        ) = clause_ty.kind()
         {
             if alias_ty.trait_ref(tcx) == item_trait_ref
                 && alias_ty_def_id == assoc_item_def_id.to_def_id()
@@ -194,7 +194,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
                 mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Type(ty) => {
-                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() else {
+                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = ty.kind() else {
                     return None;
                 };
                 mapping.insert(bv.var, tcx.mk_param_from_def(param))
@@ -266,7 +266,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ty;
         }
 
-        if let ty::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = *ty.kind()
+        if let ty::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = ty.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -541,7 +541,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(
+        if let ty::Alias(
             _,
             ty::AliasTy { kind: ty::Projection { def_id: projection_ty_def_id }, args, .. },
         ) = ty.kind()

@@ -86,7 +86,7 @@ fn uint_compare_to_zero<'tcx>(
 
 fn deref_sugg<'a>(sugg: Sugg<'a>, ty: Ty<'_>) -> Sugg<'a> {
     if let ty::Ref(_, target_ty, _) = ty.kind() {
-        deref_sugg(sugg.deref(), *target_ty)
+        deref_sugg(sugg.deref(), target_ty)
     } else {
         sugg
     }

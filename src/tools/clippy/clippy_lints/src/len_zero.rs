@@ -321,7 +321,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
                     .filter_by_name_unhygienic(sym::is_empty)
                     .any(|item| is_is_empty_and_stable(cx, item, msrv))
             }),
-            &ty::Alias(
+            ty::Alias(
                 _,
                 ty::AliasTy {
                     kind: ty::Projection { def_id },

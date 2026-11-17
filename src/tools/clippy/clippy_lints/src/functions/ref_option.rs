@@ -13,7 +13,7 @@ use rustc_span::def_id::LocalDefId;
 
 fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
     if let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
-        && let Some(gen_ty) = option_arg_ty(cx, *opt_ty)
+        && let Some(gen_ty) = option_arg_ty(cx, opt_ty)
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
         && let hir::TyKind::Ref(lifetime, ty, ..) = param.kind
