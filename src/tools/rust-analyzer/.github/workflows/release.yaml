@@ -302,6 +302,7 @@ jobs:
         env:
           COMMAND: ${{ matrix.cmd }}
           MAYBE_PRE_RELEASE: ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
+          AUTHENTICATION: ${{ matrix.authentication }}
         working-directory: ./editors/code
-        run: npx ${COMMAND} publish --skip-duplicate ${{ matrix.authentication }} --packagePath ../../dist/rust-analyzer-*.vsix ${MAYBE_PRE_RELEASE}
+        run: npx ${COMMAND} publish --skip-duplicate ${AUTHENTICATION} --packagePath ../../dist/rust-analyzer-*.vsix ${MAYBE_PRE_RELEASE}
         timeout-minutes: 2
