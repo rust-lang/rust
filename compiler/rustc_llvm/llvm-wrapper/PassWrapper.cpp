@@ -524,7 +524,14 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
         TpdeOptions.plugin &&
         "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
     llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+#if LLVM_VERSION_GE(24, 0)
+    if (plugin.PreCodeGenCallback(*unwrap(Target), *unwrap(M), BOS,
+                                  BDwoOS.get(), FileType, !VerifyIR,
+                                  DisableSimplifyLibCalls, /*MSI=*/nullptr,
+                                  vfs::getRealFileSystem())) {
+#else
     if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+#endif
       return LLVMRustResult::Success;
     } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
       std::string error = "Failed to compile module " +
