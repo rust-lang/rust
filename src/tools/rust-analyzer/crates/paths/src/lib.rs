@@ -308,6 +308,12 @@ impl AbsPath {
         self.0.components()
     }
     // endregion:delegate-methods
+
+    /// `"/a/b/c/d/e".short_relative_by("b/c")` -> `"d/e"`
+    pub fn short_relative_by(&self, dummy: impl AsRef<Path>) -> Option<&RelPath> {
+        let prefix = self.0.ancestors().find(|prefix| prefix.ends_with(&dummy))?;
+        self.strip_prefix(AbsPath::assert(prefix))
+    }
 }
 
 impl fmt::Display for AbsPath {
