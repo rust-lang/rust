@@ -55,6 +55,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Replace them with a placeholder so path-length differences between
     // machines do not make Content-Length drift from the normalised body.
     let content_length_regex = Regex::new(r"Content-Length: \d+").unwrap();
+    // Local indices are assigned while MIR is built, so a rustup that inserts a
+    // temporary changes them. Keep the storage projection suffix (`.0`, `.*`,
+    // ` as variant#1.0`): it says which field or variant of the local the row
+    // reads. `print <id>` echoes are rewritten too, so they stop pinning the id.
+    let local_id_regex = Regex::new(r"Id: _[0-9]+").unwrap();
     config.comment_defaults.base().normalize_stdout.extend([
         (manifest_dir_regex.into(), b"{MANIFEST_DIR}".to_vec()),
         (miri_dir_regex.into(), b"{MIRI_DIR}".to_vec()),
@@ -63,6 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // DAP frames use CRLF headers; keep checked-in stdout fixtures readable.
         (crlf_regex.into(), b"\n".to_vec()),
         (content_length_regex.into(), b"Content-Length: {CONTENT_LENGTH}".to_vec()),
+        (local_id_regex.into(), b"Id: _{LOCAL}".to_vec()),
     ]);
 
     // Priroda UI tests do not currently require annotation comments in the test files.
