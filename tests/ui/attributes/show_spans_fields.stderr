@@ -1,0 +1,12 @@
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:18:12
+   |
+LL |     field!(T, 0);
+   |            ^^^^
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:18:12
+   |
+LL |     field!(T, 0);
+   |            ^
+
