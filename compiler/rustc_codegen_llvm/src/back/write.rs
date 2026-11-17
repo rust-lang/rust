@@ -1309,6 +1309,8 @@ fn create_msvc_imps<'ll>(
     // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
     // underscores added in front).
     let prefix: &[u8] = if cgcx.target_arch == "x86" { b"\x01__imp__" } else { b"\x01__imp_" };
+    // A name beginning with '\x01' is unmangled: no extra underscore on x86, and no copied marker.
+    let unmangled_prefix: &[u8] = b"\x01__imp_";
 
     let ptr_ty = llvm_type_ptr(llcx);
     let symbols = std::iter::chain(
@@ -1332,8 +1334,13 @@ fn create_msvc_imps<'ll>(
             continue;
         }
 
+        let (prefix, name) = match name.strip_prefix(b"\x01") {
+            Some(name) => (unmangled_prefix, name),
+            None => (prefix, name.as_slice()),
+        };
+
         let mut imp_name = prefix.to_vec();
-        imp_name.extend(name);
+        imp_name.extend_from_slice(name);
         let imp_name = CString::new(imp_name).unwrap();
 
         let imp = llvm::add_global(llmod, ptr_ty, &imp_name);

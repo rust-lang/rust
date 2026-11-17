@@ -17,7 +17,8 @@ use run_make_support::{
 };
 
 /// The undecorated exported names of the base fixture (`lib.rs`).
-const BASE_EXPORTED: &[&str] = &["my_add", "my_hash_lookup", "call_internal", "my_safe_div"];
+const BASE_EXPORTED: &[&str] =
+    &["my_add", "my_no_mangle_export", "my_hash_lookup", "call_internal", "my_safe_div"];
 
 fn main() {
     let hide_sibling = source_root().join("tests/run-make/staticlib-hide-internal-symbols");

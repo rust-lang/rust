@@ -1,5 +1,7 @@
 //@ only-elf
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use std::collections::HashSet;
 
@@ -8,7 +10,8 @@ use run_make_support::object::read::elf::{FileHeader as _, SectionHeader as _, S
 use run_make_support::object::{Endianness, elf};
 use run_make_support::{cc, extra_c_flags, rfs, run, rustc, static_lib_name};
 
-const EXPORTED: &[&str] = &["my_add", "my_hash_lookup", "call_internal", "my_safe_div"];
+const EXPORTED: &[&str] =
+    &["my_add", "my_no_mangle_export", "my_hash_lookup", "call_internal", "my_safe_div"];
 
 fn main() {
     let lib_name = static_lib_name("lib");
