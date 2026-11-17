@@ -12,8 +12,8 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg, Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{Intrinsic, Ty};
 use rustc_span::{Span, Symbol};
 
 use crate::assert_module_sources::CguReuse;
@@ -724,7 +724,7 @@ pub enum InvalidMonomorphization<'tcx> {
     BasicIntegerType {
         #[primary_span]
         span: Span,
-        name: Symbol,
+        name: Intrinsic,
         ty: Ty<'tcx>,
     },
 
@@ -732,7 +732,7 @@ pub enum InvalidMonomorphization<'tcx> {
     BasicIntegerOrPtrType {
         #[primary_span]
         span: Span,
-        name: Symbol,
+        name: Intrinsic,
         ty: Ty<'tcx>,
     },
 
@@ -740,7 +740,7 @@ pub enum InvalidMonomorphization<'tcx> {
     BasicFloatType {
         #[primary_span]
         span: Span,
-        name: Symbol,
+        name: Intrinsic,
         ty: Ty<'tcx>,
     },
 
