@@ -937,6 +937,10 @@ mod desc {
         "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
     pub(crate) const parse_instrument_mcount: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry`, `fentry-record`, `fentry-nop-record` on supported targets";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
+    pub(crate) const parse_raise_optimize_speed: &str = "a comma separated list of settings: one \
+        of `off`, `crate`, `unit`, `one-module`, or `modules`; `level=2` or `level=3`; `noipa`; \
+        `copy-callees`; `mir`; `import`; `codegen-level`; `probe=added-unused`, `probe=added`, or \
+        `probe=chosen`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
@@ -1827,6 +1831,34 @@ pub mod parse {
                     options.skip_exit = true;
                     seen_skip_exit = true;
                 }
+                _ => return false,
+            }
+        }
+        true
+    }
+
+    pub(crate) fn parse_raise_optimize_speed(
+        slot: &mut RaiseOptimizeSpeed,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(v) = v else { return false };
+        for setting in v.split(',') {
+            match setting {
+                "off" => slot.form = RaiseOptimizeSpeedForm::Off,
+                "crate" => slot.form = RaiseOptimizeSpeedForm::Crate,
+                "unit" => slot.form = RaiseOptimizeSpeedForm::Unit,
+                "one-module" => slot.form = RaiseOptimizeSpeedForm::OneModule,
+                "modules" => slot.form = RaiseOptimizeSpeedForm::Modules,
+                "level=2" => slot.level = OptLevel::More,
+                "level=3" => slot.level = OptLevel::Aggressive,
+                "noipa" => slot.noipa = true,
+                "copy-callees" => slot.copy_callees = true,
+                "mir" => slot.mir = true,
+                "import" => slot.import = true,
+                "codegen-level" => slot.codegen_level = true,
+                "probe=added-unused" => slot.probe = RaiseOptimizeSpeedProbe::AddedUnused,
+                "probe=added" => slot.probe = RaiseOptimizeSpeedProbe::Added,
+                "probe=chosen" => slot.probe = RaiseOptimizeSpeedProbe::Chosen,
                 _ => return false,
             }
         }
@@ -2892,6 +2924,10 @@ options! {
         "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
+    raise_optimize_speed: RaiseOptimizeSpeed = (RaiseOptimizeSpeed::default(),
+        parse_raise_optimize_speed, [TRACKED],
+        "in a crate built at `-C opt-level=0`, optimize the functions marked \
+        `#[optimize(speed)]`, and say in which form (default: off)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
     reg_struct_return: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RegStructReturn },

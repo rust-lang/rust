@@ -993,6 +993,20 @@ impl Session {
         self.opts.optimize.objective()
     }
 
+    /// How this compilation optimizes the functions marked `#[optimize(speed)]` above the
+    /// crate's own level, if it does: only under `-Z raise-optimize-speed`, and only in a crate
+    /// built at `-C opt-level=0` without LTO, where the attribute otherwise has no effect.
+    pub fn raise_optimize_speed(&self) -> Option<config::RaiseOptimizeSpeed> {
+        let raise = self.opts.unstable_opts.raise_optimize_speed;
+        let applies = raise.form != config::RaiseOptimizeSpeedForm::Off
+            && self.opts.optimize == config::OptLevel::No
+            && matches!(self.opts.cg.lto, LtoCli::Unspecified | LtoCli::No)
+            && self.opts.unstable_opts.thinlto != Some(true)
+            && !self.opts.cg.linker_plugin_lto.enabled()
+            && !self.target.requires_lto;
+        applies.then_some(raise)
+    }
+
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line

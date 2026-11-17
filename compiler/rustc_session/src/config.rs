@@ -40,6 +40,9 @@ use crate::config::native_libs::parse_native_libs;
 pub use crate::config::print_request::{
     PrintCategory, PrintKind, PrintRequest, collect_print_requests,
 };
+pub use crate::config::raise_optimize_speed::{
+    RaiseOptimizeSpeed, RaiseOptimizeSpeedForm, RaiseOptimizeSpeedProbe,
+};
 use crate::diagnostics::FileWriteFail;
 use crate::macros::AllVariants;
 pub use crate::options::*;
@@ -51,6 +54,7 @@ mod cfg;
 mod externs;
 mod native_libs;
 mod print_request;
+mod raise_optimize_speed;
 pub mod sigpipe;
 
 /// A recommended stack size for worker threads spawned within a session.
@@ -3526,9 +3530,9 @@ pub(crate) mod dep_tracking {
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
         InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LlvmTpde, LocationDetail, LtoCli,
         MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, RaiseOptimizeSpeed,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3614,6 +3618,7 @@ pub(crate) mod dep_tracking {
         PatchableFunctionEntry,
         PointerAuthOption,
         Polonius,
+        RaiseOptimizeSpeed,
         RelocModel,
         RelroLevel,
         RemapPathScopeComponents,
