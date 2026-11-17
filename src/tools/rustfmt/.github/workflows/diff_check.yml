@@ -54,14 +54,14 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Build check_diff binary
-      working-directory: ./check_diff
+    - name: Build diff_check binary
+      working-directory: ./diff_check
       run: cargo build --release --locked
 
     - name: Run Diff Check
-      working-directory: ./check_diff
+      working-directory: ./diff_check
       env:
-        CHECK_DIFF_LOG: info
+        DIFF_CHECK_LOG: info
         GITHUB_EVENT_INPUTS_COMMIT_HASH: ${{ github.event.inputs.commit_hash }}
         GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS: ${{ github.event.inputs.rustfmt_configs }}
         GITHUB_EVENT_INPUTS_CLONE_URL: ${{ github.event.inputs.clone_url }}
@@ -80,7 +80,7 @@ jobs:
           OPTIONS+="--rustfmt-config ${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS} "
         fi
 
-        target/release/check_diff ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
+        target/release/diff_check ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
           --edition ${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION} \
           --style-edition ${GITHUB_EVENT_INPUTS_STYLE_EDITION} \
           $OPTIONS

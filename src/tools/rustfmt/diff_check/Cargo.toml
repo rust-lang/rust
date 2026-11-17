@@ -1,5 +1,5 @@
 [package]
-name = "check_diff"
+name = "diff_check"
 version = "0.1.0"
 edition = "2021"
 
