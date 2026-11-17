@@ -1,4 +1,5 @@
 use rustc_abi::ExternAbi;
+use rustc_target::spec::Os;
 
 use crate::concurrency::thread::ThreadLookupError;
 use crate::*;
@@ -9,15 +10,97 @@ pub enum ThreadNameResult {
     NameTooLong,
 }
 
+// # pthread_attr_t
+
+struct PthreadAttr {
+    /// `None` represents that the stack size has not been explicitly set.
+    stack_size: Option<u64>,
+}
+
+impl MetaObj for PthreadAttr {
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+/// Returns the thread attribute data stored at the address that `attr_ptr` points to.
+fn attr_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadAttr>
+where
+    'tcx: 'a,
+{
+    let attr = ecx.deref_pointer(attr_ptr)?;
+    ecx.get_or_insert_meta(&attr, |_ecx| {
+        throw_ub_format!("`pthread_attr_t` has not been initialized or has been tampered with")
+    })
+}
+
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn pthread_attr_init(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        let attr = ecx.deref_pointer(attr_op)?;
+        ecx.insert_meta(&attr, Box::new(PthreadAttr { stack_size: None }))?;
+        ecx.write_int(0, dest)
+    }
+
+    fn pthread_attr_destroy(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        let attr = ecx.deref_pointer(attr_op)?;
+        ecx.remove_meta::<PthreadAttr>(&attr)?.ok_or_else(|| {
+            err_ub_format!("`pthread_attr_t` has not been initialized or has been tampered with")
+        })?;
+        ecx.write_int(0, dest)
+    }
+
+    fn pthread_attr_setstacksize(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        stack_size_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        let stack_size = ecx.read_target_usize(stack_size_op)?;
+
+        // Check the attribute object even if the size is invalid.
+        attr_get_data(ecx, attr_op)?;
+
+        // Check that the size is valid.
+        let os = &ecx.tcx.sess.target.os;
+        // NetBSD has no `PTHREAD_STACK_MIN` constant.
+        if *os != Os::NetBsd
+            && stack_size < ecx.eval_libc("PTHREAD_STACK_MIN").to_target_usize(ecx)?
+        {
+            return ecx.write_scalar(ecx.eval_libc("EINVAL"), dest);
+        }
+        // macOS additionally requires the size to be a multiple of the page size.
+        if *os == Os::MacOs && !stack_size.is_multiple_of(ecx.machine.page_size) {
+            return ecx.write_scalar(ecx.eval_libc("EINVAL"), dest);
+        }
+
+        // Update size in `attr`.
+        attr_get_data(ecx, attr_op)?.stack_size = Some(stack_size);
+        ecx.write_scalar(Scalar::from_i32(0), dest)
+    }
+
     fn pthread_create(
         &mut self,
         thread: &OpTy<'tcx>,
-        _attr: &OpTy<'tcx>,
+        attr: &OpTy<'tcx>,
         start_routine: &OpTy<'tcx>,
         arg: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, ()> {
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
         let thread_info_place = ecx.deref_pointer(thread)?;
@@ -25,6 +108,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let start_routine = ecx.read_pointer(start_routine)?;
 
         let func_arg = ecx.read_immediate(arg)?;
+
+        // A null `attr` means default attributes.
+        let stack_size = if ecx.ptr_is_null(ecx.read_pointer(attr)?)? {
+            None
+        } else {
+            attr_get_data(ecx, attr)?.stack_size
+        };
+        if let Some(stack_size) = stack_size
+            && !ecx.thread_stack_size_ok(stack_size)
+        {
+            // There are not enough resources for such a big stack.
+            return ecx.write_scalar(ecx.eval_libc("EAGAIN"), dest);
+        }
 
         ecx.start_regular_thread(
             Some(thread_info_place),
@@ -34,7 +130,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx.machine.layouts.unit_ptr_mut,
         )?;
 
-        interp_ok(())
+        ecx.write_scalar(Scalar::from_i32(0), dest)
     }
 
     fn pthread_join(
