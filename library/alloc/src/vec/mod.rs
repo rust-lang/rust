@@ -3622,12 +3622,11 @@ impl<T: Clone> Vec<T, Global> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_repeat)]
     /// let vec = Vec::repeat(0, 3);
     /// assert_eq!(vec, [0; 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "vec_repeat", issue = "164215")]
+    #[stable(feature = "vec_repeat", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn repeat(elem: T, n: usize) -> Self {
         <T as SpecFromElem>::from_elem(elem, n, Global)
@@ -3649,14 +3648,13 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_repeat)]
     /// use std::alloc::System;
     ///
     /// let vec = Vec::repeat_in(0, 3, System);
     /// assert_eq!(vec, [0; 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "vec_repeat", issue = "164215")]
+    #[stable(feature = "vec_repeat", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn repeat_in(elem: T, n: usize, alloc: A) -> Self {
         <T as SpecFromElem>::from_elem(elem, n, alloc)
