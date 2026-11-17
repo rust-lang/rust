@@ -72,7 +72,9 @@ jobs:
           OPTIONS+="--rustfmt-config ${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS} "
         fi
 
-        target/release/diff_check ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
-          --edition ${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION} \
-          --style-edition ${GITHUB_EVENT_INPUTS_STYLE_EDITION} \
+        target/release/diff_check \
+          "${GITHUB_EVENT_INPUTS_CLONE_URL}" \
+          "${GITHUB_EVENT_INPUTS_BRANCH_NAME}" \
+          --edition "${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION}" \
+          --style-edition "${GITHUB_EVENT_INPUTS_STYLE_EDITION}" \
           $OPTIONS
