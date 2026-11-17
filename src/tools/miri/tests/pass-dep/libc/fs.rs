@@ -13,7 +13,7 @@ use std::io::Write;
 use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, ptr};
 
 mod fs {
@@ -53,6 +53,7 @@ fn main() {
     test_openat(libc::openat);
     #[cfg(target_os = "linux")]
     test_openat(libc::openat64);
+    test_unlinkat();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -586,6 +587,83 @@ fn test_openat(
             errno_check(unsafe { libc::close(fd) });
         }
     }
+
+    errno_check(unsafe { libc::close(dirfd) });
+}
+
+fn test_unlinkat() {
+    let path = utils::prepare("miri_test_unlinkat");
+    fs::create_dir(&path).unwrap();
+    let cpath = utils::into_c_string(&path);
+    let dirfd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+
+    let unlinkat = |dirfd: libc::c_int, path: &CStr, flags: libc::c_int| {
+        errno_result(unsafe { libc::unlinkat(dirfd, path.as_ptr(), flags) })
+    };
+    let errno = |res: std::io::Result<libc::c_int>| res.unwrap_err().raw_os_error().unwrap();
+
+    // Remove a file relative to dirfd.
+    fs::write(path.join("file.txt"), b"data").unwrap();
+    assert_eq!(unlinkat(dirfd, c"file.txt", 0).unwrap(), 0);
+    assert!(!path.join("file.txt").exists());
+    // Now it is gone, so removing it again fails.
+    assert_eq!(errno(unlinkat(dirfd, c"file.txt", 0)), libc::ENOENT);
+
+    // Remove a file via its absolute path, can use garbage dirfd.
+    fs::write(path.join("file.txt"), b"data").unwrap();
+    let cfile = utils::into_c_string(path.join("file.txt"));
+    assert_eq!(unlinkat(999, &cfile, 0).unwrap(), 0);
+    assert!(!path.join("file.txt").exists());
+
+    // With `AT_FDCWD`, a relative path is relative to the working directory, not to an FD.
+    assert_eq!(errno(unlinkat(libc::AT_FDCWD, c"miri_test_unlinkat_missing", 0)), libc::ENOENT);
+    let original_cwd = env::current_dir().unwrap();
+    env::set_current_dir(&path).unwrap();
+    let cwd_file = Path::new("miri_test_unlinkat_cwd");
+    fs::write(cwd_file, b"data").unwrap();
+    assert_eq!(unlinkat(libc::AT_FDCWD, c"miri_test_unlinkat_cwd", 0).unwrap(), 0,);
+    assert!(!cwd_file.exists());
+    env::set_current_dir(original_cwd).unwrap();
+
+    // Remove a directory, which has to be empty.
+    fs::create_dir(path.join("dir")).unwrap();
+    fs::write(path.join("dir/file.txt"), b"data").unwrap();
+    // Test error when it is not empty.
+    // POSIX allows either of these errors.
+    let err = errno(unlinkat(dirfd, c"dir", libc::AT_REMOVEDIR));
+    assert!(matches!(err, libc::ENOTEMPTY | libc::EEXIST), "unexpected errno: {err}");
+    assert_eq!(unlinkat(dirfd, c"dir/file.txt", 0).unwrap(), 0);
+    assert_eq!(unlinkat(dirfd, c"dir", libc::AT_REMOVEDIR).unwrap(), 0);
+    assert!(!path.join("dir").exists());
+
+    // Symlinks are removed themselves, their targets are left alone.
+    if utils::have_symlink_permission() {
+        fs::write(path.join("file.txt"), b"data").unwrap();
+        fs::create_dir(path.join("dir")).unwrap();
+        // Check both paths relative to dirfd, and absolute paths.
+        for (fd, base) in [(dirfd, PathBuf::new()), (999, path.clone())] {
+            fs::symlink("file.txt", path.join("filelink")).unwrap();
+            fs::symlink("dir", path.join("dirlink")).unwrap();
+            let filelink = utils::into_c_string(base.join("filelink"));
+            let dirlink = utils::into_c_string(base.join("dirlink"));
+
+            assert_eq!(unlinkat(fd, &filelink, 0).unwrap(), 0);
+            assert!(path.join("filelink").symlink_metadata().is_err());
+            assert!(path.join("file.txt").exists());
+
+            // A symlink to a directory is not a directory, so `AT_REMOVEDIR` fails.
+            assert_eq!(errno(unlinkat(fd, &dirlink, libc::AT_REMOVEDIR)), libc::ENOTDIR);
+            // But it can be removed like a file.
+            assert_eq!(unlinkat(fd, &dirlink, 0).unwrap(), 0);
+            assert!(path.join("dirlink").symlink_metadata().is_err());
+            assert!(path.join("dir").exists());
+        }
+    }
+
+    // A relative path needs a dirfd that is an open directory.
+    assert_eq!(errno(unlinkat(999, c"file.txt", 0)), libc::EBADF);
+    let file = File::create(path.join("file.txt")).unwrap();
+    assert_eq!(errno(unlinkat(file.as_raw_fd(), c"file.txt", 0)), libc::ENOTDIR);
 
     errno_check(unsafe { libc::close(dirfd) });
 }
