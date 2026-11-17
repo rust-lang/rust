@@ -21,6 +21,7 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
 | LoongArch | `vreg` | `lsx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
+| RISC-V | `vreg` | `v` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `i8x32`, `i16x16`, `i32x8`, `i64x4`, `i8x128`, `i16x64`, `i32x32`, `i64x16` |
 | LoongArch | `xreg` | `lasx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
 | AArch64 | `vreg` | `sve` | `i8xN`, `i16xB`, `i32xN`, `i64xN`, `f16xN`, `f32xN`, `f64xN` (scalable vector) |
 | AArch64 | `preg` | `sve` | `i1xN` (scalable vector predicate) |
@@ -49,3 +50,18 @@ This tracks support for additional registers in architectures where inline assem
 | LoongArch | `xreg` | None | `$xr0` | `u` |
 | LoongArch | `xreg` | `w` | `$vr0` | `w` |
 | AArch64 | `vreg` | `z` | `z0` | `z` |
+
+### RISC-V vector registers
+
+`vreg` operands require the `v` target feature and the `asm_experimental_reg`
+gate. Allowed types are fixed-size SIMD vectors up to 1024 bytes; LLVM chooses
+the LMUL (including fractional groups) from the vector length and the target's
+minimum VLEN. LLVM's multi-letter constraint needs the `^` prefix (`^vr`); plain
+`vr` is parsed as two constraints and fails register allocation.
+
+RISC-V vector asm is emitted with `~{vtype}` and `~{vl}` (plus `~{vxsat}`,
+`~{vxrm}`) clobbers, so LLVM does not assume a `vsetvli` from one block survives
+the next. Codegen may also spill `vreg` operands between blocks and emit its own
+`vsetvli` for the spill. Set the required SEW/LMUL with `vsetvli` in every vector
+asm block that depends on it; do not rely on a single `vsetvli` earlier in the
+function.

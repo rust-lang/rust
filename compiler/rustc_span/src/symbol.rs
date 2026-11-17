@@ -3012,6 +3012,8 @@ pub mod sym {
     pub const f: Symbol = ascii_letter_digit('f').unwrap();
     #[expect(non_upper_case_globals)]
     pub const d: Symbol = ascii_letter_digit('d').unwrap();
+    #[expect(non_upper_case_globals)]
+    pub const v: Symbol = ascii_letter_digit('v').unwrap();
 
     /// Get the symbol for an integer.
     ///
