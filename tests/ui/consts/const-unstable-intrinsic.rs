@@ -26,6 +26,19 @@ const fn const_main() {
         align_of_val(&x);
         //~^ERROR: cannot use `#[feature(local)]`
     }
+    unsafe {
+        unstable_intrinsic::llvm_fshl(0, 0, 0);
+        //~^ERROR: unstable library feature `unstable`
+        //~|ERROR: not yet stable as a const intrinsic
+        unstable_intrinsic::llvm_fshl2(0, 0, 0);
+        //~^ERROR: unstable library feature `unstable`
+        //~|ERROR: not yet stable as a const intrinsic
+
+        llvm_fshl(0, 0, 0);
+        //~^ERROR: cannot use `#[feature(local)]`
+        llvm_fshl2(0, 0, 0);
+        //~^ERROR: cannot use `#[feature(local)]`
+    }
 }
 
 #[unstable(feature = "local", issue = "42")]
@@ -33,9 +46,18 @@ const fn const_main() {
 pub const unsafe fn size_of_val<T>(x: *const T) -> usize;
 
 #[unstable(feature = "local", issue = "42")]
+#[rustc_intrinsic(llvm = "llvm.fshl.i64")]
+pub const unsafe fn llvm_fshl(a: i64, b: i64, sh: i64) -> i64;
+
+#[unstable(feature = "local", issue = "42")]
 #[rustc_const_unstable(feature = "local", issue = "42")]
 #[rustc_intrinsic]
 pub const unsafe fn align_of_val<T>(x: *const T) -> usize;
+
+#[unstable(feature = "local", issue = "42")]
+#[rustc_const_unstable(feature = "local", issue = "42")]
+#[rustc_intrinsic(llvm = "llvm.fshl.i64")]
+pub const unsafe fn llvm_fshl2(a: i64, b: i64, sh: i64) -> i64;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -56,6 +78,12 @@ mod fallback {
         //~^ ERROR cannot use `#[feature(local)]`
     }
 
+    #[rustc_intrinsic(llvm = "llvm.fshl.i64")]
+    const unsafe fn llvm_fshl(a: i64, b: i64, sh: i64) -> i64 {
+        super::llvm_fshl(a, b, sh)
+        //~^ ERROR cannot use `#[feature(local)]`
+    }
+
     // Even unstable intrinsics must be const-checked if we add
     // `rustc_intrinsic_const_stable_indirect`.
     #[rustc_intrinsic]
@@ -63,6 +91,14 @@ mod fallback {
     #[rustc_intrinsic_const_stable_indirect]
     pub const unsafe fn align_of_val<T>(x: *const T) -> usize {
         super::align_of_val(x)
+        //~^ ERROR cannot use `#[feature(local)]`
+    }
+
+    #[rustc_intrinsic(llvm = "llvm.fshl.i64")]
+    #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+    #[rustc_intrinsic_const_stable_indirect]
+    pub const unsafe fn llvm_fshl2(a: i64, b: i64, sh: i64) -> i64 {
+        super::llvm_fshl2(a, b, sh)
         //~^ ERROR cannot use `#[feature(local)]`
     }
 }
