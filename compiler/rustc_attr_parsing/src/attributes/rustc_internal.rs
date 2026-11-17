@@ -89,21 +89,21 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcPanicsWhenZeroParser;
+pub(crate) struct LintPanicsWhenZeroParser;
 
-impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
-    const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
+impl NoArgsAttributeParser for LintPanicsWhenZeroParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::panics_when_zero];
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::ConstParam)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintPanicsWhenZero;
 }
 
-pub(crate) struct RustcNoImplicitAutorefsParser;
+pub(crate) struct LintNoImplicitAutorefsParser;
 
-impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
-    const PATH: &[Symbol] = &[sym::rustc_no_implicit_autorefs];
+impl NoArgsAttributeParser for LintNoImplicitAutorefsParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::no_implicit_autorefs];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -113,7 +113,7 @@ impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitAutorefs;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintNoImplicitAutorefs;
 }
 
 pub(crate) struct RustcLegacyConstGenericsParser;
@@ -1132,10 +1132,10 @@ impl NoArgsAttributeParser for RustcIntrinsicConstStableIndirectParser {
 pub(crate) struct RustcExhaustiveParser;
 
 impl NoArgsAttributeParser for RustcExhaustiveParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
+    const PATH: &'static [Symbol] = &[sym::lint, sym::must_match_exhaustively];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::LintMustMatchExhaustively;
 }
 
 pub(crate) struct RustcCanonicalSymbolParser;

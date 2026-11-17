@@ -744,7 +744,8 @@ pub struct GlobalCaches<'tcx> {
 ///   possible.
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }

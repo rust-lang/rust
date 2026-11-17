@@ -19,7 +19,11 @@ use crate::{
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_pass_by_value),
+    cfg_attr(not(bootstrap), lint::pass_by_value)
+)]
 #[derive(GenericTypeVisitable, Lift_Generic)]
 pub struct Const<I: Interner>(pub I::InternedConstKind);
 

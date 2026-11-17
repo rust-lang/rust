@@ -59,8 +59,10 @@ This API is completely unstable and subject to change.
 #![feature(default_field_values)]
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
+#![feature(register_tool)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 // These are used by Clippy.

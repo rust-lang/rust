@@ -12,8 +12,10 @@
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
 #![feature(once_cell_try)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 pub use crate::back::llvm_backend::{LlvmCodegenBackend, ModuleLlvm};

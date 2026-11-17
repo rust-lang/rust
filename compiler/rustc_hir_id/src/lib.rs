@@ -1,8 +1,13 @@
 //! Library containing Id types from `rustc_hir`, split out so crates can use it without depending
 //! on all of `rustc_hir` (which is large and depends on other large things like `rustc_target`).
+
+// tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(negative_impls)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
+#![register_tool(lint)]
+// tidy-alphabetical-end
 
 pub mod def_path_hash_map;
 pub mod definitions;
@@ -95,7 +100,8 @@ impl ToStableHashKey for OwnerId {
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct HirId {
     pub owner: OwnerId,
     pub local_id: ItemLocalId,
