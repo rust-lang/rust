@@ -288,6 +288,11 @@ impl<'tcx> UsageMap<'tcx> {
         self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
 
+    /// The items that `item` uses, of whatever instantiation mode.
+    pub(crate) fn get_used_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+        self.used_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
+    }
+
     /// Internally iterate over all inlined items used by `item`.
     pub(crate) fn for_each_inlined_used_item<F>(
         &self,

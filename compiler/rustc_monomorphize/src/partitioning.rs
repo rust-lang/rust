@@ -178,6 +178,33 @@ impl<'tcx> PartitioningCx<'_, 'tcx> {
         self.unused_probe
             .is_some_and(|name| collector::is_unused_probe(self.tcx, instance.def_id(), name))
     }
+
+    /// Whether a raised unit gets a copy of its own of `mono_item` when a function in it uses
+    /// it, under `-Z raise-optimize-speed=...,copy-callees`.
+    ///
+    /// In an unoptimized build, a generic or `#[inline]` function is instantiated once and
+    /// shared by the crate's units, where an optimized build gives each unit that uses it a
+    /// copy to inline, or lets the unit import it. A raised unit is optimized, so it gets such
+    /// copies; the shared instance stays where it is for the rest of the crate.
+    fn is_copied_into_raised_units(&self, mono_item: MonoItem<'tcx>) -> bool {
+        let MonoItem::Fn(instance) = mono_item else { return false };
+        if mono_item.instantiation_mode(self.tcx) == InstantiationMode::LocalCopy {
+            return true;
+        }
+        // What must be instantiated exactly once cannot be copied, and what must never be
+        // inlined gains little from a copy.
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        if self.tcx.is_entrypoint(instance.def_id())
+            || attrs.contains_extern_indicator()
+            || attrs.flags.contains(CodegenFnAttrFlags::NAKED)
+            || attrs.inline == InlineAttr::Never
+        {
+            return false;
+        }
+        mono_item.is_generic_fn()
+            || attrs.inline != InlineAttr::None
+            || instance.def.requires_inline(self.tcx)
+    }
 }
 
 /// The function that `-Z raise-optimize-speed=...,probe=chosen` treats as though it were marked
@@ -403,6 +430,22 @@ where
                 size_estimate: inlined_item.size_estimate(cx.tcx),
             });
         }
+
+        // A raised unit also gets copies of the shared functions that its functions reach
+        // and an optimized build would have had the chance to inline. They are optimized
+        // with the unit and private to it.
+        if raised_form.is_some() && cx.raise.is_some_and(|raise| raise.copy_callees) {
+            let mut copied_items = FxIndexSet::default();
+            get_reachable_copied_items(cx, mono_item, &mut copied_items);
+            for copied_item in copied_items {
+                cgu.items_mut().entry(copied_item).or_insert_with(|| MonoItemData {
+                    inlined: true,
+                    linkage: Linkage::Internal,
+                    visibility: Visibility::Default,
+                    size_estimate: copied_item.size_estimate(cx.tcx),
+                });
+            }
+        }
     }
 
     // Always ensure we have at least one CGU; otherwise, if we have a
@@ -421,6 +464,18 @@ where
     }
 
     return PlacedMonoItems { codegen_units, internalization_candidates };
+
+    fn get_reachable_copied_items<'tcx>(
+        cx: &PartitioningCx<'_, 'tcx>,
+        item: MonoItem<'tcx>,
+        visited: &mut FxIndexSet<MonoItem<'tcx>>,
+    ) {
+        for &used_item in cx.usage_map.get_used_items(item) {
+            if cx.is_copied_into_raised_units(used_item) && visited.insert(used_item) {
+                get_reachable_copied_items(cx, used_item, visited);
+            }
+        }
+    }
 
     fn get_reachable_inlined_items<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -605,7 +660,7 @@ fn merge_codegen_units_of_one_kind<'tcx>(
         // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
         // duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        cgu_dst.items_mut().append(cgu_src.items_mut());
+        move_items(cgu_dst, &mut cgu_src);
         cgu_dst.compute_size_estimate();
 
         // Record that `cgu_dst` now contains all the stuff that was in
@@ -644,10 +699,31 @@ fn merge_codegen_units_of_one_kind<'tcx>(
         // Move the items from `smallest` to `second_smallest`. Some of them
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        second_smallest.items_mut().append(smallest.items_mut());
+        move_items(second_smallest, &mut smallest);
         second_smallest.compute_size_estimate();
 
         // Don't update `cgu_contents`, that's only for incremental builds.
+    }
+}
+
+/// Moves the items of `src` into `dst`.
+///
+/// An item that both units hold is a copy in at least one of them. Where both hold copies, the
+/// copies are alike and `dst` keeps its own. Where one holds the item as its home, which only
+/// raised units can do while another holds a copy, the merged unit keeps the home: that is the
+/// item's one definition for the rest of the crate, and a copy would hide it.
+fn move_items<'tcx>(dst: &mut CodegenUnit<'tcx>, src: &mut CodegenUnit<'tcx>) {
+    for (item, data) in src.items_mut().drain(..) {
+        match dst.items_mut().get_mut(&item) {
+            Some(held) => {
+                if held.inlined && !data.inlined {
+                    *held = data;
+                }
+            }
+            None => {
+                dst.items_mut().insert(item, data);
+            }
+        }
     }
 }
 
@@ -718,8 +794,19 @@ fn internalize_symbols<'tcx>(
                 continue;
             }
 
+            if data.inlined {
+                // This is a raised unit's copy of an item whose home is another unit. It is
+                // internal already, and the item is judged where its home is.
+                continue;
+            }
+
             if !single_codegen_unit {
-                debug_assert_eq!(mono_item_placements[item], home_cgu);
+                // The item is placed in its home unit alone, unless raised units hold copies
+                // of it.
+                debug_assert!(
+                    mono_item_placements[item] == home_cgu
+                        || cx.raise.is_some_and(|raise| raise.copy_callees)
+                );
 
                 if cx
                     .usage_map
