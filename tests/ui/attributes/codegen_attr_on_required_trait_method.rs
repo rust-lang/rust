@@ -21,3 +21,5 @@ trait Test {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.cold.allowed-positions

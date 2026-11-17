@@ -2,3 +2,5 @@
 fn main() {
     panic!("{}: oh no", std::panic::Location::caller());
 }
+
+//@ reference: attributes.codegen.track_caller.allowed-positions

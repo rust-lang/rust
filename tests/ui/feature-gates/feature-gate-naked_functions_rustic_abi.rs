@@ -24,3 +24,5 @@ pub unsafe extern "rust-cold" fn rust_cold() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.naked.abi

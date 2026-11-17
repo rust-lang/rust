@@ -24,3 +24,5 @@ trait Qux {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.allowed-positions

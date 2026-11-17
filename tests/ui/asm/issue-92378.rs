@@ -25,3 +25,5 @@ pub fn thumb() {
         asm!("", out("r11") _);
     }
 }
+
+//@ reference: attributes.codegen.instruction_set.inline-asm

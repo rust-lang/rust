@@ -12,3 +12,5 @@ pub unsafe fn test() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.inline

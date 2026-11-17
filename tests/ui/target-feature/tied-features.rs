@@ -37,3 +37,5 @@ unsafe fn baz() {}
 #[target_feature(enable = "paca")]
 //~^ ERROR must all be either enabled or disabled together
 unsafe fn unused() {}
+
+//@ reference: attributes.codegen.target_feature.aarch64

@@ -182,3 +182,5 @@ impl ForceTargetFeatureTrait for ForceTargetFeature {
     #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
     //~^ ERROR usage of the unsafe `force_target_feature` attribute
 }
+
+//@ reference: attributes.codegen.naked.unsafe

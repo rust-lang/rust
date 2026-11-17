@@ -18,3 +18,5 @@ fn main() {
     let f = unsafe { bar() };
     assert!(f());
 }
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions
