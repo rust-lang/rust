@@ -997,7 +997,17 @@ impl Session {
     /// crate's own level, if it does: only under `-Z raise-optimize-speed`, and only in a crate
     /// built at `-C opt-level=0` without LTO, where the attribute otherwise has no effect.
     pub fn raise_optimize_speed(&self) -> Option<config::RaiseOptimizeSpeed> {
-        let raise = self.opts.unstable_opts.raise_optimize_speed;
+        let mut raise = self.opts.unstable_opts.raise_optimize_speed;
+        // A crate that gives its assembly, IR, or object code as one file comes out as one
+        // codegen unit, so it has no second module to put the marked functions in. They are
+        // raised in place there. A crate that is one codegen unit only because the user said
+        // so still gets a unit for them: `-C codegen-units` bounds the units of each kind.
+        if raise.form.separates_modules()
+            && self.codegen_units().as_usize() == 1
+            && self.opts.output_types.emits_code_per_codegen_unit()
+        {
+            raise.form = config::RaiseOptimizeSpeedForm::Unit;
+        }
         let applies = raise.form != config::RaiseOptimizeSpeedForm::Off
             && self.opts.optimize == config::OptLevel::No
             && matches!(self.opts.cg.lto, LtoCli::Unspecified | LtoCli::No)

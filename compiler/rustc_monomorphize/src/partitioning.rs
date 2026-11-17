@@ -263,18 +263,37 @@ where
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
-        let cgu_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(
+        // Under the separating forms of `-Z raise-optimize-speed`, a function that is to be
+        // optimized is placed in a unit that holds no function that is not: the one such unit
+        // of the crate, or the one that stands beside the unit it would otherwise be in.
+        let raised_form = cx
+            .raise
+            .map(|raise| raise.form)
+            .filter(|form| form.separates_modules() && cx.is_raised_fn(mono_item));
+
+        let cgu_name = match (raised_form, characteristic_def_id) {
+            (Some(RaiseOptimizeSpeedForm::Modules), Some(def_id)) => compute_codegen_unit_name(
                 cx.tcx,
                 cgu_name_builder,
                 def_id,
-                is_volatile,
+                Some("speed"),
                 cgu_name_cache,
             ),
-            None => fallback_cgu_name(cgu_name_builder),
+            (Some(_), _) => raised_cgu_name(cgu_name_builder),
+            (None, Some(def_id)) => compute_codegen_unit_name(
+                cx.tcx,
+                cgu_name_builder,
+                def_id,
+                is_volatile.then_some("volatile"),
+                cgu_name_cache,
+            ),
+            (None, None) => fallback_cgu_name(cgu_name_builder),
         };
 
         let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
+        if raised_form.is_some() {
+            cgu.mark_raised();
+        }
 
         let mut can_be_internalized = true;
         let (linkage, visibility) = mono_item_linkage_and_visibility(
@@ -361,95 +380,14 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: UnordMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
-    // If N is the maximum number of CGUs, and the CGUs are sorted from largest
-    // to smallest, we repeatedly find which CGU in codegen_units[N..] has the
-    // greatest overlap of inlined items with codegen_units[N-1], merge that
-    // CGU into codegen_units[N-1], then re-sort by size and repeat.
-    //
-    // We use inlined item overlap to guide this merging because it minimizes
-    // duplication of inlined items, which makes LLVM be faster and generate
-    // better and smaller machine code.
-    //
-    // Why merge into codegen_units[N-1]? We want CGUs to have similar sizes,
-    // which means we don't want codegen_units[0..N] (the already big ones)
-    // getting any bigger, if we can avoid it. When we have more than N CGUs
-    // then at least one of the biggest N will have to grow. codegen_units[N-1]
-    // is the smallest of those, and so has the most room to grow.
-    let max_codegen_units = cx.tcx.sess.codegen_units().as_usize();
-    while codegen_units.len() > max_codegen_units {
-        // Sort small CGUs to the back.
-        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-
-        let cgu_dst = &codegen_units[max_codegen_units - 1];
-
-        // Find the CGU that overlaps the most with `cgu_dst`. In the case of a
-        // tie, favour the earlier (bigger) CGU.
-        let mut max_overlap = 0;
-        let mut max_overlap_i = max_codegen_units;
-        for (i, cgu_src) in codegen_units.iter().enumerate().skip(max_codegen_units) {
-            if cgu_src.size_estimate() <= max_overlap {
-                // None of the remaining overlaps can exceed `max_overlap`, so
-                // stop looking.
-                break;
-            }
-
-            let overlap = compute_inlined_overlap(cgu_dst, cgu_src);
-            if overlap > max_overlap {
-                max_overlap = overlap;
-                max_overlap_i = i;
-            }
-        }
-
-        let mut cgu_src = codegen_units.swap_remove(max_overlap_i);
-        let cgu_dst = &mut codegen_units[max_codegen_units - 1];
-
-        // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
-        // duplicate inlined items, in which case the destination CGU is
-        // unaffected. Recalculate size estimates afterwards.
-        cgu_dst.items_mut().append(cgu_src.items_mut());
-        cgu_dst.compute_size_estimate();
-
-        // Record that `cgu_dst` now contains all the stuff that was in
-        // `cgu_src` before.
-        let mut consumed_cgu_names = cgu_contents.remove(&cgu_src.name()).unwrap();
-        cgu_contents.get_mut(&cgu_dst.name()).unwrap().append(&mut consumed_cgu_names);
-    }
-
-    // Having multiple CGUs can drastically speed up compilation. But for
-    // non-incremental builds, tiny CGUs slow down compilation *and* result in
-    // worse generated code. So we don't allow CGUs smaller than this (unless
-    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
-    // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
-
-    // Repeatedly merge the two smallest codegen units as long as: it's a
-    // non-incremental build, and the user didn't specify a CGU count, and
-    // there are multiple CGUs, and some are below the minimum size.
-    //
-    // The "didn't specify a CGU count" condition is because when an explicit
-    // count is requested we observe it as closely as possible. For example,
-    // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
-    // critical they aren't merged. Also, some tests use explicit small values
-    // and likewise won't work if small CGUs are merged.
-    while cx.tcx.sess.opts.incremental.is_none()
-        && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
-        && codegen_units.len() > 1
-        && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE)
-    {
-        // Sort small cgus to the back.
-        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-
-        let mut smallest = codegen_units.pop().unwrap();
-        let second_smallest = codegen_units.last_mut().unwrap();
-
-        // Move the items from `smallest` to `second_smallest`. Some of them
-        // may be duplicate inlined items, in which case the destination CGU is
-        // unaffected. Recalculate size estimates afterwards.
-        second_smallest.items_mut().append(smallest.items_mut());
-        second_smallest.compute_size_estimate();
-
-        // Don't update `cgu_contents`, that's only for incremental builds.
-    }
+    // The units that are raised above the crate's level never merge with the others, which
+    // would put functions of both kinds into one module. Each kind is merged among itself.
+    let (mut raised_units, mut other_units): (Vec<_>, Vec<_>) =
+        std::mem::take(codegen_units).into_iter().partition(|cgu| cgu.is_raised());
+    merge_codegen_units_of_one_kind(cx, &mut other_units, &mut cgu_contents);
+    merge_codegen_units_of_one_kind(cx, &mut raised_units, &mut cgu_contents);
+    codegen_units.append(&mut other_units);
+    codegen_units.append(&mut raised_units);
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
@@ -539,6 +477,105 @@ fn merge_codegen_units<'tcx>(
                 Either::Left(index.try_into().unwrap()),
             )));
         }
+    }
+}
+
+/// Merges the given units, which are all raised above the crate's level or all not, until
+/// they are few enough and large enough, recording in `cgu_contents` what got merged into
+/// what.
+fn merge_codegen_units_of_one_kind<'tcx>(
+    cx: &PartitioningCx<'_, 'tcx>,
+    codegen_units: &mut Vec<CodegenUnit<'tcx>>,
+    cgu_contents: &mut UnordMap<Symbol, Vec<Symbol>>,
+) {
+    // If N is the maximum number of CGUs, and the CGUs are sorted from largest
+    // to smallest, we repeatedly find which CGU in codegen_units[N..] has the
+    // greatest overlap of inlined items with codegen_units[N-1], merge that
+    // CGU into codegen_units[N-1], then re-sort by size and repeat.
+    //
+    // We use inlined item overlap to guide this merging because it minimizes
+    // duplication of inlined items, which makes LLVM be faster and generate
+    // better and smaller machine code.
+    //
+    // Why merge into codegen_units[N-1]? We want CGUs to have similar sizes,
+    // which means we don't want codegen_units[0..N] (the already big ones)
+    // getting any bigger, if we can avoid it. When we have more than N CGUs
+    // then at least one of the biggest N will have to grow. codegen_units[N-1]
+    // is the smallest of those, and so has the most room to grow.
+    let max_codegen_units = cx.tcx.sess.codegen_units().as_usize();
+    while codegen_units.len() > max_codegen_units {
+        // Sort small CGUs to the back.
+        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+
+        let cgu_dst = &codegen_units[max_codegen_units - 1];
+
+        // Find the CGU that overlaps the most with `cgu_dst`. In the case of a
+        // tie, favour the earlier (bigger) CGU.
+        let mut max_overlap = 0;
+        let mut max_overlap_i = max_codegen_units;
+        for (i, cgu_src) in codegen_units.iter().enumerate().skip(max_codegen_units) {
+            if cgu_src.size_estimate() <= max_overlap {
+                // None of the remaining overlaps can exceed `max_overlap`, so
+                // stop looking.
+                break;
+            }
+
+            let overlap = compute_inlined_overlap(cgu_dst, cgu_src);
+            if overlap > max_overlap {
+                max_overlap = overlap;
+                max_overlap_i = i;
+            }
+        }
+
+        let mut cgu_src = codegen_units.swap_remove(max_overlap_i);
+        let cgu_dst = &mut codegen_units[max_codegen_units - 1];
+
+        // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
+        // duplicate inlined items, in which case the destination CGU is
+        // unaffected. Recalculate size estimates afterwards.
+        cgu_dst.items_mut().append(cgu_src.items_mut());
+        cgu_dst.compute_size_estimate();
+
+        // Record that `cgu_dst` now contains all the stuff that was in
+        // `cgu_src` before.
+        let mut consumed_cgu_names = cgu_contents.remove(&cgu_src.name()).unwrap();
+        cgu_contents.get_mut(&cgu_dst.name()).unwrap().append(&mut consumed_cgu_names);
+    }
+
+    // Having multiple CGUs can drastically speed up compilation. But for
+    // non-incremental builds, tiny CGUs slow down compilation *and* result in
+    // worse generated code. So we don't allow CGUs smaller than this (unless
+    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
+    // common in larger programs, so this isn't all that large.
+    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
+
+    // Repeatedly merge the two smallest codegen units as long as: it's a
+    // non-incremental build, and the user didn't specify a CGU count, and
+    // there are multiple CGUs, and some are below the minimum size.
+    //
+    // The "didn't specify a CGU count" condition is because when an explicit
+    // count is requested we observe it as closely as possible. For example,
+    // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
+    // critical they aren't merged. Also, some tests use explicit small values
+    // and likewise won't work if small CGUs are merged.
+    while cx.tcx.sess.opts.incremental.is_none()
+        && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
+        && codegen_units.len() > 1
+        && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE)
+    {
+        // Sort small cgus to the back.
+        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+
+        let mut smallest = codegen_units.pop().unwrap();
+        let second_smallest = codegen_units.last_mut().unwrap();
+
+        // Move the items from `smallest` to `second_smallest`. Some of them
+        // may be duplicate inlined items, in which case the destination CGU is
+        // unaffected. Recalculate size estimates afterwards.
+        second_smallest.items_mut().append(smallest.items_mut());
+        second_smallest.compute_size_estimate();
+
+        // Don't update `cgu_contents`, that's only for incremental builds.
     }
 }
 
@@ -735,11 +772,14 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     }
 }
 
+/// `special_suffix` tells apart the units that one source module is divided into: the one for
+/// its generic functions in an incremental build (`volatile`), and the one for its functions
+/// that are optimized above the crate's level (`speed`).
 fn compute_codegen_unit_name(
     tcx: TyCtxt<'_>,
     name_builder: &mut CodegenUnitNameBuilder<'_>,
     def_id: DefId,
-    volatile: bool,
+    special_suffix: Option<&'static str>,
     cache: &mut CguNameCache,
 ) -> Symbol {
     // Find the innermost module that is not nested within a function.
@@ -769,7 +809,7 @@ fn compute_codegen_unit_name(
 
     let cgu_def_id = cgu_def_id.unwrap();
 
-    *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
+    *cache.entry((cgu_def_id, special_suffix)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
         let components = def_path.data.iter().map(|part| match part.data.name() {
@@ -777,15 +817,19 @@ fn compute_codegen_unit_name(
             DefPathDataName::Anon { .. } => unreachable!(),
         });
 
-        let volatile_suffix = volatile.then_some("volatile");
-
-        name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
+        name_builder.build_cgu_name(def_path.krate, components, special_suffix)
     })
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
 fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
+}
+
+// The unit for the functions that are optimized above the crate's level, when they all share
+// one, and for those of them that no source module can be found for.
+fn raised_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
+    name_builder.build_cgu_name(LOCAL_CRATE, &["optimize"], Some("speed"))
 }
 
 fn mono_item_linkage_and_visibility<'tcx>(
@@ -808,7 +852,7 @@ fn mono_item_linkage_and_visibility<'tcx>(
     (Linkage::External, vis)
 }
 
-type CguNameCache = UnordMap<(DefId, bool), Symbol>;
+type CguNameCache = UnordMap<(DefId, Option<&'static str>), Symbol>;
 
 fn static_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,

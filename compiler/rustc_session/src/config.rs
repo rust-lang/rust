@@ -986,6 +986,13 @@ impl OutputTypes {
             OutputType::Exe => true,
         })
     }
+
+    /// Returns `true` if any of the output types is one that is emitted for each codegen unit
+    /// (assembly, LLVM IR, bitcode, MIR, or object code), and so comes out as one file only for
+    /// a crate of one unit.
+    pub fn emits_code_per_codegen_unit(&self) -> bool {
+        self.0.keys().any(|k| !k.is_compatible_with_codegen_units_and_single_output_file())
+    }
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
