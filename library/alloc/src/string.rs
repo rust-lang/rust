@@ -1745,10 +1745,10 @@ impl String {
             let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
-                // within bounds because it is always behind `read`.
+                // is always behind `read`, so we should always have space to encode this
+                // character from g.write..g.write + ch_len.
                 unsafe {
-                    let ptr = g.s.vec.as_mut_ptr();
-                    ptr::copy(ptr.add(read), ptr.add(g.write), ch_len);
+                    core::char::encode_utf8_raw_unchecked(ch as u32, g.s.as_mut_ptr().add(g.write));
                 }
                 g.write += ch_len;
             }
