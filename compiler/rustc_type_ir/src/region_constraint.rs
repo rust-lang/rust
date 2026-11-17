@@ -451,6 +451,8 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
             .collect())
     }
 
+    /// Return the index of the added leaf.
+    /// It's not necessarily the last entry since we have deduplication.
     pub fn add(&mut self, leaf: LeafRegionConstraint<I>, span: S) -> Option<usize> {
         if let LeafRegionConstraint::RegionOutlives(r1, r2) = leaf
             && r1 == r2

@@ -2445,7 +2445,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                             .dcx()
                             .span_err(span, "top level false constraints are not supported");
                     } else {
-                        self.infcx.register_solver_region_constraint(constraint);
+                        self.infcx.register_solver_region_constraint(
+                            constraint,
+                            ty::VisibleForLeakCheck::Unreachable,
+                        );
                     }
                 }
                 TestBinderItem::Predicate { clause, span } => {

@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): Trait<fn(for<'a> fn(<T as Proj<'a>>::Assoc))>` is not satisfied
-  --> $DIR/placeholder-assumptions-issue-157840.rs:12:9
+  --> $DIR/placeholder-assumptions-issue-157840.rs:14:9
    |
 LL |     (): Trait<<T as Proj<'a>>::Assoc>,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<fn(for<'a> fn(<T as Proj<'a>>::Assoc))>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/placeholder-assumptions-issue-157840.rs:3:1
+  --> $DIR/placeholder-assumptions-issue-157840.rs:5:1
    |
 LL | trait Trait<T> {}
    | ^^^^^^^^^^^^^^

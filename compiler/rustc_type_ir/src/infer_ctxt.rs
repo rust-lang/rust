@@ -534,6 +534,7 @@ pub trait InferCtxtLike: Sized {
     fn register_solver_region_constraint(
         &self,
         c: crate::region_constraint::RegionConstraint<Self::Interner>,
+        vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
 

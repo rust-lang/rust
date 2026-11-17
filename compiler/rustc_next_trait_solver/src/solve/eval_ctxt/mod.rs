@@ -1471,8 +1471,12 @@ where
         args
     }
 
-    pub(super) fn register_solver_region_constraint(&self, c: RegionConstraint<I>) {
-        self.delegate.register_solver_region_constraint(c, self.origin_span);
+    pub(super) fn register_solver_region_constraint(
+        &self,
+        c: RegionConstraint<I>,
+        vis: VisibleForLeakCheck,
+    ) {
+        self.delegate.register_solver_region_constraint(c, vis, self.origin_span);
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: Region<I>) {

@@ -140,8 +140,12 @@ impl<'tcx> InferCtxt<'tcx> {
         inner.region_obligations.push(obligation);
     }
 
-    pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
-        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c);
+    pub fn register_solver_region_constraint(
+        &self,
+        c: SolverRegionConstraint<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+    ) {
+        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c, vis);
     }
 
     pub fn register_type_outlives_constraint(
