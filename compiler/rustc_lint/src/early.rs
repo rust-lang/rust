@@ -181,6 +181,11 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
         ast_visit::walk_generic_arg(self, arg);
     }
 
+    fn visit_generic_args(&mut self, args: &'ast ast::GenericArgs) {
+        lint_callback!(self, check_generic_args, args);
+        ast_visit::walk_generic_args(self, args);
+    }
+
     fn visit_generic_param(&mut self, param: &'ast ast::GenericParam) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
             lint_callback!(cx, check_generic_param, param);

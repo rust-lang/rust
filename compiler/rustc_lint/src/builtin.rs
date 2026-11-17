@@ -24,6 +24,7 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -48,16 +49,16 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 
 use crate::diagnostics::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
-    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
-    BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames,
+    BuiltinEllipsisInclusiveRangePatterns, BuiltinEllipsisInclusiveRangePatternsLint,
+    BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
+    BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
+    BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+    BuiltinMutablesTransmutes, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -734,6 +735,84 @@ impl EarlyLintPass for AnonymousParameters {
                     );
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `duplicate_parameter_names` lint detects duplicate parameter names
+    /// in functions without bodies.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(duplicate_parameter_names)]
+    /// pub trait Foo {
+    ///     fn foo(x: usize, x: usize);
+    /// }
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Duplicate parameter names are allowed in body-less functions,
+    /// in function pointers, and in parenthesised generic args, but this
+    /// is confusing and inconsistent behaviour, and is discouraged.
+    pub DUPLICATE_PARAMETER_NAMES,
+    Warn,
+    "detects duplicate parameter names in functions without bodies",
+}
+
+declare_lint_pass!(
+    /// Checks for duplicate parameter names
+    DuplicateParameterNames => [DUPLICATE_PARAMETER_NAMES]
+);
+
+fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
+    let mut map = FxHashMap::default();
+
+    for param in params {
+        if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
+            if param.is_self() {
+                continue;
+            }
+
+            let name = ident.normalize_to_macro_rules();
+
+            if let Some(&prev_use) = map.get(&name) {
+                cx.emit_span_lint(
+                    DUPLICATE_PARAMETER_NAMES,
+                    ident.span,
+                    BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
+                );
+            } else {
+                map.insert(name, ident.span);
+            }
+        }
+    }
+}
+
+impl EarlyLintPass for DuplicateParameterNames {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _: Span, _: ast::NodeId) {
+        if let FnKind::Fn(_, _, Fn { sig, body, .. }) = fk {
+            // if there's a body, an error is already thrown, so we shouldn't warn
+            if body.is_none() {
+                find_duplicated_parameters(cx, &sig.decl.inputs);
+            }
+        }
+    }
+
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let TyKind::FnPtr(f) = &ty.kind {
+            find_duplicated_parameters(cx, &f.decl.inputs);
+        }
+    }
+
+    fn check_generic_args(&mut self, cx: &EarlyContext<'_>, args: &ast::GenericArgs) {
+        if let ast::GenericArgs::Parenthesized(parens) = args {
+            find_duplicated_parameters(cx, &parens.inputs);
         }
     }
 }
