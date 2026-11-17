@@ -17,7 +17,7 @@ fn single_match() {
     //~| NOTE: you might want to preserve the comments from inside the `match`
 
     let z = (1u8, 1u8);
-    if let (2..=3, 7..=9) = z { dummy() };
+    if let (2..=3, 7..=9) = z { dummy(); };
     //~^^^^ single_match
 
     // Not linted (pattern guards used)
@@ -44,15 +44,15 @@ fn single_match_know_enum() {
     let x = Some(1u8);
     let y: Result<_, i8> = Ok(1i8);
 
-    if let Some(y) = x { dummy() };
+    if let Some(y) = x { dummy(); };
     //~^^^^ single_match
 
-    if let Ok(y) = y { dummy() };
+    if let Ok(y) = y { dummy(); };
     //~^^^^ single_match
 
     let c = Cow::Borrowed("");
 
-    if let Cow::Borrowed(..) = c { dummy() };
+    if let Cow::Borrowed(..) = c { dummy(); };
     //~^^^^ single_match
 
     let z = Foo::Bar;
@@ -394,5 +394,34 @@ fn issue14493() {
     match Some(0) {
         mac!(some) => println!("eq"),
         _ => println!("neq"),
+    }
+}
+
+mod issue16579 {
+    // Previous tests already covered those cases, this module only tests desugers.
+    use super::dummy;
+
+    fn for_loop(opt: Option<u8>) {
+        if let Some(n) = opt {
+            for n in 0..n {
+                dummy()
+            }
+        }
+        //~^^^^^^^^ single_match
+    }
+
+    fn with_result() -> Result<(), ()> {
+        Ok(())
+    }
+    fn try_op(opt: Option<u8>) -> Result<(), ()> {
+        if let Some(_) = opt { with_result()?; }
+        //~^^^^ single_match
+        Ok(())
+    }
+
+    async fn as_fn() {}
+    async fn await_op(opt: Option<u8>) {
+        if let Some(n) = opt { as_fn().await; }
+        //~^^^^ single_match
     }
 }
