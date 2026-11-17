@@ -672,13 +672,17 @@ extern "C" void LLVMRustAppendModuleInlineAsm(
 #endif
 }
 
-template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
-  return (DIT *)(Ref ? unwrap<Metadata>(Ref) : nullptr);
+// A variant of `unwrap<T>(...)` that allows null pointers. Used by some
+// debuginfo builder functions.
+//
+// If the pointer is non-null, LLVM will assert that the downcast succeeds,
+// but only if LLVM assertions are enabled (i.e. not in release builds).
+template <typename DIT> DIT *unwrapDI(LLVMMetadataRef Ref) {
+  return cast_if_present<DIT>(unwrap(Ref));
 }
 
 #define DIDescriptor DIScope
 #define DIArray DINodeArray
-#define unwrapDI unwrapDIPtr
 
 // Statically assert that `LLVMDIFlags` (C) and `DIFlags` (C++) have the same
 // layout, at least for the flags we know about. This isn't guaranteed, but is
@@ -1050,7 +1054,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
       unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags,
-      TParams, unwrapDIPtr<DISubprogram>(Decl));
+      TParams, unwrapDI<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
@@ -1159,7 +1163,7 @@ LLVMRustDICreateVectorType(LLVMDIBuilderRef Builder, uint64_t Size,
 extern "C" LLVMMetadataRef
 LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
                                              unsigned BD) {
-  DILocation *Loc = unwrapDIPtr<DILocation>(Location);
+  DILocation *Loc = unwrapDI<DILocation>(Location);
   auto NewLoc = Loc->cloneWithBaseDiscriminator(BD);
   return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
 }
