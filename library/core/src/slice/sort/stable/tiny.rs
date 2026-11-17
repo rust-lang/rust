@@ -1,4 +1,4 @@
-//! Binary-size optimized mergesort inspired by https://github.com/voultapher/tiny-sort-rs.
+//! Binary-size optimized mergesort inspired by <https://github.com/voultapher/tiny-sort-rs>.
 
 use crate::mem::MaybeUninit;
 use crate::ptr;
