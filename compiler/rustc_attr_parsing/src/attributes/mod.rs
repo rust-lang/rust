@@ -48,6 +48,7 @@ pub(crate) mod debugger;
 pub(crate) mod deprecation;
 pub(crate) mod diagnostic;
 pub(crate) mod doc;
+pub(crate) mod doc_comment;
 pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod instruction_set;
