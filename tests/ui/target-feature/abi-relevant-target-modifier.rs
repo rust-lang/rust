@@ -10,4 +10,4 @@
 
 extern crate using_atomics_32;
 
-//[baseline]~? WARN mixing target features will cause an ABI mismatch
+//[baseline]~? WARN mixing target features may cause an ABI mismatch

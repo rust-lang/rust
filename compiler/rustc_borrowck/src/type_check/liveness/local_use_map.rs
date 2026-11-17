@@ -52,32 +52,6 @@ rustc_index::newtype_index! {
     pub struct AppearanceIndex {}
 }
 
-fn appearances_iter(
-    first: Option<AppearanceIndex>,
-    appearances: &Appearances,
-) -> impl Iterator<Item = AppearanceIndex> {
-    AppearancesIter { appearances, current: first }
-}
-
-// Iterates over `Appearances` by following `next` fields.
-struct AppearancesIter<'a> {
-    appearances: &'a Appearances,
-    current: Option<AppearanceIndex>,
-}
-
-impl<'a> Iterator for AppearancesIter<'a> {
-    type Item = AppearanceIndex;
-
-    fn next(&mut self) -> Option<AppearanceIndex> {
-        if let Some(c) = self.current {
-            self.current = self.appearances[c].next;
-            Some(c)
-        } else {
-            None
-        }
-    }
-}
-
 //-----------------------------------------------------------------------------
 
 impl LocalUseMap {
@@ -108,19 +82,21 @@ impl LocalUseMap {
         local_use_map
     }
 
+    fn points(&self, first: Option<AppearanceIndex>) -> impl Iterator<Item = PointIndex> {
+        std::iter::successors(first, |&index| self.appearances[index].next)
+            .map(|index| self.appearances[index].point_index)
+    }
+
     pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> {
-        appearances_iter(self.first_def_at[local], &self.appearances)
-            .map(move |aa| self.appearances[aa].point_index)
+        self.points(self.first_def_at[local])
     }
 
     pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> {
-        appearances_iter(self.first_use_at[local], &self.appearances)
-            .map(move |aa| self.appearances[aa].point_index)
+        self.points(self.first_use_at[local])
     }
 
     pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> {
-        appearances_iter(self.first_drop_at[local], &self.appearances)
-            .map(move |aa| self.appearances[aa].point_index)
+        self.points(self.first_drop_at[local])
     }
 }
 

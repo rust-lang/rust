@@ -1035,6 +1035,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty.print(self)?;
                 write!(self, "]")?;
             }
+            ty::View(def, args, fields) => {
+                write!(self, "view_type!(")?;
+                self.print_def_path(def.did(), args)?;
+                write!(self, ".{{ ")?;
+                self.print_type(fields)?;
+                write!(self, " }})")?;
+            }
         }
 
         Ok(())
@@ -2420,13 +2427,17 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
-        if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
-            if with_crate_prefix() {
+        if cnum == LOCAL_CRATE {
+            if with_resolve_crate_name() {
+                // The local crate can't be renamed by `--extern`, avoid the additional query.
+                write!(self, "{}", self.tcx.crate_name(cnum))?;
+                self.empty_path = false;
+            } else if with_crate_prefix() {
                 write!(self, "{}", kw::Crate)?;
                 self.empty_path = false;
             }
         } else {
-            write!(self, "{}", self.tcx.crate_name(cnum))?;
+            write!(self, "{}", self.tcx.crate_name_with_rename(cnum))?;
             self.empty_path = false;
         }
         Ok(())

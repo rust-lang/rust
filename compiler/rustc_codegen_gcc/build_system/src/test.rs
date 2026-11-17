@@ -771,7 +771,10 @@ const LIBRSVG: Project = Project::new("https://gitlab.gnome.org/GNOME/librsvg")
 /// Sorted from the slowest to the fastest in the CI, so that `projects_part` balances the parts.
 const PROJECTS: &[Project] = &[
     Project::new("https://github.com/marshallpierce/rust-base64"),
-    Project::new("https://github.com/serde-rs/serde"),
+    // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
+    // fails if the serde has created the snapshot with the different toolchain from ours.
+    Project::new("https://github.com/serde-rs/serde")
+        .test_harness_arguments(&["--skip", "ui", "--exact"]),
     Project::new("https://github.com/rayon-rs/rayon"),
     // regex 1.12.2, the version rustc depends on.
     Project::new("https://github.com/rust-lang/regex")
@@ -958,10 +961,6 @@ fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
         // `core::io::ErrorKind`'s `Display` impl declares `#![feature(core_io)]` upstream: without
         // it, that doctest fails to compile with `E0658` on any backend.
         &"-Zforce-unstable-if-unmarked",
-        // FIXME: one test (mem::transmutability::Assume::alignment in core/src/mem/transmutability.rs)
-        // cannot compile due to an upstream bug in the new trait solver.
-        // See: https://github.com/rust-lang/rust/issues/161251
-        &"-Znext-solver=coherence",
     ];
     for flag in &rustflags {
         command.push(flag);

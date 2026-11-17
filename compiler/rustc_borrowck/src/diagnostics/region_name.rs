@@ -484,16 +484,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             });
                         }
                     }
-                    ty::ReEarlyParam(ebr) => {
-                        if ebr.is_named() {
-                            let def_id =
-                                tcx.generics_of(parent_def_id).region_param(ebr, tcx).def_id;
-                            let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
-                            return Some(RegionName {
-                                name: ebr.name,
-                                source: RegionNameSource::NamedEarlyParamRegion(span),
-                            });
-                        }
+                    ty::ReEarlyParam(ebr) if ebr.is_named() => {
+                        let def_id = tcx.generics_of(parent_def_id).region_param(ebr, tcx).def_id;
+                        let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
+                        return Some(RegionName {
+                            name: ebr.name,
+                            source: RegionNameSource::NamedEarlyParamRegion(span),
+                        });
                     }
                     _ => {}
                 }

@@ -1443,7 +1443,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     session_diagnostics::TailExprDropOrder {
                         borrowed,
                         callback: |diag| {
-                            explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                            explain.add_explanation_to_diagnostic(this, diag, "", None, None);
                         },
                     },
                 );
@@ -1666,13 +1666,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             for (place_ref, proj) in place.iter_projections().rev() {
                 // Handle (a)
-                if proj == ProjectionElem::Deref {
-                    match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
-                        // We aren't modifying a variable directly
-                        ty::Ref(_, _, hir::Mutability::Mut) => return,
-
-                        _ => {}
-                    }
+                if proj == ProjectionElem::Deref
+                    // We aren't modifying a variable directly
+                    && let ty::Ref(_, _, hir::Mutability::Mut) =
+                        place_ref.ty(this.body(), this.infcx.tcx).ty.kind()
+                {
+                    return;
                 }
 
                 // Handle (c)
@@ -1948,6 +1947,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Placeholder(_) => {
                         bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
                     }
+
+                    // FIXME(scrabsha)
+                    ty::View(..) => unimplemented!(),
                 },
                 ProjectionElem::Field(_, _) => match place_ty.ty.kind() {
                     ty::Adt(adt, _) => {
@@ -1990,6 +1992,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Placeholder(_) => bug!(
                         "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
                     ),
+
+                    // FIXME(scrabsha)
+                    ty::View(..) => unimplemented!(),
                 },
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     match place_ty.ty.kind() {
@@ -2725,7 +2730,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
     fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<FieldIdx> {
-        path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
+        path_utils::is_upvar_field_projection(self.infcx.tcx, self.upvars, place_ref, self.body())
     }
 
     fn dominators(&self) -> &Dominators<BasicBlock> {

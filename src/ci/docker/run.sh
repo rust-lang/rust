@@ -67,7 +67,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     find "$script_dir/$i" -type f >> $copied_files
     done
     # Sort the file names and cat the content into the hash key
-    sort $copied_files | xargs cat >> $hash_key
+    # The output of sort depends on the locale. Setting LC_ALL=C
+    # ensures consistent output.
+    LC_ALL=C sort $copied_files | xargs cat >> $hash_key
 
     # Include the architecture in the hash key, since our Linux CI does not
     # only run in x86_64 machines.

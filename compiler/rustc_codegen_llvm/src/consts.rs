@@ -73,8 +73,8 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
                 cx.const_bytes(bytes)
             }
             InitChunk::Uninit(range) => {
-                let len = range.end.bytes() - range.start.bytes();
-                cx.const_undef(cx.type_array(cx.type_i8(), len))
+                let len = range.end - range.start;
+                cx.const_undef(cx.type_byte_array(len))
             }
         };
 
@@ -151,7 +151,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     // is a valid C string. LLVM only considers bare arrays for this optimization,
     // not arrays wrapped in a struct. LLVM handles this at:
     // https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/llvm/lib/Target/TargetLoweringObjectFile.cpp#L249-L280
-    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
+    if let &[data] = &*llvals { data } else { cx.const_packed_struct(&llvals) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(
@@ -216,7 +216,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 {
                     should_sign = true;
                 }
-                cx.declare_fn(sym, &fn_abi, None)
+                cx.declare_fn(sym, fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
             }
@@ -302,10 +302,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         let gv = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
-                let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
+                self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
-                });
-                gv
+                })
             }
             _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
                 bug!("anonymous global symbol is already defined");
@@ -358,7 +357,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         } else {
             let ty = instance.ty(self.tcx, self.typing_env());
             trace!(?ty);
-            self.type_array(self.type_i8(), self.layout_of(ty).size.bytes())
+            self.type_byte_array(self.layout_of(ty).size)
         };
         self.get_static_inner(def_id, llty)
     }
@@ -729,10 +728,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         //     struct class_ro_t* ro;
         // }
 
-        let class_t = self.type_named_struct("struct._class_t");
-        let els = [self.type_ptr(); 5];
-        let packed = false;
-        self.set_struct_body(class_t, &els, packed);
+        let class_t = self.type_named_struct("struct._class_t", &[self.type_ptr(); 5]);
 
         self.objc_class_t.set(Some(class_t));
         class_t
@@ -881,20 +877,19 @@ impl<'ll> CodegenCx<'ll, '_> {
         //     struct _objc_symtab* symtab; // Null without class or category definitions.
         //  }
 
-        let llty = self.type_named_struct("struct._objc_module");
         let i32_llty = self.type_i32();
         let ptr_llty = self.type_ptr();
-        let packed = false;
-        self.set_struct_body(llty, &[i32_llty, i32_llty, ptr_llty, ptr_llty], packed);
+        let llty = self
+            .type_named_struct("struct._objc_module", &[i32_llty, i32_llty, ptr_llty, ptr_llty]);
 
-        let version = self.const_uint(i32_llty, 7);
-        let size = self.const_uint(i32_llty, 16);
+        let version = self.const_u32(7);
+        let size = self.const_u32(16);
         let name = self.define_objc_classname("");
         let symtab = self.const_null(ptr_llty);
         let llval = crate::common::named_struct(llty, &[version, size, name, symtab]);
 
         let sym = "OBJC_MODULES";
-        let g = self.define_global(&sym, llty).unwrap_or_else(|| {
+        let g = self.define_global(sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
         set_global_alignment(self, g, self.tcx.data_layout.pointer_align());

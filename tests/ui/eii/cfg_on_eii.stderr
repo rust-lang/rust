@@ -1,11 +1,11 @@
 error: use of deprecated function `cfg_attr_on_eii`: bar
-  --> $DIR/cfg_on_eii.rs:18:5
+  --> $DIR/cfg_on_eii.rs:19:5
    |
 LL |     cfg_attr_on_eii();
    |     ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/cfg_on_eii.rs:4:9
+  --> $DIR/cfg_on_eii.rs:5:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

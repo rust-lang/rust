@@ -20,6 +20,9 @@ struct Cli {
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
+    /// Hide compliant files... they are less important to display
+    #[arg(long, default_value_t = false)]
+    hide_compliant_files: bool,
 }
 
 static REGEX_IGNORE_END: LazyLock<Regex> =
@@ -47,7 +50,7 @@ fn main() -> Result<()> {
         if extension != "md" {
             continue;
         }
-        let old = fs::read_to_string(&path)?;
+        let mut old = fs::read_to_string(&path)?;
         let mut new = comply(&old);
         if cli.reflow_harder {
             new = reformat(&new, cli.line_length_limit)
@@ -55,14 +58,22 @@ fn main() -> Result<()> {
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, reformat(&new, cli.line_length_limit))?;
+            while new != old {
+                old = new.clone();
+                new = reformat(&new, cli.line_length_limit);
+            }
+            fs::write(&path, new)?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
         }
     }
     if !compliant.is_empty() {
-        display("compliant", &compliant);
+        if cli.hide_compliant_files {
+            println!("{} files are compliant", compliant.len())
+        } else {
+            display("compliant", &compliant);
+        }
     }
     if !made_compliant.is_empty() {
         display("made compliant", &made_compliant);

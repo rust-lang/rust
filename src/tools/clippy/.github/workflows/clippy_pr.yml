@@ -116,10 +116,35 @@ jobs:
       run: cargo doc --no-deps
       working-directory: lintcheck
 
+  merge_base:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_mq.yml
+    runs-on: ubuntu-latest
+
+    env:
+      # PRs must be based on this commit (or a later one). This is the commit of the last `git-subtree` sync before we
+      # switched to JOSH (rust-clippy#17739).
+      MIN_MERGE_BASE: 2dd71153b54873bce06a89b65653f346fb528d13
+
+    steps:
+    - name: Check merge base
+      run: |
+        # Only fetch the commit history, without any directories or file contents (`--filter=tree:0`).
+        git init --quiet
+        git fetch --quiet --no-tags --filter=tree:0 "https://github.com/${REPO}" "${HEAD_SHA}" "${MIN_MERGE_BASE}"
+        # If `${MIN_MERGE_BASE}` is NOT (`!`) an ancestor (`--is-ancestor`) of the PR head (`${HEAD_SHA}`), emit an
+        # error.
+        if ! git merge-base --is-ancestor "${MIN_MERGE_BASE}" "${HEAD_SHA}"; then
+          echo "::error::This PR is based on a commit older than '${MIN_MERGE_BASE}'. Please rebase it onto the latest 'main' branch."
+          exit 1
+        fi
+      env:
+        REPO: ${{ github.repository }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
   # We need to have the "conclusion" job also on PR CI, to make it possible
   # to add PRs to a merge queue.
   conclusion:
-    needs: [ base, doc ]
+    needs: [ base, doc, merge_base ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run

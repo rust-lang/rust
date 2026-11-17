@@ -521,17 +521,6 @@ fn generate_functions(intrinsics: &[ScalarIntrinsic]) -> String {
             output.push_str("#[inline(always)]\n");
         }
 
-        // Immediate parameters become const generics but are passed as positional
-        // arguments at the call site: Q6_R_add_RI(rs, 42) rather than Q6_R_add_RI::<42>(rs).
-        // This matches the assembly syntax where the immediate is an operand.
-        if !imm_params.is_empty() {
-            let indices: Vec<String> = imm_params.iter().map(|(i, _, _)| i.to_string()).collect();
-            output.push_str(&format!(
-                "#[rustc_legacy_const_generics({})]\n",
-                indices.join(", ")
-            ));
-        }
-
         if let Some(instr) = extract_instr_name(&info.asm_syntax) {
             if imm_params.is_empty() {
                 output.push_str(&format!("#[cfg_attr(test, assert_instr({}))]\n", instr));

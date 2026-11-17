@@ -4578,6 +4578,30 @@ fn derive_macro_bounds() {
 }
 
 #[test]
+fn derive_macro_bounds_higher_ranked_projection() {
+    check_types(
+        r#"
+//- minicore: clone, derive
+trait Src { type Item<'a, 'b>; }
+
+#[derive(Clone)]
+struct S<I: Src>(for<'a> fn(for<'b> fn(I::Item<'a, 'b>)));
+
+fn without_bound<I: Src + Clone>(s: &S<I>) {
+    let x = s.clone();
+      //^ &'? S<I>
+}
+
+fn with_bound<I: Src + Clone>(s: &S<I>)
+where for<'a, 'b> I::Item<'a, 'b>: Clone {
+    let x = s.clone();
+      //^ S<I>
+}
+"#,
+    );
+}
+
+#[test]
 fn trait_obligations_should_be_registered_during_path_inference() {
     check_types(
         r#"

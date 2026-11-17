@@ -17,7 +17,7 @@ use rustc_hir::{
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt as _, CallerBoundsIterator};
+use rustc_middle::ty::{self, CallerBoundsIterator as _, Ty, TypeVisitableExt as _};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol};

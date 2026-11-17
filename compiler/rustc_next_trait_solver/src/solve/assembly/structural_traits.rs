@@ -107,6 +107,9 @@ where
                 .map(Unnormalized::skip_norm_wip)
                 .collect(),
         )),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -186,6 +189,9 @@ where
                 Ok(ty::Binder::dummy(vec![]))
             }
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -270,6 +276,9 @@ where
         | ty::Bound(..) => {
             panic!("unexpected type `{ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -410,6 +419,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -590,6 +602,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -761,6 +776,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -847,6 +865,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

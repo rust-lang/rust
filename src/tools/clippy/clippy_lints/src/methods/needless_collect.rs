@@ -16,7 +16,9 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized, CallerBoundsIterator};
+use rustc_middle::ty::{
+    self, AssocTag, CallerBoundsIterator as _, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 

@@ -112,6 +112,9 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<Value<'ll>, Value<'ll>>>,
 
+    /// Cache of globally unique names for const operands to global assembly (value -> name)
+    pub global_asm_symbols: RefCell<FxHashMap<Value<'ll>, String>>,
+
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
     /// (We have to make sure we don't invalidate any Values referring
@@ -516,20 +519,19 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
         );
     }
 
-    match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
+    // Set up the small-data optimization limit for architectures that use
+    // an LLVM module flag to control this.
+    if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+        && let SmallDataThresholdSupport::LlvmModuleFlag(flag) =
+            sess.target.small_data_threshold_support()
     {
-        // Set up the small-data optimization limit for architectures that use
-        // an LLVM module flag to control this.
-        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
-            llvm::add_module_flag_u32(
-                llmod,
-                llvm::ModuleFlagMergeBehavior::Error,
-                &flag,
-                threshold as u32,
-            );
-        }
-        _ => (),
-    };
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            &flag,
+            threshold as u32,
+        );
+    }
 
     // Insert `llvm.ident` metadata.
     //
@@ -715,6 +717,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 vtables: Default::default(),
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),
+                global_asm_symbols: Default::default(),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: Vec::new(),
                 compiler_used_statics: Default::default(),
@@ -946,11 +949,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn apply_vcall_visibility_metadata(
         &self,
-        ty: Ty<'tcx>,
-        poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
+        trait_hierarchy: &[ty::ExistentialTraitRef<'tcx>],
         vtable: Value<'ll>,
     ) {
-        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
+        apply_vcall_visibility_metadata(self, trait_hierarchy, vtable);
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Value<'ll> {
@@ -1160,7 +1162,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             _ => {
                 let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
                     .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                let f = intrinsic.get_declaration(self.llmod, type_params);
                 (self.get_type_of_global(f), f)
             }
         }

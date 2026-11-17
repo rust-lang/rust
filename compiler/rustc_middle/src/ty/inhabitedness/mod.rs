@@ -342,6 +342,9 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
             | ty::CoroutineWitness(..) => {
                 bug!("non-normalized type in `is_opsem_uninhabited`: `{ty}`")
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

@@ -1260,6 +1260,14 @@ fn fmt_type(
             write!(f, "impl {}", WithOpts::from(f).display(print_generic_bounds(bounds, cx)))
         }
         clean::QPath(qpath) => print_qpath_data(qpath, cx).fmt(f),
+        clean::View(path, fields) => {
+            // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
+            let did = path.def_id();
+            let path =
+                fmt::from_fn(|f| resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx));
+
+            write!(f, "{path}.{{ {fields} }}")
+        }
     }
 }
 

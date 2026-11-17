@@ -455,6 +455,9 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
         | ty::Error(_)
         | ty::Never
         | ty::Float(_) => None,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

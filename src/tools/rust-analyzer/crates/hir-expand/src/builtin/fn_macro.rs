@@ -137,8 +137,8 @@ register_builtin! {
     (option_env, OptionEnv) => option_env_expand,
 }
 
-fn mk_pound(span: Span) -> tt::Leaf {
-    crate::tt::Leaf::Punct(crate::tt::Punct { char: '#', spacing: crate::tt::Spacing::Alone, span })
+fn mk_forced_kw(span: Span, sym: Symbol) -> tt::Leaf {
+    crate::tt::Leaf::Ident(tt::Ident { sym, span, kind: tt::IdentKind::ForcedKeyword })
 }
 
 fn module_path_expand(
@@ -263,11 +263,11 @@ fn format_args_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::format_args);
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     ExpandResult::ok(quote! {span =>
-        builtin #pound format_args #tt
+        #kw #tt
     })
 }
 
@@ -277,7 +277,7 @@ fn format_args_nl_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::format_args);
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     let lit = tt.as_token_trees().iter_flat_tokens().nth(1);
@@ -290,7 +290,7 @@ fn format_args_nl_expand(
         tt.set_token(1, lit.into());
     }
     ExpandResult::ok(quote! {span =>
-        builtin #pound format_args #tt
+        #kw #tt
     })
 }
 
@@ -302,9 +302,9 @@ fn asm_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::asm);
     let expanded = quote! {span =>
-        builtin #pound asm #tt
+        #kw #tt
     };
     ExpandResult::ok(expanded)
 }
@@ -317,9 +317,9 @@ fn global_asm_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::global_asm);
     let expanded = quote! {span =>
-        builtin #pound global_asm #tt
+        #kw #tt
     };
     ExpandResult::ok(expanded)
 }
@@ -332,9 +332,9 @@ fn naked_asm_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::naked_asm);
     let expanded = quote! {span =>
-        builtin #pound naked_asm #tt
+        #kw #tt
     };
     ExpandResult::ok(expanded)
 }
@@ -434,11 +434,11 @@ fn cfg_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::cfg);
     // Support ide features, like completion and hover
     // This implementation should not be used for 'cfg_select' because 'cfg_select' expands any token.
     let expanded = quote! {span =>
-        builtin #pound cfg #tt
+        #kw #tt
     };
     ExpandResult::ok(expanded)
 }
@@ -864,9 +864,9 @@ fn include_bytes_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     // FIXME: actually read the file here if the user asked for macro expansion
-    let pound = mk_pound(span);
+    let kw = mk_forced_kw(span, sym::include_bytes);
     let res = quote! {span =>
-        builtin #pound include_bytes
+        #kw
     };
     ExpandResult::ok(res)
 }
@@ -1008,6 +1008,6 @@ fn pattern_type_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
     tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
-    let pound = mk_pound(call_site);
-    ExpandResult::ok(quote! {call_site => builtin #pound pattern_type ( #tt ) })
+    let kw = mk_forced_kw(call_site, sym::pattern_type);
+    ExpandResult::ok(quote! {call_site => #kw ( #tt ) })
 }

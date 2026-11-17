@@ -119,6 +119,7 @@ impl Project<'_> {
                 // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
                 path: tmp_dir_path.join(Itertools::exactly_one(self.roots.iter()).unwrap()).into(),
                 exclude_vendored_libraries: false,
+                num_threads: None,
             },
             &mut buf,
             None,

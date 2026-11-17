@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![expect(clippy::explicit_counter_loop)]
+#![expect(clippy::explicit_counter_loop, clippy::large_unopt_stack_frames)]
 
 fn main() {
     let v = vec![1, 2, 3];

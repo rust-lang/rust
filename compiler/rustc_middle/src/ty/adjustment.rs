@@ -207,6 +207,15 @@ pub enum AutoBorrow {
     Pin(hir::Mutability),
 }
 
+impl AutoBorrow {
+    pub fn mutability(self) -> hir::Mutability {
+        match self {
+            Self::Ref(mutbl) => mutbl.into(),
+            Self::RawPtr(mutbl) | Self::Pin(mutbl) => mutbl,
+        }
+    }
+}
+
 /// Information for `CoerceUnsized` impls, storing information we
 /// have computed about the coercion.
 ///

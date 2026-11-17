@@ -1344,6 +1344,9 @@ fn classify_name_ref<'db>(
                     TypeLocation::GenericArg { args, of_trait: None, corresponding_param: None }
                 },
                 ast::TupleField(_) => TypeLocation::TupleField,
+                ast::TypeAnchor(it) if it.trait_()?.syntax() == node => {
+                    TypeLocation::AnchorTrait
+                },
                 _ => return None,
             }
         };

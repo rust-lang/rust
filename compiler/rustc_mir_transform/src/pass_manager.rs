@@ -141,16 +141,19 @@ impl<'sess> PassCtx<'sess> {
         let body_mir_opt_level = if !tcx.def_kind(def_id).has_codegen_attrs() {
             tcx.sess.mir_opt_level()
         } else {
-            match tcx.codegen_fn_attrs(def_id).optimize {
+            let attr_opt_level = match tcx.codegen_fn_attrs(def_id).optimize {
                 OptimizeAttr::Default => tcx.sess.mir_opt_level(),
                 OptimizeAttr::Speed => OptLevel::Aggressive.mir_opt_level(),
-                // `optimize(none)`/`optimize(size)` should not increase the MIR opt level.
-                // (This can be relevant when `-Zmir-opt-level=0` was manually set.)
-                OptimizeAttr::DoNotOptimize => {
-                    OptLevel::No.mir_opt_level().min(tcx.sess.mir_opt_level())
-                }
-                OptimizeAttr::Size => OptLevel::Size.mir_opt_level().min(tcx.sess.mir_opt_level()),
-            }
+                OptimizeAttr::Size => OptLevel::SizeMin.mir_opt_level(),
+                OptimizeAttr::DoNotOptimize => OptLevel::No.mir_opt_level(),
+            };
+            // The LLVM backend only makes the `optimize` attribute really do anything in optimized
+            // builds: at opt-levels 1-3, we can choose some functions to optimize for size instead;
+            // at opt-level s or z, we can choose some functions to optimize for speed. For
+            // consistency, we do something similar for MIR-opts, by letting the attribute only
+            // decrease the opt-level, not increase it. (MIR does not distinguish between size and
+            // speed optimizations.)
+            attr_opt_level.min(tcx.sess.mir_opt_level())
         };
         Self { session: tcx.sess, body_mir_opt_level }
     }

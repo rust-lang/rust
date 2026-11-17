@@ -106,7 +106,8 @@ pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_stored&ig_expand=6881)
 #[inline]
 #[target_feature(enable = "amx-tile")]
-#[cfg_attr(test, assert_instr(tilestored))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tilestored))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_stored(base: *mut u8, stride: usize, src: __tile1024i) {
     tilestored64_internal(src.rows, src.colsb, base, stride as u64, src.tile);
@@ -191,7 +192,8 @@ pub unsafe fn _tile_dpbf16ps<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpbf16ps&ig_expand=6864)
 #[inline]
 #[target_feature(enable = "amx-bf16")]
-#[cfg_attr(test, assert_instr(tdpbf16ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpbf16ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbf16ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbf16ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -224,7 +226,8 @@ pub unsafe fn _tile_dpbssd<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpbssd&ig_expand=6866)
 #[inline]
 #[target_feature(enable = "amx-int8")]
-#[cfg_attr(test, assert_instr(tdpbssd))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpbssd))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbssd(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbssd_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -257,7 +260,8 @@ pub unsafe fn _tile_dpbsud<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpbsud&ig_expand=6868)
 #[inline]
 #[target_feature(enable = "amx-int8")]
-#[cfg_attr(test, assert_instr(tdpbsud))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpbsud))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbsud(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbsud_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -290,7 +294,8 @@ pub unsafe fn _tile_dpbusd<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpbusd&ig_expand=6870)
 #[inline]
 #[target_feature(enable = "amx-int8")]
-#[cfg_attr(test, assert_instr(tdpbusd))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpbusd))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbusd(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbusd_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -323,7 +328,8 @@ pub unsafe fn _tile_dpbuud<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpbuud&ig_expand=6872)
 #[inline]
 #[target_feature(enable = "amx-int8")]
-#[cfg_attr(test, assert_instr(tdpbuud))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpbuud))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbuud(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbuud_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -354,7 +360,8 @@ pub unsafe fn _tile_dpfp16ps<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_dpfp16ps&ig_expand=6874)
 #[inline]
 #[target_feature(enable = "amx-fp16")]
-#[cfg_attr(test, assert_instr(tdpfp16ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tdpfp16ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpfp16ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpfp16ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -393,7 +400,8 @@ pub unsafe fn _tile_cmmimfp16ps<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_cmmimfp16ps&ig_expand=6860)
 #[inline]
 #[target_feature(enable = "amx-complex")]
-#[cfg_attr(test, assert_instr(tcmmimfp16ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tcmmimfp16ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cmmimfp16ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tcmmimfp16ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -432,7 +440,8 @@ pub unsafe fn _tile_cmmrlfp16ps<const DST: i32, const A: i32, const B: i32>() {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__tile_cmmrlfp16ps&ig_expand=6862)
 #[inline]
 #[target_feature(enable = "amx-complex")]
-#[cfg_attr(test, assert_instr(tcmmrlfp16ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(test, assert_instr(tcmmrlfp16ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cmmrlfp16ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tcmmrlfp16ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -464,7 +473,8 @@ pub unsafe fn _tile_dpbf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-fp8")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdpbf8ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdpbf8ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbf8ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbf8ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -496,7 +506,8 @@ pub unsafe fn _tile_dpbhf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-fp8")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdpbhf8ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdpbhf8ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dpbhf8ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdpbhf8ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -528,7 +539,8 @@ pub unsafe fn _tile_dphbf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-fp8")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdphbf8ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdphbf8ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dphbf8ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdphbf8ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -560,7 +572,8 @@ pub unsafe fn _tile_dphf8ps<const DST: i32, const A: i32, const B: i32>() {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-fp8")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdphf8ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tdphf8ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_dphf8ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
     (*dst).tile = tdphf8ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
@@ -668,7 +681,8 @@ pub unsafe fn _tile_cvtrowd2psi<const TILE: i32, const ROW: i32>() -> __m512 {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowd2ps))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowd2ps))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cvtrowd2ps(src: __tile1024i, row: u32) -> __m512 {
     tcvtrowd2ps_internal(src.rows, src.colsb, src.tile, row).as_m512()
@@ -713,7 +727,8 @@ pub unsafe fn _tile_cvtrowps2phhi<const TILE: i32, const ROW: i32>() -> __m512h 
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2phh))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2phh))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cvtrowps2phh(src: __tile1024i, row: u32) -> __m512h {
     tcvtrowps2phh_internal(src.rows, src.colsb, src.tile, row).as_m512h()
@@ -758,7 +773,8 @@ pub unsafe fn _tile_cvtrowps2phli<const TILE: i32, const ROW: i32>() -> __m512h 
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2phl))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2phl))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cvtrowps2phl(src: __tile1024i, row: u32) -> __m512h {
     tcvtrowps2phl_internal(src.rows, src.colsb, src.tile, row).as_m512h()
@@ -803,7 +819,8 @@ pub unsafe fn _tile_cvtrowps2bf16hi<const TILE: i32, const ROW: i32>() -> __m512
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2bf16h))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2bf16h))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cvtrowps2bf16h(src: __tile1024i, row: u32) -> __m512bh {
     tcvtrowps2bf16h_internal(src.rows, src.colsb, src.tile, row).as_m512bh()
@@ -848,7 +865,8 @@ pub unsafe fn _tile_cvtrowps2bf16li<const TILE: i32, const ROW: i32>() -> __m512
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2bf16l))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tcvtrowps2bf16l))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_cvtrowps2bf16l(src: __tile1024i, row: u32) -> __m512bh {
     tcvtrowps2bf16l_internal(src.rows, src.colsb, src.tile, row).as_m512bh()
@@ -887,7 +905,8 @@ pub unsafe fn _tile_movrowi<const TILE: i32, const ROW: i32>() -> __m512i {
 /// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
 #[inline]
 #[target_feature(enable = "amx-avx512,avx10.2")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tilemovrow))]
+// FIXME(amx) see https://github.com/rust-lang/rust/issues/165931.
+// #[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tilemovrow))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn __tile_movrow(src: __tile1024i, row: u32) -> __m512i {
     tilemovrow_internal(src.rows, src.colsb, src.tile, row).as_m512i()

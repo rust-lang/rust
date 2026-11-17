@@ -4,6 +4,15 @@ error[E0425]: cannot find value `a̐é` in this scope
 LL |     let _ = a̐é;
    |             ^^ not found in this scope
 
+warning: identifier contains a character that is for non-linguistic, specialized usage: '\u{310}'
+  --> $DIR/unicode_2.rs:4:13
+   |
+LL |     let _ = a̐é;
+   |             ^^
+   |
+   = note: this character is included in the Technical Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
 error: invalid width `7` for integer literal
   --> $DIR/unicode_2.rs:2:25
    |
@@ -20,6 +29,6 @@ LL |     let _ = ("아あ", 1i42);
    |
    = help: valid widths are 8, 16, 32, 64 and 128
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0425`.

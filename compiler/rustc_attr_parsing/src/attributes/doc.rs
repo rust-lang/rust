@@ -10,12 +10,13 @@ use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, kw, sym};
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
+use super::prelude::AllowedTargets;
 use super::{AcceptMapping, AttributeParser, template};
+use crate::attributes::doc_comment::DOC_TARGETS;
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
-    DocAttrNotCrateLevel, DocAttrNotParameters, DocAttrNotTraitLevel, DocAttributeNotAttribute,
+    DocAttrNotCrateLevel, DocAttrNotTraitLevel, DocAttributeNotAttribute,
     DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
     DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
     DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
@@ -864,9 +865,6 @@ impl DocParser {
     }
 
     fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
-        if cx.shared.target == Target::Param {
-            cx.emit_err(DocAttrNotParameters { span: cx.attr_span });
-        }
         match args {
             ArgParser::List(items) if !items.is_empty() => {
                 for i in items.mixed() {
@@ -934,43 +932,7 @@ impl AttributeParser for DocParser {
             this.accept_single_doc_attr(cx, args);
         },
     )];
-    // FIXME: Currently emitted from 2 different places, generating duplicated warnings.
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(ALL_TARGETS);
-    // const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-    //     Allow(Target::ExternCrate),
-    //     Allow(Target::Use),
-    //     Allow(Target::Static),
-    //     Allow(Target::Const),
-    //     Allow(Target::Fn),
-    //     Allow(Target::Mod),
-    //     Allow(Target::ForeignMod),
-    //     Allow(Target::TyAlias),
-    //     Allow(Target::Enum),
-    //     Allow(Target::Variant),
-    //     Allow(Target::Struct),
-    //     Allow(Target::Field),
-    //     Allow(Target::Union),
-    //     Allow(Target::Trait),
-    //     Allow(Target::TraitAlias),
-    //     Allow(Target::Impl { of_trait: true }),
-    //     Allow(Target::Impl { of_trait: false }),
-    //     Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-    //     Allow(Target::AssocConst(AssocCtxt::Trait)),
-    //     Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
-    //     Allow(Target::Method(MethodKind::Inherent)),
-    //     Allow(Target::Method(MethodKind::Trait { body: true })),
-    //     Allow(Target::Method(MethodKind::Trait { body: false })),
-    //     Allow(Target::Method(MethodKind::TraitImpl)),
-    //     Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
-    //     Allow(Target::AssocTy(AssocCtxt::Trait)),
-    //     Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-    //     Allow(Target::ForeignFn),
-    //     Allow(Target::ForeignStatic),
-    //     Allow(Target::ForeignTy),
-    //     Allow(Target::MacroDef),
-    //     Allow(Target::Crate),
-    //     Error(Target::WherePredicate),
-    // ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = DOC_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {

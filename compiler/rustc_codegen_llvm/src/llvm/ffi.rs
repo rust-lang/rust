@@ -21,15 +21,14 @@ use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 
 pub(crate) use self::branded::{
-    Context, ContextRaw, Module, ModuleRaw, Type, Value, wrap_llcx, wrap_llmod,
+    Attribute, Context, ContextRaw, Module, ModuleRaw, Type, Value, wrap_llcx, wrap_llmod,
 };
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
     DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::llvm;
-use crate::llvm::MetadataKindId;
+use crate::llvm::{self, LLVMRustTpdeOptions, MetadataKindId};
 use crate::macros::TryFromU32;
 
 mod branded;
@@ -708,7 +707,6 @@ struct InvariantOpaque<'a> {
 
 unsafe extern "C" {
     pub(crate) type ConstantInt;
-    pub(crate) type Attribute;
     pub(crate) type Metadata;
     pub(crate) type BasicBlock;
     pub(crate) type Comdat;
@@ -1164,7 +1162,7 @@ unsafe extern "C" {
         NameLen: c_uint,
         Value: *const c_uchar, // See "PTR_LEN_STR".
         ValueLen: c_uint,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv<'ll>(Fn: Value<'ll>, CC: c_uint);
@@ -1673,6 +1671,11 @@ unsafe extern "C" {
         Index: c_uint,
         Name: *const c_char,
     ) -> Value<'ll>;
+    pub(crate) fn LLVMBuildFreeze<'ll>(
+        B: &Builder<'ll>,
+        Val: Value<'ll>,
+        Name: *const c_char,
+    ) -> Value<'ll>;
 
     // Atomic Operations
     pub(crate) fn LLVMBuildAtomicCmpXchg<'ll>(
@@ -2072,39 +2075,39 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustCreateAttrNoValue<'ll>(
         C: Context<'ll>,
         attr: AttributeKind,
-    ) -> &'ll Attribute;
-    pub(crate) fn LLVMRustCreateAlignmentAttr<'ll>(C: Context<'ll>, bytes: u64) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
+    pub(crate) fn LLVMRustCreateAlignmentAttr<'ll>(C: Context<'ll>, bytes: u64) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateDereferenceableAttr<'ll>(
         C: Context<'ll>,
         bytes: u64,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateDereferenceableOrNullAttr<'ll>(
         C: Context<'ll>,
         bytes: u64,
-    ) -> &'ll Attribute;
-    pub(crate) fn LLVMRustCreateByValAttr<'ll>(C: Context<'ll>, ty: Type<'ll>) -> &'ll Attribute;
-    pub(crate) fn LLVMRustCreateByRefAttr<'ll>(C: Context<'ll>, ty: Type<'ll>) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
+    pub(crate) fn LLVMRustCreateByValAttr<'ll>(C: Context<'ll>, ty: Type<'ll>) -> Attribute<'ll>;
+    pub(crate) fn LLVMRustCreateByRefAttr<'ll>(C: Context<'ll>, ty: Type<'ll>) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateStructRetAttr<'ll>(
         C: Context<'ll>,
         ty: Type<'ll>,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateElementTypeAttr<'ll>(
         C: Context<'ll>,
         ty: Type<'ll>,
-    ) -> &'ll Attribute;
-    pub(crate) fn LLVMRustCreateUWTableAttr<'ll>(C: Context<'ll>, async_: bool) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
+    pub(crate) fn LLVMRustCreateUWTableAttr<'ll>(C: Context<'ll>, async_: bool) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateAllocSizeAttr<'ll>(
         C: Context<'ll>,
         size_arg: u32,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateAllocKindAttr<'ll>(
         C: Context<'ll>,
         size_arg: u64,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
     pub(crate) fn LLVMRustCreateMemoryEffectsAttr<'ll>(
         C: Context<'ll>,
         effects: MemoryEffects,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
     /// ## Safety
     /// - Each of `LowerWords` and `UpperWords` must point to an array that is
     ///   long enough to fully define an integer of size `NumBits`, i.e. each
@@ -2116,13 +2119,13 @@ unsafe extern "C" {
         NumBits: c_uint,
         LowerWords: *const u64,
         UpperWords: *const u64,
-    ) -> &'ll Attribute;
+    ) -> Attribute<'ll>;
 
     // Operations on functions
     pub(crate) fn LLVMRustAddFunctionAttributes<'ll>(
         Fn: Value<'ll>,
         index: c_uint,
-        Attrs: *const &'ll Attribute,
+        Attrs: *const Attribute<'ll>,
         AttrsLen: size_t,
     );
 
@@ -2130,7 +2133,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustAddCallSiteAttributes<'ll>(
         Instr: Value<'ll>,
         index: c_uint,
-        Attrs: *const &'ll Attribute,
+        Attrs: *const Attribute<'ll>,
         AttrsLen: size_t,
     );
 
@@ -2511,6 +2514,7 @@ unsafe extern "C" {
         FileType: FileType,
         VerifyIR: bool,
         DisableSimplifyLibCalls: bool,
+        TpdeOptions: LLVMRustTpdeOptions,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustOptimize<'ll>(
         M: Module<'ll>,

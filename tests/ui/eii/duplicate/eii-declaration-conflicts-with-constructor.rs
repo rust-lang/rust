@@ -1,4 +1,5 @@
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/153502>:
 // Regression test for <https://github.com/rust-lang/rust/issues/152893>:

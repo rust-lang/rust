@@ -63,18 +63,18 @@ macro_rules! global_asm {() => {}}
 #[rustc_builtin_macro]
 macro_rules! naked_asm {() => {}}
 
-builtin #global_asm ("")
+k#global_asm ("")
 
 #[unsafe(naked)]
 extern "C" fn foo() {
-    builtin #naked_asm ("");
+    k#naked_asm ("");
 }
 
 fn main() {
     let i: u64 = 3;
     let o: u64;
     unsafe {
-        builtin #asm ("mov {0}, {1}", "add {0}, 5", out (reg)o, in (reg)i, );
+        k#asm ("mov {0}, {1}", "add {0}, 5", out (reg)o, in (reg)i, );
     }
 }
 "##]],
@@ -290,7 +290,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    builtin #format_args ("{} {:?}", arg1(a, b, c), arg2);
+    k#format_args ("{} {:?}", arg1(a, b, c), arg2);
 }
 "##]],
     );
@@ -323,17 +323,17 @@ macro_rules! format_args {
 }
 
 fn main() {
-    builtin #format_args (x = 2);
+    k#format_args (x = 2);
     /* parse error: expected expression */
-builtin #format_args (x = );
+k#format_args (x = );
     /* parse error: expected expression */
-builtin #format_args (x = , x = 2);
+k#format_args (x = , x = 2);
     /* parse error: expected expression */
-builtin #format_args ("{}", x = );
+k#format_args ("{}", x = );
     /* parse error: expected expression */
 /* parse error: expected expression */
-builtin #format_args ( = , "{}", x = );
-    builtin #format_args (x = 2, "{}", 5);
+k#format_args ( = , "{}", x = );
+    k#format_args (x = 2, "{}", 5);
 }
 "##]],
     );
@@ -361,7 +361,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    builtin #format_args ("{} {:?}", a::<A, B>(), b);
+    k#format_args ("{} {:?}", a::<A, B>(), b);
 }
 "##]],
     );
@@ -394,7 +394,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    builtin #format_args (r#"{},mismatch,"{}","{}""#, location_csv_pat(db, &analysis, vfs, &sm, pat_id), mismatch.expected.display(db), mismatch.actual.display(db));
+    k#format_args (r#"{},mismatch,"{}","{}""#, location_csv_pat(db, &analysis, vfs, &sm, pat_id), mismatch.expected.display(db), mismatch.actual.display(db));
 }
 "##]],
     );
@@ -428,7 +428,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    builtin #format_args (concat!("xxx{}y", "{:?}zzz"), 2, b);
+    k#format_args (concat!("xxx{}y", "{:?}zzz"), 2, b);
 }
 "##]],
     );
@@ -459,7 +459,7 @@ macro_rules! format_args {
 fn main() {
     let _ =
         /* parse error: expected field name or number */
-builtin #format_args ("{} {:?}", a.);
+k#format_args ("{} {:?}", a.);
 }
 "##]],
     );
