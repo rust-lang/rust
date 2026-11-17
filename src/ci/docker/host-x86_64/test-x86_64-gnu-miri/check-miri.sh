@@ -11,9 +11,9 @@ X_PY="$1"
 # that bugs which only surface when the GC runs at a specific time are more likely to cause CI to fail.
 # This significantly increases the runtime of our test suite, or we'd do this in PR CI too.
 if [ -z "${PR_CI_JOB:-}" ]; then
-    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 miri cargo-miri
+    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 miri cargo-miri priroda
 else
-    python3 "$X_PY" test --stage 2 miri cargo-miri
+    python3 "$X_PY" test --stage 2 miri cargo-miri priroda
 fi
 # Run the test suite again with mir optimizations, to catch some miscompilations.
 MIRIFLAGS="-O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 python3 "$X_PY" test --stage 2 miri -- tests/{pass,panic}
