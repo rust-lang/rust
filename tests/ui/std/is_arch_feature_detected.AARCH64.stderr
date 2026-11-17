@@ -54,7 +54,8 @@ LL |     let _ = arch::is_mips_feature_detected!("msa");
 
 error: This macro cannot be used on the current target. You can prevent
        it from being used in other architectures by guarding it behind
-       a `cfg(target_arch = "mips")`.
+       a `cfg(any(target_arch = "mips", target_arch = "mips32r6", target_arch = "mips64",
+       target_arch = "mips64r6"))`.
   --> $DIR/is_arch_feature_detected.rs:41:13
    |
 LL |     let _ = arch::is_mips_feature_detected!("msa");
