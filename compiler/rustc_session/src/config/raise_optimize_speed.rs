@@ -54,6 +54,22 @@ pub enum RaiseOptimizeSpeedProbe {
     Chosen,
 }
 
+/// The name of the source file that holds the items that the `probe=added-unused` and
+/// `probe=added` settings of `-Z raise-optimize-speed` add, by which the compiler knows them
+/// again.
+pub const RAISE_OPTIMIZE_SPEED_PROBE_FILE: &str = "optimize-speed-probe";
+
+/// The name of the function that `-Z raise-optimize-speed=...,probe=added-unused` adds. The
+/// compiler looks at the name before it looks at the file, since a name costs less to compare.
+pub const RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN: &str = "_probe";
+
+/// The name of the function that `-Z raise-optimize-speed=...,probe=added` adds.
+pub const RAISE_OPTIMIZE_SPEED_USED_PROBE_FN: &str = "probe";
+
+/// The name of the static that `-Z raise-optimize-speed=...,probe=added` adds beside its
+/// function.
+pub const RAISE_OPTIMIZE_SPEED_USED_PROBE_STATIC: &str = "PROBE";
+
 /// Settings for the `-Z raise-optimize-speed` flag, which makes `#[optimize(speed)]` take
 /// effect in a crate built at `-C opt-level=0`.
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]

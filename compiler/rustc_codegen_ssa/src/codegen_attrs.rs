@@ -14,7 +14,12 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_span::{Span, bug};
+use rustc_session::config::{
+    RAISE_OPTIMIZE_SPEED_PROBE_FILE, RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN,
+    RAISE_OPTIMIZE_SPEED_USED_PROBE_FN, RAISE_OPTIMIZE_SPEED_USED_PROBE_STATIC,
+    RaiseOptimizeSpeedProbe,
+};
+use rustc_span::{FileName, Span, bug};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -174,19 +179,7 @@ fn process_builtin_attrs(
             AttributeKind::Used { used_by } => match used_by {
                 UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                 UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
-                UsedBy::Default => {
-                    let used_form = if tcx.sess.target.os == Os::Illumos {
-                        // illumos' `ld` doesn't support a section header that would represent
-                        // `#[used(linker)]`, see
-                        // https://github.com/rust-lang/rust/issues/146169. For that target,
-                        // downgrade as if `#[used(compiler)]` was requested and hope for the
-                        // best.
-                        CodegenFnAttrFlags::USED_COMPILER
-                    } else {
-                        CodegenFnAttrFlags::USED_LINKER
-                    };
-                    codegen_fn_attrs.flags |= used_form;
-                }
+                UsedBy::Default => codegen_fn_attrs.flags |= default_used_flag(tcx),
             },
             AttributeKind::FfiConst => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
             AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
@@ -361,9 +354,65 @@ fn constructs_desugared_body_coroutine(tcx: TyCtxt<'_>, did: LocalDefId) -> bool
     })
 }
 
+/// The flag that `#[used]` sets when it does not say by whom the item is used.
+fn default_used_flag(tcx: TyCtxt<'_>) -> CodegenFnAttrFlags {
+    if tcx.sess.target.os == Os::Illumos {
+        // illumos' `ld` doesn't support a section header that would represent
+        // `#[used(linker)]`, see
+        // https://github.com/rust-lang/rust/issues/146169. For that target,
+        // downgrade as if `#[used(compiler)]` was requested and hope for the
+        // best.
+        CodegenFnAttrFlags::USED_COMPILER
+    } else {
+        CodegenFnAttrFlags::USED_LINKER
+    }
+}
+
+/// Marks `did` if it is an item that a probe of `-Z raise-optimize-speed` added to the crate.
+///
+/// Such an item has no attribute in its source, where the attribute's name would be resolved in
+/// the crate's scope and could meet a macro of the crate's. So the function that
+/// `probe=added-unused` or `probe=added` adds is marked here as `#[optimize(speed)]` would mark
+/// it, and the static that `probe=added` adds as `#[used]` would.
+fn mark_raise_optimize_speed_probe(
+    tcx: TyCtxt<'_>,
+    did: LocalDefId,
+    codegen_fn_attrs: &mut CodegenFnAttrs,
+) {
+    let Some(raise) = tcx.sess.raise_optimize_speed() else { return };
+    let (fn_name, static_name) = match raise.probe {
+        RaiseOptimizeSpeedProbe::AddedUnused => (RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN, None),
+        RaiseOptimizeSpeedProbe::Added => {
+            (RAISE_OPTIMIZE_SPEED_USED_PROBE_FN, Some(RAISE_OPTIMIZE_SPEED_USED_PROBE_STATIC))
+        }
+        RaiseOptimizeSpeedProbe::Off | RaiseOptimizeSpeedProbe::Chosen => return,
+    };
+    // The name is compared first, since every definition of the crate is asked about and the
+    // comparison costs next to nothing.
+    let Some(name) = tcx.opt_item_name(did.to_def_id()) else { return };
+    let is_fn = match tcx.def_kind(did) {
+        DefKind::Fn if name.as_str() == fn_name => true,
+        DefKind::Static { .. } if static_name == Some(name.as_str()) => false,
+        _ => return,
+    };
+    let file = tcx.sess.source_map().lookup_source_file(tcx.def_span(did).lo());
+    if !matches!(&file.name, FileName::Custom(f) if f == RAISE_OPTIMIZE_SPEED_PROBE_FILE) {
+        return;
+    }
+    if is_fn {
+        codegen_fn_attrs.optimize = OptimizeAttr::Speed;
+    } else {
+        codegen_fn_attrs.flags |= default_used_flag(tcx);
+    }
+}
+
 /// Applies overrides for codegen fn attrs. These often have a specific reason why they're necessary.
 /// Please comment why when adding a new one!
 fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut CodegenFnAttrs) {
+    // The items that a probe of `-Z raise-optimize-speed` adds to the crate carry no attributes
+    // of their own, so that none is resolved in the crate's scope.
+    mark_raise_optimize_speed_probe(tcx, did, codegen_fn_attrs);
+
     // Apply the minimum function alignment here. This ensures that a function's alignment is
     // determined by the `-C` flags of the crate it is defined in, not the `-C` flags of the crate
     // it happens to be codegen'd (or const-eval'd) in.

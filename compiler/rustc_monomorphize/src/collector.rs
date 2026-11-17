@@ -229,8 +229,11 @@ use rustc_middle::ty::{
     TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
-use rustc_session::config::{DebugInfo, EntryFnType, Offload};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, dummy_spanned, respan, span_bug};
+use rustc_session::config::{
+    DebugInfo, EntryFnType, Offload, RAISE_OPTIMIZE_SPEED_PROBE_FILE,
+    RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN, RaiseOptimizeSpeedProbe,
+};
+use rustc_span::{DUMMY_SP, FileName, Span, Spanned, Symbol, bug, dummy_spanned, respan, span_bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument, trace};
 
@@ -1479,6 +1482,32 @@ fn collect_const_value<'tcx>(
 // Root Collection
 //=-----------------------------------------------------------------------------
 
+/// Whether `def_id` is an item that the `probe=added-unused` or `probe=added` setting of
+/// `-Z raise-optimize-speed` added to the crate. Such an item is known by the name of the source
+/// file it was parsed from, which no file of the crate's own can have.
+pub(crate) fn is_added_probe_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let file = tcx.sess.source_map().lookup_source_file(tcx.def_span(def_id).lo());
+    matches!(&file.name, FileName::Custom(name) if name == RAISE_OPTIMIZE_SPEED_PROBE_FILE)
+}
+
+/// The name of the function that `-Z raise-optimize-speed=...,probe=added-unused` adds to the
+/// crate, if the setting is in force.
+pub(crate) fn unused_probe_name(tcx: TyCtxt<'_>) -> Option<Symbol> {
+    tcx.sess
+        .raise_optimize_speed()
+        .is_some_and(|raise| raise.probe == RaiseOptimizeSpeedProbe::AddedUnused)
+        .then(|| Symbol::intern(RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN))
+}
+
+/// Whether `def_id` is the function that `probe=added-unused` adds, given the name that
+/// `unused_probe_name` returned. The name is compared first, since every function of the crate
+/// is asked about and the comparison costs next to nothing.
+pub(crate) fn is_unused_probe(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> bool {
+    tcx.opt_item_name(def_id) == Some(name)
+        && tcx.def_kind(def_id) == DefKind::Fn
+        && is_added_probe_item(tcx, def_id)
+}
+
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 #[instrument(skip(tcx, mode), level = "debug")]
@@ -1519,7 +1548,9 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
-        let mut collector = RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots };
+        let unused_probe = unused_probe_name(tcx);
+        let mut collector =
+            RootCollector { tcx, strategy: mode, entry_fn, output: &mut roots, unused_probe };
 
         let crate_items = tcx.hir_crate_items(());
 
@@ -1598,6 +1629,9 @@ struct RootCollector<'a, 'tcx> {
     strategy: MonoItemCollectionStrategy,
     output: &'a mut MonoItems<'tcx>,
     entry_fn: Option<(DefId, EntryFnType)>,
+    /// The name of the function that `-Z raise-optimize-speed=...,probe=added-unused` adds to
+    /// the crate, when it adds one.
+    unused_probe: Option<Symbol>,
 }
 
 impl<'v> RootCollector<'_, 'v> {
@@ -1767,6 +1801,11 @@ impl<'v> RootCollector<'_, 'v> {
                                     | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
                             )
                         }
+                        // Nothing refers to the function of `probe=added-unused`, and code is
+                        // to be emitted for it all the same.
+                        || self
+                            .unused_probe
+                            .is_some_and(|name| is_unused_probe(self.tcx, def_id.to_def_id(), name))
                 }
             }
     }

@@ -41,7 +41,9 @@ pub use crate::config::print_request::{
     PrintCategory, PrintKind, PrintRequest, collect_print_requests,
 };
 pub use crate::config::raise_optimize_speed::{
-    RaiseOptimizeSpeed, RaiseOptimizeSpeedForm, RaiseOptimizeSpeedProbe,
+    RAISE_OPTIMIZE_SPEED_PROBE_FILE, RAISE_OPTIMIZE_SPEED_UNUSED_PROBE_FN,
+    RAISE_OPTIMIZE_SPEED_USED_PROBE_FN, RAISE_OPTIMIZE_SPEED_USED_PROBE_STATIC, RaiseOptimizeSpeed,
+    RaiseOptimizeSpeedForm, RaiseOptimizeSpeedProbe,
 };
 use crate::diagnostics::FileWriteFail;
 use crate::macros::AllVariants;

@@ -54,6 +54,7 @@ mod trace_macros;
 pub mod asm;
 pub mod cmdline_attrs;
 pub mod contracts;
+pub mod optimize_speed_probe;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;

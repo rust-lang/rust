@@ -162,6 +162,7 @@ fn configure_and_expand(
             features,
         )
     });
+    rustc_builtin_macros::optimize_speed_probe::inject(&mut krate, pre_configured_attrs, sess);
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {

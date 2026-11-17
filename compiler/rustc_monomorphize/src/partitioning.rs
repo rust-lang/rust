@@ -119,7 +119,8 @@ use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{
-    DumpMonoStatsFormat, RaiseOptimizeSpeed, RaiseOptimizeSpeedForm, SwitchWithOptPath,
+    DumpMonoStatsFormat, RaiseOptimizeSpeed, RaiseOptimizeSpeedForm, RaiseOptimizeSpeedProbe,
+    SwitchWithOptPath,
 };
 use rustc_span::{Symbol, bug};
 use rustc_target::spec::SymbolVisibility;
@@ -135,20 +136,80 @@ struct PartitioningCx<'a, 'tcx> {
     /// How the functions marked `#[optimize(speed)]` are raised above the crate's level, if they
     /// are; see `Session::raise_optimize_speed`.
     raise: Option<RaiseOptimizeSpeed>,
+    /// The function that is treated as though it were marked `#[optimize(speed)]`, under
+    /// `-Z raise-optimize-speed=...,probe=chosen`.
+    probe: Option<DefId>,
+    /// The name of the function that `-Z raise-optimize-speed=...,probe=added-unused` adds to
+    /// the crate, when it adds one.
+    unused_probe: Option<Symbol>,
 }
 
 impl<'tcx> PartitioningCx<'_, 'tcx> {
     /// Whether `mono_item` is a function that is optimized though the crate is not: one marked
-    /// `#[optimize(speed)]`, or a closure in one, which inherits the mark.
+    /// `#[optimize(speed)]`, or a closure in one, which inherits the mark; or the function
+    /// chosen as the probe, or a closure in it.
     fn is_raised_fn(&self, mono_item: MonoItem<'tcx>) -> bool {
         match mono_item {
-            MonoItem::Fn(instance) => {
-                self.raise.is_some()
-                    && self.tcx.codegen_instance_attrs(instance.def).optimize == OptimizeAttr::Speed
+            MonoItem::Fn(instance) if self.raise.is_some() => {
+                self.tcx.codegen_instance_attrs(instance.def).optimize == OptimizeAttr::Speed
+                    || self.probe.is_some_and(|probe| {
+                        probe == self.tcx.typeck_root_def_id(instance.def_id())
+                    })
             }
-            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
+            _ => false,
         }
     }
+
+    /// Whether `mono_item` is the static that `-Z raise-optimize-speed=...,probe=added` adds to
+    /// keep its function alive. A `#[used]` static makes every program that links the crate
+    /// load the module that holds it, so it is placed with the function: the probe then costs
+    /// such a program the function's small module, as a marked function that the crate calls
+    /// would, and not the module of the crate root as well.
+    fn is_added_probe_static(&self, mono_item: MonoItem<'tcx>) -> bool {
+        let MonoItem::Static(def_id) = mono_item else { return false };
+        self.raise.is_some_and(|raise| raise.probe == RaiseOptimizeSpeedProbe::Added)
+            && collector::is_added_probe_item(self.tcx, def_id)
+    }
+
+    /// Whether `mono_item` is the function that
+    /// `-Z raise-optimize-speed=...,probe=added-unused` adds to the crate.
+    fn is_unused_probe(&self, mono_item: MonoItem<'tcx>) -> bool {
+        let MonoItem::Fn(instance) = mono_item else { return false };
+        self.unused_probe
+            .is_some_and(|name| collector::is_unused_probe(self.tcx, instance.def_id(), name))
+    }
+}
+
+/// The function that `-Z raise-optimize-speed=...,probe=chosen` treats as though it were marked
+/// `#[optimize(speed)]`, so that a crate that marks no function holds one that is optimized: of
+/// the functions and methods that the crate defines and emits a shared definition for, the one
+/// defined first. (A function that every unit gets a copy of, as an `#[inline(always)]` one
+/// does, has no unit of its own to raise.)
+///
+/// The choice is made here, where the functions that code is emitted for are known, and so it
+/// applies to the forms that give such functions modules of their own, which need to know no
+/// more than where to place a function.
+fn choose_probe<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    raise: Option<RaiseOptimizeSpeed>,
+    mono_items: impl Iterator<Item = MonoItem<'tcx>>,
+) -> Option<DefId> {
+    let raise = raise?;
+    if raise.probe != RaiseOptimizeSpeedProbe::Chosen || !raise.form.separates_modules() {
+        return None;
+    }
+    mono_items
+        .filter_map(|mono_item| match mono_item {
+            MonoItem::Fn(ty::Instance { def: InstanceKind::Item(def_id), .. })
+                if matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn)
+                    && mono_item.instantiation_mode(tcx) != InstantiationMode::LocalCopy =>
+            {
+                def_id.as_local()
+            }
+            _ => None,
+        })
+        .min_by_key(|def_id| def_id.local_def_index.as_u32())
+        .map(|def_id| def_id.to_def_id())
 }
 
 struct PlacedMonoItems<'tcx> {
@@ -165,11 +226,14 @@ fn partition<'tcx, I>(
     usage_map: &UsageMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
 where
-    I: Iterator<Item = MonoItem<'tcx>>,
+    I: Iterator<Item = MonoItem<'tcx>> + Clone,
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let cx = &PartitioningCx { tcx, usage_map, raise: tcx.sess.raise_optimize_speed() };
+    let raise = tcx.sess.raise_optimize_speed();
+    let probe = choose_probe(tcx, raise, mono_items.clone());
+    let unused_probe = collector::unused_probe_name(tcx);
+    let cx = &PartitioningCx { tcx, usage_map, raise, probe, unused_probe };
 
     // Place all mono items into a codegen unit. `place_mono_items` is
     // responsible for initializing the CGU size estimates.
@@ -269,7 +333,8 @@ where
         let raised_form = cx
             .raise
             .map(|raise| raise.form)
-            .filter(|form| form.separates_modules() && cx.is_raised_fn(mono_item));
+            .filter(|form| form.separates_modules())
+            .filter(|_| cx.is_raised_fn(mono_item) || cx.is_added_probe_static(mono_item));
 
         let cgu_name = match (raised_form, characteristic_def_id) {
             (Some(RaiseOptimizeSpeedForm::Modules), Some(def_id)) => compute_codegen_unit_name(
@@ -303,6 +368,13 @@ where
             can_export_generics,
             always_export_generics,
         );
+
+        // The function of `probe=added-unused` stays visible to the crate's other units, as a
+        // function that one of them calls would, though none does. Made internal, it would be
+        // dropped from its module unused, and the probe would measure an empty module.
+        if cx.is_unused_probe(mono_item) {
+            can_be_internalized = false;
+        }
 
         if visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
