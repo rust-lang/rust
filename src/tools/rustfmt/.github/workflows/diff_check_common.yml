@@ -60,6 +60,7 @@ jobs:
         GITHUB_EVENT_INPUTS_BRANCH_NAME: ${{ inputs.branch_name }}
         GITHUB_EVENT_INPUTS_LANGUAGE_EDITION: ${{ inputs.language_edition }}
         GITHUB_EVENT_INPUTS_STYLE_EDITION: ${{ inputs.style_edition }}
+        GITHUB_EVENT_INPUTS_RELEASE_CHANNEL: ${{ inputs.release_channel }}
       shell: bash
       run: |
         OPTIONS=()
@@ -77,4 +78,5 @@ jobs:
           "${GITHUB_EVENT_INPUTS_BRANCH_NAME}" \
           --edition "${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION}" \
           --style-edition "${GITHUB_EVENT_INPUTS_STYLE_EDITION}" \
+          --release-channel "${GITHUB_EVENT_INPUTS_RELEASE_CHANNEL}" \
           "${OPTIONS[@]}"
