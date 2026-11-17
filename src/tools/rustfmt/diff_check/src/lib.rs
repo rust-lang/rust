@@ -148,7 +148,7 @@ pub enum CreateDiffError {
 }
 
 #[derive(Debug)]
-pub enum CheckDiffError {
+pub enum DiffCheckError {
     /// Git related errors
     FailedGit(GitError),
     /// Error for generic commands
@@ -162,15 +162,15 @@ pub enum CheckDiffError {
     IO(std::io::Error),
 }
 
-impl From<io::Error> for CheckDiffError {
+impl From<io::Error> for DiffCheckError {
     fn from(error: io::Error) -> Self {
-        CheckDiffError::IO(error)
+        DiffCheckError::IO(error)
     }
 }
 
-impl From<GitError> for CheckDiffError {
+impl From<GitError> for DiffCheckError {
     fn from(error: GitError) -> Self {
-        CheckDiffError::FailedGit(error)
+        DiffCheckError::FailedGit(error)
     }
 }
 
@@ -265,7 +265,7 @@ where
 }
 
 impl RustfmtRunner {
-    fn get_binary_version(&self) -> Result<String, CheckDiffError> {
+    fn get_binary_version(&self) -> Result<String, DiffCheckError> {
         let Ok(command) = Command::new(&self.binary_path)
             .env(
                 dynamic_library_path_env_var_name(),
@@ -274,7 +274,7 @@ impl RustfmtRunner {
             .args(["--version"])
             .output()
         else {
-            return Err(CheckDiffError::FailedBinaryVersioning(
+            return Err(DiffCheckError::FailedBinaryVersioning(
                 self.binary_path.clone(),
             ));
         };
@@ -572,22 +572,22 @@ pub fn change_directory_to_path(dest: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn get_dynamic_library_path(dir: &Path) -> Result<String, CheckDiffError> {
+pub fn get_dynamic_library_path(dir: &Path) -> Result<String, DiffCheckError> {
     let Ok(command) = Command::new("rustc")
         .current_dir(dir)
         .args(["--print", "sysroot"])
         .output()
     else {
-        return Err(CheckDiffError::FailedCommand("Error getting sysroot"));
+        return Err(DiffCheckError::FailedCommand("Error getting sysroot"));
     };
     let mut sysroot = buffer_into_utf8_lossy(command.stdout);
     sysroot.push_str("/lib");
     Ok(sysroot)
 }
 
-pub fn get_cargo_version() -> Result<String, CheckDiffError> {
+pub fn get_cargo_version() -> Result<String, DiffCheckError> {
     let Ok(command) = Command::new("cargo").args(["--version"]).output() else {
-        return Err(CheckDiffError::FailedCargoVersion(
+        return Err(DiffCheckError::FailedCargoVersion(
             "Failed to obtain cargo version",
         ));
     };
@@ -604,7 +604,7 @@ pub fn build_rustfmt_from_src<T: AsRef<str>>(
     style_edition: StyleEdition,
     config: Option<&[T]>,
     release_channel: ReleaseChannel,
-) -> Result<RustfmtRunner, CheckDiffError> {
+) -> Result<RustfmtRunner, DiffCheckError> {
     // Because we're building standalone binaries we need to set the dynamic library path
     // so each rustfmt binary can find it's runtime dependencies.
     let dynamic_library_path = get_dynamic_library_path(dir)?;
@@ -617,7 +617,7 @@ pub fn build_rustfmt_from_src<T: AsRef<str>>(
         .args(["build", "--locked", "-q", "--release", "--bin", "rustfmt"])
         .output()
     else {
-        return Err(CheckDiffError::FailedSourceBuild(
+        return Err(DiffCheckError::FailedSourceBuild(
             "Error building rustfmt from source",
         ));
     };
@@ -646,7 +646,7 @@ pub fn compile_rustfmt<T: AsRef<str>>(
     commit_hash: Option<String>,
     config: Option<&[T]>,
     release_channel: ReleaseChannel,
-) -> Result<DiffChecker<RustfmtRunner, RustfmtRunner>, CheckDiffError> {
+) -> Result<DiffChecker<RustfmtRunner, RustfmtRunner>, DiffCheckError> {
     const RUSTFMT_REPO: &str = "https://github.com/rust-lang/rustfmt.git";
     let checkout_ref = commit_hash.as_ref().unwrap_or(&feature_branch);
 
@@ -769,7 +769,7 @@ where
     }
 }
 
-/// Encapsulate the logic used to clone repositories for the diff check
+/// Encapsulate the logic used to clone repositories for the Diff Check
 pub fn clone_repositories_for_diff_check(
     repositories: &[&str],
 ) -> Vec<Repository<tempfile::TempDir>> {
@@ -818,7 +818,7 @@ pub fn clone_repositories_for_diff_check(
 
 /// Calculates the number of errors when running the compiled binary and the target binary on the
 /// repo specified with the specific configs.
-pub fn check_diff_for_file<'repo, P: AsRef<Path>, F: AsRef<Path>>(
+pub fn diff_check_for_file<'repo, P: AsRef<Path>, F: AsRef<Path>>(
     diff_checker: &DiffChecker<impl CodeFormatter, impl CodeFormatter>,
     repo: &'repo Repository<P>,
     file: F,
@@ -885,7 +885,7 @@ pub fn get_repo_name(git_url: &str) -> &str {
     repo_name
 }
 
-pub fn check_diff<'repo, P, S, T>(
+pub fn diff_check<'repo, P, S, T>(
     diff_checker: &DiffChecker<S, T>,
     repositories: &'repo [Repository<P>],
     worker_threads: std::num::NonZeroU8,
@@ -924,7 +924,7 @@ where
             let rx = rx.clone();
             s.spawn(move || {
                 while let Ok((file, repo)) = rx.recv() {
-                    if let Err(e) = check_diff_for_file(diff_checker, repo, file) {
+                    if let Err(e) = diff_check_for_file(diff_checker, repo, file) {
                         // Push errors to report on later
                         errors.lock().unwrap().push(e);
                     }

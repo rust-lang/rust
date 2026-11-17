@@ -1,4 +1,4 @@
-use check_diff::change_directory_to_path;
+use diff_check::change_directory_to_path;
 use std::env;
 use tempfile::Builder;
 

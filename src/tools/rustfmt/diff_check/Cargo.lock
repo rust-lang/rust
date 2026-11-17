@@ -83,21 +83,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "check_diff"
-version = "0.1.0"
-dependencies = [
- "clap",
- "crossbeam-channel",
- "diffy",
- "ignore",
- "tempfile",
- "toml",
- "tracing",
- "tracing-subscriber",
- "walkdir",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,6 +161,21 @@ name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
+
+[[package]]
+name = "diff_check"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "crossbeam-channel",
+ "diffy",
+ "ignore",
+ "tempfile",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+]
 
 [[package]]
 name = "diffy"
