@@ -32,6 +32,11 @@ fn test_slices() {
 }
 
 #[test]
+fn test_never() {
+    assert!(matches!(TypeKind::of::<!>(), TypeKind::Never));
+}
+
+#[test]
 fn test_tuples() {
     const {
         let ty_id = TypeId::of::<()>();

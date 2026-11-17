@@ -80,6 +80,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 ty::RawPtr(_, _) => sym::Pointer,
                 ty::Dynamic(_, _) => sym::DynTrait,
                 ty::FnPtr(_, _) => sym::FnPtr,
+                ty::Never => sym::Never,
                 ty::Foreign(_)
                 | ty::Pat(_, _)
                 | ty::FnDef(..)
@@ -88,7 +89,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
-                | ty::Never
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Bound(..)

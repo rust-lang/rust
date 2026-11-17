@@ -42,9 +42,10 @@ pub enum TypeKind {
     Pointer,
     /// Function pointers.
     FnPtr,
+    /// Never type.
+    Never,
     /// FIXME(#146922): add all the common types
-    /// non exhaustive list:
-    /// - Never
+    /// non exhaustive list
     Other,
 }
 

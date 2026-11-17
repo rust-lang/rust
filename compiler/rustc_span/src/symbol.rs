@@ -275,6 +275,7 @@ symbols! {
         Mutex,
         MutexGuard,
         Named,
+        Never,
         NonZero,
         None,
         Normal,
