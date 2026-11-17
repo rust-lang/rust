@@ -329,15 +329,25 @@ mod clause_filter {
         pub fn trait_clauses(
             self,
             cx: I,
-        ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, (), (), (), (), OutputAsTraitClause>>
-        {
+        ) -> CallerBoundsAccessor<
+            I,
+            Iter,
+            TraitClauses<
+                I,
+                NoPolarityFilter,
+                NoSelfTyFilter,
+                NoTraitFilter,
+                NoOutputFilter,
+                OutputAsTraitClause,
+            >,
+        > {
             CallerBoundsAccessor {
                 clauses: self.clauses,
                 clause_filter: TraitClauses {
-                    polarity_filter: (),
-                    self_type_filter: (),
-                    trait_filter: (),
-                    output_filter: (),
+                    polarity_filter: NoPolarityFilter,
+                    self_type_filter: NoSelfTyFilter,
+                    trait_filter: NoTraitFilter,
+                    output_filter: NoOutputFilter,
                     output: OutputAsTraitClause,
                     cx,
                 },
@@ -376,7 +386,10 @@ mod polarity_filter {
     pub trait PolarityFilter {
         fn allow_polarity(&self, p: ClausePolarity) -> bool;
     }
-    impl PolarityFilter for () {
+
+    pub struct NoPolarityFilter;
+
+    impl PolarityFilter for NoPolarityFilter {
         #[inline]
         fn allow_polarity(&self, _p: ClausePolarity) -> bool {
             true
@@ -611,7 +624,9 @@ mod self_ty_filter {
         fn allow_self_ty(&self, ty: I::Ty) -> bool;
     }
 
-    impl<I> SelfTyFilter<I> for ()
+    pub struct NoSelfTyFilter;
+
+    impl<I> SelfTyFilter<I> for NoSelfTyFilter
     where
         I: Interner,
     {
@@ -657,7 +672,9 @@ mod trait_filter {
         fn allow_any_compressed_trait_ref(&self, trait_ref: CompressedTraitRefs) -> bool;
     }
 
-    impl<I> TraitFilter<I> for ()
+    pub struct NoTraitFilter;
+
+    impl<I> TraitFilter<I> for NoTraitFilter
     where
         I: Interner,
     {
@@ -744,7 +761,9 @@ mod output_filter {
         fn allow_trait_clause(&self, clause: Binder<I, TraitClause<I>>) -> bool;
     }
 
-    impl<I> OutputFilter<I> for ()
+    pub struct NoOutputFilter;
+
+    impl<I> OutputFilter<I> for NoOutputFilter
     where
         I: Interner,
     {
