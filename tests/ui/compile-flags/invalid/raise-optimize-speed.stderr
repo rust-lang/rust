@@ -1,0 +1,2 @@
+error: incorrect value `modules,sideways` for unstable option `raise-optimize-speed` - a comma separated list of settings: one of `off`, `crate`, `unit`, `one-module`, or `modules`; `level=2` or `level=3`; `noipa`; `copy-callees`; `mir`; `import`; `codegen-level`; `probe=added-unused`, `probe=added`, or `probe=chosen` was expected
+
