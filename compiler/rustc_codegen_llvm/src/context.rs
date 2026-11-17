@@ -214,6 +214,11 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
             target_data_layout = target_data_layout
                 .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
         }
+        if sess.target.arch == Arch::PowerPC64 && sess.target.os == Os::FreeBsd {
+            // LLVM 24 updated the powerpc64 FreeBSD layout to use 16-byte stack and vector
+            // alignment: https://github.com/llvm/llvm-project/pull/232336
+            target_data_layout = target_data_layout.replace("-S128-v256:256:256-v512:512:512", "");
+        }
     }
     // Ensure the data-layout values hardcoded remain the defaults.
     {
