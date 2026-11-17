@@ -9,11 +9,43 @@ use crate::{fmt, intrinsics};
 /// Compile-time type information.
 #[derive(Debug)]
 #[non_exhaustive]
-#[lang = "type_info"]
+#[lang = "type_kind"]
 #[unstable(feature = "type_info", issue = "146922")]
-pub struct Type {
-    /// Per-type information
-    pub kind: TypeKind,
+pub enum TypeKind {
+    /// Tuples.
+    Tuple,
+    /// Arrays.
+    Array,
+    /// Slices.
+    Slice,
+    /// Dynamic Traits.
+    DynTrait,
+    /// Structs.
+    Struct,
+    /// Enums.
+    Enum,
+    /// Unions.
+    Union,
+    /// Primitive boolean type.
+    Bool,
+    /// Primitive character type.
+    Char,
+    /// Primitive signed and unsigned integer type.
+    Int,
+    /// Primitive floating-point type.
+    Float,
+    /// String slice type.
+    Str,
+    /// References.
+    Reference,
+    /// Pointers.
+    Pointer,
+    /// Function pointers.
+    FnPtr,
+    /// FIXME(#146922): add all the common types
+    /// non exhaustive list:
+    /// - Never
+    Other,
 }
 
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
@@ -36,12 +68,12 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
-    pub fn info(self) -> Type {
+    pub fn info(self) -> TypeKind {
         intrinsics::reflection::type_id_type_of(self)
     }
 }
 
-impl Type {
+impl TypeKind {
     /// Returns the type information of the generic type parameter.
     ///
     /// Note: Unlike `TypeId`s obtained via `TypeId::of`, the `Type`
@@ -69,51 +101,11 @@ pub const fn of<T: ?Sized>() -> TypeId {
     const { intrinsics::reflection::type_id::<T>() }
 }
 
-/// Compile-time type information.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub enum TypeKind {
-    /// Tuples.
-    Tuple,
-    /// Arrays.
-    Array,
-    /// Slices.
-    Slice,
-    /// Dynamic Traits.
-    DynTrait(DynTrait),
-    /// Structs.
-    Struct,
-    /// Enums.
-    Enum,
-    /// Unions.
-    Union,
-    /// Primitive boolean type.
-    Bool,
-    /// Primitive character type.
-    Char,
-    /// Primitive signed and unsigned integer type.
-    Int,
-    /// Primitive floating-point type.
-    Float,
-    /// String slice type.
-    Str(Str),
-    /// References.
-    Reference,
-    /// Pointers.
-    Pointer,
-    /// Function pointers.
-    FnPtr,
-    /// FIXME(#146922): add all the common types
-    /// non exhaustive list:
-    /// - Never
-    Other,
-}
-
 /// Compile-time type information about dynamic traits.
 /// FIXME(#146922): Add super traits and generics
 #[derive(Debug)]
 #[non_exhaustive]
+#[lang = "DynTrait"]
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct DynTrait {
     /// The predicates of  a dynamic trait.
@@ -291,6 +283,39 @@ impl TypeId {
     #[rustc_comptime]
     pub fn element_ty(self) -> Option<TypeId> {
         intrinsics::reflection::type_id_element_ty(self)
+    }
+
+    /// Given a `TypeId` that represents a dyn trait returns an
+    /// [`DynTrait`]. When called on something else this returns `None`.
+    ///
+    /// # Examples
+    ///
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    /// use std::fmt::Debug;
+    ///
+    /// #[derive(Debug)]
+    /// struct A;
+    ///
+    /// const {
+    ///     let dyn_id = TypeId::of::<dyn Debug + Send>();
+    ///     let predicates = dyn_id.dyn_trait().unwrap().predicates;
+    ///
+    ///     let debug_ty = predicates[0].trait_ty.ty;
+    ///     let send_ty = predicates[1].trait_ty.ty;
+    ///
+    ///     let type_id = TypeId::of::<A>();
+    ///
+    ///     assert!(type_id.trait_info_of_trait_type_id(debug_ty).is_some());
+    ///     assert!(type_id.trait_info_of_trait_type_id(send_ty).is_none());
+    /// }
+    /// ```
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn dyn_trait(self) -> Option<DynTrait> {
+        intrinsics::reflection::type_id_dyn_trait(self)
     }
 
     /// When called on a `TypeId` representing an array this returns the length of the array in

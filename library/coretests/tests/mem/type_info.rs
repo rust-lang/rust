@@ -2,12 +2,12 @@
 
 use std::any::{Any, TypeId};
 use std::mem::offset_of;
-use std::mem::type_info::{Const, Generic, GenericType, Type, TypeKind};
+use std::mem::type_info::{Const, Generic, GenericType, TypeKind};
 
 #[test]
 fn test_arrays() {
     // Normal array.
-    assert!(matches!(Type::of::<[u16; 4]>().kind, TypeKind::Array));
+    assert!(matches!(TypeKind::of::<[u16; 4]>(), TypeKind::Array));
     const {
         let ty_id = TypeId::of::<[u16; 4]>();
         assert!(ty_id.element_ty() == Some(TypeId::of::<u16>()));
@@ -15,7 +15,7 @@ fn test_arrays() {
     }
 
     // Zero-length array.
-    assert!(matches!(Type::of::<[bool; 0]>().kind, TypeKind::Array));
+    assert!(matches!(TypeKind::of::<[bool; 0]>(), TypeKind::Array));
     const {
         let ty_id = TypeId::of::<[bool; 0]>();
         assert!(ty_id.element_ty() == Some(TypeId::of::<bool>()));
@@ -25,7 +25,7 @@ fn test_arrays() {
 
 #[test]
 fn test_slices() {
-    assert!(matches!(Type::of::<[usize]>().kind, TypeKind::Slice));
+    assert!(matches!(TypeKind::of::<[usize]>(), TypeKind::Slice));
     const {
         assert!(TypeId::of::<[usize]>().element_ty() == Some(TypeId::of::<usize>()));
     }
@@ -282,21 +282,21 @@ fn test_primitives() {
     use TypeKind::*;
 
     const {
-        let Type { kind: Bool, .. } = (const { Type::of::<bool>() }) else { panic!() };
+        let Bool = (const { TypeKind::of::<bool>() }) else { panic!() };
         let ty_id = TypeId::of::<bool>();
         assert!(ty_id.size() == Some(size_of::<bool>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Char, .. } = (const { Type::of::<char>() }) else { panic!() };
+        let Char = (const { TypeKind::of::<char>() }) else { panic!() };
         let ty_id = TypeId::of::<char>();
         assert!(ty_id.size() == Some(size_of::<char>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<i32>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<i32>() }) else { panic!() };
         let ty_id = TypeId::of::<i32>();
         assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<i32>()));
@@ -304,7 +304,7 @@ fn test_primitives() {
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<isize>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<isize>() }) else { panic!() };
         let ty_id = TypeId::of::<isize>();
         assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<isize>()));
@@ -312,7 +312,7 @@ fn test_primitives() {
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<u32>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<u32>() }) else { panic!() };
         let ty_id = TypeId::of::<u32>();
         assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<u32>()));
@@ -320,7 +320,7 @@ fn test_primitives() {
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<usize>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<usize>() }) else { panic!() };
         let ty_id = TypeId::of::<usize>();
         assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<usize>()));
@@ -328,14 +328,14 @@ fn test_primitives() {
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Float, .. } = (const { Type::of::<f32>() }) else { panic!() };
+        let Float = (const { TypeKind::of::<f32>() }) else { panic!() };
         let ty_id = TypeId::of::<f32>();
         assert!(ty_id.size() == Some(size_of::<f32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Str(_ty), .. } = (const { Type::of::<str>() }) else { panic!() };
+        let Str = (const { TypeKind::of::<str>() }) else { panic!() };
         let ty_id = TypeId::of::<str>();
         assert!(ty_id.size() == None);
         assert!(ty_id.reflected_attrs() == &[""; 0]);
@@ -349,7 +349,7 @@ fn test_references() {
     use TypeKind::Reference;
 
     // Immutable reference.
-    let Type { kind: Reference, .. } = Type::of::<&u8>() else { panic!() };
+    let Reference = TypeKind::of::<&u8>() else { panic!() };
     const {
         let ty = TypeId::of::<&u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
@@ -357,7 +357,7 @@ fn test_references() {
     }
 
     // Mutable references.
-    let Type { kind: Reference, .. } = Type::of::<&mut u64>() else { panic!() };
+    let Reference = TypeKind::of::<&mut u64>() else { panic!() };
     const {
         let ty = TypeId::of::<&mut u64>();
         assert!(ty.points_to() == Some(TypeId::of::<u64>()));
@@ -365,7 +365,7 @@ fn test_references() {
     }
 
     // Wide references.
-    let Type { kind: Reference, .. } = Type::of::<&dyn Any>() else { panic!() };
+    let Reference = TypeKind::of::<&dyn Any>() else { panic!() };
     const {
         let ty = TypeId::of::<&dyn Any>();
         assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
@@ -378,7 +378,7 @@ fn test_pointers() {
     use TypeKind::Pointer;
 
     // Immutable pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*const u8>() else { panic!() };
+    let Pointer = TypeKind::of::<*const u8>() else { panic!() };
     const {
         let ty = TypeId::of::<*const u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
@@ -386,7 +386,7 @@ fn test_pointers() {
     }
 
     // Mutable pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*mut u64>() else { panic!() };
+    let Pointer = TypeKind::of::<*mut u64>() else { panic!() };
     const {
         let ty = TypeId::of::<*mut u64>();
         assert!(ty.points_to() == Some(TypeId::of::<u64>()));
@@ -394,7 +394,7 @@ fn test_pointers() {
     }
 
     // Wide pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*const dyn Any>() else { panic!() };
+    let Pointer = TypeKind::of::<*const dyn Any>() else { panic!() };
     const {
         let ty = TypeId::of::<*const dyn Any>();
         assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
@@ -417,10 +417,7 @@ fn test_dynamic_traits() {
     trait ProjectorTrait<'a, 'b> {}
 
     fn preds_of<T: ?Sized + 'static>() -> &'static [DynTraitPredicate] {
-        match const { Type::of::<T>() }.kind {
-            TypeKind::DynTrait(d) => d.predicates,
-            _ => unreachable!(),
-        }
+        const { TypeId::of::<T>().dyn_trait() }.unwrap().predicates
     }
 
     fn pred<'a>(preds: &'a [DynTraitPredicate], want: TypeId) -> &'a DynTraitPredicate {
