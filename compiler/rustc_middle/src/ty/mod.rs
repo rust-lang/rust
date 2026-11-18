@@ -1130,8 +1130,8 @@ impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> 
             .size
     }
 
-    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
-        Self::post_analysis(tcx, def_id)
+    fn post_analysis_no_rigid_aliases(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis_no_rigid_aliases(tcx, def_id)
     }
 }
 
