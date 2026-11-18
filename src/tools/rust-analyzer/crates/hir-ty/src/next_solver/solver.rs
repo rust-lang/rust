@@ -97,7 +97,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         >,
     > {
         // FIXME(next-solver):
-        None
+        Some(Vec::new())
     }
 
     fn make_deduplicated_region_constraints(
