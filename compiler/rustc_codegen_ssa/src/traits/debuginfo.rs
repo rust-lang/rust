@@ -52,6 +52,10 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
         file: &SourceFile,
     ) -> Self::DIScope;
 
+    /// Creates a debug variable. Note: duplicate `(scope_metadata, arg_index)` values with
+    /// different parameter types may be given to distinct calls to this function. The backend must
+    /// handle that. See `params_seen` in the `rustc_codegen_llvm` backend for an example.
+    //
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(

@@ -567,7 +567,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
         let mut constants = vec![];
-        let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
                 self.adjusted_span_and_dbg_scope(bx, var.source_info)
@@ -614,16 +613,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     VariableKind::LocalVariable
                 };
 
-                if let VariableKind::ArgumentVariable(arg_index) = var_kind {
-                    match params_seen.entry((dbg_scope, arg_index)) {
-                        Entry::Occupied(o) => o.get().clone(),
-                        Entry::Vacant(v) => v
-                            .insert(bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span))
-                            .clone(),
-                    }
-                } else {
-                    bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
-                }
+                bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
             });
 
             let fragment = if let Some(ref fragment) = var.composite {

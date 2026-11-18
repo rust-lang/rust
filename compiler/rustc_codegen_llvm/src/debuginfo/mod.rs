@@ -12,6 +12,7 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
@@ -32,7 +33,7 @@ use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
@@ -53,11 +54,14 @@ mod utils;
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
-
     type_map: metadata::TypeMap<'ll, 'tcx>,
     adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
+
+    /// Used to ensure that each `(scope, arg_index)` pair has just one `DILocalVariable`, which
+    /// LLVM requires.
+    params_seen: RefCell<FxHashMap<(&'ll DIScope, usize), &'ll DIVariable>>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
@@ -109,8 +113,9 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             created_files: Default::default(),
             type_map: Default::default(),
             adt_stack: Default::default(),
-            namespace_map: RefCell::new(Default::default()),
+            namespace_map: Default::default(),
             recursion_marker_type: OnceCell::new(),
+            params_seen: Default::default(),
         }
     }
 
@@ -434,6 +439,17 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
+        match variable_kind {
+            ArgumentVariable(arg_index) => {
+                if let Some(var) =
+                    debug_context(self).params_seen.borrow().get(&(scope_metadata, arg_index))
+                {
+                    return var;
+                }
+            }
+            LocalVariable => {}
+        }
+
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
@@ -444,20 +460,27 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = variable_name.as_str();
 
         match variable_kind {
-            ArgumentVariable(arg_index) => unsafe {
-                llvm::LLVMDIBuilderCreateParameterVariable(
-                    DIB(self),
-                    scope_metadata,
-                    name.as_ptr(),
-                    name.len(),
-                    arg_index as c_uint,
-                    file_metadata,
-                    loc.line,
-                    type_metadata,
-                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
-                    DIFlags::FlagZero,
-                )
-            },
+            ArgumentVariable(arg_index) => {
+                let var = unsafe {
+                    llvm::LLVMDIBuilderCreateParameterVariable(
+                        DIB(self),
+                        scope_metadata,
+                        name.as_ptr(),
+                        name.len(),
+                        arg_index as c_uint,
+                        file_metadata,
+                        loc.line,
+                        type_metadata,
+                        llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                        DIFlags::FlagZero,
+                    )
+                };
+                debug_context(self)
+                    .params_seen
+                    .borrow_mut()
+                    .insert((scope_metadata, arg_index), var);
+                var
+            }
             LocalVariable => unsafe {
                 llvm::LLVMDIBuilderCreateAutoVariable(
                     DIB(self),

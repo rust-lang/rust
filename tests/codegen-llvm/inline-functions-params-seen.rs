@@ -1,4 +1,4 @@
-// Checks that `compute_per_local_var_debug_info`'s `params_seen` hashmap is working.
+// Checks that the LLVM backend's `CodegenUnitDebugContext::params_seen` hashmap is working.
 
 // Note: -Copt-level=1 ensures the required `ReferencePropagation` pass runs.
 //@ compile-flags: -Zinline-mir=yes -Copt-level=1 -Cdebuginfo=2 -Ccodegen-units=1 -Zverify-llvm-ir
