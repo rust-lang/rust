@@ -5,13 +5,13 @@
 //! describes which pointers within the place or operand can be retagged. Then, we traverse
 //! the [`RetagPlan`] to emit the calls.
 
-use rustc_abi::{FieldIdx, FieldsShape, Size, VariantIdx, Variants};
+use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx, Variants};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::range_set::RangeSet;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{Rvalue, WithRetag};
-use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 
 use crate::common::IntPredicate;
@@ -365,7 +365,7 @@ struct UnsafeCellRanges;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for UnsafeCellRanges {
     fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(bx.tcx(), bx.cx().typing_env())
+        ty.is_freeze(bx.tcx(), bx.typing_env())
     }
 
     fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
@@ -437,79 +437,93 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             RetagPlan::EmitRetag(info) => {
                 let (pointer, _) = curr_operand.val.pointer_parts();
                 let retagged_pointer = bx.retag_reg(pointer, info);
-                builder.update_imm(offset, retagged_pointer);
+                builder.replace(offset, retagged_pointer);
             }
             RetagPlan::Recurse { field_plans, variant_plans } => {
                 let layout = curr_operand.layout;
                 if let Some(plans) = field_plans {
-                    let mut retag_field = |ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
-                        let inner_offset = layout.fields.offset(ix.as_usize());
-                        let field_offset = offset + inner_offset;
-                        let field_layout = curr_operand.layout.field(bx, ix.index());
-                        if curr_operand.layout.is_ssa_standalone()
-                            && !field_layout.is_ssa_standalone()
-                        {
-                            // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
-                            // as that array doesn't really exist. Perhaps this should be a `bug!`,
-                            // with simd types handled before getting here?
-                        } else {
+                    let mut retag_field =
+                        |bx: &mut Bx, ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
+                            let inner_offset = layout.fields.offset(ix.as_usize());
+                            let field_offset = offset + inner_offset;
+
+                            let field_layout = curr_operand.layout.field(bx, ix.index());
+                            assert!(
+                                field_layout.is_ssa_standalone(),
+                                "`repr(simd)` vectors should be retagged indirectly."
+                            );
+
                             let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
                             self.retag_operand(bx, plan, field_operand, builder, field_offset);
-                        }
-                    };
+                        };
 
+                    let needs_indirection = matches!(
+                        curr_operand.layout.backend_repr,
+                        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. }
+                    );
                     match plans {
                         RetagFields::Arbitrary(field_plans) => {
-                            for (ix, plan) in field_plans {
-                                retag_field(*ix, plan);
+                            if needs_indirection {
+                                // We cannot project into one or more of the fields of this type,
+                                // (because a field is `repr(simd)`), so we need to move it
+                                // into a temporary place before retagging it.
+                                update_in_place(bx, curr_operand, builder, offset, |bx, place| {
+                                    for (ix, plan) in field_plans {
+                                        let field_place = place.project_field(bx, ix.as_usize());
+                                        self.retag_place(bx, plan, field_place);
+                                    }
+                                });
+                            } else {
+                                for (ix, plan) in field_plans {
+                                    retag_field(bx, *ix, plan);
+                                }
                             }
                         }
                         RetagFields::Array(plan) => {
                             let FieldsShape::Array { count, .. } = layout.fields else {
                                 bug!("Expected `FieldsShape::Array` but found {:?}", layout.fields);
                             };
-                            for idx in 0..count {
-                                let idx = FieldIdx::from_usize(idx as usize);
-                                retag_field(idx, plan)
+                            if needs_indirection {
+                                update_in_place(bx, curr_operand, builder, offset, |bx, place| {
+                                    for ix in 0..count as usize {
+                                        let field_place = place.project_field(bx, ix);
+                                        self.retag_place(bx, plan, field_place);
+                                    }
+                                });
+                            } else {
+                                for idx in 0..count {
+                                    let idx = FieldIdx::from_usize(idx as usize);
+                                    retag_field(bx, idx, plan)
+                                }
                             }
                         }
                     }
                 }
 
                 if !variant_plans.is_empty() {
+                    // If the value of the discriminant is a constant, then
+                    // we can downcast and retag that variant directly (if
+                    // it needs to be retagged at all).
                     let discr_ty = layout.ty.discriminant_ty(bx.tcx());
                     let discr_val = curr_operand.codegen_get_discr(self, bx, discr_ty);
 
                     if let Some(val) = bx.const_to_opt_u128(discr_val, false) {
-                        let ix = VariantIdx::from_usize(val as usize);
-                        if let Some(plan) = variant_plans.get(&ix) {
-                            let mut variant_op = curr_operand;
-                            variant_op.layout = curr_operand.layout.for_variant(bx, ix);
-
-                            self.retag_operand(bx, plan, variant_op, builder, offset);
-                        }
-                    } else {
-                        // We create a temporary place to store the operand, because its
-                        // value will differ depending on the variant that we have.
-                        let scratch = PlaceRef::alloca(bx, curr_operand.layout);
-                        scratch.storage_live(bx);
-                        curr_operand.store_with_annotation(bx, scratch);
-
-                        // We retag the contents of the place
-                        self.retag_variants(bx, scratch, discr_val, variant_plans);
-
-                        // Afterward, we load the now-updated operand and end the lifetime of the place.
-                        let updated_op = bx.load_operand(scratch);
-                        scratch.storage_dead(bx);
-
-                        match updated_op.val {
-                            OperandValue::ZeroSized | OperandValue::Ref(_) => {}
-                            OperandValue::Immediate(imm) => builder.update_imm(offset, imm),
-                            OperandValue::Pair(fst, snd) => {
-                                builder.update_imm(offset, fst);
-                                builder.update_imm(offset + Size::from_bytes(1), snd)
+                        for (variant_index, variant_plan) in variant_plans.iter() {
+                            // Retag if we have a matching discriminant.
+                            if let Some(discr) =
+                                layout.ty.discriminant_for_variant(bx.tcx(), *variant_index)
+                                && discr.val == val
+                            {
+                                let mut variant_op = curr_operand;
+                                variant_op.layout =
+                                    curr_operand.layout.for_variant(bx, *variant_index);
+                                self.retag_operand(bx, variant_plan, variant_op, builder, offset);
                             }
                         }
+                    } else {
+                        update_in_place(bx, curr_operand, builder, offset, |bx, place| {
+                            self.retag_variants(bx, place, discr_val, variant_plans)
+                        });
                     }
                 }
             }
@@ -545,13 +559,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     place.layout.fields
                                 );
                             };
-                            // When an array of N references needs to be retagged (e.g. `[&T; N]`),
-                            // it is more efficient to emit a loop for large values of N than
-                            // to emit N retags in succession.
-                            within_loop(bx, count, |bx: &mut Bx, ix: Bx::Value| {
-                                let field_place = place.project_index(bx, ix);
-                                self.retag_place(bx, plan, field_place);
-                            });
+                            const MIN_LOOP: u64 = 2;
+                            if count > MIN_LOOP {
+                                // When an array of N references needs to be retagged (e.g. `[&T; N]`),
+                                // it is more efficient to emit a loop for large values of N than
+                                // to emit N retags in succession. We only do this for N > 2, which is
+                                // chosen somewhat arbitrarily, so that both aggregates and arrays with
+                                // few references will have the same behavior.
+                                within_loop(bx, count, |bx: &mut Bx, ix: Bx::Value| {
+                                    let field_place = place.project_index(bx, ix);
+                                    self.retag_place(bx, plan, field_place);
+                                });
+                            } else {
+                                for ix in 0..(count as usize) {
+                                    let field_place = place.project_field(bx, ix);
+                                    self.retag_place(bx, plan, field_place);
+                                }
+                            }
                         }
                     }
                 }
@@ -596,6 +620,41 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.switch_to_block(root_block);
         bx.switch(discr, join_block, variant_blocks.into_iter());
         bx.switch_to_block(join_block);
+    }
+}
+
+/// Stores an operand into a temporary place, passing the place to the closure.
+fn update_in_place<'a, 'tcx, F, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    operand: OperandRef<'tcx, Bx::Value>,
+    builder: &mut OperandRefBuilder<'tcx, Bx::Value>,
+    offset: Size,
+    mut f: F,
+) where
+    F: FnMut(&mut Bx, PlaceRef<'tcx, Bx::Value>),
+{
+    let scratch = PlaceRef::alloca(bx, operand.layout);
+
+    scratch.storage_live(bx);
+    operand.store_with_annotation(bx, scratch);
+
+    f(bx, scratch);
+
+    let updated_op = bx.load_operand(scratch);
+    scratch.storage_dead(bx);
+
+    match updated_op.val {
+        OperandValue::ZeroSized | OperandValue::Ref(_) => {
+            bug!("this layout should have been handled elsewhere")
+        }
+        OperandValue::Immediate(imm) => builder.replace(offset, imm),
+        OperandValue::Pair(fst, snd) => {
+            assert_eq!(offset, Size::ZERO);
+            // Any nonzero-offset will be inserted into the
+            // second field of the scalar pair.
+            builder.replace(Size::ZERO, fst);
+            builder.replace(Size::from_bytes(1), snd)
+        }
     }
 }
 
