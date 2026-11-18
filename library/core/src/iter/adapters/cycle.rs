@@ -19,13 +19,19 @@ pub struct Cycle<I> {
 #[derive(Clone, Debug)]
 enum CycleInner<I> {
     Exhausted,
-    Running { orig: I, iter: I },
+    /// `iter` is only `None` at construction, before the first call to `.next` (or other method).
+    /// If `iter` is `Some`, then it has yielded at least one element (except if we just put a new clone
+    /// in it and are about to call `.next()` on it or similar).
+    Running {
+        orig: I,
+        iter: Option<I>,
+    },
 }
 
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 const impl<I: [const] Clone> Cycle<I> {
     pub(in crate::iter) fn new(iter: I) -> Cycle<I> {
-        Cycle { inner: CycleInner::Running { orig: iter.clone(), iter } }
+        Cycle { inner: CycleInner::Running { orig: iter, iter: None } }
     }
 }
 
@@ -40,13 +46,27 @@ where
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
         match &mut self.inner {
             CycleInner::Exhausted => None,
-            CycleInner::Running { orig, iter } => {
+            CycleInner::Running { orig, iter: iter @ None } => {
+                let iter = iter.insert(orig.clone());
                 match iter.next() {
                     None => {
+                        // This is a fresh clone and it is empty;
+                        // we exhaust `self` to uphold `FusedIterator`.
+                        self.inner = CycleInner::Exhausted;
+                        None
+                    }
+                    y => y,
+                }
+            }
+            CycleInner::Running { orig, iter: Some(iter) } => {
+                match iter.next() {
+                    None => {
+                        // This was not a fresh clone (it already yielded at least one element),
+                        // so we replace it with a fresh clone and try again with that one.
                         *iter = orig.clone();
                         let ret = iter.next();
                         if ret.is_none() {
-                            // If we found an empty clone,
+                            // This is a fresh clone and it is empty;
                             // we exhaust `self` to uphold `FusedIterator`.
                             self.inner = CycleInner::Exhausted;
                         }
@@ -83,14 +103,20 @@ where
         let CycleInner::Running { orig, iter } = &mut self.inner else {
             return try { acc };
         };
-        // fully iterate the current iterator. this is necessary because
-        // `self.iter` may have been fully consumed already, even if it wasn't
-        // originally empty.
-        acc = iter.try_fold(acc, &mut f)?;
-        *iter = orig.clone();
+        let iter = if let Some(iter) = iter {
+            // Fully iterate the current iterator. This is necessary because
+            // `self.iter` may have been fully consumed already, even though we know it wasn't
+            // originally empty.
+            acc = iter.try_fold(acc, &mut f)?;
+            *iter = orig.clone();
+            iter
+        } else {
+            iter.insert(orig.clone())
+        };
 
         // The cloned iterator might not behave the same each time, so we need to stop
         // at the first empty clone to prevent an infinite loop and to uphold `FusedIterator`.
+        // We now have a fresh clone in `iter`, so we need to exhaust `self` if it is empty.
         loop {
             let mut is_empty = true;
             acc = iter.try_fold(acc, |acc, x| {
@@ -99,9 +125,13 @@ where
             })?;
 
             if is_empty {
+                // This is a fresh clone and it is empty;
+                // we exhaust `self` to uphold `FusedIterator`.
                 self.inner = CycleInner::Exhausted;
                 return try { acc };
             }
+
+            // The fresh clone was non-empty, but we exhausted it. Clone a new one.
             *iter = orig.clone();
         }
     }
@@ -109,32 +139,46 @@ where
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        let Some(mut n) = NonZero::new(n) else {
+            return Ok(());
+        };
+
         let CycleInner::Running { orig, iter } = &mut self.inner else {
-            return NonZero::new(n).map_or(Ok(()), Err);
+            return Err(n);
         };
 
-        let mut n = match iter.advance_by(n) {
-            Ok(()) => return Ok(()),
-            Err(rem) => rem.get(),
-        };
-
-        while n > 0 {
-            *iter = orig.clone();
-            n = match iter.advance_by(n) {
+        // If we have a current iterator, use it first. Since it already yielded something,
+        // we don't exhaust `self` if it was empty.
+        // If we just exhausted the current iterator, or we didn't have a current iterator,
+        // clone a new one.
+        let iter = match iter {
+            Some(iter) => match iter.advance_by(n.get()) {
                 Ok(()) => return Ok(()),
-                e @ Err(rem) if rem.get() == n => {
-                    // If we found an empty clone,
+                Err(rem) => {
+                    *iter = orig.clone();
+                    n = rem;
+                    iter
+                }
+            },
+            None => iter.insert(orig.clone()),
+        };
+
+        // We now have a fresh clone in `iter`, so we need to exhaust `self` if it is empty.
+        loop {
+            n = match iter.advance_by(n.get()) {
+                Ok(()) => return Ok(()),
+                e @ Err(rem) if rem == n => {
+                    // This is a fresh clone and it is empty;
                     // we exhaust `self` to uphold `FusedIterator`.
                     self.inner = CycleInner::Exhausted;
                     return e;
                 }
-                Err(rem) => rem.get(),
+                Err(rem) => rem,
             };
+
+            // The fresh clone was non-empty, but we exhausted it. Clone a new one.
+            *iter = orig.clone();
         }
-
-        debug_assert_eq!(n, 0, "while loop should only end when n == 0");
-
-        Ok(())
     }
 
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
