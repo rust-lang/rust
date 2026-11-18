@@ -2142,18 +2142,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        //TODO cleanup
-        let (sig, generics, params, idents) = match self.tcx.hir_get_if_local(def_id)? {
+        let (sig, generics, params) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             }) => match trait_fn {
                 hir::TraitFn::Required(params) => {
-                    (sig, generics, Some(params), None::<&[Option<Ident>]>)
+                    (sig, generics, params)
                 }
                 hir::TraitFn::Provided(body) => {
-                    (sig, generics, Some(self.tcx.hir_body(body).params), None)
+                    (sig, generics, self.tcx.hir_body(body).params)
                 }
             },
             hir::Node::ImplItem(&hir::ImplItem {
@@ -2164,11 +2163,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::Item(&hir::Item {
                 kind: hir::ItemKind::Fn { sig, generics, body, .. },
                 ..
-            }) => (sig, generics, Some(self.tcx.hir_body(body).params), None),
+            }) => (sig, generics, self.tcx.hir_body(body).params),
             hir::Node::ForeignItem(&hir::ForeignItem {
                 kind: hir::ForeignItemKind::Fn(sig, params, generics),
                 ..
-            }) => (sig, generics, Some(params), None),
+            }) => (sig, generics, params),
             _ => return None,
         };
 
@@ -2189,21 +2188,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             }
         });
-        let mut params_with_generics: IndexVec<ExpectedIdx, _> = match (params, idents) {
-            (Some(_), Some(_)) | (None, None) => unreachable!(),
-            (Some(params), None) => {
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                fn_inputs.zip(params.iter().map(FnParam::Param)).collect()
-            }
-            (None, Some(params)) => {
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect()
-            }
-        };
+
+        let params = params
+            .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
+        debug_assert_eq!(params.len(), fn_inputs.len());
+        let mut params_with_generics: IndexVec<ExpectedIdx, _> = fn_inputs.zip(params.iter().map(FnParam::Param)).collect();
+
         for param in generics.params {
             if let hir::GenericParamKind::Const { arg_pos: Some(pos), .. } = param.kind
                 && let Some(idx) = (pos as usize).checked_sub(is_method as usize)
