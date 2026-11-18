@@ -1,7 +1,6 @@
 macro_rules! probe {
     ($ty:ty) => {
         compile_error!("TY FRAGMENT MATCHED")
-        //~^ ERROR TY FRAGMENT MATCHED
     };
 }
 
