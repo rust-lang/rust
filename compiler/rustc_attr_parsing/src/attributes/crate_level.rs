@@ -1,14 +1,18 @@
 use rustc_attr_ir::WindowsSubsystemKind;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_feature::AttributeStability;
+use rustc_lint_defs::Reflectiveness::{NonReflective, Reflective};
+use rustc_lint_defs::ToolOptions;
 use rustc_lint_defs::builtin::{DUPLICATE_TOOLS, UNKNOWN_CRATE_TYPES};
+use rustc_session::diagnostics::feature_err;
 use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 use rustc_structures::CrateType;
 
 use super::prelude::*;
 use crate::diagnostics::{
-    DuplicateTool, ToolReserved, UnknownCrateTypes, UnknownCrateTypesSuggestion,
+    DuplicateTool, PredefinedToolReflective, ToolReserved, UnknownCrateTypes,
+    UnknownCrateTypesSuggestion, UnrecognizedToolOption,
 };
 
 pub(crate) struct CrateNameParser;
@@ -323,12 +327,15 @@ impl CombineAttributeParser for FeatureParser {
 
 #[derive(Default)]
 pub(crate) struct RegisterToolParser {
-    attr_tools: FxIndexSet<Ident>,
-    lint_tools: FxIndexSet<Ident>,
+    attr_tools: FxIndexMap<Ident, ToolOptions>,
+    lint_tools: FxIndexMap<Ident, ToolOptions>,
 }
 
+pub const PREDEFINED_TOOLS: &[Symbol] =
+    &[sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
+
 fn parse_register_tool(
-    tools: &mut [&mut FxIndexSet<Ident>],
+    tools: &mut [&mut FxIndexMap<Ident, ToolOptions>],
     cx: &mut AcceptContext<'_, '_>,
     args: &ArgParser,
 ) {
@@ -344,9 +351,6 @@ fn parse_register_tool(
     for elem in list.mixed() {
         let Some(elem) = elem.meta_item() else {
             cx.adcx().expected_identifier(elem.span());
-            continue;
-        };
-        let Some(()) = cx.expect_no_args(elem.args()) else {
             continue;
         };
 
@@ -366,9 +370,60 @@ fn parse_register_tool(
             continue;
         }
 
+        let reflectiveness =
+            match elem.args() {
+                ArgParser::NoArgs => NonReflective,
+                ArgParser::List(list) => 'reflect: {
+                    // features are not available during first pass, gate is emitted during second pass
+                    if cx.features.is_some_and(|f| !f.type_info()) {
+                        feature_err(
+                            cx.sess(),
+                            sym::type_info,
+                            elem.span(),
+                            "tool attribute options are currently unstable",
+                        )
+                        .emit();
+                        break 'reflect NonReflective;
+                    }
+
+                    let Some(itm) = cx.expect_single(list) else {
+                        break 'reflect NonReflective;
+                    };
+
+                    let Some(itm) = itm.meta_item_no_args() else {
+                        cx.adcx().expected_no_args(itm.span());
+                        break 'reflect NonReflective;
+                    };
+
+                    if !itm.path().word_is(sym::reflect) {
+                        cx.should_emit.emit_err(cx.dcx().create_err(UnrecognizedToolOption {
+                            span: itm.span(),
+                            option: itm.path().get_attribute_path(),
+                        }));
+
+                        break 'reflect NonReflective;
+                    }
+
+                    if PREDEFINED_TOOLS.iter().any(|t| t == &ident.name) {
+                        cx.should_emit.emit_err(cx.dcx().create_err(PredefinedToolReflective {
+                            span: elem.span(),
+                            tool: ident,
+                        }));
+
+                        break 'reflect NonReflective;
+                    }
+
+                    Reflective
+                }
+                ArgParser::NameValue(_) => {
+                    cx.adcx().expected_list_or_no_args(elem.span());
+                    NonReflective
+                }
+            };
+
         let mut lint_emitted = false;
         for tools in tools.iter_mut() {
-            if let Some(old_ident) = tools.replace(ident)
+            let opts = if let Some((old_ident, old_opts)) = tools.get_key_value(&ident)
                 && !lint_emitted
             {
                 lint_emitted = true;
@@ -377,7 +432,13 @@ fn parse_register_tool(
                     DuplicateTool { span: ident.span, tool: ident, old_ident_span: old_ident.span },
                     ident.span,
                 );
-            }
+
+                old_opts.union(ToolOptions { reflectiveness })
+            } else {
+                ToolOptions { reflectiveness }
+            };
+
+            tools.insert(ident, opts);
         }
     }
 }
@@ -386,7 +447,7 @@ impl AttributeParser for RegisterToolParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[
         (
             &[sym::register_tool],
-            template!(List: &["tool1, tool2, ..."]),
+            template!(List: &["tool1, tool2(reflect), ..."]),
             unstable!(register_tool),
             |this, cx, args| {
                 parse_register_tool(&mut [&mut this.attr_tools, &mut this.lint_tools], cx, args)
@@ -394,13 +455,13 @@ impl AttributeParser for RegisterToolParser {
         ),
         (
             &[sym::register_attribute_tool],
-            template!(List: &["tool1, tool2, ..."]),
+            template!(List: &["tool1, tool2(reflect), ..."]),
             unstable!(register_tool),
             |this, cx, args| parse_register_tool(&mut [&mut this.attr_tools], cx, args),
         ),
         (
             &[sym::register_lint_tool],
-            template!(List: &["tool1, tool2, ..."]),
+            template!(List: &["tool1, tool2(reflect), ..."]),
             unstable!(register_tool),
             |this, cx, args| parse_register_tool(&mut [&mut this.lint_tools], cx, args),
         ),
