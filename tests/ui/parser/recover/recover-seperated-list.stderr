@@ -1,0 +1,21 @@
+error: expected one of `,` or `>`, found `'b`
+  --> $DIR/recover-seperated-list.rs:8:46
+   |
+LL | fn f<'a, 'b>() -> probe!(impl Sized + use<'a 'b>) {
+   |                                             -^^ expected one of `,` or `>`
+   |                                             |
+   |                                             help: missing `,`
+
+error: TY FRAGMENT MATCHED
+  --> $DIR/recover-seperated-list.rs:3:9
+   |
+LL | macro_rules! probe {
+LL |     ($ty:ty) => {
+LL |         compile_error!("TY FRAGMENT MATCHED")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn f<'a, 'b>() -> probe!(impl Sized + use<'a 'b>) {
+   |                   ------------------------------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
