@@ -1882,16 +1882,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match context {
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Move, self.last_span),
-                    [place_ty.ty],
-                );
-                self.prove_fallible_predicate(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::MoveBound,
-                );
+                if !place_ty.ty.has_trivial_move(tcx) {
+                    let trait_ref = ty::TraitRef::new(
+                        tcx,
+                        tcx.require_lang_item(LangItem::Move, self.last_span),
+                        [place_ty.ty],
+                    );
+                    self.prove_fallible_predicate(
+                        trait_ref,
+                        location.to_locations(),
+                        ConstraintCategory::MoveBound,
+                    );
+                }
             }
             PlaceContext::NonUse(_)
             | PlaceContext::NonMutatingUse(
