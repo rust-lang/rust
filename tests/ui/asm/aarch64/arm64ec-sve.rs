@@ -21,3 +21,5 @@ fn f(x: f64) {
         //~^ ERROR cannot use register `ffr`
     }
 }
+
+//@ reference: asm.register-names.not-for-io
