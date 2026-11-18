@@ -79,7 +79,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
                 match r.kind() {
-                    ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
+                    ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, _))
                         if debruijn < self.outer_index =>
                     {
                         ControlFlow::Continue(())
@@ -213,7 +213,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) = r.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br)) = r.kind() {
             if debruijn == self.current_index {
                 self.regions.insert(br.kind);
             }

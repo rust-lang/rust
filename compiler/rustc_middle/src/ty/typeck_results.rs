@@ -880,35 +880,32 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args.as_slice(), BoundVar::ZERO..).all(|(arg, cvar)| {
-                    match arg.kind() {
-                        GenericArgKind::Type(ty) => match ty.kind() {
-                            ty::Bound(debruijn, b) => {
-                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
-                                assert_eq!(*debruijn, ty::BoundVarIndexKind::Canonical);
-                                cvar == b.var
-                            }
-                            _ => false,
-                        },
+                iter::zip(user_args.args.as_slice(), BoundVar::ZERO..).all(|(arg, cvar)| match arg
+                    .kind()
+                {
+                    GenericArgKind::Type(ty) => match ty.kind() {
+                        ty::Bound(ty::BoundVarIndexKind::Canonical(bv)) => cvar == *bv,
+                        ty::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                            bug!("we only allow `Canonical` in ty generic parameters");
+                        }
+                        _ => false,
+                    },
 
-                        GenericArgKind::Lifetime(r) => match r.kind() {
-                            ty::ReBound(debruijn, b) => {
-                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
-                                assert_eq!(debruijn, ty::BoundVarIndexKind::Canonical);
-                                cvar == b.var
-                            }
-                            _ => false,
-                        },
+                    GenericArgKind::Lifetime(r) => match r.kind() {
+                        ty::ReBound(ty::BoundVarIndexKind::Canonical(bv)) => cvar == bv,
+                        ty::ReBound(ty::BoundVarIndexKind::Bound(..)) => {
+                            bug!("we only allow `Canonical` in region generic parameters");
+                        }
+                        _ => false,
+                    },
 
-                        GenericArgKind::Const(ct) => match ct.kind() {
-                            ty::ConstKind::Bound(debruijn, b) => {
-                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
-                                assert_eq!(debruijn, ty::BoundVarIndexKind::Canonical);
-                                cvar == b.var
-                            }
-                            _ => false,
-                        },
-                    }
+                    GenericArgKind::Const(ct) => match ct.kind() {
+                        ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(bv)) => cvar == bv,
+                        ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                            bug!("we only allow `Canonical` in const generic parameters");
+                        }
+                        _ => false,
+                    },
                 })
             }
         }

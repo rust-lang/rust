@@ -442,23 +442,17 @@ impl<'tcx> Ty<'tcx> {
         {
             ty
         } else {
-            Ty::new(tcx, Bound(ty::BoundVarIndexKind::Bound(index), bound_ty))
+            Ty::new(tcx, Bound(ty::BoundVarIndexKind::Bound(index, bound_ty)))
         }
     }
 
     #[inline]
     pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: BoundVar) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        if let Some(ty) = tcx.types.bound_canonical_anons.get(var.as_usize()).copied() {
+        if let Some(ty) = tcx.types.bound_canonicals.get(var.as_usize()).copied() {
             ty
         } else {
-            Ty::new(
-                tcx,
-                Bound(
-                    ty::BoundVarIndexKind::Canonical,
-                    ty::BoundTy { var, kind: ty::BoundTyKind::Anon },
-                ),
-            )
+            Ty::new(tcx, Bound(ty::BoundVarIndexKind::Canonical(var)))
         }
     }
 

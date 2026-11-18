@@ -350,7 +350,7 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     }
 
     fn visit_region(&mut self, r: Region<I>) -> Self::Result {
-        if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Bound(binder), _) if self.binder == binder)
+        if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Bound(binder, _)) if self.binder == binder)
         {
             ControlFlow::Break(())
         } else {
@@ -541,7 +541,7 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     }
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
-        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) = r.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, _)) = r.kind() {
             assert!(
                 debruijn <= self.debruijn,
                 "cannot instantiate binder with escaping bound vars"

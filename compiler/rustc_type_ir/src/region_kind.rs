@@ -155,7 +155,7 @@ pub enum RegionKind<I: Interner> {
     /// Bound regions inside of types **must not** be erased, as they impact trait
     /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
     /// `fn(&'static ())` are different types and have to be treated as such.
-    ReBound(BoundVarIndexKind, BoundRegion<I>),
+    ReBound(BoundVarIndexKind<BoundRegion<I>>),
 
     /// Late-bound function parameters are represented using a `ReBound`. When
     /// inside of a function, we convert these bound variables to placeholder
@@ -192,9 +192,9 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
         match self {
             ReEarlyParam(data) => write!(f, "{data:?}"),
 
-            ReBound(binder_id, bound_region) => {
+            ReBound(kind) => {
                 write!(f, "'")?;
-                crate::debug_bound_var(f, *binder_id, bound_region)
+                crate::debug_bound_var(f, *kind)
             }
 
             ReLateParam(fr) => write!(f, "{fr:?}"),
@@ -243,10 +243,9 @@ where
             ReStatic => Tag::ReStatic.stable_hash(hcx, hasher),
             ReError(_) => Tag::ReError.stable_hash(hcx, hasher),
 
-            ReBound(d, r) => {
+            ReBound(kind) => {
                 Tag::ReBound.stable_hash(hcx, hasher);
-                d.stable_hash(hcx, hasher);
-                r.stable_hash(hcx, hasher);
+                kind.stable_hash(hcx, hasher);
             }
             ReEarlyParam(r) => {
                 Tag::ReEarlyParam.stable_hash(hcx, hasher);

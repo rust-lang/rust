@@ -285,7 +285,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         fold_regions(tcx, self.inner, |r, depth| match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br)) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::from_usize(br.var.index()))
             }
@@ -1941,7 +1941,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
-                    | ty::Bound(_, _)
+                    | ty::Bound(_)
                     | ty::Infer(_)
                     | ty::Error(_)
                     | ty::Placeholder(_) => {
@@ -1986,7 +1986,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
-                    | ty::Bound(_, _)
+                    | ty::Bound(_)
                     | ty::Infer(_)
                     | ty::Error(_)
                     | ty::Placeholder(_) => bug!(

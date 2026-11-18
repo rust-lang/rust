@@ -26,7 +26,7 @@ pub enum ConstKind<I: Interner> {
     Infer(InferConst),
 
     /// Bound const variable, used only when preparing a trait query.
-    Bound(BoundVarIndexKind, ty::BoundConst<I>),
+    Bound(BoundVarIndexKind<ty::BoundConst<I>>),
 
     /// A placeholder const - universally quantified higher-ranked const.
     Placeholder(ty::PlaceholderConst<I>),
@@ -57,7 +57,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
         match self {
             Param(param) => write!(f, "{param:?}"),
             Infer(var) => write!(f, "{var:?}"),
-            Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
+            Bound(kind) => crate::debug_bound_var(f, *kind),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
             Alias(is_rigid, alias_const) => {
                 write!(f, "AliasConst({is_rigid:?}, {alias_const:?})")

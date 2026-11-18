@@ -12,7 +12,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt as _};
+use rustc_middle::ty::{BoundVarIndexKind, GenericArgKind, RegionKind, Ty, TypeVisitableExt as _};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -352,7 +352,8 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
         // Late bound lifetime parameters are not related to any constraints, so we can track them in a very
         // simple manner. For other lifetime parameters, we give up and update the state to `PackedRef`.
-        let RegionKind::ReBound(_, input_re_bound) = input_re.kind() else {
+        let RegionKind::ReBound(BoundVarIndexKind::Bound(_, input_re_bound)) = input_re.kind()
+        else {
             self.sig_drop_holder = SigDropHolder::PackedRef;
             return;
         };

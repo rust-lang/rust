@@ -436,7 +436,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br))
                 if debruijn >= self.current_index =>
             {
                 let debruijn = debruijn.shifted_in(self.amount);
@@ -448,7 +448,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
         match ty.kind() {
-            ty::Bound(BoundVarIndexKind::Bound(debruijn), bound_ty)
+            ty::Bound(BoundVarIndexKind::Bound(debruijn, bound_ty))
                 if debruijn >= self.current_index =>
             {
                 let debruijn = debruijn.shifted_in(self.amount);
@@ -462,7 +462,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
 
     fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ct))
                 if debruijn >= self.current_index =>
             {
                 let debruijn = debruijn.shifted_in(self.amount);
@@ -483,7 +483,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
 
 pub fn shift_region<I: Interner>(cx: I, region: Region<I>, amount: u32) -> Region<I> {
     match region.kind() {
-        ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) if amount > 0 => {
+        ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br)) if amount > 0 => {
             Region::new_bound(cx, debruijn.shifted_in(amount), br)
         }
         _ => region,
@@ -568,7 +568,7 @@ impl<I: Interner, D: BoundVarReplacerDelegate<I>> TypeFolder<I> for BoundVarRepl
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ty))
                 if debruijn == self.current_index =>
             {
                 let ty = self.delegate.replace_ty(bound_ty);
@@ -591,11 +591,11 @@ impl<I: Interner, D: BoundVarReplacerDelegate<I>> TypeFolder<I> for BoundVarRepl
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br))
                 if debruijn == self.current_index =>
             {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReBound(ty::BoundVarIndexKind::Bound(inner), br) = region.kind() {
+                if let ty::ReBound(ty::BoundVarIndexKind::Bound(inner, br)) = region.kind() {
                     // Bound regions returned by the delegate use INNERMOST.
                     // Adjust them to the current binder depth.
                     assert_eq!(inner, ty::INNERMOST);
@@ -610,7 +610,7 @@ impl<I: Interner, D: BoundVarReplacerDelegate<I>> TypeFolder<I> for BoundVarRepl
 
     fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_const))
                 if debruijn == self.current_index =>
             {
                 let ct = self.delegate.replace_const(bound_const);
@@ -737,13 +737,13 @@ where
     #[instrument(skip(self), level = "debug", ret)]
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, _))
                 if debruijn < self.current_index =>
             {
                 debug!(?self.current_index, "skipped bound region");
                 r
             }
-            ty::ReBound(ty::BoundVarIndexKind::Canonical, _) => {
+            ty::ReBound(ty::BoundVarIndexKind::Canonical(_)) => {
                 debug!(?self.current_index, "skipped bound region");
                 r
             }

@@ -611,14 +611,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
         match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => {}
 
-            FnDef(..)
-            | Closure(..)
-            | Infer(..)
-            | Coroutine(..)
-            | CoroutineWitness(..)
-            | Bound(_, _)
-            | Placeholder(_)
-            | Error(_) => {
+            FnDef(..) | Closure(..) | Infer(..) | Coroutine(..) | CoroutineWitness(..)
+            | Bound(_) | Placeholder(_) | Error(_) => {
                 return ControlFlow::Break(());
             }
 
@@ -699,15 +693,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                     .skip_norm_wip(),
             ),
 
-            Closure(..)
-            | CoroutineClosure(..)
-            | FnDef(..)
-            | Infer(..)
-            | Coroutine(..)
-            | CoroutineWitness(..)
-            | Bound(_, _)
-            | Placeholder(_)
-            | Error(_) => {
+            Closure(..) | CoroutineClosure(..) | FnDef(..) | Infer(..) | Coroutine(..)
+            | CoroutineWitness(..) | Bound(_) | Placeholder(_) | Error(_) => {
                 let Some(placeholder) = self.placeholder else { return Err(()) };
                 // We replace these with infer (which is passed in from an infcx).
                 placeholder

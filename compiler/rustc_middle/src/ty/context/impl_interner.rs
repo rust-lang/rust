@@ -567,7 +567,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> R {
         let self_ty = trait_ref.args.type_at(0);
         debug_assert!(
-            !matches!(self_ty.kind(), ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_, _)),
+            !matches!(self_ty.kind(), ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_)),
             "we should not have them as self ty in the next solver"
         );
         TyCtxt::for_each_relevant_impl(self, trait_ref.def_id, self_ty, f)
@@ -741,19 +741,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         {
             re
         } else {
-            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
+            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, bound_region)))
         }
     }
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let Some(re) = self.lifetimes.re_bound_canonical_anons.get(var.as_usize()).copied() {
+        if let Some(re) = self.lifetimes.re_bound_canonicals.get(var.as_usize()).copied() {
             re
         } else {
-            self.intern_region(ty::ReBound(
-                ty::BoundVarIndexKind::Canonical,
-                BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-            ))
+            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Canonical(var)))
         }
     }
 

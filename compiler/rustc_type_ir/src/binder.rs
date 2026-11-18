@@ -16,8 +16,8 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{
-    self as ty, CallerBoundsIterator, Const, DebruijnIndex, Interner, PredicateProxy, Region,
-    UniverseIndex, Unnormalized,
+    self as ty, BoundVar, CallerBoundsIterator, Const, DebruijnIndex, Interner, PredicateProxy,
+    Region, UniverseIndex, Unnormalized,
 };
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -262,7 +262,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
             return ControlFlow::Continue(());
         }
         match t.kind() {
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ty))
                 if debruijn == self.binder_index =>
             {
                 let idx = bound_ty.var().as_usize();
@@ -282,8 +282,8 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
             return ControlFlow::Continue(());
         }
         match c.kind() {
-            ty::ConstKind::Bound(debruijn, bound_const)
-                if debruijn == ty::BoundVarIndexKind::Bound(self.binder_index) =>
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_const))
+                if debruijn == self.binder_index =>
             {
                 let idx = bound_const.var().as_usize();
                 let Some(bound_var) = self.bound_vars.get(idx) else {
@@ -299,7 +299,9 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 
     fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match r.kind() {
-            ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br))
+                if debruijn == self.binder_index =>
+            {
                 let idx = br.var().as_usize();
                 let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
@@ -963,9 +965,10 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
-pub enum BoundVarIndexKind {
-    Bound(DebruijnIndex),
-    Canonical,
+pub enum BoundVarIndexKind<B> {
+    // The `B` itself always contains a `BoundVar`.
+    Bound(DebruijnIndex, B),
+    Canonical(BoundVar),
 }
 
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
@@ -1222,7 +1225,7 @@ impl<I: Interner> PlaceholderType<I> {
     }
 }
 
-#[derive_where(Clone, Copy, PartialEq, Debug, Eq, Hash; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -1230,8 +1233,13 @@ impl<I: Interner> PlaceholderType<I> {
 )]
 pub struct BoundConst<I: Interner> {
     pub var: ty::BoundVar,
-    #[derive_where(skip(Debug))]
     pub _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner> fmt::Debug for ty::BoundConst<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.var)
+    }
 }
 
 impl<I: Interner> BoundConst<I> {

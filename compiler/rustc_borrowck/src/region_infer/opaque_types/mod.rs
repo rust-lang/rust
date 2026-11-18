@@ -460,7 +460,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
     fn try_fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, RegionVid> {
         match r.kind() {
             // ignore bound regions, keep visiting
-            ty::ReBound(_, _) => Ok(r),
+            ty::ReBound(_) => Ok(r),
             _ => {
                 let r = r.as_var();
                 if let Some(arg_region) = self

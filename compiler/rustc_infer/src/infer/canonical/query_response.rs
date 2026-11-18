@@ -450,36 +450,44 @@ impl<'tcx> InferCtxt<'tcx> {
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
             match result_value.kind() {
-                GenericArgKind::Type(result_value) => {
-                    // We disable the instantiation guess for inference variables
-                    // and only use it for placeholders. We need to handle the
-                    // `sub_root` of type inference variables which would make this
-                    // more involved. They are also a lot rarer than region variables.
-                    if let ty::Bound(index_kind, b) = *result_value.kind()
-                        && !matches!(
-                            query_response.var_kinds[b.var.as_usize()],
-                            CanonicalVarKind::Ty { .. }
-                        )
-                    {
-                        // We only allow a `Canonical` index in generic parameters.
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[b.var] = Some(*original_value);
+                GenericArgKind::Type(t) => {
+                    match t.kind() {
+                        ty::Bound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                            // We disable the instantiation guess for inference variables
+                            // and only use it for placeholders. We need to handle the
+                            // `sub_root` of type inference variables which would make this
+                            // more involved. They are also a lot rarer than region variables.
+                            if !matches!(
+                                query_response.var_kinds.get(bv.as_usize()).unwrap(),
+                                CanonicalVarKind::Ty { .. }
+                            ) {
+                                opt_values[*bv] = Some(*original_value);
+                            }
+                        }
+                        ty::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                            bug!("only `Canonical` bound types allowed here");
+                        }
+                        _ => {}
                     }
                 }
-                GenericArgKind::Lifetime(result_value) => {
-                    if let ty::ReBound(index_kind, b) = result_value.kind() {
-                        // We only allow a `Canonical` index in generic parameters.
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[b.var] = Some(*original_value);
+                GenericArgKind::Lifetime(r) => match r.kind() {
+                    ty::ReBound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                        opt_values[bv] = Some(*original_value);
                     }
-                }
-                GenericArgKind::Const(result_value) => {
-                    if let ty::ConstKind::Bound(index_kind, b) = result_value.kind() {
-                        // We only allow a `Canonical` index in generic parameters.
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[b.var] = Some(*original_value);
+                    ty::ReBound(ty::BoundVarIndexKind::Bound(..)) => {
+                        bug!("only `Canonical` bound regions allowed here");
                     }
-                }
+                    _ => {}
+                },
+                GenericArgKind::Const(c) => match c.kind() {
+                    ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                        opt_values[bv] = Some(*original_value);
+                    }
+                    ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                        bug!("only `Canonical` bound consts allowed here");
+                    }
+                    _ => {}
+                },
             }
         }
 

@@ -457,7 +457,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FullyAnonymize<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_re) = r.kind()
+        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(debruijn, bound_re)) = r.kind()
         {
             ty::Region::new_anon_bound(self.tcx, debruijn, bound_re.var)
         } else {
@@ -469,7 +469,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FullyAnonymize<'tcx> {
         if !t.has_bound_vars() {
             return t;
         }
-        if let ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty) = *t.kind() {
+        if let ty::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ty)) = *t.kind() {
             let bound_ty = ty::BoundTy { var: bound_ty.var, kind: ty::BoundTyKind::Anon };
             Ty::new_bound(self.tcx, debruijn, bound_ty)
         } else {
@@ -481,7 +481,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FullyAnonymize<'tcx> {
         if !c.has_bound_vars() {
             return c;
         }
-        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct) = c.kind() {
+        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ct)) = c.kind() {
             ty::Const::new_anon_bound(self.tcx, debruijn, bound_ct.var)
         } else {
             c.super_fold_with(self)

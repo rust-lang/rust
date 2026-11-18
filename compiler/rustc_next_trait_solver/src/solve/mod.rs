@@ -235,7 +235,7 @@ where
             // - `Param` gets replaced with a placeholder during canonicalization
             // - `Bound` cannot exist as we don't have a binder around the self Type
             // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_) | ty::ConstKind::Expr(_) => {
                 panic!("unexpected const kind: {:?}", ct)
             }
         }
@@ -268,7 +268,7 @@ where
             ty::ConstKind::Param(_) => {
                 unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
             }
-            ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
+            ty::ConstKind::Bound(_) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
                 placeholder.find_const_ty_from_env(goal.param_env)

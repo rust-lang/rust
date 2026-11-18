@@ -484,9 +484,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         match (new_region.kind(), old_region.kind()) {
                             // If both predicates have an `ReBound` (a HRTB) in the
                             // same spot, we do nothing.
-                            (ty::ReBound(_, _), ty::ReBound(_, _)) => {}
+                            (ty::ReBound(_), ty::ReBound(_)) => {}
 
-                            (ty::ReBound(_, _), _) | (_, ty::ReVar(_)) => {
+                            (ty::ReBound(_), _) | (_, ty::ReVar(_)) => {
                                 // One of these is true:
                                 // The new predicate has a HRTB in a spot where the old
                                 // predicate does not (if they both had a HRTB, the previous
@@ -512,7 +512,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 // `user_computed_clauses`.
                                 return false;
                             }
-                            (_, ty::ReBound(_, _)) | (ty::ReVar(_), _) => {
+                            (_, ty::ReBound(_)) | (ty::ReVar(_), _) => {
                                 // This is the opposite situation as the previous arm.
                                 // One of these is true:
                                 //

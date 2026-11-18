@@ -163,7 +163,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, _))
                 if debruijn > self.outer_index =>
             {
                 self.escaping =

@@ -607,14 +607,14 @@ impl<I: Interner> Response<I> {
         // We start optimistic and downgrade if necessary along the way.
         self.var_values_is_identity = IsIdentity::Yes;
 
-        let mut bv = ty::BoundVar::ZERO;
+        let mut curr_bv = ty::BoundVar::ZERO;
         for arg in self.var_values.iter() {
             match arg.kind() {
                 ty::GenericArgKind::Lifetime(r) => {
-                    if let ty::ReBound(ty::BoundVarIndexKind::Canonical, br) = r.kind()
-                        && bv == br.var()
+                    if let ty::ReBound(ty::BoundVarIndexKind::Canonical(bv)) = r.kind()
+                        && curr_bv == bv
                     {
-                        bv = bv + 1;
+                        curr_bv = curr_bv + 1;
                     } else {
                         // If this region var isn't an identity variable we can't be
                         // `IsIdentity::Yes`, but we can still be `IsIdentity::ModuloRegions`.
@@ -622,20 +622,20 @@ impl<I: Interner> Response<I> {
                     }
                 }
                 ty::GenericArgKind::Type(ty) => {
-                    if let ty::Bound(ty::BoundVarIndexKind::Canonical, bt) = ty.kind()
-                        && bv == bt.var()
+                    if let ty::Bound(ty::BoundVarIndexKind::Canonical(bv)) = ty.kind()
+                        && curr_bv == bv
                     {
-                        bv = bv + 1;
+                        curr_bv = curr_bv + 1;
                     } else {
                         self.var_values_is_identity = IsIdentity::No;
                         break;
                     }
                 }
                 ty::GenericArgKind::Const(ct) => {
-                    if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) = ct.kind()
-                        && bv == bc.var()
+                    if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(bv)) = ct.kind()
+                        && curr_bv == bv
                     {
-                        bv = bv + 1;
+                        curr_bv = curr_bv + 1;
                     } else {
                         self.var_values_is_identity = IsIdentity::No;
                         break;
