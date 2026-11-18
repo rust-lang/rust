@@ -143,7 +143,7 @@ pub trait Error: Debug + Display {
         since = "1.33.0",
         note = "replaced by Error::source, which can support downcasting"
     )]
-    #[allow(missing_docs)]
+    /// Replaced by [`Error::source`].
     fn cause(&self) -> Option<&dyn Error> {
         self.source()
     }
