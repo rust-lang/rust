@@ -1,3 +1,6 @@
+//@ ignore-parallel-frontend triage
+// Spuriously failed at https://github.com/rust-lang/rust/pull/166138#issuecomment-6991382914
+
 //! Regression test for <https://github.com/rust-lang/rust/issues/116914>.
 
 trait Filter {
