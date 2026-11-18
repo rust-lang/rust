@@ -1,0 +1,18 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/missing-kw-before-item.rs:6:1
+   |
+LL | pub k#self() {}
+   | ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+
+error: expected item, found keyword `k#self`
+  --> $DIR/missing-kw-before-item.rs:6:5
+   |
+LL | pub k#self() {}
+   |     ^^^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

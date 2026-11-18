@@ -4,19 +4,16 @@
 //! See <https://github.com/rust-lang/rust/issues/149692>.
 
 macro_rules! m {
-    ($id:item()) => {}
+    ($id:item()) => {};
 }
 
 m!(Self());
-//~^ ERROR expected identifier, found keyword `Self`
-//~^^ ERROR missing `fn` or `struct` for function or struct definition
+//~^ ERROR expected one of `!` or `::`, found `(`
 
-m!(Self{});
-//~^ ERROR expected identifier, found keyword `Self`
-//~^^ ERROR missing `enum` or `struct` for enum or struct definition
+m!(Self {});
+//~^ ERROR expected one of `!` or `::`, found `{`
 
 m!(crate());
-//~^ ERROR expected identifier, found keyword `crate`
-//~^^ ERROR missing `fn` or `struct` for function or struct definition
+//~^ ERROR expected one of `!` or `::`, found `(`
 
 fn main() {}
