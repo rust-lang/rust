@@ -15,7 +15,7 @@ declare_tool_lint! {
     pub clippy::VALID_ONE,
     Warn,
     "One",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -23,7 +23,7 @@ declare_tool_lint! {
     pub clippy::VALID_TWO,
     Warn,
     "Two",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -31,7 +31,7 @@ declare_tool_lint! {
     pub clippy::VALID_THREE,
     Warn,
     "Three",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 ///////////////////////
@@ -43,7 +43,7 @@ declare_tool_lint! {
     pub clippy::INVALID_ONE,
     Warn,
     "One",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -52,7 +52,7 @@ declare_tool_lint! {
     pub clippy::INVALID_TWO,
     Warn,
     "Two",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 ///////////////////////
@@ -64,7 +64,7 @@ declare_tool_lint! {
     pub clippy::MISSING_ATTRIBUTE_ONE,
     Warn,
     "Two",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -72,7 +72,7 @@ declare_tool_lint! {
     pub clippy::MISSING_ATTRIBUTE_TWO,
     Warn,
     "Two",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 #[allow(clippy::missing_clippy_version_attribute)]
@@ -81,7 +81,7 @@ mod internal_clippy_lints {
         pub clippy::ALLOW_MISSING_ATTRIBUTE_ONE,
         Warn,
         "Two",
-        report_in_external_macro: true
+        @report_in_external_macro = true
     }
 }
 
