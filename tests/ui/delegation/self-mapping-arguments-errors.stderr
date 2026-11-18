@@ -59,7 +59,7 @@ note: method defined here
    |
 LL |     trait MyAdd {
 LL |         fn add(self, other: Self) -> Self;
-   |            ^^^       -----
+   |            ^^^       -----------
 help: provide the argument
    |
 LL ~     }({
@@ -112,7 +112,7 @@ note: method defined here
    |
 LL |     trait MyAdd {
 LL |         fn add(self, other: Box<Self>) -> Self;
-   |            ^^^       -----
+   |            ^^^       ----------------
 note: method provided through this `impl`
   --> $DIR/self-mapping-arguments-errors.rs:37:5
    |

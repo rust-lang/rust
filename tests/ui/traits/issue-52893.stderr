@@ -24,7 +24,7 @@ note: method defined here
 LL | trait Push<T> {
 LL |     type PushRes;
 LL |     fn push(self, other: T) -> Self::PushRes;
-   |        ^^^^       -----
+   |        ^^^^       --------
 
 error: aborting due to 1 previous error
 

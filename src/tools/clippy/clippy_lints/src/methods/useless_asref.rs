@@ -146,13 +146,12 @@ fn check_qpath(cx: &LateContext<'_>, qpath: hir::QPath<'_>, hir_id: hir::HirId) 
 
 fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     match arg.kind {
-        hir::ExprKind::Closure(&hir::Closure { body, .. })
+        hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. })
             // If it's a closure, we need to check what is called.
-            if let closure_body = cx.tcx.hir_body(body)
-                && let [param] = closure_body.params
+            if let [param] = fn_decl.inputs
                 && let hir::PatKind::Binding(_, local_id, ..) = strip_pat_refs(param.pat).kind =>
         {
-            let closure_expr = peel_blocks(closure_body.value);
+            let closure_expr = peel_blocks(cx.tcx.hir_body(body).value);
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone

@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             } else {
                 None
             };
-            let impl_inputs_outputs = decl.inputs.iter().chain(output_hir_ty);
+            let impl_inputs_outputs = decl.inputs.iter().map(|p| p.ty).chain(output_hir_ty);
 
             // `impl_hir_ty` (of type `hir::Ty`) represents the type written in the signature.
             //

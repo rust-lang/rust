@@ -5,7 +5,6 @@ use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::iter_input_pats;
 use clippy_utils::ty::is_unsafe_fn;
 use clippy_utils::visitors::for_each_expr;
 
@@ -44,7 +43,7 @@ fn check_raw_ptr<'tcx>(
     def_id: LocalDefId,
 ) {
     if safety.is_safe() && cx.effective_visibilities.is_exported(def_id) {
-        let raw_ptrs = iter_input_pats(decl, body)
+        let raw_ptrs = decl.inputs.into_iter()
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
 

@@ -100,7 +100,7 @@ note: method defined here
 LL | trait Trait<T = Self> {
 ...
 LL |     fn funk(&self, _: Self::A);
-   |        ^^^^        -
+   |        ^^^^        ----------
 help: consider constraining the associated type `<T as Trait<i32>>::A` to `{integer}`
    |
 LL | fn bar2<T: Trait<i32, A = {integer}>>(x: T) {

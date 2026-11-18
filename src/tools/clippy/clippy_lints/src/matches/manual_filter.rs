@@ -106,10 +106,10 @@ pub(crate) fn check_and_then_method<'tcx>(
     let ty = cx.typeck_results().expr_ty(scrutinee);
     if ty.is_diag_item(cx, sym::Option)
         && let ExprKind::Closure(closure) = arg.kind
-        && let body = cx.tcx.hir_body(closure.body)
         && let Some(fn_arg_span) = closure.fn_arg_span
-        && let [param] = body.params
+        && let [param] = closure.fn_decl.inputs
         && let expr_span_ctxt = expr.span.ctxt()
+        && let body = cx.tcx.hir_body(closure.body)
         && let Some(some_expr) = get_cond_expr(cx, param.pat, body.value, expr_span_ctxt)
     {
         span_lint_and_then(

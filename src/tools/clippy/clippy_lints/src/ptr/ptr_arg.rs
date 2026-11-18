@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BindingMode, Body, Expr, ExprKind, FnSig, GenericArg, HirId, HirIdMap, Lifetime,
-    Mutability, Node, OwnerId, Param, PatKind, QPath, TyKind,
+    Mutability, Node, OwnerId, Param, PatKind, QPath, TyKind, FnDecl,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -41,10 +41,10 @@ pub(super) fn check_body<'tcx>(
         .instantiate_identity()
         .skip_norm_wip()
         .skip_binder();
-    let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs, body.params)
+    let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs)
         .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
         .collect();
-    let results = check_ptr_arg_usage(cx, body, &lint_args);
+    let results = check_ptr_arg_usage(cx, decl, body, &lint_args);
 
     for (result, args) in iter::zip(&results, &lint_args).filter(|(r, _)| !r.skip) {
         span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, args.build_msg(), |diag| {
@@ -78,7 +78,6 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item_id: OwnerId, s
             .skip_norm_wip()
             .skip_binder(),
         sig.decl.inputs,
-        &[],
     )
     .filter(|arg| arg.mutability() == Mutability::Not)
     {
@@ -199,10 +198,9 @@ impl<'tcx> DerefTy<'tcx> {
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
-    hir_tys: &'tcx [hir::Ty<'tcx>],
     params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    iter::zip(fn_sig.inputs(), hir_tys)
+    iter::zip(fn_sig.inputs(), params.iter().map(|p| p.ty))
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()
@@ -306,7 +304,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, decl: &FnDecl<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and
@@ -425,7 +423,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
             .iter()
             .enumerate()
             .filter_map(|(i, arg)| {
-                let param = &body.params[arg.idx];
+                let param = &decl.inputs[arg.idx];
                 match param.pat.kind {
                     PatKind::Binding(BindingMode::NONE, id, ident, None)
                         if !is_lint_allowed(cx, PTR_ARG, param.hir_id)

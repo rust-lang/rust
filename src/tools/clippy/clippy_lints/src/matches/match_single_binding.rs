@@ -222,7 +222,7 @@ impl<'tcx> Visitor<'tcx> for VarBindingVisitor<'_, 'tcx> {
             ExprKind::Closure(closure) => {
                 let body = self.cx.tcx.hir_body(closure.body);
                 let before = self.identifiers.clone();
-                for param in body.params {
+                for param in closure.fn_decl.inputs {
                     param.pat.each_binding(|_, _, _, ident| {
                         self.identifiers.remove(&ident.name);
                     });

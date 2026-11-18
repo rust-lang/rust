@@ -757,9 +757,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let spans = if let SplatLoweringInfo::FnDef(def_id) = fn_id
                         && let Some(hir_node) = self.tcx.hir_get_if_local(def_id)
                         && let Some(fn_decl) = hir_node.fn_decl()
-                        && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index_usz)
+                        && let Some(param) = fn_decl.inputs.get(first_tupled_arg_index_usz)
                     {
-                        let arg_def_span = arg_ty.span;
+                        let arg_def_span = param.ty.span;
                         vec![call_span, arg_def_span]
                     } else {
                         vec![call_span]
@@ -1999,10 +1999,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
-            && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
+            && let hir::ExprKind::Closure(hir::Closure { fn_decl, .. }) = &e.kind
         {
-            let param = expected_idx
-                .and_then(|expected_idx| self.tcx.hir_body(*body).params.get(expected_idx));
+            let param = expected_idx.and_then(|expected_idx| fn_decl.inputs.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
@@ -2043,7 +2042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                ("closure parameter", param.span)
+                ("closure parameter", param.param_span)
             } else {
                 ("closure", self.tcx.def_span(def_id))
             };
@@ -2134,79 +2133,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns the parameters of a function, with their generic parameters if those are the full
     /// type of that parameter.
-    ///
-    /// Returns `None` if the body is not a named function (e.g. a closure).
     fn get_hir_param_info(
         &self,
         def_id: DefId,
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, params) = match self.tcx.hir_get_if_local(def_id)? {
-            hir::Node::TraitItem(&hir::TraitItem {
-                generics,
-                kind: hir::TraitItemKind::Fn(sig, trait_fn),
-                ..
-            }) => match trait_fn {
-                hir::TraitFn::Required(params) => (sig, generics, None, Some(params)),
-                hir::TraitFn::Provided(body) => (sig, generics, Some(body), None),
-            },
-            hir::Node::ImplItem(&hir::ImplItem {
-                generics,
-                kind: hir::ImplItemKind::Fn(sig, body),
-                ..
-            })
-            | hir::Node::Item(&hir::Item {
-                kind: hir::ItemKind::Fn { sig, generics, body, .. },
-                ..
-            }) => (sig, generics, Some(body), None),
-            hir::Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Fn(sig, params, generics),
-                ..
-            }) => (sig, generics, None, Some(params)),
-            _ => return None,
-        };
+        let local_def_id = def_id.as_local()?;
+        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+        let sig = self.tcx.hir_fn_sig_by_hir_id(hir_id)?;
+        let generics = self.tcx.hir_get_generics(local_def_id)?;
 
         // Make sure to remove both the receiver and variadic argument. Both are removed
         // when matching parameter types.
-        let fn_inputs = sig.decl.inputs.get(is_method as usize..)?.iter().map(|param| {
-            if let hir::TyKind::Path(QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(_, res_def_id), .. },
-            )) = param.kind
-            {
-                generics
-                    .params
-                    .iter()
-                    .position(|param| param.def_id.to_def_id() == res_def_id)
-                    .map(GenericIdx::from_usize)
-            } else {
-                None
-            }
-        });
-        let mut params_with_generics: IndexVec<ExpectedIdx, _> = match (body_id, params) {
-            (Some(_), Some(_)) | (None, None) => unreachable!(),
-            (Some(body), None) => {
-                let params = self.tcx.hir_body(body).params;
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                fn_inputs.zip(params.iter().map(FnParam::Param)).collect()
-            }
-            (None, Some(params)) => {
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect()
-            }
-        };
+        let fn_inputs = sig
+            .decl
+            .inputs
+            .get(is_method as usize..(sig.decl.inputs.len() - sig.decl.c_variadic() as usize))?
+            .iter()
+            .map(|param| {
+                if let hir::TyKind::Path(QPath::Resolved(
+                    _,
+                    &hir::Path { res: Res::Def(_, res_def_id), .. },
+                )) = param.ty.kind
+                {
+                    generics
+                        .params
+                        .iter()
+                        .position(|param| param.def_id.to_def_id() == res_def_id)
+                        .map(GenericIdx::from_usize)
+                } else {
+                    None
+                }
+            });
+
+        let mut params_with_generics =
+            fn_inputs
+                .zip(sig.decl.inputs.get(
+                    is_method as usize..sig.decl.inputs.len() - sig.decl.c_variadic() as usize,
+                )?)
+                .map(|(idx, param)| (idx, FnParam::Param(param)))
+                .collect::<IndexVec<_, _>>();
         for param in generics.params {
             if let hir::GenericParamKind::Const { arg_pos: Some(pos), .. } = param.kind
                 && let Some(idx) = (pos as usize).checked_sub(is_method as usize)
             {
-                params_with_generics
-                    .raw
-                    .insert(idx, (None, FnParam::Ident(Some(param.name.ident()))));
+                params_with_generics.raw.insert(idx, (None, FnParam::GenericParam(param)));
             }
         }
         Some((params_with_generics, generics))
@@ -2236,20 +2208,15 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Ident(Option<Ident>),
+    // For function args const generics
+    GenericParam(&'hir hir::GenericParam<'hir>),
 }
 
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
-            Self::Param(param) => param.span,
-            Self::Ident(ident) => {
-                if let Some(ident) = ident {
-                    ident.span
-                } else {
-                    DUMMY_SP
-                }
-            }
+            Self::Param(param) => param.param_span,
+            Self::GenericParam(param) => param.span,
         }
     }
 
@@ -2265,11 +2232,8 @@ impl FnParam<'_> {
                     {
                         Some(ident.name)
                     }
-                    FnParam::Ident(ident)
-                        if let Some(ident) = ident
-                            && ident.name != kw::Underscore =>
-                    {
-                        Some(ident.name)
+                    FnParam::GenericParam(param) if param.name.ident().name != kw::Underscore => {
+                        Some(param.name.ident().name)
                     }
                     _ => None,
                 };

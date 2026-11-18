@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(
     let closure_expr = peel_blocks(cx.tcx.hir_body(body).value);
 
     let mut applicability = Applicability::MachineApplicable;
-    let arg_snip = snippet_with_applicability(cx, closure_arg.span, "_", &mut applicability);
+    let arg_snip = snippet_with_applicability(cx, closure_arg.ty.span, "_", &mut applicability);
     let recv_snip = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
     let body_snip = snippet_with_applicability(cx, closure_expr.span, "..", &mut applicability);
     let inner = match body_snip.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {

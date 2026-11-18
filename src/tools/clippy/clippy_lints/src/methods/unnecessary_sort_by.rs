@@ -248,10 +248,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
             .instantiate_identity()
             .skip_norm_wip()
             .is_slice()
-        && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
-        && let closure_body = cx.tcx.hir_body(body)
-        && let &[Param { pat: l_pat, .. }, Param { pat: r_pat, .. }] = closure_body.params
+        && let ExprKind::Closure(&Closure { fn_decl, body, .. }) = arg.kind
+        && let &[Param { pat: l_pat, .. }, Param { pat: r_pat, .. }] = fn_decl.inputs
         && let Some(binding_map) = mapping_of_mirrored_pats(l_pat, r_pat)
+        && let closure_body = cx.tcx.hir_body(body)
         && let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind
         && method_path.ident.name == sym::cmp
         && let Some(ord_trait) = cx.tcx.get_diagnostic_item(sym::Ord)

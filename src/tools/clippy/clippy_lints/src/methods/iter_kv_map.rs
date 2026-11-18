@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{pat_is_wild, sym};
-use rustc_hir::{Body, Expr, ExprKind, PatKind};
+use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Symbol;
 
@@ -28,10 +28,7 @@ pub(super) fn check<'tcx>(
     }
     if !expr.span.from_expansion()
         && let ExprKind::Closure(c) = m_arg.kind
-        && let Body {
-            params: [p],
-            value: body_expr,
-        } = cx.tcx.hir_body(c.body)
+        && let [p] = c.fn_decl.inputs
         && let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind
         && let (replacement_kind, annotation, bound_ident) = match (&key_pat.kind, &val_pat.kind) {
             (key, PatKind::Binding(ann, _, value, _)) if pat_is_wild(cx, key, m_arg) => ("value", ann, value),
@@ -40,12 +37,13 @@ pub(super) fn check<'tcx>(
         }
         && let ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
         && matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap))
+        && let body = cx.tcx.hir_body(c.body)
     {
         let mut applicability = rustc_errors::Applicability::MachineApplicable;
         let recv_snippet = snippet_with_applicability(cx, recv.span, "map", &mut applicability);
         let into_prefix = if map_type == sym::into_iter { "into_" } else { "" };
 
-        if let ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body_expr.kind
+        if let ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
             && let [local_ident] = path.segments
             && local_ident.ident.name == bound_ident.name
             && [sym::map, sym::flat_map].contains(&method_name)
@@ -66,7 +64,7 @@ pub(super) fn check<'tcx>(
             );
         } else {
             let (body_snippet, _) =
-                snippet_with_context(cx, body_expr.span, expr.span.ctxt(), "..", &mut applicability);
+                snippet_with_context(cx, body.value.span, expr.span.ctxt(), "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
                 ITER_KV_MAP,

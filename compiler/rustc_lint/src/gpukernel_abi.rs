@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperGpuKernelLint {
                 cx.tcx.emit_node_span_lint(
                     IMPROPER_GPU_KERNEL_ARG,
                     input_hir.hir_id,
-                    input_hir.span,
+                    input_hir.ty.span,
                     ImproperGpuKernelArg { ty: *input_ty },
                 );
             }
