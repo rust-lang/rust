@@ -1,4 +1,4 @@
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:11:1
    |
 LL | #[deprecated]
@@ -10,7 +10,7 @@ note: attribute also specified here
 LL | #[deprecated]
    | ^^^^^^^^^^^^^
 
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:22:18
    |
 LL | #[cfg_attr(true, deprecated)]
@@ -22,7 +22,7 @@ note: attribute also specified here
 LL | #[deprecated]
    | ^^^^^^^^^^^^^
 
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:28:26
    |
 LL | #[cfg_attr(true, inline, deprecated)]
@@ -34,7 +34,7 @@ note: attribute also specified here
 LL | #[deprecated]
    | ^^^^^^^^^^^^^
 
-warning: unused attribute
+warning: duplicate `inline` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:5:1
    |
 LL | #[inline]
@@ -48,7 +48,7 @@ LL | #[inline]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
-warning: unused attribute
+warning: duplicate `inline` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:16:18
    |
 LL | #[cfg_attr(true, inline)]
@@ -61,7 +61,7 @@ LL | #[inline]
    | ^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: unused attribute
+warning: duplicate `inline` attributes
   --> $DIR/cfg-attr-duplicate-attrs.rs:28:18
    |
 LL | #[cfg_attr(true, inline, deprecated)]

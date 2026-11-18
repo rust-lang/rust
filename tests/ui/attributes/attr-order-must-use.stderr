@@ -1,4 +1,4 @@
-error: unused attribute
+error: duplicate `must_use` attributes
   --> $DIR/attr-order-must-use.rs:6:1
    |
 LL | #[must_use = "BBB"]

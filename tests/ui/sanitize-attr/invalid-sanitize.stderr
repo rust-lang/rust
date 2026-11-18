@@ -6,7 +6,7 @@ LL | #[sanitize(brontosaurus = "off")]
    |            |
    |            valid arguments are "address", "kernel_address", "cfi", "kcfi", "memory", "memtag", "safestack", "shadow_call_stack", "thread", "hwaddress", "kernel_hwaddress" or "realtime"
 
-error: multiple `sanitize` attributes
+error: duplicate `sanitize` attributes
   --> $DIR/invalid-sanitize.rs:8:1
    |
 LL | #[sanitize(address = "off")]
@@ -18,7 +18,7 @@ note: attribute also specified here
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: multiple `sanitize` attributes
+error: duplicate `sanitize` attributes
   --> $DIR/invalid-sanitize.rs:12:1
    |
 LL | #[sanitize(address = "off")]

@@ -1,4 +1,4 @@
-error: unused attribute
+error: duplicate `used` attributes
   --> $DIR/used_with_arg.rs:16:1
    |
 LL | #[used(compiler)]
@@ -15,7 +15,7 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: unused attribute
+error: duplicate `used` attributes
   --> $DIR/used_with_arg.rs:17:1
    |
 LL | #[used(linker)]
@@ -27,7 +27,7 @@ note: attribute also specified here
 LL | #[used(linker)]
    | ^^^^^^^^^^^^^^^
 
-error: unused attribute
+error: duplicate `used` attributes
   --> $DIR/used_with_arg.rs:25:1
    |
 LL | #[used]
