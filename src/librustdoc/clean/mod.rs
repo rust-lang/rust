@@ -445,13 +445,6 @@ fn clean_where_predicate<'tcx>(
 }
 
 pub(crate) fn clean_clause<'tcx>(
-    clause: ty::Clause<'tcx>,
-    cx: &mut DocContext<'tcx>,
-) -> Option<WherePredicate> {
-    clean_clause_uninterned(clause.kind(), cx)
-}
-
-pub(crate) fn clean_clause_uninterned<'tcx>(
     bound_clause: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
@@ -952,7 +945,7 @@ fn clean_ty_generics_inner<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
             {
-                let clause = clean_clause(*clause, cx)?;
+                let clause = clean_clause(clause.kind(), cx)?;
 
                 bounds.extend(clause.get_bounds().into_iter().flatten().cloned());
 
@@ -1011,7 +1004,8 @@ fn clean_ty_generics_inner<'tcx>(
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
-    let where_predicates = where_clauses.into_iter().flat_map(|c| clean_clause(*c, cx)).collect();
+    let where_predicates =
+        where_clauses.into_iter().flat_map(|c| clean_clause(c.kind(), cx)).collect();
 
     let mut generics = Generics { params, where_predicates };
     simplify::sizedness_bounds(cx, &mut generics);
