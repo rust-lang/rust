@@ -364,6 +364,13 @@ pub(crate) struct AttrCrateLevelOnly {
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
 #[derive(Diagnostic)]
+#[diag("`#[lint::c_buffer_length]` expects two distinct parameter names")]
+pub(crate) struct InvalidCBufferLength {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::opaque]` does not expect any arguments")]
 pub(crate) struct OpaqueDoesNotExpectArgs;
 

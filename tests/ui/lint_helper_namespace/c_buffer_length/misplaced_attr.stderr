@@ -1,0 +1,32 @@
+error: the `lint::c_buffer_length` attribute cannot be used on structs
+  --> $DIR/misplaced_attr.rs:4:3
+   |
+LL | #[lint::c_buffer_length(buffer, length)]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Misplaced;
+   |
+   = help: the `lint::c_buffer_length` attribute can only be applied to functions
+
+error: the `lint::c_buffer_length` attribute cannot be used on inherent methods
+  --> $DIR/misplaced_attr.rs:9:7
+   |
+LL |     #[lint::c_buffer_length(buffer, length)]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn method(buffer: *const u8, length: usize) {}
+   |
+   = help: the `lint::c_buffer_length` attribute can be applied to foreign functions and functions
+
+error: the `lint::c_buffer_length` attribute cannot be used on foreign statics
+  --> $DIR/misplaced_attr.rs:15:7
+   |
+LL |     #[lint::c_buffer_length(buffer, length)]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     static FOREIGN: u8;
+   |
+   = help: the `lint::c_buffer_length` attribute can only be applied to functions
+
+error: aborting due to 3 previous errors
+
