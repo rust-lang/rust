@@ -124,6 +124,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
 
             let ty::PseudoCanonicalInput { typing_env, value: ty } =
                 ty::TypingEnv::post_analysis_invalidating_rigid_aliases(tcx, def_id, ty);
+            // We intentionally don't normalize ty here. Any generic parameters it mentions
+            // belong to the caller, not to drop_glue, so typing_env cannot normalize its
+            // aliases. The caller normalizes the shim body in its own env instead.
             build_drop_shim(tcx, def_id, ty.skip_normalization(), typing_env)
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),

@@ -1192,10 +1192,6 @@ impl<'tcx> TypingEnv<'tcx> {
         }
     }
 
-    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
-        TypingEnv::post_analysis_no_rigid_aliases(tcx, def_id)
-    }
-
     /// Use this when you don't have types/consts from an earlier typing env.
     /// See [`Self::with_post_analysis_normalized_invalidating_rigid_aliases`].
     pub fn post_analysis_no_rigid_aliases(
