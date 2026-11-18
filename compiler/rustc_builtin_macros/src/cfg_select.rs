@@ -146,7 +146,11 @@ pub(super) fn expand_cfg_select<'cx>(
                     DummyResult::any(sp, guar)
                 }
             }
-            Err(guar) => DummyResult::any(sp, guar),
+            Err(guar) => {
+                // `parse_cfg_select` never does attribute parsing with `ShouldEmit::NothingNoBug`, so this is safe to call
+                let guar = guar.unwrap();
+                DummyResult::any(sp, guar)
+            }
         },
     )
 }
