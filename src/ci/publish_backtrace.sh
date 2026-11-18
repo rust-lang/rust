@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Publish the backtrace crate to crates.io
-# Should be called from the a CI workflow
+# Should be called from a CI workflow
 # Expects the following environment variables as input:
 # - GITHUB_SHA: SHA of the currently merged commit from which backtrace should be published
 # - TEMPDIR: scratch directory for temporary files
@@ -26,7 +26,7 @@ VERSION=$(
 )
 CRATE=backtrace
 
-# Check if the version exists on crates.io already with a HEAD request to the CDN
+# Check if the version already exists on crates.io with a HEAD request to the CDN
 code=$(
     curl --head --silent -o /dev/null --write-out '%{http_code}' \
     "https://static.crates.io/crates/${CRATE}/${CRATE}-${VERSION}.crate"
