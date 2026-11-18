@@ -343,6 +343,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let lhs_ty_str = self.tcx.short_string(lhs_ty, &mut path);
         let rhs_ty_str = self.tcx.short_string(rhs_ty, &mut path);
 
+        let is_compatible_after_call = |lhs_ty, rhs_ty| {
+            let op_ok = self
+                .lookup_op_method(
+                    (lhs_expr, lhs_ty),
+                    Some((rhs_expr, rhs_ty)),
+                    lang_item_for_binop(self.tcx, op),
+                    op.span(),
+                    expected,
+                )
+                .is_ok();
+
+            op_ok || self.can_eq(self.param_env, lhs_ty, rhs_ty)
+        };
+
         let (mut err, output_def_id) = match op {
             // Try and detect when `+=` was incorrectly
             // used instead of `==` in a let-chain
@@ -439,6 +453,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
                 self.note_unmet_impls_on_type(&mut err, &errors, suggest_derive);
+
+                // The other case, where RHS had a shadowed method call earlier in the chain
+                // produces an E0277 instead, so adding a second call to
+                // `find_shadowed_method_and_provide_diagnostic_context` would be dead code.
+                self.find_shadowed_method_and_provide_diagnostic_context(
+                    &mut err,
+                    lhs_ty,
+                    lhs_expr,
+                    |ty| {
+                        self.autoderef(lhs_expr.span, ty)
+                            .silence_errors()
+                            .any(|(ty, _)| is_compatible_after_call(ty, rhs_ty))
+                    },
+                );
                 (err, output_def_id)
             }
         };
@@ -453,20 +481,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if maybe_missing_semi && self.is_lhs_of_assign_stmt(expr) {
             err.downgrade_to_delayed_bug();
         }
-
-        let is_compatible_after_call = |lhs_ty, rhs_ty| {
-            let op_ok = self
-                .lookup_op_method(
-                    (lhs_expr, lhs_ty),
-                    Some((rhs_expr, rhs_ty)),
-                    lang_item_for_binop(self.tcx, op),
-                    op.span(),
-                    expected,
-                )
-                .is_ok();
-
-            op_ok || self.can_eq(self.param_env, lhs_ty, rhs_ty)
-        };
 
         // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
         // `a += b` => `*a += b` if a is a mut ref.
