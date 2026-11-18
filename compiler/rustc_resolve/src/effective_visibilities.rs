@@ -136,6 +136,16 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             };
             self.update_decl_chain(decl, ParentId::Def(module_id), &mut FxHashSet::default());
         }
+
+        // Also update the reexport chains of edition redirects in this module,
+        // which are not part of the local resolution table.
+        for index in 0..self.r.local_edition_redirects.len() {
+            let redirect = &self.r.local_edition_redirects[index];
+            if redirect.module.to_module() == module {
+                let decl = redirect.import_decl;
+                self.update_decl_chain(decl, ParentId::Def(module_id), &mut FxHashSet::default());
+            }
+        }
     }
 
     /// Update effective visibilities for the whole reexport chain of a declaration.

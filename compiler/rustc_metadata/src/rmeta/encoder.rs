@@ -1857,13 +1857,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 local_def_id,
                 module_children
                     .iter()
-                    .filter(|child| child.reexport_chain.is_empty())
+                    .filter(|child| {
+                        child.reexport_chain.is_empty() && child.edition_redirects.is_empty()
+                    })
                     .map(|child| child.res.def_id().expect_local()),
             );
 
             self.table_writer().module_children_reexports(
                 local_def_id,
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()),
+                module_children.iter().filter(|child| {
+                    !child.reexport_chain.is_empty() || !child.edition_redirects.is_empty()
+                }),
             );
 
             let ambig_module_children = tcx

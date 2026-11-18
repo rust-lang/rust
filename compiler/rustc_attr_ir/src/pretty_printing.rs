@@ -1,6 +1,7 @@
 use std::num::NonZero;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::range::RangeInclusive;
 
 use rustc_abi::Align;
 use rustc_ast::ast::{Path, join_path_idents};
@@ -12,6 +13,7 @@ use rustc_ast::{AttrId, AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::def_id::DefId;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_structures::{
@@ -205,7 +207,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed, AttrId, HashIgnoredAttrId);
-print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
+print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Edition, Limit);
 print_debug!(
     Symbol,
     Ident,
@@ -226,4 +228,5 @@ print_debug!(
     NativeLibKind,
     CollapseMacroDebuginfo,
     LintName,
+    RangeInclusive<Edition>,
 );

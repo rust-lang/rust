@@ -209,6 +209,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_dump_variances_of_opaques,
     sym::rustc_dump_vtable,
     sym::rustc_dyn_incompatible_trait,
+    sym::rustc_edition_redirect,
     sym::rustc_effective_visibility,
     sym::rustc_eii_foreign_item,
     sym::rustc_evaluate_where_clauses,

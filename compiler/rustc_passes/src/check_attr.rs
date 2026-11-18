@@ -13,8 +13,8 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::lint::LintCheck;
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
-    Attribute, AttributeKind, DocAttribute, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr, RustcAssertVarianceKind, find_attr,
+    Attribute, AttributeKind, DocAttribute, EditionRedirect, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, OptimizeAttr, ReprAttr, RustcAssertVarianceKind, find_attr,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -216,6 +216,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_rustc_assert_variance(span, *attr_span, hir_id, target, *kind);
             }
             AttributeKind::LintCheck(lints) => self.check_lint_check(hir_id, lints),
+            AttributeKind::RustcEditionRedirect(redirect) => {
+                self.check_rustc_edition_redirect(item, redirect)
+            }
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
@@ -451,6 +454,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             is_out_of_line || has_path_attr || self.has_nested_module_path_dependency(child_module)
         })
+    }
+
+    /// Rejects the use of edition redirect on non-single use statements.
+    fn check_rustc_edition_redirect(&self, item: Option<&Item<'_>>, redirect: &EditionRedirect) {
+        let Some(Item { kind: ItemKind::Use(use_tree), .. }) = item else {
+            return;
+        };
+        if matches!(use_tree.kind, hir::UseKind::Single(_)) {
+            return;
+        }
+        self.dcx().emit_err(diagnostics::EditionRedirectNonSingleUse { attr_span: redirect.span });
     }
 
     fn check_rustc_must_implement_one_of(

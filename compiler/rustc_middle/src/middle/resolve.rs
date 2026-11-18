@@ -1,6 +1,8 @@
 //! This module contains types that carry name resolution results from `rustc_resolve` to a
 //! consumer in another crate (e.g. AST lowering, metadata, or a query).
 
+use std::range::RangeInclusive;
+
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
 use rustc_attr_ir::{LanguageItems, StrippedCfgItem};
@@ -13,6 +15,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalModId, 
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{MissingLifetimeKind, TraitCandidate};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::edition::Edition;
 use rustc_span::{ExpnId, Ident, Span, Symbol};
 use smallvec::SmallVec;
 
@@ -134,6 +137,14 @@ impl Reexport {
     }
 }
 
+/// A different item that a module child resolves to within an inclusive edition range.
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+pub struct EditionRedirect {
+    pub range: RangeInclusive<Edition>,
+    pub target: Res<!>,
+    pub reexport_chain: SmallVec<[Reexport; 2]>,
+}
+
 /// This structure is supposed to keep enough data to re-create `Decl`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
 /// need to add more data in the future to correctly support macros 2.0, for example.
@@ -151,6 +162,8 @@ pub struct ModChild {
     /// Reexport chain linking this module child to its original reexported item.
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,
+    /// Edition-dependent alternatives, sorted by their range.
+    pub edition_redirects: SmallVec<[EditionRedirect; 1]>,
 }
 
 /// Same as `ModChild`, however, it includes ambiguity error.

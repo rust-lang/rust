@@ -642,10 +642,9 @@ define_tables! {
     explicit_implied_const_bounds: Table<LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<LazyArray<LocalDefId>>,
     opt_item_name: Table<Option<LazyValue<Symbol>>>,
-    // Reexported names are not associated with individual `DefId`s,
-    // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
-    // That's why the encoded list needs to contain `ModChild` structures describing all the names
-    // individually instead of `DefId`s.
+    // Names requiring data beyond the item's own `DefId` are encoded as full `ModChild`s.
+    // This includes reexports, where a glob can introduce many names with the same `DefId`, and
+    // proper items carrying edition redirects.
     module_children_reexports: Table<LazyArray<ModChild>>,
     ambig_module_children: Table<LazyArray<AmbigModChild>>,
     cross_crate_inlinable: Table<bool>,

@@ -511,6 +511,11 @@ The `dyn` keyword is used to highlight that calls to methods on the associated T
 
 See [`dyn` keyword](https://doc.rust-lang.org/std/keyword.dyn.html).
 
+## `tests/ui/edition-redirect/`: Edition-dependent item resolution
+
+Tests for resolving external items and associated items to different definitions
+depending on the edition of the use site.
+
 ## `tests/ui/editions/`: Rust edition-specific peculiarities
 
 These tests run in specific Rust editions, such as Rust 2015 or Rust 2018, and check errors and functionality related to specific now-deprecated idioms and features.
