@@ -141,6 +141,8 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
+    // FIXME: We could use the rigid alias invalidating variant here, since
+    // we reset rigidness later, but doing so caused a perf regression.
     let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, body.source.def_id());
 
     let mut assignments =

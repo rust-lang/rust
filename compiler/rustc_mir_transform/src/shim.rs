@@ -122,7 +122,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 return body;
             }
 
-            build_drop_shim(tcx, def_id, ty, ty::TypingEnv::post_analysis(tcx, def_id))
+            let ty::PseudoCanonicalInput { typing_env, value: ty } =
+                ty::TypingEnv::post_analysis_invalidating_rigid_aliases(tcx, def_id, ty);
+            build_drop_shim(tcx, def_id, ty.skip_normalization(), typing_env)
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
