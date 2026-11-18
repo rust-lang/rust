@@ -14,14 +14,19 @@ pub const OPAQUE_OBJ_COOKIE: u8 = 0x42;
 /// A trait for the synchronization metadata that can be attached to a memory location.
 /// Must *not* contain any provenance!
 pub trait MetaObj: Any {
+    /// Determines whether this object is opaque, which means that the underlying memory is "hidden"
+    /// from the program for as long as the meta object exists. Opaque objects have their memory
+    /// contents reset to "uninit" on creation, and are implicitly removed on writes.
+    fn opaque(&self) -> bool {
+        true
+    }
+
     /// Determines whether reads/writes to this object's location are currently permitted.
+    /// The default is to allow them, but treat the object as opaque (see above), which means reads
+    /// will return `Uninit` and writes will destroy the meta object.
     fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
         interp_ok(())
     }
-
-    /// Determines whether this object is opaque. Opaque objects have their memory contents
-    /// reset to "uninit" on creation, and are implicitly removed on writes.
-    fn opaque(&self) -> bool;
 }
 
 impl dyn MetaObj {

@@ -45,10 +45,6 @@ impl MetaObj for MacOsUnfairLock {
         }
         interp_ok(())
     }
-
-    fn opaque(&self) -> bool {
-        true
-    }
 }
 
 pub enum MacOsFutexTimeout<'a, 'tcx> {
@@ -93,10 +89,6 @@ impl MetaObj for MacOsSemaphore {
             );
         }
         interp_ok(())
-    }
-
-    fn opaque(&self) -> bool {
-        true
     }
 }
 

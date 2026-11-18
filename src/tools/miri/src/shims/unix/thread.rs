@@ -17,11 +17,7 @@ struct PthreadAttr {
     stack_size: Option<u64>,
 }
 
-impl MetaObj for PthreadAttr {
-    fn opaque(&self) -> bool {
-        true
-    }
-}
+impl MetaObj for PthreadAttr {}
 
 /// Returns the thread attribute data stored at the address that `attr_ptr` points to.
 fn attr_get_data<'tcx, 'a>(
