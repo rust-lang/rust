@@ -4,3 +4,6 @@ filter = ":rev(55d9a533b309119c8acd13061581b43ae8840823:prefix=src/tools/rust-an
 [[post-pull]]
 cmd = ["cargo", "fmt"]
 commit-message = "Format code"
+
+[push-pr]
+suffix = "r? @ghost"
