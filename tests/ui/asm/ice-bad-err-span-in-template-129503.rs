@@ -29,3 +29,5 @@ fn main() {
     asm!("abc", "r} {}");
     //~^ ERROR invalid asm template string: unmatched `}` found
 }
+
+//@ reference: asm.ts-args.syntax

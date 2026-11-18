@@ -14,3 +14,5 @@ unsafe fn main() {
     asm!("");
     //~^ ERROR inline assembly is not stable yet on this architecture
 }
+
+//@ reference: asm.stable-targets
