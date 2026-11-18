@@ -30,6 +30,13 @@ fn yield_now() {
 }
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    {
+        test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, flags)
+        });
+        test_accept4_syscall_bad_fd();
+    }
     test_accept_nonblock();
     #[cfg(any(
         target_os = "linux",
@@ -38,7 +45,9 @@ fn main() {
         target_os = "solaris",
         target_os = "illumos"
     ))]
-    test_accept4_sock_nonblock_opt();
+    test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
+        libc::accept4(fd, addr, len, flags).into()
+    });
     test_connect_nonblock();
     test_send_recv_nonblock();
     #[cfg(any(
@@ -104,17 +113,25 @@ fn test_accept_nonblock() {
 ))]
 /// Test that calling `accept4` with the SOCK_NONBLOCK flag produces
 /// a non-blocking peer socket.
-fn test_accept4_sock_nonblock_opt() {
+fn test_accept4_sock_nonblock_opt(
+    accept4: fn(
+        libc::c_int,
+        *mut libc::sockaddr,
+        *mut libc::socklen_t,
+        libc::c_int,
+    ) -> libc::c_long,
+) {
     let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        let (peerfd, _) = net::sockname_ipv4(|storage, len| unsafe {
-            libc::accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
+        let (peerfd, _) = net::sockname_ipv4(|storage, len| {
+            accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
         })
         .unwrap();
+        let peerfd = libc::c_int::try_from(peerfd).unwrap();
 
         let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
 
@@ -133,6 +150,22 @@ fn test_accept4_sock_nonblock_opt() {
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn test_accept4_syscall_bad_fd() {
+    let mut address_len: libc::socklen_t = 0;
+    let err = unsafe {
+        errno_result(libc::syscall(
+            libc::SYS_accept4,
+            -1 as libc::c_int,
+            ptr::null_mut::<libc::sockaddr>(),
+            &mut address_len as *mut libc::socklen_t,
+            libc::SOCK_NONBLOCK,
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
 }
 
 /// Test that connecting to a server socket works when the client
