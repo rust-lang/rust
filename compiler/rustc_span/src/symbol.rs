@@ -467,6 +467,7 @@ symbols! {
         asm_experimental_reg,
         asm_goto,
         asm_goto_with_outputs,
+        asm_nonnull_inputs,
         asm_sym,
         asm_unwind,
         assert,
