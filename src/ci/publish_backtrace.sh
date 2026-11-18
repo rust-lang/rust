@@ -6,7 +6,7 @@
 # - GITHUB_SHA: SHA of the currently merged commit from which backtrace should be published
 # - TEMPDIR: scratch directory for temporary files
 
-set -eux pipefail
+set -euxo pipefail
 
 # Find PR for the current commit
 HEAD_PR=$(gh pr list --search "${GITHUB_SHA}" --state merged --json number --jq '.[0].number')
@@ -50,7 +50,7 @@ else
     echo "backtrace \`${VERSION}\` could not be published to crates.io" > "${COMMENT_FILE}"
     printf "<details>\n<summary>Cargo publish log</summary>\n\n" >> "${COMMENT_FILE}"
     printf '```\n' >> "${COMMENT_FILE}"
-    cat "${RUNNER_TEMP}/cargo-log.txt" >> "${COMMENT_FILE}"
+    cat "${TEMPDIR}/cargo-log.txt" >> "${COMMENT_FILE}"
     printf '\n```\n' >> "${COMMENT_FILE}"
     printf "</details>\n\n" >> "${COMMENT_FILE}"
 fi
