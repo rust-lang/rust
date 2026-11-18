@@ -1078,6 +1078,7 @@ impl DirEntry {
                 target_os = "redox",
                 target_os = "nto",
                 target_os = "qnx",
+                target_os = "qurt",
                 target_os = "vita",
                 target_os = "espidf",
                 target_os = "horizon",

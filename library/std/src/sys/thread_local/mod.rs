@@ -169,7 +169,6 @@ pub(crate) mod key {
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "qurt",
             target_os = "teeos",
-            target_os = "qurt",
             target_os = "wasi",
         ) => {
             mod racy;

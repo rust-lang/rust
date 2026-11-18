@@ -512,7 +512,7 @@ pub(crate) macro unsafe_impl_fd_asrefs {
     )*}
 }
 
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "qurt", target_os = "trusty")))]
 unsafe_impl_fd_asrefs!(
     crate::fs::File,
     crate::net::TcpStream,

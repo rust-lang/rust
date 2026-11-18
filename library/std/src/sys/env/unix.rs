@@ -151,5 +151,5 @@ pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
 
 #[cfg(target_os = "qurt")]
 pub unsafe fn unsetenv(_n: &OsStr) -> io::Result<()> {
-    panic!("remove_var is not supported on this platform")
+    Err(io::Error::UNSUPPORTED_PLATFORM)
 }
