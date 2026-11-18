@@ -2142,14 +2142,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, params) = match self.tcx.hir_get_if_local(def_id)? {
+        let (sig, generics, params, idents) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             }) => match trait_fn {
                 hir::TraitFn::Required(params) => (sig, generics, None, Some(params)),
-                hir::TraitFn::Provided(body) => (sig, generics, Some(body), None),
+                hir::TraitFn::Provided(body) => {
+                    (sig, generics, Some(self.tcx.hir_body(body).params), None)
+                }
             },
             hir::Node::ImplItem(&hir::ImplItem {
                 generics,
@@ -2159,11 +2161,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::Item(&hir::Item {
                 kind: hir::ItemKind::Fn { sig, generics, body, .. },
                 ..
-            }) => (sig, generics, Some(body), None),
+            }) => (sig, generics, Some(self.tcx.hir_body(body).params), None),
             hir::Node::ForeignItem(&hir::ForeignItem {
                 kind: hir::ForeignItemKind::Fn(sig, params, generics),
                 ..
-            }) => (sig, generics, None, Some(params)),
+            }) => (sig, generics, Some(params), None),
             _ => return None,
         };
 
@@ -2184,10 +2186,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             }
         });
-        let mut params_with_generics: IndexVec<ExpectedIdx, _> = match (body_id, params) {
+        let mut params_with_generics: IndexVec<ExpectedIdx, _> = match (params, idents) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
-            (Some(body), None) => {
-                let params = self.tcx.hir_body(body).params;
+            (Some(params), None) => {
                 let params = params
                     .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());

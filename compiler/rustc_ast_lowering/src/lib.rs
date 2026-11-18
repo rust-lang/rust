@@ -1954,6 +1954,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ))
     }
 
+    fn lower_fn_params(&mut self, decl: &FnDecl) -> &'hir [hir::Param<'hir>] {
+        self.arena.alloc_from_iter(
+            decl.inputs
+                .iter()
+                .filter(|param| !param.is_const_param())
+                .map(|param| self.lower_param(param)),
+        )
+    }
+
     /// Lowers a function declaration.
     ///
     /// `decl`: the unlowered (AST) function declaration.

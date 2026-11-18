@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
-use rustc_hir::{GenericParamKind, PatExprKind, PatKind};
+use rustc_hir::{GenericParamKind, Node, PatExprKind, PatKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
@@ -439,17 +439,29 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
-        if let PatKind::Binding(_, hid, ident, _) = p.kind {
-            if let hir::Node::PatField(field) = cx.tcx.parent_hir_node(hid) {
-                if !field.is_shorthand {
-                    // Only check if a new name has been introduced, to avoid warning
-                    // on both the struct definition and this pattern.
-                    self.check_snake_case(cx, "variable", &ident);
-                }
-                return;
-            }
-            self.check_snake_case(cx, "variable", &ident);
+        let PatKind::Binding(_, hid, ident, _) = p.kind else { return };
+
+        // Ignore patterns in foreign items for
+        // FIXME(#33995) remove this check
+        if let Node::ForeignItem(_) = cx
+            .tcx
+            .hir_parent_iter(p.hir_id)
+            .find(|(_, n)| !matches!(n, Node::Pat(_) | Node::Param(_)))
+            .unwrap()
+            .1
+        {
+            return;
         }
+
+        if let hir::Node::PatField(field) = cx.tcx.parent_hir_node(hid) {
+            if !field.is_shorthand {
+                // Only check if a new name has been introduced, to avoid warning
+                // on both the struct definition and this pattern.
+                self.check_snake_case(cx, "variable", &ident);
+            }
+            return;
+        }
+        self.check_snake_case(cx, "variable", &ident);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
