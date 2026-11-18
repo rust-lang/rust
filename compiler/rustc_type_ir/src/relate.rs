@@ -392,6 +392,16 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             }
         }
 
+        (ty::View(a_def, a_args, a_fields), ty::View(b_def, b_args, b_fields))
+            if a_def == b_def =>
+        {
+            let fields = relation.tys(a_fields, b_fields)?;
+
+            relation.relate_ty_args(a, b, a_def.def_id().into(), a_args, b_args, |args| {
+                Ty::new_view(cx, a_def, args, fields)
+            })
+        }
+
         (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(cx, a_id)),
 
         (ty::Dynamic(a_obj, a_region), ty::Dynamic(b_obj, b_region)) => Ok(Ty::new_dynamic(

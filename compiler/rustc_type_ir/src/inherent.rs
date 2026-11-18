@@ -87,6 +87,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
 
+    fn new_view(interner: I, adt_def: I::AdtDef, args: I::GenericArgs, fields: I::Ty) -> Self;
+
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
     fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: Region<I>) -> Self;
