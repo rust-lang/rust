@@ -2153,7 +2153,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns `true` if the two `Rc`s point to the same allocation in a vein similar to
-    /// [`ptr::eq`]. This function ignores the metadata of  `dyn Trait` pointers.
+    /// [`ptr::addr_eq`]. This function ignores the metadata of wide pointers.
     ///
     /// # Examples
     ///
@@ -3773,9 +3773,9 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::addr_eq`], or if
     /// both don't point to any allocation (because they were created with `Weak::new()`). However,
-    /// this function ignores the metadata of  `dyn Trait` pointers.
+    /// this function ignores the metadata of wide pointers.
     ///
     /// # Notes
     ///
