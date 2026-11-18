@@ -3,11 +3,11 @@ use std::marker::PhantomData;
 
 pub use clause_filter::NoClauses;
 use clause_filter::*;
+use either::Either;
 pub use iterator::CallerBoundsIterator;
 use output_as::*;
 use output_filter::*;
 use polarity_filter::*;
-use rustc_data_structures::either::Either;
 use self_ty_filter::*;
 use trait_filter::*;
 
