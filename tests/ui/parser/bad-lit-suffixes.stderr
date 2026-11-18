@@ -136,36 +136,17 @@ error: suffixes on string literals are invalid
 LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
-error[E0539]: malformed `must_use` attribute input
-  --> $DIR/bad-lit-suffixes.rs:34:3
-   |
-LL | #[must_use = "string"suffix]
-   |   ^^^^^^^^^^^--------------
-   |              |
-   |              expected a string literal here
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use]
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use = "reason"]
-   |
-
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:39:15
+  --> $DIR/bad-lit-suffixes.rs:38:15
    |
 LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:46:25
+  --> $DIR/bad-lit-suffixes.rs:45:25
    |
 LL |     #[rustc_confusables("blah"suffix)]
    |                         ^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: aborting due to 21 previous errors; 2 warnings emitted
+error: aborting due to 20 previous errors; 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0539`.
