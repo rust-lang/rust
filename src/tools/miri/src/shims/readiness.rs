@@ -311,14 +311,10 @@ impl ReadinessWatcher {
         max: usize,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Vec<ReadinessInterest>> {
-        // The goal below is to do work proportyional to how much we're actually reporting to the
+        // The goal below is to do work proportional to how much we're actually reporting to the
         // client, i.e., how many interests of this watcher are ready. In particular, we do *not*
         // iterate over all interests of this watcher, or all watchers, or all FDs being watched, or
         // anything like that.
-
-        // Process delayed readiness updates, to ensure we have fully up-to-date information.
-        // This is almost always a NOP.
-        DelayedReadinessUpdates::process(ecx)?;
 
         let interests = self.interests.borrow();
         let mut ready = self.ready.borrow_mut();
@@ -449,32 +445,6 @@ impl ReadinessWatched {
     }
 }
 
-/// If a file description's readiness is known to change but we don't have an `ecx` around to update
-/// it immediately, we arange for a referene to the delayed readiness updates queue to be available
-/// and perform the update on the next scheduler call.
-#[derive(Default, Debug)]
-pub struct DelayedReadinessUpdates {
-    to_update: RefCell<Vec<DynFileDescriptionRef>>,
-}
-
-impl DelayedReadinessUpdates {
-    pub fn add(&self, fd: DynFileDescriptionRef) {
-        self.to_update.borrow_mut().push(fd);
-    }
-
-    pub fn process<'tcx>(ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx> {
-        loop {
-            // Avoid keeping the RefCell open over the `update_fd_readiness` as that can invoke
-            // arbitrary code via the unblock callback.
-            let Some(fd) = ecx.machine.delayed_readiness_updates.to_update.borrow_mut().pop()
-            else {
-                return interp_ok(());
-            };
-            ecx.update_fd_readiness(fd, ReadinessUpdateFlags::DEFAULT)?;
-        }
-    }
-}
-
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// For a specific file description, get its current readiness and send it to everyone who
@@ -485,7 +455,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         fd: DynFileDescriptionRef,
         flags: ReadinessUpdateFlags,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let fd_id = fd.id();
         let watched = fd.readiness_watched().unwrap();
 
@@ -493,7 +463,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // We capture a vector clock even if there is nobody watching, since someone might get
             // interested in the future and then synchronize with this event.
             // FIXME: currently we do this even if the readiness did not change!
-            this.release_clock(|clock| {
+            ecx.release_clock(|clock| {
                 watched.ready_clock.borrow_mut().join(clock);
             })?;
         }
@@ -509,7 +479,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         let active_readiness = fd.readiness();
         for watcher in watchers {
-            this.update_readiness(
+            ecx.update_readiness(
                 &watcher,
                 active_readiness,
                 flags.contains(ReadinessUpdateFlags::FORCE_EDGE),
@@ -545,7 +515,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             &mut dyn FnMut(ReadinessInterestKey, &mut ReadinessInterest) -> InterpResult<'tcx>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let mut ready = watcher.ready.borrow_mut();
         for_each_interest(&mut |key, interest| {
             let new_readiness = interest.relevant & active;
@@ -574,7 +544,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             && let Some(thread_id) = watcher.queue.borrow_mut().pop_front()
         {
             drop(ready);
-            this.unblock_thread(thread_id, BlockReason::Readiness)?;
+            ecx.unblock_thread(thread_id, BlockReason::Readiness)?;
             ready = watcher.ready.borrow_mut();
         }
         interp_ok(())

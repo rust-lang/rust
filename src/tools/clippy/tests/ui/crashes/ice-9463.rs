@@ -1,5 +1,7 @@
 //@check-pass
 
+#![expect(arithmetic_overflow)]
+
 fn main() {
     let _x = -1_i32 >> -1;
     #[expect(overflowing_literals)]

@@ -6,6 +6,7 @@
 // repeat `#[track_caller]` — it is derived during codegen so the shim ABI matches).
 
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 use std::panic::Location;
 use std::sync::atomic::{AtomicU32, Ordering};

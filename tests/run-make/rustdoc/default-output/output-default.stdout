@@ -140,8 +140,7 @@ Options:
                         to reach the documentation root.
         --persist-doctests PATH
                         Directory to persist doctest executables into
-        --show-coverage 
-                        calculate percentage of public items with
+        --coverage      calculate percentage of public items with
                         documentation
         --test-runtool The tool to run tests with when building for a different target than host
                         

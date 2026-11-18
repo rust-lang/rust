@@ -48,6 +48,12 @@ pub(crate) type p16 = u16;
 pub(crate) type p64 = u64;
 pub(crate) type p128 = u128;
 
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[allow(non_camel_case_types)]
+#[unstable(feature = "f16b", issue = "160630")]
+pub(crate) type bfloat16_t = core::num::f16b;
+
 types! {
     #![cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
     #![cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
@@ -111,6 +117,18 @@ types! {
     pub struct float16x4_t(4 x pub(crate) f16);
     /// Arm-specific 128-bit wide vector of eight packed `f16`.
     pub struct float16x8_t(8 x pub(crate) f16);
+}
+
+#[cfg(any(target_has_reliable_f16b, doc))]
+types! {
+    /// Arm-specific 64-bit wide vector of four packed `f16b`.
+    #[doc(cfg(target_has_reliable_f16b))]
+    stability: [unstable(feature = "f16b", issue = "160630")]
+    pub struct bfloat16x4_t(4 x pub(crate) bfloat16_t);
+    /// Arm-specific 128-bit wide vector of eight packed `f16b`.
+    #[doc(cfg(target_has_reliable_f16b))]
+    stability: [unstable(feature = "f16b", issue = "160630")]
+    pub struct bfloat16x8_t(8 x pub(crate) bfloat16_t);
 }
 
 /// Arm-specific type containing two `int8x8_t` vectors.
@@ -831,6 +849,64 @@ pub struct float16x8x4_t(
     pub float16x8_t,
     pub float16x8_t,
     pub float16x8_t,
+);
+
+/// Arm-specific type containing two `bfloat16x4_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x4x2_t(pub bfloat16x4_t, pub bfloat16x4_t);
+
+/// Arm-specific type containing three `bfloat16x4_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x4x3_t(pub bfloat16x4_t, pub bfloat16x4_t, pub bfloat16x4_t);
+
+/// Arm-specific type containing four `bfloat16x4_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x4x4_t(
+    pub bfloat16x4_t,
+    pub bfloat16x4_t,
+    pub bfloat16x4_t,
+    pub bfloat16x4_t,
+);
+
+/// Arm-specific type containing two `bfloat16x8_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x8x2_t(pub bfloat16x8_t, pub bfloat16x8_t);
+
+/// Arm-specific type containing three `bfloat16x8_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x8x3_t(pub bfloat16x8_t, pub bfloat16x8_t, pub bfloat16x8_t);
+
+/// Arm-specific type containing four `bfloat16x8_t` vectors.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[unstable(feature = "f16b", issue = "160630")]
+pub struct bfloat16x8x4_t(
+    pub bfloat16x8_t,
+    pub bfloat16x8_t,
+    pub bfloat16x8_t,
+    pub bfloat16x8_t,
 );
 
 /// Arm-specific type containing two `float32x2_t` vectors.

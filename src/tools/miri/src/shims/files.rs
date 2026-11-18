@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::BTreeMap;
+use std::convert::BoundedCastFromInt;
 use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
@@ -11,6 +12,16 @@ use rustc_abi::Size;
 
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
+
+/// Internal type of a file-descriptor - this is what [`FdTable`] expects
+pub type FdNum = i32;
+
+/// The maximum number of open FDs.
+pub const FD_LIMIT: FdNum = 524288; // default hard limit on Debian
+
+/// Accesses this large have a higher chance of being shortened.
+/// We use twice the usual page size, which means the shortened access is at least a page.
+pub const BIG_ACCESS: u64 = 8 * 1024;
 
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
@@ -141,9 +152,9 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot read from {}", self.name());
     }
@@ -158,9 +169,9 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot write to {}", self.name());
     }
@@ -236,9 +247,9 @@ impl FileDescription for Stdin {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
@@ -246,7 +257,7 @@ impl FileDescription for Stdin {
         }
 
         // FIXME: this can block on the host, halting the entire interpreter.
-        let result = ecx.read_from_host(|buf| (&mut &self.stdin).read(buf), len, ptr)?;
+        let result = ecx.read_from_host(ptr, len, |buf| (&mut &self.stdin).read(buf))?;
         finish.call(ecx, result)
     }
 
@@ -302,12 +313,12 @@ impl FileDescription for Stdout {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stdout even with isolation enabled.
-        let result = ecx.write_to_host(&self.stdout, len, ptr)?;
+        let result = ecx.write_to_host(ptr, len, |buf| (&self.stdout).write(buf))?;
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -368,12 +379,12 @@ impl FileDescription for Stderr {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stderr even with isolation enabled.
-        let result = ecx.write_to_host(&self.stderr, len, ptr)?;
+        let result = ecx.write_to_host(ptr, len, |buf| (&self.stderr).write(buf))?;
         // No need to flush, stderr is not buffered.
         finish.call(ecx, result)
     }
@@ -428,9 +439,9 @@ impl FileDescription for NullOutput {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
         finish.call(ecx, Ok(len))
@@ -464,6 +475,7 @@ pub struct FileHandle {
     pub(crate) file: File,
     pub(crate) readable: bool,
     pub(crate) writable: bool,
+    pub(crate) append: bool,
 }
 
 impl FileDescription for FileHandle {
@@ -475,9 +487,9 @@ impl FileDescription for FileHandle {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
@@ -492,7 +504,7 @@ impl FileDescription for FileHandle {
         }
 
         let mut file = &self.file;
-        let result = ecx.read_from_host(|buf| file.read(buf), len, ptr)?;
+        let result = ecx.read_from_host(ptr, len, |buf| file.read(buf))?;
         finish.call(ecx, result)
     }
 
@@ -500,9 +512,9 @@ impl FileDescription for FileHandle {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
@@ -515,7 +527,7 @@ impl FileDescription for FileHandle {
             };
             return finish.call(ecx, Err(err));
         }
-        let result = ecx.write_to_host(&self.file, len, ptr)?;
+        let result = ecx.write_to_host(ptr, len, |buf| (&self.file).write(buf))?;
         finish.call(ecx, result)
     }
 
@@ -556,8 +568,6 @@ impl FileDescription for FileHandle {
 #[derive(Debug)]
 pub struct DirHandle {
     pub(super) dir: Dir,
-    #[cfg(bootstrap)]
-    pub(super) fallback: std::path::PathBuf,
 }
 
 impl FileDescription for DirHandle {
@@ -571,19 +581,16 @@ impl FileDescription for DirHandle {
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         assert!(communicate_allowed);
 
-        #[cfg(bootstrap)]
-        return interp_ok(Either::Left(self.dir.metadata()));
-        #[cfg(not(bootstrap))]
-        return interp_ok(Either::Left(self.dir.self_metadata()));
+        interp_ok(Either::Left(self.dir.self_metadata()))
     }
 
     fn read<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         if ecx.target_os_is_unix() {
             finish.call(ecx, Err(LibcError("EISDIR")))
@@ -597,9 +604,9 @@ impl FileDescription for DirHandle {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         if ecx.target_os_is_unix() {
             // Directories are opened for reading, so writing returns EBADF.
@@ -614,9 +621,6 @@ impl FileDescription for DirHandle {
         self
     }
 }
-
-/// Internal type of a file-descriptor - this is what [`FdTable`] expects
-pub type FdNum = i32;
 
 /// The file descriptor table
 #[derive(Debug)]
@@ -640,11 +644,11 @@ impl FdTable {
         let mut fds = FdTable::new();
         fds.insert_new(Stdin::new());
         if mute_stdout_stderr {
-            assert_eq!(fds.insert_new(NullOutput::new()), 1);
-            assert_eq!(fds.insert_new(NullOutput::new()), 2);
+            assert_eq!(fds.insert_new(NullOutput::new()).unwrap(), 1);
+            assert_eq!(fds.insert_new(NullOutput::new()).unwrap(), 2);
         } else {
-            assert_eq!(fds.insert_new(Stdout::new()), 1);
-            assert_eq!(fds.insert_new(Stderr::new()), 2);
+            assert_eq!(fds.insert_new(Stdout::new()).unwrap(), 1);
+            assert_eq!(fds.insert_new(Stderr::new()).unwrap(), 2);
         }
         fds
     }
@@ -656,14 +660,18 @@ impl FdTable {
         file_handle
     }
 
+    pub fn fd_num_valid(fd_num: FdNum) -> bool {
+        (0..FD_LIMIT).contains(&fd_num)
+    }
+
     /// Insert a new file description to the FdTable.
-    pub fn insert_new(&mut self, fd: impl FileDescription) -> FdNum {
+    pub fn insert_new(&mut self, fd: impl FileDescription) -> Option<FdNum> {
         let fd_ref = self.new_ref(fd);
         self.insert(fd_ref)
     }
 
     /// Insert an alias to an existing file description to the FdTable.
-    pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> FdNum {
+    pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> Option<FdNum> {
         self.insert_with_min_num(fd_ref, 0)
     }
 
@@ -672,7 +680,7 @@ impl FdTable {
         &mut self,
         file_handle: DynFileDescriptionRef,
         min_fd_num: FdNum,
-    ) -> FdNum {
+    ) -> Option<FdNum> {
         let mut candidate = min_fd_num;
         for (&fd_num, _) in self.fds.range(min_fd_num..) {
             if fd_num == candidate {
@@ -686,8 +694,13 @@ impl FdTable {
         // If we exhaust the loop, the table is a solid block starting at `min_fd_num` until the
         // end, and `candidate` is now the first number after that block -- exactly what we need.
 
+        // Ensure the resulting FD number is valid.
+        if !Self::fd_num_valid(candidate) {
+            return None;
+        }
+
         self.fds.try_insert(candidate, file_handle).unwrap();
-        candidate
+        Some(candidate)
     }
 
     pub fn get(&self, fd_num: FdNum) -> Option<DynFileDescriptionRef> {
@@ -710,12 +723,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// and return whether that worked.
     fn read_from_host(
         &mut self,
-        mut read_cb: impl FnMut(&mut [u8]) -> io::Result<usize>,
-        len: usize,
         ptr: Pointer,
-    ) -> InterpResult<'tcx, Result<usize, IoError>> {
-        let this = self.eval_context_mut();
+        len: u64,
+        read_cb: impl FnOnce(&mut [u8]) -> io::Result<usize>,
+    ) -> InterpResult<'tcx, Result<u64, IoError>> {
+        let ecx = self.eval_context_mut();
 
+        let len = usize::saturating_cast_from(len);
         let mut bytes = vec![0; len];
         let result = read_cb(&mut bytes);
         match result {
@@ -723,8 +737,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
                 // Crucially, if fewer than `bytes.len()` bytes were read, only write
                 // that much into the output buffer!
-                this.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
-                interp_ok(Ok(read_size))
+                ecx.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
+                interp_ok(Ok(read_size.to_u64()))
             }
             Err(e) => interp_ok(Err(IoError::HostError(e))),
         }
@@ -733,15 +747,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Write data to a host `Write` type, with the bytes taken from machine memory.
     fn write_to_host(
         &self,
-        mut file: impl io::Write,
-        len: usize,
         ptr: Pointer,
-    ) -> InterpResult<'tcx, Result<usize, IoError>> {
-        let this = self.eval_context_ref();
+        len: u64,
+        write_cb: impl FnOnce(&[u8]) -> io::Result<usize>,
+    ) -> InterpResult<'tcx, Result<u64, IoError>> {
+        let ecx = self.eval_context_ref();
 
-        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        let result = file.write(bytes);
-        interp_ok(result.map_err(IoError::HostError))
+        let len = usize::saturating_cast_from(len);
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let result = write_cb(bytes);
+        interp_ok(result.map_err(IoError::HostError).map(|written_size| written_size.to_u64()))
     }
 }
 

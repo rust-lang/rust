@@ -461,9 +461,8 @@ pub enum CandidatePreferenceMode {
 impl CandidatePreferenceMode {
     /// Given `trait_def_id`, which candidate preference mode should be used?
     pub fn compute<I: Interner>(cx: I, trait_id: I::TraitId) -> CandidatePreferenceMode {
-        let is_sizedness_or_auto_or_default_goal = cx.is_sizedness_trait(trait_id)
-            || cx.trait_is_auto(trait_id)
-            || cx.is_default_trait(trait_id);
+        let is_sizedness_or_auto_or_default_goal = cx.trait_is_auto(trait_id)
+            || cx.is_implicit_trait(trait_id, ty::IncludeSizedImplicitBounds::Yes);
         if is_sizedness_or_auto_or_default_goal {
             CandidatePreferenceMode::Marker
         } else {

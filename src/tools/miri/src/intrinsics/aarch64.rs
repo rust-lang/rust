@@ -12,7 +12,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.aarch64.").unwrap();
         match unprefixed_name {
@@ -21,11 +21,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, lane_count) = this.project_to_simd(dest)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
+                let (dest, lane_count) = ecx.project_to_simd(dest)?;
                 assert_eq!(left_len, right_len);
                 assert_eq!(lane_count, left_len);
 
@@ -34,24 +34,21 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let src_idx = lane_idx.strict_rem(lane_count / 2);
 
                     let lhs_lane =
-                        this.read_immediate(&this.project_index(src, src_idx.strict_mul(2))?)?;
-                    let rhs_lane = this.read_immediate(
-                        &this.project_index(src, src_idx.strict_mul(2).strict_add(1))?,
+                        ecx.read_immediate(&ecx.project_index(src, src_idx.strict_mul(2))?)?;
+                    let rhs_lane = ecx.read_immediate(
+                        &ecx.project_index(src, src_idx.strict_mul(2).strict_add(1))?,
                     )?;
 
                     // Compute `if lhs > rhs { lhs } else { rhs }`, i.e., `max`.
-                    let res_lane = if this
-                        .binary_op(BinOp::Gt, &lhs_lane, &rhs_lane)?
-                        .to_scalar()
-                        .to_bool()?
-                    {
-                        lhs_lane
-                    } else {
-                        rhs_lane
-                    };
+                    let res_lane =
+                        if ecx.binary_op(BinOp::Gt, &lhs_lane, &rhs_lane)?.to_scalar().to_bool()? {
+                            lhs_lane
+                        } else {
+                            rhs_lane
+                        };
 
-                    let dest = this.project_index(&dest, lane_idx)?;
-                    this.write_immediate(*res_lane, &dest)?;
+                    let dest = ecx.project_index(&dest, lane_idx)?;
+                    ecx.write_immediate(*res_lane, &dest)?;
                 }
             }
 
@@ -63,11 +60,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpadd_{s8, u8, s16, u16, s32, u32}`.
             name if name.starts_with("neon.addp.") => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(left_len, dest_len);
@@ -88,14 +85,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Convert "pair index" into "index of first element of the pair".
                     let i = src_pair_idx.strict_mul(2);
 
-                    let lhs = this.read_immediate(&this.project_index(src, i)?)?;
-                    let rhs = this.read_immediate(&this.project_index(src, i.strict_add(1))?)?;
+                    let lhs = ecx.read_immediate(&ecx.project_index(src, i)?)?;
+                    let rhs = ecx.read_immediate(&ecx.project_index(src, i.strict_add(1))?)?;
 
                     // Wrapping addition on the element type.
-                    let sum = this.binary_op(BinOp::Add, &lhs, &rhs)?;
+                    let sum = ecx.binary_op(BinOp::Add, &lhs, &rhs)?;
 
-                    let dst_lane = this.project_index(&dest, lane_idx)?;
-                    this.write_immediate(*sum, &dst_lane)?;
+                    let dst_lane = ecx.project_index(&dest, lane_idx)?;
+                    ecx.write_immediate(*sum, &dst_lane)?;
                 }
             }
 
@@ -107,16 +104,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpaddl_{u8, u16, u32}` and `vpaddlq_{u8, u16, u32}`.
             name if name.starts_with("neon.uaddlp.") => {
-                let [src] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [src] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (src, src_len) = this.project_to_simd(src)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (src, src_len) = ecx.project_to_simd(src)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 // Operates pairwise, so src has twice as many lanes.
                 assert_eq!(src_len, dest_len.strict_mul(2));
 
-                let src_elem_size = src.layout.field(this, 0).size;
-                let dest_elem_size = dest.layout.field(this, 0).size;
+                let src_elem_size = src.layout.field(ecx, 0).size;
+                let dest_elem_size = dest.layout.field(ecx, 0).size;
 
                 // Widens, so dest elements must be exactly twice as wide.
                 assert_eq!(dest_elem_size.bytes(), src_elem_size.bytes().strict_mul(2));
@@ -124,9 +121,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for dest_idx in 0..dest_len {
                     let src_idx = dest_idx.strict_mul(2);
 
-                    let a_scalar = this.read_scalar(&this.project_index(&src, src_idx)?)?;
+                    let a_scalar = ecx.read_scalar(&ecx.project_index(&src, src_idx)?)?;
                     let b_scalar =
-                        this.read_scalar(&this.project_index(&src, src_idx.strict_add(1))?)?;
+                        ecx.read_scalar(&ecx.project_index(&src, src_idx.strict_add(1))?)?;
 
                     let a_val = a_scalar.to_uint(src_elem_size)?;
                     let b_val = b_scalar.to_uint(src_elem_size)?;
@@ -135,8 +132,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This cannot wrap since the element type is at most u64.
                     let sum = a_val.strict_add(b_val);
 
-                    let dst_lane = this.project_index(&dest, dest_idx)?;
-                    this.write_scalar(Scalar::from_uint(sum, dest_elem_size), &dst_lane)?;
+                    let dst_lane = ecx.project_index(&dest, dest_idx)?;
+                    ecx.write_scalar(Scalar::from_uint(sum, dest_elem_size), &dst_lane)?;
                 }
             }
 
@@ -150,30 +147,30 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
             name if name.starts_with("neon.sqdmulh.") => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
                 assert_eq!(left_len, right_len);
                 assert_eq!(left_len, dest_len);
 
-                let elem_size = dest.layout.field(this, 0).size;
+                let elem_size = dest.layout.field(ecx, 0).size;
                 let bits = elem_size.bits();
                 let min = elem_size.signed_int_min();
                 let max = elem_size.signed_int_max();
 
                 for i in 0..dest_len {
-                    let a = this.read_scalar(&this.project_index(&left, i)?)?.to_int(elem_size)?;
-                    let b = this.read_scalar(&this.project_index(&right, i)?)?.to_int(elem_size)?;
+                    let a = ecx.read_scalar(&ecx.project_index(&left, i)?)?.to_int(elem_size)?;
+                    let b = ecx.read_scalar(&ecx.project_index(&right, i)?)?.to_int(elem_size)?;
 
                     // Uses i128 arithmetic, which cannot overflow because the intrinsic takes at most i32.
                     let doubled = a.strict_mul(b).strict_mul(2);
                     let res = (doubled >> bits).clamp(min, max);
 
-                    this.write_scalar(
+                    ecx.write_scalar(
                         Scalar::from_int(res, elem_size),
-                        &this.project_index(&dest, i)?,
+                        &ecx.project_index(&dest, i)?,
                     )?;
                 }
             }
@@ -197,60 +194,60 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (table_segments, indices) = match unprefixed_name {
                     "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
                         let [table, indices] =
-                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                        let (table, len) = this.project_to_simd(table)?;
+                            ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                        let (table, len) = ecx.project_to_simd(table)?;
                         assert_eq!(len, 16);
                         (vec![table], indices)
                     }
                     "neon.tbl2.v8i8" | "neon.tbl2.v16i8" => {
                         let [table0, table1, indices] =
-                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                        let (table0, len0) = this.project_to_simd(table0)?;
-                        let (table1, len1) = this.project_to_simd(table1)?;
+                            ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                        let (table0, len0) = ecx.project_to_simd(table0)?;
+                        let (table1, len1) = ecx.project_to_simd(table1)?;
                         assert_eq!([len0, len1], [16; 2]);
                         (vec![table0, table1], indices)
                     }
                     "neon.tbl3.v8i8" | "neon.tbl3.v16i8" => {
                         let [table0, table1, table2, indices] =
-                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                        let (table0, len0) = this.project_to_simd(table0)?;
-                        let (table1, len1) = this.project_to_simd(table1)?;
-                        let (table2, len2) = this.project_to_simd(table2)?;
+                            ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                        let (table0, len0) = ecx.project_to_simd(table0)?;
+                        let (table1, len1) = ecx.project_to_simd(table1)?;
+                        let (table2, len2) = ecx.project_to_simd(table2)?;
                         assert_eq!([len0, len1, len2], [16; 3]);
                         (vec![table0, table1, table2], indices)
                     }
                     "neon.tbl4.v8i8" | "neon.tbl4.v16i8" => {
                         let [table0, table1, table2, table3, indices] =
-                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                        let (table0, len0) = this.project_to_simd(table0)?;
-                        let (table1, len1) = this.project_to_simd(table1)?;
-                        let (table2, len2) = this.project_to_simd(table2)?;
-                        let (table3, len3) = this.project_to_simd(table3)?;
+                            ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                        let (table0, len0) = ecx.project_to_simd(table0)?;
+                        let (table1, len1) = ecx.project_to_simd(table1)?;
+                        let (table2, len2) = ecx.project_to_simd(table2)?;
+                        let (table3, len3) = ecx.project_to_simd(table3)?;
                         assert_eq!([len0, len1, len2, len3], [16; 4]);
                         (vec![table0, table1, table2, table3], indices)
                     }
                     _ => unreachable!(),
                 };
 
-                let (indices, idx_len) = this.project_to_simd(indices)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (indices, idx_len) = ecx.project_to_simd(indices)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
                 assert_eq!(idx_len, dest_len);
 
                 for i in 0..dest_len {
-                    let idx = this.read_immediate(&this.project_index(&indices, i)?)?;
+                    let idx = ecx.read_immediate(&ecx.project_index(&indices, i)?)?;
                     let idx = idx.to_scalar().to_u8()?;
 
                     // The LLVM intrinsic table segments always have 16 elements.
                     let val = if usize::from(idx) < table_segments.len().strict_mul(16) {
                         let table = &table_segments[usize::from(idx.strict_div(16))];
                         let lane = u64::from(idx.strict_rem(16));
-                        let t = this.read_immediate(&this.project_index(table, lane)?)?;
+                        let t = ecx.read_immediate(&ecx.project_index(table, lane)?)?;
                         t.to_scalar()
                     } else {
                         Scalar::from_u8(0)
                     };
 
-                    this.write_scalar(val, &this.project_index(&dest, i)?)?;
+                    ecx.write_scalar(val, &ecx.project_index(&dest, i)?)?;
                 }
             }
             // Used to implement the __crc32{b,h,w,x} and __crc32c{b,h,w,x} functions.
@@ -260,7 +257,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://developer.arm.com/documentation/ddi0602/latest/Base-Instructions/CRC32CB--CRC32CH--CRC32CW--CRC32CX--CRC32C-checksum-
             "crc32b" | "crc32h" | "crc32w" | "crc32x" | "crc32cb" | "crc32ch" | "crc32cw"
             | "crc32cx" => {
-                this.expect_target_feature_for_intrinsic(link_name, "crc")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "crc")?;
                 // The polynomial constants below include the leading 1 bit
                 // (e.g. 0x104C11DB7 instead of 0x04C11DB7) which the ARM docs
                 // omit but the polynomial division algorithm requires.
@@ -276,9 +273,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [crc, data] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let crc = this.read_scalar(crc)?;
-                let data = this.read_scalar(data)?;
+                let [crc, data] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let crc = ecx.read_scalar(crc)?;
+                let data = ecx.read_scalar(data)?;
 
                 // The CRC accumulator is always u32. The data argument is u32 for
                 // b/h/w variants and u64 for the x variant, per the LLVM intrinsic
@@ -290,7 +287,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let data = if bit_size == 64 { data.to_u64()? } else { u64::from(data.to_u32()?) };
 
                 let result = compute_crc32(crc, data, bit_size, polynomial);
-                this.write_scalar(Scalar::from_u32(result), dest)?;
+                ecx.write_scalar(Scalar::from_u32(result), dest)?;
             }
             // Polynomial multiply long (64-bit x 64-bit -> 128-bit).
             //
@@ -302,115 +299,115 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "neon.pmull64" => {
                 // LLVM and GCC group pmull with the AES intrinsics.
                 // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
-                this.expect_target_feature_for_intrinsic(link_name, "aes")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "aes")?;
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let left = this.read_scalar(left)?.to_u64()?;
-                let right = this.read_scalar(right)?.to_u64()?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let left = ecx.read_scalar(left)?.to_u64()?;
+                let right = ecx.read_scalar(right)?.to_u64()?;
 
                 let result = left.widening_carryless_mul(right);
 
                 // dest is int8x16_t, transmute to u128 for the write.
-                let dest = dest.transmute(this.machine.layouts.u128, this)?;
-                this.write_scalar(Scalar::from_u128(result), &dest)?;
+                let dest = dest.transmute(ecx.machine.layouts.u128, ecx)?;
+                ecx.write_scalar(Scalar::from_u128(result), &dest)?;
             }
 
             // Used to implement the vsha256hq_u32 function.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256hq_u32
             "crypto.sha256h" => {
-                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [abcd, efgh, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [abcd, efgh, wk] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (abcd, abcd_len) = this.project_to_simd(abcd)?;
-                let (efgh, efgh_len) = this.project_to_simd(efgh)?;
-                let (wk, wk_len) = this.project_to_simd(wk)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (abcd, abcd_len) = ecx.project_to_simd(abcd)?;
+                let (efgh, efgh_len) = ecx.project_to_simd(efgh)?;
+                let (wk, wk_len) = ecx.project_to_simd(wk)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(abcd_len, 4);
                 assert_eq!(efgh_len, 4);
                 assert_eq!(wk_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let abcd: [u32; 4] = read_u32x4(this, &abcd)?;
-                let efgh: [u32; 4] = read_u32x4(this, &efgh)?;
-                let wk: [u32; 4] = read_u32x4(this, &wk)?;
+                let abcd: [u32; 4] = read_u32x4(ecx, &abcd)?;
+                let efgh: [u32; 4] = read_u32x4(ecx, &efgh)?;
+                let wk: [u32; 4] = read_u32x4(ecx, &wk)?;
 
                 let result = sha256h(abcd, efgh, wk);
 
-                write_u32x4(this, &dest, result)?;
+                write_u32x4(ecx, &dest, result)?;
             }
             // Used to implement the vsha256h2q_u32 function.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256h2q_u32
             "crypto.sha256h2" => {
-                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [efgh, abcd, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [efgh, abcd, wk] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (efgh, efgh_len) = this.project_to_simd(efgh)?;
-                let (abcd, abcd_len) = this.project_to_simd(abcd)?;
-                let (wk, wk_len) = this.project_to_simd(wk)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (efgh, efgh_len) = ecx.project_to_simd(efgh)?;
+                let (abcd, abcd_len) = ecx.project_to_simd(abcd)?;
+                let (wk, wk_len) = ecx.project_to_simd(wk)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(efgh_len, 4);
                 assert_eq!(abcd_len, 4);
                 assert_eq!(wk_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let efgh: [u32; 4] = read_u32x4(this, &efgh)?;
-                let abcd: [u32; 4] = read_u32x4(this, &abcd)?;
-                let wk: [u32; 4] = read_u32x4(this, &wk)?;
+                let efgh: [u32; 4] = read_u32x4(ecx, &efgh)?;
+                let abcd: [u32; 4] = read_u32x4(ecx, &abcd)?;
+                let wk: [u32; 4] = read_u32x4(ecx, &wk)?;
 
                 let result = sha256h2(efgh, abcd, wk);
 
-                write_u32x4(this, &dest, result)?;
+                write_u32x4(ecx, &dest, result)?;
             }
             // Used to implement the vsha256su0q_u32 function.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su0q_u32
             "crypto.sha256su0" => {
-                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, a_len) = ecx.project_to_simd(a)?;
+                let (b, b_len) = ecx.project_to_simd(b)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let a: [u32; 4] = read_u32x4(this, &a)?;
-                let b: [u32; 4] = read_u32x4(this, &b)?;
+                let a: [u32; 4] = read_u32x4(ecx, &a)?;
+                let b: [u32; 4] = read_u32x4(ecx, &b)?;
 
                 let result = sha256su0(a, b);
 
-                write_u32x4(this, &dest, result)?;
+                write_u32x4(ecx, &dest, result)?;
             }
             // Used to implement the vsha256su1q_u32 function.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su1q_u32
             "crypto.sha256su1" => {
-                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [a, b, c] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b, c] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (c, c_len) = this.project_to_simd(c)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, a_len) = ecx.project_to_simd(a)?;
+                let (b, b_len) = ecx.project_to_simd(b)?;
+                let (c, c_len) = ecx.project_to_simd(c)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
                 assert_eq!(c_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let a: [u32; 4] = read_u32x4(this, &a)?;
-                let b: [u32; 4] = read_u32x4(this, &b)?;
-                let c: [u32; 4] = read_u32x4(this, &c)?;
+                let a: [u32; 4] = read_u32x4(ecx, &a)?;
+                let b: [u32; 4] = read_u32x4(ecx, &b)?;
+                let c: [u32; 4] = read_u32x4(ecx, &c)?;
 
                 let result = sha256su1(a, b, c);
 
-                write_u32x4(this, &dest, result)?;
+                write_u32x4(ecx, &dest, result)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

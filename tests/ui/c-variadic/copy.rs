@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 
 // Test the behavior of `VaList::clone`. In C a `va_list` is duplicated using `va_copy`, but the
 // rust api just uses `Clone`. This should create a completely independent cursor into the

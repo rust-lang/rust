@@ -48,7 +48,8 @@ use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
-    CollectAndApply, PlaceholderType, WithCachedTypeInfo, elaborate, search_graph,
+    CollectAndApply, IncludeSizedImplicitBounds, PlaceholderType, WithCachedTypeInfo, elaborate,
+    search_graph,
 };
 use tracing::{debug, instrument};
 
@@ -73,11 +74,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, ConstKind,
-    FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List, ListWithCachedTypeInfo,
-    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
-    ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, CanonicalizerState, Clause, ClausePolarity, Clauses,
+    Const, ConstKind, FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List,
+    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -119,6 +120,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
 
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
+    }
+
+    fn move_trait(self) -> bool {
+        self.move_trait()
     }
 
     fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
@@ -703,6 +708,13 @@ pub struct GlobalCaches<'tcx> {
     new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
     new_solver_canonical_param_env_cache: Lock<ty::CanonicalParamEnvCache<TyCtxt<'tcx>>>,
 
+    /// State reused by each new canonicalizer, and then cleared (but not deallocated) once the
+    /// canonicalizer is finished. A performance win, because it avoids reallocating new
+    /// vecs/hashmaps for every canonicalizer. The `Vec` is needed because there can be multiple
+    /// canonicalizers in use at once if the number of threads > 1. The `Box` avoids memcpy because
+    /// `CanonicalizerState` is moderately big.
+    pub canonicalizer_states: Lock<Vec<Box<CanonicalizerState<TyCtxt<'tcx>>>>>,
+
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
     /// Caches the index of the highest bound var in clauses in a canonical binder.
@@ -948,8 +960,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
     }
 
+    /// Returns true if a trait is an "implicit trait", which is a trait which is added
+    /// to bounds on generic types automatically by the compiler.
+    pub fn is_implicit_trait(
+        self,
+        def_id: DefId,
+        including_sized: IncludeSizedImplicitBounds,
+    ) -> bool {
+        self.is_default_trait(def_id)
+            // NOTE: add forget here later
+            || self.is_move_trait(def_id)
+            || (matches!(including_sized, IncludeSizedImplicitBounds::Yes) && self.is_sizedness_trait(def_id))
+    }
+
+    pub fn is_move_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Move))
+    }
+
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
         matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
+    }
+
+    pub fn is_forget_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Forget))
     }
 
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted {
@@ -1081,7 +1114,12 @@ impl<'tcx> TyCtxt<'tcx> {
     // Whether the body owner is synthetic, which in this case means it does not correspond to
     // meaningful HIR. This is currently used to skip over MIR borrowck.
     pub fn is_synthetic_mir(self, def_id: impl Into<DefId>) -> bool {
-        matches!(self.def_kind(def_id.into()), DefKind::SyntheticCoroutineBody)
+        let def_id = def_id.into();
+        match self.def_kind(def_id) {
+            DefKind::SyntheticCoroutineBody => true,
+            DefKind::Const | DefKind::AssocConst => self.const_of_item(def_id).is_some(),
+            _ => false,
+        }
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
@@ -1900,6 +1938,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Closure,
                 CoroutineClosure,
                 Tuple,
+                View,
                 Bound,
                 Param,
                 Infer,
@@ -2342,6 +2381,44 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::FreeConst { def_id } => {
                 debug_assert_matches!(self.def_kind(def_id), DefKind::Const);
+            }
+        }
+    }
+
+    pub(crate) fn debug_assert_adt_def_kind_compatible(self, def: AdtDef<'tcx>) {
+        if cfg!(debug_assertions) {
+            match self.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::TestBinderConstraints => {
+                    bug!("not an adt: {def:?} ({:?})", self.def_kind(def.did()))
+                }
             }
         }
     }
@@ -2860,6 +2937,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
             && !self.sess.opts.unstable_opts.higher_ranked_assumptions
             && !self.features().generic_const_exprs()
+    }
+
+    pub fn next_solver_overflow_fcw_limit(self) -> Option<usize> {
+        self.sess.opts.unstable_opts.next_solver_overflow_fcw_limit
     }
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {

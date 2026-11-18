@@ -287,6 +287,7 @@ mod sys {
 }
 
 #[cfg(test)]
+#[cfg(not(skip_unsupported_miri_tests))] // Windows known directory APIs are not supported in Miri
 mod tests {
     use super::*;
 

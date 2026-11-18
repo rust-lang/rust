@@ -1476,8 +1476,8 @@ mod repr {
             expect![[r#"
                 ba C
                 ba align($0)
+                ba i128
                 ba i16
-                ba i28
                 ba i32
                 ba i64
                 ba i8
@@ -1505,13 +1505,12 @@ mod repr {
             r#"#[repr(align(1), $0)] struct Test;"#,
             expect![[r#"
                 ba C
+                ba i128
                 ba i16
-                ba i28
                 ba i32
                 ba i64
                 ba i8
                 ba isize
-                ba transparent
                 ba u128
                 ba u16
                 ba u32
@@ -1528,13 +1527,12 @@ mod repr {
             r#"#[repr(packed, $0)] struct Test;"#,
             expect![[r#"
                 ba C
+                ba i128
                 ba i16
-                ba i28
                 ba i32
                 ba i64
                 ba i8
                 ba isize
-                ba transparent
                 ba u128
                 ba u16
                 ba u32
@@ -1551,8 +1549,8 @@ mod repr {
             r#"#[repr(C, $0)] struct Test;"#,
             expect![[r#"
                 ba align($0)
+                ba i128
                 ba i16
-                ba i28
                 ba i32
                 ba i64
                 ba i8

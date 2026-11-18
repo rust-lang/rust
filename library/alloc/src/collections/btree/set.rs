@@ -366,6 +366,13 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
         BTreeSet { map: BTreeMap::new_in(alloc) }
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.map.allocator()
+    }
+
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
     /// yield elements from min (inclusive) to max (exclusive).
@@ -1259,7 +1266,7 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.map.len()
@@ -1279,7 +1286,7 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

@@ -17,8 +17,8 @@ mod test2 {
         pub use ::std::derive as format_args;
     }
 
-    #[rustfmt::skip]
-    //~^ ERROR cannot find module or crate `rustfmt` in this scope
+    #[my_tool::attr] // Unaffected by the `no_implicit_prelude` attribute
+    #[rustfmt::skip] // Unaffected by the `no_implicit_prelude` attribute
     #[clippy::format_args(Debug)]
     //~^ ERROR attribute macro `clippy::format_args` is ambiguous
     struct Foo;

@@ -16,7 +16,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 use crate::diagnostics;
 
-pub(crate) fn expand_deriving_coerce_pointee(
+pub(crate) fn expand_derive_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

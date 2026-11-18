@@ -243,7 +243,7 @@ impl Expr {
         }
 
         // Special-case `2 as x < 3`
-        if let ast::Expr::CastExpr(it) = self
+        if let Some(it) = self.right_side_cast_expr()
             && let Some(ty) = it.ty()
             && ty.syntax().last_token().and_then(|it| ast::NameLike::cast(it.parent()?)).is_some()
             && let Some(node) = place_of_parent()
@@ -524,9 +524,11 @@ impl Expr {
                 YieldExpr(e) => e.yield_token(),
                 YeetExpr(e) => e.do_token(),
                 LetExpr(e) => e.let_token(),
-                OffsetOfExpr(e) => e.builtin_token(),
-                FormatArgsExpr(e) => e.builtin_token(),
-                AsmExpr(e) => e.builtin_token(),
+                OffsetOfExpr(e) => e.offset_of_token(),
+                FormatArgsExpr(e) => e.format_args_token(),
+                AsmExpr(e) => {
+                    e.asm_token().or_else(|| e.global_asm_token()).or_else(|| e.naked_asm_token())
+                }
                 ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_)
                 | IfExpr(_) | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_)
                 | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_)
@@ -574,6 +576,13 @@ impl Expr {
             }
             _ => false,
         }
+    }
+
+    fn right_side_cast_expr(&self) -> Option<ast::CastExpr> {
+        std::iter::successors(Some(self.syntax().clone()), |it| {
+            it.last_child_or_token()?.into_node()
+        })
+        .find_map(ast::CastExpr::cast)
     }
 }
 

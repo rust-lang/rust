@@ -36,3 +36,106 @@ fn issue16104(make_ptr: fn() -> *const u32) {
         //~^ transmute_ptr_to_ptr
     }
 }
+
+mod msrv_transmute_bytes_to_str {
+    mod mutable {
+        #[clippy::msrv = "1.19"]
+        fn before_std_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { &mut *(mb as *mut [u8] as *mut str) };
+            //~^ transmute_ptr_to_ptr
+        }
+
+        #[clippy::msrv = "1.20"]
+        fn after_std_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { std::str::from_utf8_mut(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.86"]
+        fn before_primitive_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { std::str::from_utf8_mut(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.87"]
+        fn after_primitive_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { str::from_utf8_mut(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+    }
+    mod not_mutable {
+        #[clippy::msrv = "1.5"]
+        fn before_core_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::str::from_utf8(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.6"]
+        fn after_core_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::str::from_utf8(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.86"]
+        fn before_primitive_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::str::from_utf8(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.87"]
+        fn after_primitive_stable(mb: &[u8]) {
+            let _: &str = unsafe { str::from_utf8(mb).unwrap() };
+            //~^ transmute_bytes_to_str
+        }
+    }
+    mod mutable_const {
+        #[clippy::msrv = "1.82"]
+        const fn before_std_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { std::mem::transmute(mb) };
+        }
+
+        #[clippy::msrv = "1.83"]
+        const fn after_std_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { std::str::from_utf8_unchecked_mut(mb) };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.86"]
+        const fn before_primitive_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { std::str::from_utf8_unchecked_mut(mb) };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.87"]
+        const fn after_primitive_stable(mb: &mut [u8]) {
+            let _: &mut str = unsafe { str::from_utf8_unchecked_mut(mb) };
+            //~^ transmute_bytes_to_str
+        }
+    }
+    mod not_mutable_const {
+        #[clippy::msrv = "1.54"]
+        #[expect(clippy::incompatible_msrv, reason = "test")]
+        const fn before_std_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::mem::transmute(mb) };
+        }
+
+        #[clippy::msrv = "1.55"]
+        #[allow(clippy::incompatible_msrv, reason = "transmute not stable, but suggestion is")]
+        const fn after_std_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::str::from_utf8_unchecked(mb) };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.86"]
+        const fn before_primitive_stable(mb: &[u8]) {
+            let _: &str = unsafe { std::str::from_utf8_unchecked(mb) };
+            //~^ transmute_bytes_to_str
+        }
+
+        #[clippy::msrv = "1.87"]
+        const fn after_primitive_stable(mb: &[u8]) {
+            let _: &str = unsafe { str::from_utf8_unchecked(mb) };
+            //~^ transmute_bytes_to_str
+        }
+    }
+}

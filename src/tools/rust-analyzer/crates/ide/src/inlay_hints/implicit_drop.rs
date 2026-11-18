@@ -6,7 +6,7 @@
 //! }
 //! ```
 use hir::{
-    DefWithBody,
+    DefWithBody, DropGlue,
     db::HirDatabase as _,
     mir::{MirSpan, TerminatorKind},
     name,
@@ -19,7 +19,10 @@ use syntax::{
     match_ast,
 };
 
-use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{
+    InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::ImplicitDropHints,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -28,7 +31,7 @@ pub(super) fn hints(
     display_target: hir::DisplayTarget,
     node: &ast::Fn,
 ) -> Option<()> {
-    if !config.implicit_drop_hints {
+    if let ImplicitDropHints::Never = config.implicit_drop_hints {
         return None;
     }
 
@@ -54,6 +57,18 @@ pub(super) fn hints(
             let Some(&binding_idx) = local_to_binding.get(place.local) else {
                 continue; // Ignore temporary values
             };
+
+            if let ImplicitDropHints::WithDropGlue = config.implicit_drop_hints {
+                let local = hir::Local::from((def, binding_idx));
+                let ty = local.ty(sema.db);
+
+                // ignore values whose type does not have any drop glue
+                let glue = ty.drop_glue(sema.db);
+                if let DropGlue::None = glue {
+                    continue;
+                }
+            }
+
             let range = match terminator.span {
                 MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
                     // don't show inlay hint for macro
@@ -146,11 +161,19 @@ fn nearest_token_after_node(
 mod tests {
     use crate::{
         InlayHintsConfig,
-        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
+        inlay_hints::{
+            ImplicitDropHints,
+            tests::{DISABLED_CONFIG, check_with_config},
+        },
     };
 
     const ONLY_DROP_CONFIG: InlayHintsConfig<'_> =
-        InlayHintsConfig { implicit_drop_hints: true, ..DISABLED_CONFIG };
+        InlayHintsConfig { implicit_drop_hints: ImplicitDropHints::Always, ..DISABLED_CONFIG };
+
+    const ONLY_DROP_GLUE_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
+        implicit_drop_hints: ImplicitDropHints::WithDropGlue,
+        ..DISABLED_CONFIG
+    };
 
     #[test]
     fn basic() {
@@ -253,6 +276,26 @@ mod tests {
         my_macro!()
     }
 "#,
+        );
+    }
+
+    #[test]
+    fn display_hint_only_for_drop_glue() {
+        check_with_config(
+            ONLY_DROP_GLUE_CONFIG,
+            r#"
+//- minicore: drop
+        struct X;
+        struct Y;
+        impl Drop for Y {
+            fn drop(&mut self) {}
+        }
+        fn f() {
+            let x = X;
+            let y = Y;
+        }
+      //^ drop(y)
+        "#,
         );
     }
 }

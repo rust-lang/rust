@@ -130,7 +130,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        maybe_definition_llfn: Option<&'ll Value>,
+        maybe_definition_llfn: Option<Value<'ll>>,
     ) -> &'ll DIScope {
         let tcx = self.tcx;
 
@@ -540,22 +540,22 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         if direct_offset.bytes() > 0 {
             addr_ops.push(DW_OP_plus_uconst);
-            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(direct_offset.bytes());
             addr_ops.push(DW_OP_stack_value);
         }
         for &offset in indirect_offsets {
             addr_ops.push(DW_OP_deref);
             if offset.bytes() > 0 {
                 addr_ops.push(DW_OP_plus_uconst);
-                addr_ops.push(offset.bytes() as u64);
+                addr_ops.push(offset.bytes());
             }
         }
         if let Some(fragment) = fragment {
             // `DW_OP_LLVM_fragment` takes as arguments the fragment's
             // offset and size, both of them in bits.
             addr_ops.push(DW_OP_LLVM_fragment);
-            addr_ops.push(fragment.start.bits() as u64);
-            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+            addr_ops.push(fragment.start.bits());
+            addr_ops.push((fragment.end - fragment.start).bits());
         }
 
         let di_builder = DIB(self.cx());
@@ -590,7 +590,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
+    fn set_var_name(&mut self, value: Value<'ll>, name: &str) {
         // Avoid wasting time if LLVM value names aren't even enabled.
         if self.sess().fewer_names() {
             return;

@@ -32,10 +32,10 @@ LL | type Foo<V> = impl std::fmt::Debug;
    = note: `Foo` must be used in combination with a concrete type within the same crate
 
 error[E0277]: the trait bound `(): Identity<Q>` is not satisfied
-  --> $DIR/orphanck-tait-with-projection-arg.rs:11:14
+  --> $DIR/orphanck-tait-with-projection-arg.rs:11:24
    |
 LL |     fn clone(&self) -> Self {
-   |              ^^^^^ the trait `Identity<Q>` is not implemented for `()`
+   |                        ^^^^ the trait `Identity<Q>` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/orphanck-tait-with-projection-arg.rs:5:1

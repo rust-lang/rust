@@ -33,6 +33,7 @@ use crate::{
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HumanReadableErrorType {
+    pub no_graphics: bool,
     pub short: bool,
     pub unicode: bool,
 }
@@ -589,7 +590,7 @@ impl Style {
     pub(crate) fn anstyle(&self) -> anstyle::Style {
         match self {
             Style::NoStyle => anstyle::Style::new(),
-            Style::Highlight => AnsiColor::Magenta.on_default().effects(Effects::BOLD),
+            Style::Highlight => AnsiColor::BrightCyan.on_default().effects(Effects::BOLD),
         }
     }
 }

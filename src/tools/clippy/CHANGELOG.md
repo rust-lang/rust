@@ -6,7 +6,100 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[49e2f89...master](https://github.com/rust-lang/rust-clippy/compare/49e2f89...master)
+[d818180...main](https://github.com/rust-lang/rust-clippy/compare/d818180...main)
+
+## Rust 1.100
+
+Current stable, released 2026-11-12
+
+[View all 84 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2026-08-08T06%3A44%3A20Z..2026-09-17T12%3A18%3A40Z+base%3Amaster)
+
+### New Lints
+
+* Added [`option_zip_none`] to `suspicious`
+  [#17465](https://github.com/rust-lang/rust-clippy/pull/17465)
+* Added [`needless_nonzero_get`] to `complexity`
+  [#17499](https://github.com/rust-lang/rust-clippy/pull/17499)
+  [#17538](https://github.com/rust-lang/rust-clippy/pull/17538)
+
+### Enhancements
+
+* [`suboptimal_flops`] lint `mul_add`, `custom_abs` and `radians` in const contexts
+  [#17631](https://github.com/rust-lang/rust-clippy/pull/17631)
+* [`manual_swap`] lint in const contexts
+  [#17703](https://github.com/rust-lang/rust-clippy/pull/17703)
+* [`unwrap_used`]: `allow-unwrap-in-tests` now also applies to integration tests
+  [#16786](https://github.com/rust-lang/rust-clippy/pull/16786)
+* [`map_unwrap_or`] extend to `map(f).unwrap_or_default()`, suggesting `map_or_default(f)`
+  [#17644](https://github.com/rust-lang/rust-clippy/pull/17644)
+* [`unnecessary_self_imports`] lint nested imports
+  [#17653](https://github.com/rust-lang/rust-clippy/pull/17653)
+* [`redundant_clone`] detect redundant clones inside loop bodies without aliases
+  [#17495](https://github.com/rust-lang/rust-clippy/pull/17495)
+* [`imprecise_flops`] also suggest `hypot` for the form `x.mul_add(x, y * y).sqrt()`
+  [#17600](https://github.com/rust-lang/rust-clippy/pull/17600)
+* [`unnecessary_fold`] lint `fold` over an `Option`'s iterator and suggest `map_or`
+  [#17445](https://github.com/rust-lang/rust-clippy/pull/17445)
+* [`unnecessary_map_or`] suggest `Result::is_ok` and `Result::is_err` for boolean `map_or` and
+  `map_or_else` branches
+  [#17537](https://github.com/rust-lang/rust-clippy/pull/17537)
+* [`integer_division_remainder_used`] also lint `DivAssign`/`RemAssign`
+  [#16493](https://github.com/rust-lang/rust-clippy/pull/16493)
+* [`used_underscore_binding`] lint more cases where the binding is used
+  [#17308](https://github.com/rust-lang/rust-clippy/pull/17308)
+* [`used_underscore_items`] respect `allow` and `expect` attributes on the item definition
+  [#17308](https://github.com/rust-lang/rust-clippy/pull/17308)
+* [`needless_bool`] lint the early-return guard form
+  [#17185](https://github.com/rust-lang/rust-clippy/pull/17185)
+* [`cargo_common_metadata`] no longer check the `package.readme` metadata field
+  [#17643](https://github.com/rust-lang/rust-clippy/pull/17643)
+* [`doc_markdown`] add `WebAuthn` to the default `doc-valid-idents` list
+  [#17568](https://github.com/rust-lang/rust-clippy/pull/17568)
+* [`lint_groups_priority`] fix typo in the error message
+  [#17663](https://github.com/rust-lang/rust-clippy/pull/17663)
+* [`nonnull_unchecked_on_box_ptr`] no longer suggest `Box::leak`
+  [#17752](https://github.com/rust-lang/rust-clippy/pull/17752)
+* Fix `cargo clippy --explain <lint>` reporting `unknown lint` for every lint
+  [#17632](https://github.com/rust-lang/rust-clippy/pull/17632)
+
+### False Positive Fixes
+
+* [`map_clone`] fix FP for clone calls using deref coercion
+  [#17671](https://github.com/rust-lang/rust-clippy/pull/17671)
+* [`regex_creation_in_loops`] do not lint if the regex code path breaks out of the loop
+  [#17681](https://github.com/rust-lang/rust-clippy/pull/17681)
+* [`useless_conversion`] do not lint `From::from` in automatically derived code
+  [#17583](https://github.com/rust-lang/rust-clippy/pull/17583)
+* [`integer_division_remainder_used`] do not lint in macros
+  [#17049](https://github.com/rust-lang/rust-clippy/pull/17049)
+* [`needless_pass_by_value`] respect inline `#[allow]` attributes on function arguments
+  [#17665](https://github.com/rust-lang/rust-clippy/pull/17665)
+* [`unused_async_trait_impl`] do not lint when the trait is implemented for the never type `!`
+  [#17163](https://github.com/rust-lang/rust-clippy/pull/17163)
+* [`double_must_use`], [`must_use_unit`] do not lint macro-generated `#[must_use]` attributes
+  [#17547](https://github.com/rust-lang/rust-clippy/pull/17547)
+* [`manual_contains`] do not lint when both sides use the slice element
+  [#17564](https://github.com/rust-lang/rust-clippy/pull/17564)
+* [`let_and_return`] fix `#[expect]` on the return expression causing spurious
+  `unfulfilled_lint_expectations`
+  [#17045](https://github.com/rust-lang/rust-clippy/pull/17045)
+* [`semicolon_if_nothing_returned`] do not lint in `#[automatically_derived]` code
+  [#17229](https://github.com/rust-lang/rust-clippy/pull/17229)
+
+### ICE Fixes
+
+* [`needless_borrows_for_generic_args`] fix infinite loop with `const_trait_impl` (e.g. `Vec`'s
+  destructor)
+  [#17731](https://github.com/rust-lang/rust-clippy/pull/17731)
+* [`large_futures`] fix ICE on awaited futures with the next trait solver
+  [#17601](https://github.com/rust-lang/rust-clippy/pull/17601)
+* [`unnecessary_rest_pattern`] fix ICE when destructuring a type alias
+  [#17557](https://github.com/rust-lang/rust-clippy/pull/17557)
+
+### Documentation Improvements
+
+* [`mixed_read_write_in_expression`] fix broken link to the reference
+  [#17491](https://github.com/rust-lang/rust-clippy/pull/17491)
 
 ## Rust 1.99
 
@@ -3905,7 +3998,7 @@ Released 2022-02-24
 ### Others
 
 * [Clippy's lint
-  list](https://rust-lang.github.io/rust-clippy/master/index.html) now displays
+  list](https://rust-lang.github.io/rust-clippy/main/index.html) now displays
   the version a lint was added. :tada:
   [#7813](https://github.com/rust-lang/rust-clippy/pull/7813)
 * New and improved issue templates
@@ -4675,7 +4768,7 @@ Released 2021-06-17
 ### Others
 
 * [Clippy's lint
-  list](https://rust-lang.github.io/rust-clippy/master/index.html) now supports
+  list](https://rust-lang.github.io/rust-clippy/main/index.html) now supports
   themes [#7030](https://github.com/rust-lang/rust-clippy/pull/7030)
 * Lints that were uplifted to `rustc` now mention the new `rustc` name in the
   deprecation warning
@@ -4929,7 +5022,7 @@ Released 2021-03-25
 * Add `cargo dev-lintcheck` tool to the Clippy Dev Tool
   [#6469](https://github.com/rust-lang/rust-clippy/pull/6469)
 
-[Roadmap]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/proposals/roadmap-2021.md
+[Roadmap]: https://github.com/rust-lang/rust-clippy/blob/main/book/src/development/proposals/roadmap-2021.md
 [Roadmap project page]: https://github.com/rust-lang/rust-clippy/projects/3
 
 ## Rust 1.50
@@ -5281,7 +5374,7 @@ Released 2020-11-19
   [#5913](https://github.com/rust-lang/rust-clippy/pull/5913)
 * Add example of false positive to [`ptr_arg`] docs.
   [#5885](https://github.com/rust-lang/rust-clippy/pull/5885)
-* [`box_vec`](https://rust-lang.github.io/rust-clippy/master/index.html#box_collection), [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
+* [`box_vec`][`box_collection`], [`vec_box`] and [`borrowed_box`]: add link to the documentation of `Box`
   [#6023](https://github.com/rust-lang/rust-clippy/pull/6023)
 
 ## Rust 1.47
@@ -6936,9 +7029,9 @@ Released 2018-09-13
 [`AsRef`]: https://doc.rust-lang.org/std/convert/trait.AsRef.html
 [configuration file]: ./rust-clippy#configuration
 [pull3665]: https://github.com/rust-lang/rust-clippy/pull/3665
-[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
-[`README.md`]: https://github.com/rust-lang/rust-clippy/blob/master/README.md
-[Clippy's lint list]: https://rust-lang.github.io/rust-clippy/master/index.html
+[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/main/book/src/development/adding_lints.md
+[`README.md`]: https://github.com/rust-lang/rust-clippy/blob/main/README.md
+[Clippy's lint list]: https://rust-lang.github.io/rust-clippy/main/index.html
 
 <!-- lint disable no-unused-definitions -->
 <!-- begin autogenerated links to lint list -->
@@ -7280,6 +7373,7 @@ Released 2018-09-13
 [`large_stack_arrays`]: https://clippy.rust-lang.org/main/index.html#large_stack_arrays
 [`large_stack_frames`]: https://clippy.rust-lang.org/main/index.html#large_stack_frames
 [`large_types_passed_by_value`]: https://clippy.rust-lang.org/main/index.html#large_types_passed_by_value
+[`large_unopt_stack_frames`]: https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames
 [`legacy_numeric_constants`]: https://clippy.rust-lang.org/main/index.html#legacy_numeric_constants
 [`len_without_is_empty`]: https://clippy.rust-lang.org/main/index.html#len_without_is_empty
 [`len_zero`]: https://clippy.rust-lang.org/main/index.html#len_zero
@@ -7750,6 +7844,7 @@ Released 2018-09-13
 [`unchecked_duration_subtraction`]: https://clippy.rust-lang.org/main/index.html#unchecked_duration_subtraction
 [`unchecked_time_subtraction`]: https://clippy.rust-lang.org/main/index.html#unchecked_time_subtraction
 [`unconditional_recursion`]: https://clippy.rust-lang.org/main/index.html#unconditional_recursion
+[`undocumented_may_panic_call`]: https://clippy.rust-lang.org/main/index.html#undocumented_may_panic_call
 [`undocumented_unsafe_blocks`]: https://clippy.rust-lang.org/main/index.html#undocumented_unsafe_blocks
 [`undropped_manually_drops`]: https://clippy.rust-lang.org/main/index.html#undropped_manually_drops
 [`unicode_not_nfc`]: https://clippy.rust-lang.org/main/index.html#unicode_not_nfc
@@ -7943,6 +8038,7 @@ Released 2018-09-13
 [`max-struct-bools`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-struct-bools
 [`max-suggested-slice-pattern-length`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-suggested-slice-pattern-length
 [`max-trait-bounds`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-trait-bounds
+[`may-panic-functions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#may-panic-functions
 [`min-ident-chars-lint-trait-impl`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-lint-trait-impl
 [`min-ident-chars-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-threshold
 [`missing-docs-allow-unused`]: https://doc.rust-lang.org/clippy/lint_configuration.html#missing-docs-allow-unused

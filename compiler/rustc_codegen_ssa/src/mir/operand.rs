@@ -217,7 +217,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         offset: Size,
     ) -> Self {
         let alloc_align = alloc.inner().align;
-        assert!(alloc_align >= layout.align.abi, "{alloc_align:?} < {:?}", layout.align.abi);
+        assert!(alloc_align >= layout.align, "{alloc_align:?} < {:?}", layout.align);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
             match alloc.0.read_scalar(
@@ -307,7 +307,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self));
 
         let layout = cx.layout_of(projected_ty);
-        self.val.deref(layout.align.abi).with_type(layout)
+        self.val.deref(layout.align).with_type(layout)
     }
 
     /// Store this operand into a place, applying move/copy annotation if present.
@@ -996,7 +996,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
             BackendRepr::Memory { .. } => {
                 let ptr = bx.cx().type_ptr();
-                OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align.abi))
+                OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align))
             }
         }
     }

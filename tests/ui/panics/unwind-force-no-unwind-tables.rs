@@ -6,7 +6,6 @@
 //@ needs-unwind
 //@ ignore-windows target requires uwtable
 //@ compile-flags: -C panic=unwind -C force-unwind-tables=n
-//@ ignore-backends: gcc
 
 use std::panic::{self, AssertUnwindSafe};
 

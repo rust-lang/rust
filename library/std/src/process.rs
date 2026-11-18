@@ -24,6 +24,18 @@
 //! waits until the process terminates, while [`spawn`] will return a [`Child`]
 //! that represents the spawned child process.
 //!
+//! Spawning a command may return an error if:
+//! - The command does not exist, or is not in the platform-specific PATH search list.
+//! - A platform-specific limit on memory, number of processes, or number of threads is reached.
+//! - The current process doesn't have enough permissions to spawn the command.
+//! - A dynamic library required by the command could not be found.
+//!
+//! This list is not exhaustive. Other errors may occur depending on the platform.
+//!
+//! Note that the function will error only while attempting to spawn the child. If the child is
+//! successfully spawned, any error that happens afterwards will be reported through
+//! its [`ExitStatus`].
+//!
 //! # Handling I/O
 //!
 //! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
@@ -1174,10 +1186,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
-        self.inner
-            .spawn(imp::Stdio::Inherit, true)
-            .map(Child::from_inner)
-            .and_then(|mut p| p.wait())
+        imp::status(&mut self.inner).map(ExitStatus)
     }
 
     /// Returns the path to the program that was given to [`Command::new`].
@@ -1339,8 +1348,8 @@ impl Command {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
-    /// non-utf8 data is lossily converted using the utf8 replacement
-    /// character.
+    /// non-utf8 data is either escaped or lossily converted using the
+    /// [utf8 replacement character].
     ///
     /// The default format approximates a shell invocation of the program along with its
     /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
@@ -1350,6 +1359,7 @@ impl fmt::Debug for Command {
     /// Note that the debug implementation is platform-specific.
     ///
     /// [the alternate syntax]: fmt#sign0
+    /// [utf8 replacement character]: char::REPLACEMENT_CHARACTER
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }

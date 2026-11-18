@@ -812,7 +812,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
                 // Note that the len being WF is implicitly checked while visiting.
                 // Here we just check that it's of type usize.
-                let cause = self.cause(ObligationCauseCode::ArrayLen(t));
+                let cause = self.cause(ObligationCauseCode::ArrayLen(t, self.span));
                 self.out.push(traits::Obligation::with_depth(
                     tcx,
                     cause,
@@ -1121,6 +1121,15 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         t.into(),
                     ))),
                 ));
+            }
+
+            ty::View(def, args, _fields) => {
+                // FIXME(scrabsha): what should we require from fields?
+
+                // WfNominalType
+                self.nominal_obligations(def.did(), args, |this, obligation| {
+                    this.out.push(obligation)
+                });
             }
         }
 

@@ -16,9 +16,9 @@ pub fn format_env_variables() -> String {
 }
 
 pub fn print_free_disk_space() -> anyhow::Result<()> {
-    let disks = Disks::new_with_refreshed_list();
-    let available_space: u64 = disks.list().iter().map(|d| d.available_space()).sum();
-    let total_space: u64 = disks.list().iter().map(|d| d.total_space()).sum();
+    let Ok(disks) = Disks::new_with_refreshed_list() else { return Ok(()) };
+    let available_space: u64 = disks.iter().map(|d| d.available_space()).sum();
+    let total_space: u64 = disks.iter().map(|d| d.total_space()).sum();
     let used_space = total_space - available_space;
 
     log::info!(

@@ -33,9 +33,9 @@ pub mod keys {
     use syntax::{AstNode, AstPtr, ast};
 
     use crate::{
-        BlockId, BuiltinDeriveImplId, ConstId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
-        FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id, MacroRulesId, ProcMacroId,
-        StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, UnionId, UseId,
+        BlockId, BuiltinDeriveImplId, ConstId, ConstParamId, EnumId, EnumVariantId, ExternBlockId,
+        ExternCrateId, FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id, MacroRulesId,
+        ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
         dyn_map::{DynMap, Policy},
     };
 
@@ -58,8 +58,8 @@ pub mod keys {
     pub const ENUM_VARIANT: Key<ast::Variant, EnumVariantId> = Key::new();
     pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
     pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
-    pub const TYPE_PARAM: Key<ast::TypeParam, TypeOrConstParamId> = Key::new();
-    pub const CONST_PARAM: Key<ast::ConstParam, TypeOrConstParamId> = Key::new();
+    pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
+    pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
     pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 
     pub const MACRO_RULES: Key<ast::MacroRules, MacroRulesId> = Key::new();

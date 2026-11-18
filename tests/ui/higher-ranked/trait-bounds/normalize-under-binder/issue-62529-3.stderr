@@ -6,8 +6,6 @@ LL |         call(f, ());
    |         |
    |         required by a bound introduced by this call
    |
-   = note:        expected type with signature `for<'a> fn(<_ as ATC<'a>>::Type)`
-           found type parameter with signature `fn(())`
 note: required by a bound in `call`
   --> $DIR/issue-62529-3.rs:9:36
    |

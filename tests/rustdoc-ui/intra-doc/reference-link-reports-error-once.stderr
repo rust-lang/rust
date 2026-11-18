@@ -26,6 +26,7 @@ LL | /// Other links to the same target should still emit error: [ref]
    |                                                              ^^^ no item named `ref` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ref]: https://...`
 
 error: unresolved link to `ref`
   --> $DIR/reference-link-reports-error-once.rs:8:16
@@ -34,6 +35,7 @@ LL | /// Duplicate [ref]
    |                ^^^ no item named `ref` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ref]: https://...`
 
 error: unresolved link to `ref2`
   --> $DIR/reference-link-reports-error-once.rs:10:60
@@ -42,6 +44,7 @@ LL | /// Other links to other targets should still emit error: [ref2]
    |                                                            ^^^^ no item named `ref2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ref2]: https://...`
 
 error: unresolved link to `ref2`
   --> $DIR/reference-link-reports-error-once.rs:11:16
@@ -50,6 +53,7 @@ LL | /// Duplicate [ref2]
    |                ^^^^ no item named `ref2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ref2]: https://...`
 
 error: unresolved link to `ref`
   --> $DIR/reference-link-reports-error-once.rs:18:6
@@ -58,6 +62,7 @@ LL | /// [ref][]
    |      ^^^ no item named `ref` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ref]: https://...`
 
 error: aborting due to 7 previous errors
 

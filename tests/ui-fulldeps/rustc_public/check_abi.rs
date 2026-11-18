@@ -58,6 +58,12 @@ fn test_stable_mir() -> ControlFlow<()> {
         .expect("Expected variadic_fn function");
     check_variadic(variadic_fn);
 
+    #[cfg(target_arch = "x86_64")]
+    {
+        check_variadic_conv(&items, "input::sysv64_variadic", CallConvention::X86_64SysV);
+        check_variadic_conv(&items, "input::win64_variadic", CallConvention::X86_64Win64);
+    }
+
     // Extract function pointers.
     let fn_ptr_holder = *get_item(&items, (ItemKind::Fn, "input::fn_ptr_holder"))
         .expect("Expected fn_ptr_holder function");
@@ -286,7 +292,20 @@ fn check_variadic(variadic_fn: CrateItem) {
     let instance = Instance::try_from(variadic_fn).expect("Expected variadic_fn instance");
     let abi = instance.fn_abi().expect("Expected function ABI");
     assert!(abi.c_variadic, "Expected C variadic function");
+    assert_eq!(abi.conv, CallConvention::C, "Expected C calling convention");
     assert_eq!(abi.args.len(), 1, "Expected one fixed variadic argument");
+}
+
+/// Check a variadic definition whose calling convention is not `extern "C"`.
+#[cfg(target_arch = "x86_64")]
+fn check_variadic_conv(items: &CrateItems, name: &str, conv: CallConvention) {
+    let item = *get_item(items, (ItemKind::Fn, name)).expect(name);
+    let instance = Instance::try_from(item).expect(name);
+    let abi = instance.fn_abi().expect(name);
+    assert!(abi.c_variadic, "{}", name);
+    assert_eq!(abi.conv, conv, "{}", name);
+    assert_eq!(abi.args.len(), 1, "{}", name);
+    assert_eq!(abi.fixed_count, 1, "{}", name);
 }
 
 /// Check the argument to be ignored: `ignore: [u8; 0]`.
@@ -448,6 +467,18 @@ fn generate_input(path: &str) -> std::io::Result<()> {
 
         pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) -> usize {{
             0
+        }}
+
+        #[cfg(target_arch = "x86_64")]
+        #[unsafe(naked)]
+        pub unsafe extern "sysv64" fn sysv64_variadic(_: u32, _: ...) -> u32 {{
+            core::arch::naked_asm!("ret")
+        }}
+
+        #[cfg(target_arch = "x86_64")]
+        #[unsafe(naked)]
+        pub unsafe extern "win64" fn win64_variadic(_: u32, _: ...) -> u32 {{
+            core::arch::naked_asm!("ret")
         }}
 
         pub type ComplexFn = fn([u8; 0], char, NonZero<u8>) -> Result<usize, &'static str>;

@@ -132,11 +132,10 @@ fn infer_async_gen_closure() {
 fn test() {
     let f = async gen move |x: i32| {
         yield x + 42;
-            //^^^^^^ expected Poll<Option<{unknown}>>, got i32
     };
     let a = f(4);
     a;
-//  ^ type: impl AsyncIterator<Item = {unknown}>
+//  ^ type: impl AsyncIterator<Item = i32>
 }
 "#,
     );
@@ -4575,6 +4574,30 @@ fn derive_macro_bounds() {
               //^ R2
         }
         "#,
+    );
+}
+
+#[test]
+fn derive_macro_bounds_higher_ranked_projection() {
+    check_types(
+        r#"
+//- minicore: clone, derive
+trait Src { type Item<'a, 'b>; }
+
+#[derive(Clone)]
+struct S<I: Src>(for<'a> fn(for<'b> fn(I::Item<'a, 'b>)));
+
+fn without_bound<I: Src + Clone>(s: &S<I>) {
+    let x = s.clone();
+      //^ &'? S<I>
+}
+
+fn with_bound<I: Src + Clone>(s: &S<I>)
+where for<'a, 'b> I::Item<'a, 'b>: Clone {
+    let x = s.clone();
+      //^ S<I>
+}
+"#,
     );
 }
 

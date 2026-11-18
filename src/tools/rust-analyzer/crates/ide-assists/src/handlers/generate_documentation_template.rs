@@ -285,25 +285,7 @@ fn safety_builder(ast_func: &ast::Fn) -> Option<Vec<String>> {
 /// Checks if the function is public / exported
 fn is_public(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>) -> Option<bool> {
     let hir_func = ctx.sema.to_def(ast_func)?;
-    Some(
-        hir_func.visibility(ctx.db()) == Visibility::Public
-            && all_parent_mods_public(&hir_func, ctx),
-    )
-}
-
-/// Checks that all parent modules of the function are public / exported
-fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext<'_, '_>) -> bool {
-    let mut module = hir_func.module(ctx.db());
-    loop {
-        if let Some(parent) = module.parent(ctx.db()) {
-            match ModuleDef::from(module).visibility(ctx.db()) {
-                Visibility::Public => module = parent,
-                _ => break false,
-            }
-        } else {
-            break true;
-        }
-    }
+    Some(hir_func.visibility(ctx.db()) == Visibility::Public)
 }
 
 /// Returns the name of the current crate
@@ -493,15 +475,21 @@ fn string_vec_from(string_array: &[&str]) -> Vec<String> {
 
 /// Helper function to build the path of the module in the which is the node
 fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_, '_>, edition: Edition) -> Option<String> {
+    let db = ctx.db();
     let crate_name = crate_name(ast_func, ctx)?;
-    let leaf = self_partial_type(ast_func)
-        .or_else(|| ast_func.name().map(|n| n.to_string()))
-        .unwrap_or_else(|| "*".into());
-    let module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
-    match module_def.canonical_path(ctx.db(), edition) {
-        Some(path) => Some(format!("{crate_name}::{path}::{leaf}")),
-        None => Some(format!("{crate_name}::{leaf}")),
-    }
+    let function = ctx.sema.to_def(ast_func)?;
+    let import_def = if let Some(assoc) = function.as_assoc_item(db)
+        && let hir::AssocItemContainer::Impl(impl_) = assoc.container(db)
+    {
+        ModuleDef::Adt(impl_.self_ty(db).as_adt()?)
+    } else {
+        ModuleDef::Function(function)
+    };
+    let crate_root = function.module(db).crate_root(db);
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(crate_root.krate(db)));
+    let mod_path = crate_root.find_use_path(db, import_def, hir::PrefixKind::ByCrate, cfg)?;
+    let path = mod_path.display(db, edition).to_string();
+    Some(crate_name + path.strip_prefix("crate")?)
 }
 
 /// Helper function to get the return type of a function
@@ -968,6 +956,74 @@ impl MyStruct {
     }
 
     #[test]
+    fn supports_fn_with_re_export() {
+        check_assist(
+            generate_doc_example,
+            r#"
+pub mod a {
+    mod b {
+        ///$0
+        pub fn noop() {}
+    }
+    pub use b::noop;
+}
+"#,
+            r#"
+pub mod a {
+    mod b {
+        ///
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use ra_test_fixture::a::noop;
+        ///
+        /// noop();
+        /// ```
+        pub fn noop() {}
+    }
+    pub use b::noop;
+}
+"#,
+        );
+        check_assist(
+            generate_doc_example,
+            r#"
+pub mod a {
+    mod b {
+        pub struct S;
+        impl S {
+            ///$0
+            pub fn noop() {}
+        }
+    }
+    pub use b::S;
+}
+"#,
+            r#"
+pub mod a {
+    mod b {
+        pub struct S;
+        impl S {
+            ///
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use ra_test_fixture::a::S;
+            ///
+            /// S::noop();
+            /// ```
+            pub fn noop() {}
+        }
+    }
+    pub use b::S;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn supports_unsafe_fn_in_trait() {
         check_assist(
             generate_documentation_template,
@@ -1216,12 +1272,14 @@ impl<T> MyGenericStruct2<T> {
         check_assist(
             generate_doc_example,
             r#"
+pub struct MyGenericStruct<T>;
 impl<T> MyGenericStruct<T> {
     ///$0
     pub fn consume(self) {}
 }
 "#,
             r#"
+pub struct MyGenericStruct<T>;
 impl<T> MyGenericStruct<T> {
     ///
     ///
@@ -1244,6 +1302,7 @@ impl<T> MyGenericStruct<T> {
         check_assist(
             generate_doc_example,
             r#"
+pub struct MyGenericStruct<T>;
 impl<T> MyGenericStruct<T> {
     ///$0
     pub fn modify(&mut self, new_value: T) {
@@ -1252,6 +1311,7 @@ impl<T> MyGenericStruct<T> {
 }
 "#,
             r#"
+pub struct MyGenericStruct<T>;
 impl<T> MyGenericStruct<T> {
     ///
     ///

@@ -1,0 +1,31 @@
+name: Check out rust-lang/rust
+description: >
+  Checks out the rust-lang/rust commit of the toolchain into `<path>/build/rust`, where y.sh runs
+  the rustc tests. Unlike the anonymous full clone y.sh would do, this checkout is authenticated
+  and shallow, so GitHub does not rate-limit it.
+
+inputs:
+  path:
+    description: The cg_gcc directory.
+    default: .
+
+runs:
+  using: composite
+  steps:
+    - id: toolchain
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        commit="$(rustc -vV | sed -n 's/^commit-hash: //p')"
+        if [ -z "$commit" ]; then
+          echo "::error::could not find the commit of the toolchain"
+          exit 1
+        fi
+        echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v7
+      with:
+        repository: rust-lang/rust
+        ref: ${{ steps.toolchain.outputs.commit }}
+        path: ${{ inputs.path }}/build/rust
+        persist-credentials: false

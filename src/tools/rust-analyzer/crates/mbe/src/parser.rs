@@ -234,7 +234,7 @@ fn next_op(
                         Op::Ident(tt::Ident {
                             sym: sym::dollar_crate,
                             span: ident.span,
-                            is_raw: tt::IdentIsRaw::No,
+                            kind: tt::IdentKind::Normal,
                         })
                     }
                     tt::Leaf::Ident(ident) => {

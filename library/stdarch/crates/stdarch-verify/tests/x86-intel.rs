@@ -18,7 +18,7 @@ struct Function {
     target_feature: Option<&'static str>,
     instrs: &'static [&'static str],
     file: &'static str,
-    required_const: &'static [usize],
+    legacy_const_generics: &'static [usize],
     has_test: bool,
     doc: &'static str,
 }
@@ -555,7 +555,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             bail!("wrong number of arguments on {}", rust.name);
         }
         for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
-            let is_const = rust.required_const.contains(&i);
+            let is_const = rust.legacy_const_generics.contains(&i);
             equate(b, &a.type_, &a.etype, &intel, is_const)?;
         }
     }

@@ -874,6 +874,9 @@ fn try_write_constant<'tcx>(
         | ty::UnsafeBinder(_) => throw_machine_stop_str!("unsupported type"),
 
         ty::Error(_) | ty::Infer(..) | ty::CoroutineWitness(..) => bug!(),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 
     interp_ok(())

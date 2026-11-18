@@ -1,12 +1,4 @@
-#![feature(
-    no_core,
-    lang_items,
-    extern_types,
-    thread_local,
-    repr_simd,
-    pattern_types,
-    rustc_private
-)]
+#![feature(no_core, lang_items, extern_types, thread_local, repr_simd, rustc_private)]
 #![cfg_attr(not(any(jit, target_vendor = "apple", windows)), feature(linkage))]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]

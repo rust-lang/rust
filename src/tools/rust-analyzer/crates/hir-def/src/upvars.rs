@@ -2,10 +2,10 @@
 
 use base_db::SourceDatabase;
 use hir_expand::mod_path::PathKind;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use crate::{
-    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
+    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, ThinFxHashMap, VariantId,
     expr_store::{ExpressionStore, StoreVisitor, StoreVisitorExt, path::Path},
     hir::{BindingId, Expr, ExprId, PatId},
     resolver::{HasResolver, Resolver, ValueNs},
@@ -74,34 +74,34 @@ impl UpvarsRef<'_> {
 pub fn upvars_mentioned(
     db: &dyn SourceDatabase,
     owner: ExpressionStoreOwnerId,
-) -> Option<&FxHashMap<ExprId, Upvars>> {
+) -> &ThinFxHashMap<ExprId, Upvars> {
     return match owner {
         ExpressionStoreOwnerId::Signature(owner) => signature_upvars_mentioned(db, owner),
         ExpressionStoreOwnerId::Body(owner) => body_upvars_mentioned(db, owner),
         ExpressionStoreOwnerId::VariantFields(owner) => variant_fields_upvars_mentioned(db, owner),
     };
 
-    #[salsa::tracked(returns(as_deref))]
+    #[salsa::tracked]
     pub fn signature_upvars_mentioned(
         db: &dyn SourceDatabase,
         owner: GenericDefId,
-    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+    ) -> ThinFxHashMap<ExprId, Upvars> {
         upvars_mentioned_impl(db, owner.into())
     }
 
-    #[salsa::tracked(returns(as_deref))]
+    #[salsa::tracked]
     pub fn body_upvars_mentioned(
         db: &dyn SourceDatabase,
         owner: DefWithBodyId,
-    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+    ) -> ThinFxHashMap<ExprId, Upvars> {
         upvars_mentioned_impl(db, owner.into())
     }
 
-    #[salsa::tracked(returns(as_deref))]
+    #[salsa::tracked]
     pub fn variant_fields_upvars_mentioned(
         db: &dyn SourceDatabase,
         owner: VariantId,
-    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+    ) -> ThinFxHashMap<ExprId, Upvars> {
         upvars_mentioned_impl(db, owner.into())
     }
 }
@@ -109,26 +109,24 @@ pub fn upvars_mentioned(
 pub fn upvars_mentioned_impl(
     db: &dyn SourceDatabase,
     owner: ExpressionStoreOwnerId,
-) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+) -> ThinFxHashMap<ExprId, Upvars> {
     let store = ExpressionStore::of(db, owner);
-    store.expr_roots().next()?;
+    if store.expr_roots().next().is_none() {
+        return ThinFxHashMap::new();
+    }
     let resolver = owner.resolver(db);
     let mut visitor = UpvarsMentionedVisitor {
         db,
         resolver,
         owner,
         store,
-        closures_map: FxHashMap::default(),
+        closures_map: ThinFxHashMap::default(),
         current_closure: None,
     };
     visitor.on_exprs(store.expr_roots());
     let mut result = visitor.closures_map;
-    if result.is_empty() {
-        None
-    } else {
-        result.shrink_to_fit();
-        Some(Box::new(result))
-    }
+    result.shrink_to_fit();
+    result
 }
 
 struct UpvarsMentionedVisitor<'db> {
@@ -136,7 +134,7 @@ struct UpvarsMentionedVisitor<'db> {
     resolver: Resolver<'db>,
     owner: ExpressionStoreOwnerId,
     store: &'db ExpressionStore,
-    closures_map: FxHashMap<ExprId, Upvars>,
+    closures_map: ThinFxHashMap<ExprId, Upvars>,
     current_closure: Option<(ExprId, FxHashSet<BindingId>)>,
 }
 
@@ -257,10 +255,7 @@ mod tests {
             .exactly_one()
             .unwrap_or_else(|_| panic!("expected one function"));
         let (body, source_map) = Body::with_source_map(&db, func.into());
-        let Some(upvars) = upvars_mentioned(&db, DefWithBodyId::from(func).into()) else {
-            expectation.assert_eq("");
-            return;
-        };
+        let upvars = upvars_mentioned(&db, DefWithBodyId::from(func).into());
         let mut closures = Vec::new();
         for (&closure, upvars) in upvars {
             let closure_range = source_map.expr_syntax(closure).unwrap().value.text_range();

@@ -27,7 +27,7 @@ use salsa::SalsaValue;
 use span::Edition;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, CallableDefId, InferBodyId, ParamEnvAndCrate,
+    Adjust, Adjustment, AutoBorrow, CallableDefId, InferBodyId, ParamEnvAndCrate, ThinFxHashMap,
     consteval::ConstEvalError,
     db::{GeneralConstId, HirDatabase, InternedClosure, InternedClosureId},
     generics::generics,
@@ -208,7 +208,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             locals,
             start_block,
             binding_locals,
-            upvar_locals: FxHashMap::default(),
+            upvar_locals: ThinFxHashMap::default(),
             param_locals: vec![],
             owner,
             closures: vec![],
@@ -375,10 +375,10 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     ) -> Result<'db, Option<BasicBlockId>> {
         match &self.store[expr_id] {
             Expr::OffsetOf(_) => {
-                not_supported!("builtin#offset_of")
+                not_supported!("k#offset_of")
             }
             Expr::InlineAsm(_) => {
-                not_supported!("builtin#asm")
+                not_supported!("k#asm")
             }
             Expr::Missing => {
                 if let Some(f) = self.owner.as_function() {

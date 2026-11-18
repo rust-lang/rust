@@ -145,7 +145,12 @@ impl Command {
     }
 }
 
-pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+fn cmd_exec(
+    command: &mut Command,
+    stdout: Stdio,
+    stderr: Stdio,
+    stdin: Stdio,
+) -> io::Result<(ExitStatus, uefi_command_internal::Image)> {
     let prog_path = resolve_program(&command.prog)
         .ok_or(io::const_error!(io::ErrorKind::NotFound, "could not find the program."))?;
     let mut cmd = uefi_command_internal::Image::load_image(prog_path.as_os_str())?;
@@ -157,7 +162,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     }
 
     // Setup Stdout
-    let stdout = command.stdout.take().unwrap_or(Stdio::MakePipe);
+    let stdout = command.stdout.take().unwrap_or(stdout);
     let stdout = Command::create_pipe(stdout)?;
     if let Some(con) = stdout {
         cmd.stdout_init(con)
@@ -166,7 +171,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     };
 
     // Setup Stderr
-    let stderr = command.stderr.take().unwrap_or(Stdio::MakePipe);
+    let stderr = command.stderr.take().unwrap_or(stderr);
     let stderr = Command::create_pipe(stderr)?;
     if let Some(con) = stderr {
         cmd.stderr_init(con)
@@ -175,7 +180,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     };
 
     // Setup Stdin
-    let stdin = command.stdin.take().unwrap_or(Stdio::Null);
+    let stdin = command.stdin.take().unwrap_or(stdin);
     let stdin = Command::create_stdin(stdin)?;
     if let Some(con) = stdin {
         cmd.stdin_init(con)
@@ -209,10 +214,20 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
 
     let stat = stat?;
 
+    Ok((ExitStatus(stat), cmd))
+}
+
+pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    let (stat, cmd) = cmd_exec(command, Stdio::MakePipe, Stdio::MakePipe, Stdio::Null)?;
+
     let stdout = cmd.stdout()?;
     let stderr = cmd.stderr()?;
 
-    Ok((ExitStatus(stat), stdout, stderr))
+    Ok((stat, stdout, stderr))
+}
+
+pub fn status(command: &mut Command) -> io::Result<ExitStatus> {
+    cmd_exec(command, Stdio::Inherit, Stdio::Inherit, Stdio::Inherit).map(|(x, _)| x)
 }
 
 impl From<ChildPipe> for Stdio {

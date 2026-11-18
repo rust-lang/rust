@@ -1,10 +1,6 @@
 SOURCE_FILE
   ASM_EXPR
-    BUILTIN_KW "builtin"
-    WHITESPACE " "
-    POUND "#"
-    WHITESPACE " "
-    GLOBAL_ASM_KW "global_asm"
+    GLOBAL_ASM_KW "k#global_asm"
     L_PAREN "("
     LITERAL
       STRING "\"\""

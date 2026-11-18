@@ -2,7 +2,6 @@
 //@ build-pass
 //@ compile-flags: --target thumbv6m-none-eabi
 //@ needs-llvm-components: arm
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

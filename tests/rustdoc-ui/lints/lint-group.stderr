@@ -40,6 +40,7 @@ LL | /// what up, let's make an [error]
    |                             ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
    = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(rustdoc::all)]`
 
 error: unclosed HTML tag `unknown`

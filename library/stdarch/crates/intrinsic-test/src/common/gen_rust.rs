@@ -31,6 +31,23 @@ macro_rules! wrap_partialeq {
 }
 
 wrap_partialeq!(NanEqF16(f16), NanEqF32(f32), NanEqF64(f64));
+
+#[cfg(target_has_reliable_f16b)]
+#[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
+pub struct NanEqF16b(f16b);
+
+#[cfg(target_has_reliable_f16b)]
+impl PartialEq for NanEqF16b {
+    fn eq(&self, other: &Self) -> bool {
+        let a = f32::from(self.0);
+        let b = f32::from(other.0);
+        a == b || (a.is_nan() && b.is_nan())
+    }
+}
+
+#[cfg(target_has_reliable_f16b)]
+impl Eq for NanEqF16b {}
 "#;
 
 /// Run rustfmt on the generated source code
@@ -131,6 +148,9 @@ core_arch = {{ path = "../../crates/core_arch" }}
 
 [build-dependencies]
 cc = "1"
+
+[lints.rust]
+unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_has_reliable_f16b)'] }}
 "#,
         authors = env!("CARGO_PKG_AUTHORS")
             .split(":")
@@ -165,6 +185,8 @@ pub fn write_lib_rs<A: SupportedArchitecture>(
 {notice}
 #![feature(simd_ffi)]
 #![feature(f16)]
+#![feature(cfg_target_has_reliable_f16b)]
+#![allow(internal_features)]
 #![allow(unused)]
 
 // Cargo will spam the logs if these warnings are not silenced.

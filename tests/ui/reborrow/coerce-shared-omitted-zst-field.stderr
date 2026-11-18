@@ -16,8 +16,8 @@ error: implementing `CoerceShared` requires source fields omitted from the targe
 LL |     marker: NonCopyZst,
    |     ^^^^^^^^^^^^^^^^^^ source field `marker` has type `NonCopyZst`
 ...
-LL | impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
-   | --------------------------------------------------- required by this `CoerceShared` implementation
+LL | impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+   | ----------------------------------------------------------- required by this `CoerceShared` implementation
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,15 @@
+error: unresolved link to `configration`
+  --> $DIR/auxiliary/reference_label_typo_external_macro.rs:4:11
+   |
+LL |         "[configration].\n\n[configuration]: https://example.com/configuration"
+   |           ^^^^^^^^^^^^ no item named `configration` in scope
+   |
+   = help: there is a similarly named reference label `configuration`
+note: the lint level is defined here
+  --> $DIR/reference-label-typo-external-macro-issue-132788.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

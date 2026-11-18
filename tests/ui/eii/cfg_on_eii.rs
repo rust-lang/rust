@@ -1,6 +1,7 @@
 //@ compile-flags: -Z unpretty=hir,typed
 
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 #![deny(deprecated)] //~ NOTE:
 
 #[cfg(true)]

@@ -90,7 +90,7 @@ macro_rules! return_if_di_node_created_in_meantime {
 /// Extract size and alignment from a TyAndLayout.
 #[inline]
 fn size_and_align_of(ty_and_layout: TyAndLayout<'_>) -> (Size, Align) {
-    (ty_and_layout.size, ty_and_layout.align.abi)
+    (ty_and_layout.size, ty_and_layout.align)
 }
 
 /// Creates debuginfo for a fixed size array (e.g. `[u64; 123]`).
@@ -243,7 +243,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         cx,
                         pointee_type_di_node,
                         addr_field.size,
-                        addr_field.align.abi,
+                        addr_field.align,
                         "",
                     );
 
@@ -501,6 +501,9 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         | ty::Error(_) => {
             bug!("debuginfo: unexpected type in type_di_node(): {:?}", t)
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     {
@@ -531,7 +534,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
 
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
-    *debug_context(cx).recursion_marker_type.get_or_init(move || {
+    debug_context(cx).recursion_marker_type.get_or_init(move || {
         // The choice of type here is pretty arbitrary -
         // anything reading the debuginfo for a recursive
         // type is going to see *something* weird - the only
@@ -990,7 +993,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         );
         let flags = c"";
 
-        let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
+        llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder.as_ref(),
             dwarf_const::DW_LANG_Rust,
             compile_unit_file,
@@ -1007,11 +1010,10 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             kind,
             0,
             tcx.sess.opts.unstable_opts.split_dwarf_inlining,
+            tcx.sess.opts.unstable_opts.debuginfo_for_profiling,
             debug_name_table_kind,
-        );
-
-        return unit_metadata;
-    };
+        )
+    }
 }
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
@@ -1512,7 +1514,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
 pub(crate) fn build_global_var_di_node<'ll>(
     cx: &CodegenCx<'ll, '_>,
     def_id: DefId,
-    global: &'ll Value,
+    global: Value<'ll>,
 ) {
     if cx.dbg_cx.is_none() {
         return;
@@ -1593,7 +1595,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     let usize_di_node = type_di_node(cx, tcx.types.usize);
     let pointer_layout = cx.layout_of(void_pointer_ty);
     let pointer_size = pointer_layout.size;
-    let pointer_align = pointer_layout.align.abi;
+    let pointer_align = pointer_layout.align;
     // If `usize` is not pointer-sized and -aligned then the size and alignment computations
     // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
     // platforms.
@@ -1721,7 +1723,7 @@ fn build_unsafe_binder_type_di_node<'ll, 'tcx>(
 /// global variable (which is simply returned), or an addrspacecast constant expression.
 /// If the given value is an addrspacecast, the cast is removed and the global variable behind
 /// the cast is returned.
-fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
+fn find_vtable_behind_cast<'ll>(vtable: Value<'ll>) -> Value<'ll> {
     // The vtable is a global variable, which may be behind an addrspacecast.
     unsafe {
         if let Some(c) = llvm::LLVMIsAConstantExpr(vtable) {
@@ -1733,11 +1735,60 @@ fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
     vtable
 }
 
+/// From where can virtual calls using this vtable be made?
+///
+/// See also <https://llvm.org/docs/TypeMetadata.html#vcall-visibility-metadata>.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum VCallVisibility {
+    /// Virtual function calls using this vtable could be made from external code.
+    Public = 0,
+    /// All virtual function calls which might use this vtable are in the current LTO unit,
+    /// meaning they will be in the current module once LTO linking has been performed.
+    LinkageUnit = 1,
+    /// All virtual function calls which might use this vtable are in the current module.
+    TranslationUnit = 2,
+}
+
+impl VCallVisibility {
+    fn for_trait<'ll, 'tcx>(
+        cx: &CodegenCx<'ll, 'tcx>,
+        trait_ref: &ExistentialTraitRef<'tcx>,
+    ) -> Self {
+        let lto = cx.sess().lto();
+        let trait_vis = cx.tcx.visibility(trait_ref.def_id);
+        let cgus = cx.sess().codegen_units().as_usize();
+        let single_cgu = cgus == 1;
+
+        // Because LLVM requires full LTO for the virtual function elimination optimization to
+        // apply, only the `Lto::Fat` cases are relevant currently.
+        match (lto, trait_vis, single_cgu) {
+            // If there is not LTO and the visibility in public, we have to assume that the vtable
+            // can be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
+            (Lto::No | Lto::ThinLocal, Visibility::Public, _)
+            | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
+            // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
+            // all known by the `LinkageUnit`.
+            // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
+            // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
+            (Lto::Fat | Lto::Thin, Visibility::Public, _)
+            | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
+                VCallVisibility::LinkageUnit
+            }
+            // If there is only one CGU, private vtables can only be seen by that CGU/translation
+            // unit and therefore we know of all usages of functions in the vtable.
+            (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
+        }
+    }
+}
+
+/// Apply the virtual call visibility metadata to the vtable.
+///
+/// Adds a !type annotation for every trait in the trait hierarchy, and a !vcall_visibility
+/// annotation based on the most visible trait in the hierarchy.
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    ty: Ty<'tcx>,
-    trait_ref: Option<ExistentialTraitRef<'tcx>>,
-    vtable: &'ll Value,
+    trait_hierarchy: &[ExistentialTraitRef<'tcx>],
+    vtable: Value<'ll>,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
     // LLVM at the moment.
@@ -1745,51 +1796,29 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
         return;
     }
 
-    enum VCallVisibility {
-        Public = 0,
-        LinkageUnit = 1,
-        TranslationUnit = 2,
-    }
-
-    let Some(trait_ref) = trait_ref else { return };
-
-    // Unwrap potential addrspacecast
-    let vtable = find_vtable_behind_cast(vtable);
-    let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
-    let trait_def_id = trait_ref_self.def_id;
-    let trait_vis = cx.tcx.visibility(trait_def_id);
-
-    let cgus = cx.sess().codegen_units().as_usize();
-    let single_cgu = cgus == 1;
-
-    let lto = cx.sess().lto();
-
-    // Since LLVM requires full LTO for the virtual function elimination optimization to apply,
-    // only the `Lto::Fat` cases are relevant currently.
-    let vcall_visibility = match (lto, trait_vis, single_cgu) {
-        // If there is not LTO and the visibility in public, we have to assume that the vtable can
-        // be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
-        (Lto::No | Lto::ThinLocal, Visibility::Public, _)
-        | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
-        // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
-        // all known by the `LinkageUnit`.
-        // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
-        // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
-        (Lto::Fat | Lto::Thin, Visibility::Public, _)
-        | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
-            VCallVisibility::LinkageUnit
-        }
-        // If there is only one CGU, private vtables can only be seen by that CGU/translation unit
-        // and therefore we know of all usages of functions in the vtable.
-        (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
+    // Find the smallest "scope" from which virtual calls using this vtable can be made.
+    let Some(vcall_visibility) =
+        trait_hierarchy.iter().map(|trait_ref| VCallVisibility::for_trait(cx, trait_ref)).min()
+    else {
+        return;
     };
 
-    let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
-    let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
+    // Unwrap a potential addrspacecast.
+    let vtable = find_vtable_behind_cast(vtable);
 
-    let type_ = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
-    cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+    // The start of a Rust vtable is at offset 0 of a `&dyn T`'s address.
+    let vtable_offset = 0;
 
+    // Add `!type !{i64 0, !"typeid"}` to the vtable for each trait in the hierarchy.
+    for trait_ref in trait_hierarchy {
+        let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, *trait_ref);
+        let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
+
+        let type_ = [llvm::LLVMValueAsMetadata(cx.const_u64(vtable_offset)), typeid];
+        cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+    }
+
+    // Add `!vcall_visibility !{i64 vis}` to the vtable.
     let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
     cx.global_set_metadata_node(vtable, llvm::MD_vcall_visibility, &vcall_visibility);
 }
@@ -1802,7 +1831,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
-    vtable: &'ll Value,
+    vtable: Value<'ll>,
 ) {
     if cx.dbg_cx.is_none() {
         return;
@@ -1857,7 +1886,7 @@ pub(crate) fn extend_scope_to_file<'ll>(
 }
 
 fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
-    const TUPLE_FIELD_NAMES: [&'static str; 16] = [
+    const TUPLE_FIELD_NAMES: [&str; 16] = [
         "__0", "__1", "__2", "__3", "__4", "__5", "__6", "__7", "__8", "__9", "__10", "__11",
         "__12", "__13", "__14", "__15",
     ];

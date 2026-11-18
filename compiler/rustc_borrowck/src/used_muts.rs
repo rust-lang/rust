@@ -67,11 +67,8 @@ impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
 impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         debug!("visit_terminator: terminator={:?}", terminator);
-        match &terminator.kind {
-            TerminatorKind::Call { destination, .. } => {
-                self.remove_never_initialized_mut_locals(*destination);
-            }
-            _ => {}
+        if let TerminatorKind::Call { destination, .. } = &terminator.kind {
+            self.remove_never_initialized_mut_locals(*destination);
         }
 
         self.super_terminator(terminator, location);

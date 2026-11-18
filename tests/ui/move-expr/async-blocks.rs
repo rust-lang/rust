@@ -1,6 +1,8 @@
 //@ edition: 2021
 //@ run-pass
+// This needs to remain a run-pass test to check capture behavior at runtime.
 #![allow(incomplete_features)]
+#![deny(unused_mut)]
 #![feature(move_expr)]
 
 use std::cell::Cell;
@@ -74,4 +76,24 @@ fn main() {
     assert_eq!(Arc::strong_count(&z), 2);
     drop(fut);
     assert_eq!(Arc::strong_count(&z), 1);
+
+    let data = vec![1];
+    let future = async {
+        let data = &mut move(data);
+        data.push(2);
+        let mut pending = true;
+        std::future::poll_fn(|cx| {
+            if pending {
+                pending = false;
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            } else {
+                Poll::Ready(())
+            }
+        })
+        .await;
+        data.push(3);
+        data.len()
+    };
+    assert_eq!(block_on(future), 3);
 }

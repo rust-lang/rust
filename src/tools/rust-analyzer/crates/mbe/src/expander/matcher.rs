@@ -794,7 +794,9 @@ fn match_meta_var<'t>(
             // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
             match input.peek() {
                 Some(TtElement::Leaf(tt::Leaf::Ident(it))) => {
-                    let is_err = if it.is_raw.no() && matches!(expr, ExprKind::Expr2021) {
+                    let is_err = if it.kind != tt::IdentKind::Raw
+                        && matches!(expr, ExprKind::Expr2021)
+                    {
                         it.sym == sym::underscore || it.sym == sym::let_ || it.sym == sym::const_
                     } else {
                         it.sym == sym::let_

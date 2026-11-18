@@ -33,7 +33,8 @@ impl<'a> FileDirectives<'a> {
             }
 
             if let Some(directive_line) = line_directive(path, line_number, ln) {
-                lines.push(directive_line);
+                let Ok(line) = directive_line.map_err(|e| e.raise_fatal());
+                lines.push(line);
             }
         }
 

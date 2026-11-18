@@ -37,6 +37,8 @@ unsafe impl SimdElement for i64 {}
 unsafe impl SimdElement for i128 {}
 
 unsafe impl SimdElement for f16 {}
+#[cfg(any(target_has_reliable_f16b, doc))]
+unsafe impl SimdElement for core::num::f16b {}
 unsafe impl SimdElement for f32 {}
 unsafe impl SimdElement for f64 {}
 
@@ -342,6 +344,8 @@ pub(crate) type i16x4 = Simd<i16, 4>;
 pub(crate) type i32x2 = Simd<i32, 2>;
 pub(crate) type i64x1 = Simd<i64, 1>;
 
+#[cfg(any(target_has_reliable_f16b, doc))]
+pub(crate) type f16bx4 = Simd<core::num::f16b, 4>;
 pub(crate) type f16x4 = Simd<f16, 4>;
 pub(crate) type f32x2 = Simd<f32, 2>;
 pub(crate) type f64x1 = Simd<f64, 1>;
@@ -358,6 +362,8 @@ pub(crate) type i16x8 = Simd<i16, 8>;
 pub(crate) type i32x4 = Simd<i32, 4>;
 pub(crate) type i64x2 = Simd<i64, 2>;
 
+#[cfg(any(target_has_reliable_f16b, doc))]
+pub(crate) type f16bx8 = Simd<core::num::f16b, 4>;
 pub(crate) type f16x8 = Simd<f16, 8>;
 pub(crate) type f32x4 = Simd<f32, 4>;
 pub(crate) type f64x2 = Simd<f64, 2>;
@@ -422,7 +428,7 @@ pub(crate) fn debug_simd_finish<T: crate::fmt::Debug, const N: usize>(
     type_name: &str,
     array: &[T; N],
 ) -> crate::fmt::Result {
-    crate::fmt::Formatter::debug_tuple_fields_finish(
+    crate::fmt::Formatter::debug_struct_fields_finish(
         formatter,
         type_name,
         &crate::array::from_fn::<&dyn crate::fmt::Debug, N, _>(|i| &array[i]),

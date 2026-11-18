@@ -1,7 +1,5 @@
 #![feature(pattern_types)]
-#![feature(pattern_type_macro)]
 #![cfg_attr(const_arg, feature(generic_const_exprs, generic_pattern_types))]
-#![expect(incomplete_features)]
 // gate-test-generic_pattern_types line to the test file.
 //@ revisions: default const_arg
 

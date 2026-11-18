@@ -988,7 +988,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().clauses_of(def_id);
             let ty = tcx.type_of(def_id).instantiate_identity();
-            let span = tcx.def_span(def_id);
+            let span = match tcx.hir_node_by_def_id(def_id).alias_ty() {
+                Some(ty) => ty.span,
+                _ => tcx.def_span(def_id),
+            };
+
             if tcx.type_alias_is_checked(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                     let item_ty = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), ty);

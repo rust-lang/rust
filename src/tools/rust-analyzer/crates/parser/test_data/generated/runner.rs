@@ -265,6 +265,10 @@ mod ok {
     #[test]
     fn field_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/field_expr.rs"); }
     #[test]
+    fn final_assoc_fn() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/final_assoc_fn.rs");
+    }
+    #[test]
     fn fn_() { run_and_expect_no_errors("test_data/parser/inline/ok/fn_.rs"); }
     #[test]
     fn fn_decl() { run_and_expect_no_errors("test_data/parser/inline/ok/fn_decl.rs"); }

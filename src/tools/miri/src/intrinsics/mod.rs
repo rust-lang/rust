@@ -44,22 +44,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // See if the core engine can handle this intrinsic.
-        if this.eval_intrinsic(instance, args, dest, ret)? {
+        if ecx.eval_intrinsic(instance, args, dest, ret)? {
             return interp_ok(None);
         }
-        let intrinsic_name = this.tcx.item_name(instance.def_id());
+        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        let res = this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
-        res.jump_to_next_block(this, dest, ret, Some(unwind), |this| {
+        let res = ecx.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
+        res.jump_to_next_block(ecx, dest, ret, Some(unwind), |ecx| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
-            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+            if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
-            let intrinsic_fallback_is_spec = this
+            let intrinsic_fallback_is_spec = ecx
                 .tcx
                 .tool_attrs(
                     instance.def_id(),
@@ -89,10 +89,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
-            return this.emulate_simd_intrinsic(name, args, dest);
+            return ecx.emulate_simd_intrinsic(name, args, dest);
         }
 
         match intrinsic_name {
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "catch_unwind" => {
                 let [try_fn, data, catch_fn] = check_intrinsic_arg_count(args)?;
-                this.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
+                ecx.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
                 // This pushed a stack frame, don't jump to `ret`.
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }
@@ -114,12 +114,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "ptr_mask" => {
                 let [ptr, mask] = check_intrinsic_arg_count(args)?;
 
-                let ptr = this.read_pointer(ptr)?;
-                let mask = this.read_target_usize(mask)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let mask = ecx.read_target_usize(mask)?;
 
                 let masked_addr = Size::from_bytes(ptr.addr().bytes() & mask);
 
-                this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
+                ecx.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
 
             // We want to return either `true` or `false` at random, or else something like
@@ -132,8 +132,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: should we check for validity here? It's tricky because we do not have a
                 // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
                 // calls, so we don't *have* to do anything.
-                let branch: bool = this.machine.rng.get_mut().random();
-                this.write_scalar(Scalar::from_bool(branch), dest)?;
+                let branch: bool = ecx.machine.rng.get_mut().random();
+                ecx.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
             // Other
@@ -147,7 +147,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Make these a NOP, so we get the better Miri-native error messages.
             }
 
-            _ => return this.emulate_math_intrinsic(intrinsic_name, generic_args, args, dest),
+            _ => return ecx.emulate_math_intrinsic(intrinsic_name, generic_args, args, dest),
         }
 
         interp_ok(EmulateItemResult::NeedsReturn)
@@ -160,23 +160,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let link_name = this.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
+        let link_name = ecx.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
 
         // These are anyway mostly vector intrinsics and vectors live in memory.
-        let dest = this.force_allocation(dest)?;
+        let dest = ecx.force_allocation(dest)?;
 
         let res = 'handled: {
             match link_name.as_str() {
                 // LLVM intrinsics
                 "llvm.prefetch.p0" => {
-                    let [p, rw, loc, ty] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                    let [p, rw, loc, ty] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                    let _ = this.read_pointer(p)?;
-                    let rw = this.read_scalar(rw)?.to_i32()?;
-                    let loc = this.read_scalar(loc)?.to_i32()?;
-                    let ty = this.read_scalar(ty)?.to_i32()?;
+                    let _ = ecx.read_pointer(p)?;
+                    let rw = ecx.read_scalar(rw)?.to_i32()?;
+                    let loc = ecx.read_scalar(loc)?.to_i32()?;
+                    let ty = ecx.read_scalar(ty)?.to_i32()?;
 
                     if ty == 1 {
                         // Data cache prefetch.
@@ -199,49 +199,49 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
                 // `{i,u}8x16_popcnt` functions.
                 name if name.starts_with("llvm.ctpop.v")
-                    && this.tcx.sess.target.endian == Endian::Little =>
+                    && ecx.tcx.sess.target.endian == Endian::Little =>
                 {
-                    let [op] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                    let [op] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                    let (op, op_len) = this.project_to_simd(op)?;
-                    let (dest, dest_len) = this.project_to_simd(&dest)?;
+                    let (op, op_len) = ecx.project_to_simd(op)?;
+                    let (dest, dest_len) = ecx.project_to_simd(&dest)?;
 
                     assert_eq!(dest_len, op_len);
 
                     for i in 0..dest_len {
-                        let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                        let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
                         // Use `to_uint` to get a zero-extended `u128`. Those
                         // extra zeros will not affect `count_ones`.
                         let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
 
-                        this.write_scalar(
+                        ecx.write_scalar(
                             Scalar::from_uint(res, op.layout.size),
-                            &this.project_index(&dest, i)?,
+                            &ecx.project_index(&dest, i)?,
                         )?;
                     }
                 }
 
                 // Target-specific shims
                 name if name.starts_with("llvm.x86.")
-                    && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
-                    && this.tcx.sess.target.endian == Endian::Little =>
+                    && matches!(ecx.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
+                    && ecx.tcx.sess.target.endian == Endian::Little =>
                     break 'handled x86::EvalContextExt::emulate_x86_intrinsic(
-                        this, link_name, args, &dest,
+                        ecx, link_name, args, &dest,
                     )?,
                 name if name.starts_with("llvm.aarch64.")
-                    && this.tcx.sess.target.arch == Arch::AArch64
-                    && this.tcx.sess.target.endian == Endian::Little =>
+                    && ecx.tcx.sess.target.arch == Arch::AArch64
+                    && ecx.tcx.sess.target.endian == Endian::Little =>
                     break 'handled aarch64::EvalContextExt::emulate_aarch64_intrinsic(
-                        this, link_name, args, &dest,
+                        ecx, link_name, args, &dest,
                     )?,
                 name if name.starts_with("llvm.loongarch.")
                     && matches!(
-                        this.tcx.sess.target.arch,
+                        ecx.tcx.sess.target.arch,
                         Arch::LoongArch32 | Arch::LoongArch64
                     )
-                    && this.tcx.sess.target.endian == Endian::Little =>
+                    && ecx.tcx.sess.target.endian == Endian::Little =>
                     break 'handled loongarch::EvalContextExt::emulate_loongarch_intrinsic(
-                        this, link_name, args, &dest,
+                        ecx, link_name, args, &dest,
                     )?,
                 _ => break 'handled EmulateItemResult::NotSupported,
             }
@@ -249,10 +249,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        res.jump_to_next_block(this, &dest.clone().into(), ret, None, |this| {
+        res.jump_to_next_block(ecx, &dest.clone().into(), ret, None, |ecx| {
             throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                 "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
-                arch = this.tcx.sess.target.arch,
+                arch = ecx.tcx.sess.target.arch,
             )));
         })
     }

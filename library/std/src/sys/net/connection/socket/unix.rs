@@ -172,7 +172,9 @@ impl Socket {
     }
 
     pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
-        let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
+        let mut pollfd: libc::pollfd = unsafe { mem::zeroed() };
+        pollfd.fd = self.as_raw_fd();
+        pollfd.events = libc::POLLOUT;
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
             return Err(io::Error::ZERO_TIMEOUT);

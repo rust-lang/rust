@@ -1,14 +1,15 @@
+use std::process::ExitCode;
 use term::color::{GREEN, RED, WHITE};
 use term::{Attr, Error, Result};
 
-fn main() {
+fn main() -> ExitCode {
     if foo().is_err() {
         eprintln!(
             "error: Clippy is no longer available via crates.io\n\n\
              help: please run `rustup component add clippy` instead"
         );
     }
-    std::process::exit(1);
+    ExitCode::FAILURE
 }
 
 fn foo() -> Result<()> {

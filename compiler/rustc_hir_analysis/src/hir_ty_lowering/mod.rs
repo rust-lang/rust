@@ -15,7 +15,7 @@
 //! [^1]: This includes types, lifetimes / regions, constants in type positions,
 //! trait references and bounds.
 
-mod bounds;
+pub(crate) mod bounds;
 mod cmse;
 mod dyn_trait;
 pub mod errors;
@@ -43,9 +43,9 @@ use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, LitToConstInput, Ty, TyCtxt,
-    TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast, const_lit_matches_ty,
-    fold_regions,
+    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, IncludeSizedImplicitBounds,
+    LitToConstInput, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized,
+    Upcast, const_lit_matches_ty, fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
@@ -3326,12 +3326,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_implicit_sizedness_bounds(
+                self.add_implicit_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
+                    IncludeSizedImplicitBounds::Yes,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty
@@ -3664,6 +3665,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx,
                 dcx.span_err(ty_span, format!("type `{ty}` is not yet supported in `field_of!`")),
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -3907,33 +3911,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         // Step 2: check that the viewed type is a struct.
-        let variant = match inner_ty.kind() {
-            ty::Adt(def, _) if def.is_struct() => def.non_enum_variant(),
-
-            ty::Adt(def, _) => {
-                let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedAdt {
-                    ty: inner_ty,
-                    span: ty_span,
-                    article: def.article(),
-                    kind: def.descr(),
-                });
-                return Ty::new_error(self.tcx(), guar);
-            }
-
-            _ => {
-                let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedNonAdt {
-                    ty: inner_ty,
-                    span: ty_span,
-                });
-                return Ty::new_error(self.tcx(), guar);
-            }
+        let (ty::Adt(def, args) | ty::View(def, args, _)) = inner_ty.kind() else {
+            let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedNonAdt {
+                ty: inner_ty,
+                span: ty_span,
+            });
+            return Ty::new_error(self.tcx(), guar);
         };
+
+        if !def.is_struct() {
+            let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedAdt {
+                ty: inner_ty,
+                span: ty_span,
+                article: def.article(),
+                kind: def.descr(),
+            });
+            return Ty::new_error(self.tcx(), guar);
+        }
 
         // Step 3: check that every viewed field exists.
         let mut viewed_indices = Vec::with_capacity(viewed_fields.len());
         let mut error = None;
         for field in viewed_fields {
-            let Some((_, field)) = variant
+            let Some((field_idx, _)) = def
+                .non_enum_variant()
                 .fields
                 .iter_enumerated()
                 .find(|(_, f)| f.ident(self.tcx()).normalize_to_macros_2_0() == field)
@@ -3944,13 +3945,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 continue;
             };
 
-            viewed_indices.push(field);
+            viewed_indices.push(field_idx);
         }
         if let Some(guar) = error {
             return Ty::new_error(self.tcx(), guar);
         }
 
-        // FIXME(scrabsha): actually lower view types.
-        inner_ty
+        Ty::new_view(self.tcx(), *def, *args, &viewed_indices)
     }
 }

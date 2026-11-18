@@ -151,4 +151,16 @@ fn unwrap_unchecked() {
     //~^ unnecessary_literal_unwrap
 }
 
+mod issue17990 {
+    fn err_unwrap_or_uses_fallback() {
+        let _ = 2;
+        //~^ unnecessary_literal_unwrap
+    }
+
+    fn err_expect_err_is_handled() {
+        let _ = 1;
+        //~^ unnecessary_literal_unwrap
+    }
+}
+
 fn main() {}

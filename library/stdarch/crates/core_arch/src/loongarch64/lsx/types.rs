@@ -1,5 +1,5 @@
 types! {
-    #![stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+    #![stable(feature = "stdarch_loongarch_simd", since = "1.101.0")]
 
     /// 128-bit wide integer vector type, LoongArch-specific
     ///

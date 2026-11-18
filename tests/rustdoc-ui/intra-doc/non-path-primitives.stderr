@@ -5,6 +5,7 @@ LL | //! [[T]::rotate_left]
    |       ^ no item named `T` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[T]: https://...`
 note: the lint level is defined here
   --> $DIR/non-path-primitives.rs:1:9
    |
@@ -18,6 +19,7 @@ LL | //![Z]([T; N]::map)
    |     ^ no item named `Z` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[Z]: https://...`
 
 error: unresolved link to `Z`
   --> $DIR/non-path-primitives.rs:17:6
@@ -26,6 +28,7 @@ LL | //! [Z][]
    |      ^ no item named `Z` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[Z]: https://...`
 
 error: unresolved link to `Z`
   --> $DIR/non-path-primitives.rs:19:6
@@ -34,6 +37,7 @@ LL | //! [Z]: [T; N]::map
    |      ^ no item named `Z` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[Z]: https://...`
 
 error: unresolved link to `unit::eq`
   --> $DIR/non-path-primitives.rs:28:6

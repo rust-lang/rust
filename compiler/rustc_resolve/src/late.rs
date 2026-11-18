@@ -5144,10 +5144,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         partial_res
     }
 
-    fn self_type_is_available(&mut self) -> bool {
+    fn self_type_is_available(&mut self) -> Option<DefId> {
         let binding = self
             .maybe_resolve_ident_in_lexical_scope(Ident::with_dummy_span(kw::SelfUpper), TypeNS);
-        if let Some(LateDecl::RibDef(res)) = binding { res != Res::Err } else { false }
+        if let Some(LateDecl::RibDef(
+            Res::SelfTyAlias { alias_to, .. } | Res::SelfTyParam { trait_: alias_to },
+        )) = binding
+        {
+            Some(alias_to)
+        } else {
+            None
+        }
     }
 
     fn self_value_is_available(&mut self, self_span: Span) -> bool {
@@ -5892,6 +5899,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
             let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
+            // Do not suggest removing the qualification if the unqualified path would be
+            // ambiguous, e.g. when several glob imports bring the same name into scope.
+            if let LateDecl::Decl(binding) = binding
+                && binding.descent_to_ambiguity().is_some()
+            {
+                return None;
+            }
             (res == binding.res()).then_some((seg, binding))
         });
 
