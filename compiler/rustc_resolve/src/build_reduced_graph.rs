@@ -1248,7 +1248,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 continue;
             }
 
-            if !attr.is_word() {
+            if !attr.get_normal_item().is_word() {
                 self.r.dcx().emit_err(diagnostics::ArgumentsMacroUseNotAllowed { span: attr.span });
             }
             return true;

@@ -1,8 +1,10 @@
-error: `#[doc(...)]` isn't allowed on parameters
-  --> $DIR/check-doc-alias-attr-location.rs:22:12
+error: the `doc` attribute cannot be used on function params
+  --> $DIR/check-doc-alias-attr-location.rs:22:14
    |
 LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
-   |            ^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^
+   |
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
 
 error: `#[doc(alias = "...")]` isn't allowed on foreign module
   --> $DIR/check-doc-alias-attr-location.rs:9:15

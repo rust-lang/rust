@@ -18,11 +18,11 @@ pub(super) use crate::attributes::{
 pub(super) use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeContext};
 #[doc(hidden)]
 pub(super) use crate::parser::*;
+#[doc(hidden)]
+pub(super) use crate::target_checking::AllowedTargets;
 // target checking
 #[doc(hidden)]
 pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
-#[doc(hidden)]
-pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 #[doc(hidden)]
 pub(super) use crate::unstable;
 pub(super) use crate::{AttributeTemplate, template};

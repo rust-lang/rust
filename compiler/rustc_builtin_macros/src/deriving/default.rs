@@ -293,7 +293,7 @@ fn validate_default_attribute(
             return Err(guar);
         }
     };
-    if !attr.is_word() {
+    if !attr.get_normal_item().is_word() {
         let guar = cx.dcx().emit_err(diagnostics::DefaultHasArg { span: attr.span });
 
         return Err(guar);
