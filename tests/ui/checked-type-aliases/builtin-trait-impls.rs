@@ -1,5 +1,6 @@
 //! Built-in impls for checked alias types
-//! Regression test for <https://github.com/rust-lang/rust/issues/157755>
+//! Regression test for <https://github.com/rust-lang/rust/issues/157755> and
+//!     <https://github.com/rust-lang/rust/issues/159264>
 
 //@ check-pass
 //@ edition: 2024
@@ -8,6 +9,7 @@
     async_drop,
     checked_type_aliases,
     coerce_unsized,
+    const_param_ty_trait,
     derive_coerce_pointee,
     dispatch_from_dyn,
     reborrow, unsize
@@ -17,7 +19,7 @@
 use std::pin::Pin;
 use std::future::AsyncDrop;
 use std::ops::{CoerceUnsized, DispatchFromDyn};
-use std::marker::{CoercePointee, CoerceShared, Reborrow, Unsize};
+use std::marker::{CoercePointee, CoerceShared, ConstParamTy_, Reborrow, Unsize};
 
 #[derive(Clone)]
 struct CopyLocal;
@@ -77,5 +79,13 @@ type CoercePointeeLocalAlias<T: ?Sized> = *const T;
 struct CoercePointeeLocal<T: ?Sized> {
     foo: CoercePointeeLocalAlias<T>,
 }
+
+#[derive(PartialEq, Eq)]
+struct ConstParamTyLocal {
+    foo: u32,
+}
+
+type ConstParamTyLocalAlias = ConstParamTyLocal;
+impl ConstParamTy_ for ConstParamTyLocalAlias { }
 
 fn main() {}
