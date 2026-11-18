@@ -1,2 +1,5 @@
 repo = "miri"
 filter = ":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
+
+[push-pr]
+suffix = "r? @ghost"
