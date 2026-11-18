@@ -16,6 +16,9 @@ impl Foo {
 
     fn render_HTML() {}
     //~^ ERROR method `render_HTML` should have a snake case name
+
+    fn param(NOT_SNAKE: usize) {}
+    //~^ ERROR variable `NOT_SNAKE` should have a snake case name
 }
 
 trait X {
@@ -27,12 +30,21 @@ trait X {
 
     fn something__else(&mut self);
     //~^ ERROR trait method `something__else` should have a snake case name
+
+    fn param1(NOT_SNAKE: usize);
+    //~^ ERROR variable `NOT_SNAKE` should have a snake case name
+
+    fn param2(NOT_SNAKE: usize) {}
+    //~^ ERROR variable `NOT_SNAKE` should have a snake case name
 }
 
 impl X for Foo {
     // These errors should be caught at the trait definition not the impl
     fn ABC() {}
     fn something__else(&mut self) {}
+
+    fn param1(NOT_SNAKE: usize) {}
+    //~^ ERROR variable `NOT_SNAKE` should have a snake case name
 }
 
 fn Cookie() {}
