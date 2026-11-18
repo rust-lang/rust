@@ -1164,6 +1164,12 @@ LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
   return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
 }
 
+extern "C" LLVMMetadataRef LLVMRustGetDISubprogram(LLVMMetadataRef Ref) {
+  DILocalScope *Scope = unwrapDIPtr<DILocalScope>(Ref);
+  auto Sub = Scope->getSubprogram();
+  return wrap(Sub);
+}
+
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
   auto OS = RawRustStringOstream(Str);
   unwrap<llvm::Type>(Ty)->print(OS);

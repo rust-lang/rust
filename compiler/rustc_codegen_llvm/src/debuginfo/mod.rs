@@ -38,7 +38,7 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
 use crate::llvm::debuginfo::{
-    DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::llvm::{self, Value};
@@ -60,8 +60,8 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     recursion_marker_type: OnceCell<&'ll DIType>,
 
     /// Used to ensure that each `(scope, arg_index)` pair has just one `DILocalVariable`, which
-    /// LLVM requires.
-    params_seen: RefCell<FxHashMap<(&'ll DIScope, usize), &'ll DIVariable>>,
+    /// LLVM requires. The `DIScope` is always for the enclosing `DISubprogram`.
+    params_seen: RefCell<FxHashMap<(&'ll DISubprogram, usize), &'ll DIVariable>>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
@@ -439,13 +439,18 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
+        let mut opt_subprogram = None;
         match variable_kind {
             ArgumentVariable(arg_index) => {
+                // `scope_metadata` must be a local scope. The `params_seen` key must be a
+                // `DISubprogram`.
+                let subprogram = unsafe { llvm::LLVMRustGetDISubprogram(scope_metadata) };
                 if let Some(var) =
-                    debug_context(self).params_seen.borrow().get(&(scope_metadata, arg_index))
+                    debug_context(self).params_seen.borrow().get(&(subprogram, arg_index))
                 {
                     return var;
                 }
+                opt_subprogram = Some(subprogram);
             }
             LocalVariable => {}
         }
@@ -478,7 +483,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 debug_context(self)
                     .params_seen
                     .borrow_mut()
-                    .insert((scope_metadata, arg_index), var);
+                    .insert((opt_subprogram.unwrap(), arg_index), var);
                 var
             }
             LocalVariable => unsafe {
