@@ -50,6 +50,12 @@ impl<'tcx> StableHash for ty::GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> StableHash for ty::GenericArgs<'tcx> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_slice().stable_hash(hcx, hasher);
+    }
+}
+
 // AllocIds get resolved to whatever they point to (to be stable)
 impl StableHash for mir::interpret::AllocId {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {

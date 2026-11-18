@@ -1,11 +1,12 @@
 // Generic arguments.
 
-use core::intrinsics;
+use core::{intrinsics, slice};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ops::Index;
 use std::ptr::NonNull;
+use std::{iter, mem};
 
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
@@ -382,20 +383,16 @@ pub type GenericArgsUnsized<'tcx> = List<GenericArg<'tcx>>;
 
 /// List of generic arguments that are gonna be used to replace generic parameters.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(TyEncodable, StableHash, TypeVisitable, Lift)]
-pub struct GenericArgs<'tcx>(&'tcx GenericArgsUnsized<'tcx>);
+pub struct GenericArgs<'tcx> {
+    ptr: NonNull<()>,
+    marker: PhantomData<(GenericArg<'tcx>, &'tcx GenericArgsUnsized<'tcx>)>,
+}
 
 impl<'tcx> Index<usize> for GenericArgs<'tcx> {
     type Output = GenericArg<'tcx>;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.as_slice()[index]
-    }
-}
-
-impl<'tcx> Debug for GenericArgs<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -408,6 +405,29 @@ impl<'tcx> Default for GenericArgs<'tcx> {
 impl<'tcx> AsRef<[GenericArg<'tcx>]> for GenericArgs<'tcx> {
     fn as_ref(&self) -> &[GenericArg<'tcx>] {
         self.as_slice()
+    }
+}
+
+unsafe impl<'tcx> rustc_data_structures::sync::DynSend for GenericArgs<'tcx> where
+    &'tcx (GenericArg<'tcx>, &'tcx GenericArgsUnsized<'tcx>): rustc_data_structures::sync::DynSend
+{
+}
+unsafe impl<'tcx> rustc_data_structures::sync::DynSync for GenericArgs<'tcx> where
+    &'tcx (GenericArg<'tcx>, &'tcx GenericArgsUnsized<'tcx>): rustc_data_structures::sync::DynSync
+{
+}
+unsafe impl<'tcx> Send for GenericArgs<'tcx> where
+    &'tcx (GenericArg<'tcx>, &'tcx GenericArgsUnsized<'tcx>): Send
+{
+}
+unsafe impl<'tcx> Sync for GenericArgs<'tcx> where
+    &'tcx (GenericArg<'tcx>, &'tcx GenericArgsUnsized<'tcx>): Sync
+{
+}
+
+impl<'tcx> Debug for GenericArgs<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -426,14 +446,130 @@ impl<'tcx> rustc_type_ir::inherent::SliceLike for GenericArgs<'tcx> {
 
 impl<'tcx> IntoIterator for GenericArgs<'tcx> {
     type Item = GenericArg<'tcx>;
-    type IntoIter = std::iter::Copied<std::slice::Iter<'tcx, GenericArg<'tcx>>>;
+    type IntoIter = GenericArgsIter<'tcx>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        match self.as_tcx_slice_or_ty() {
+            Ok(i) => GenericArgsIter::Slice(i.as_slice().iter()),
+            Err(i) => GenericArgsIter::One(iter::once(GenericArg::from(i))),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum GenericArgsIter<'tcx> {
+    One(iter::Once<GenericArg<'tcx>>),
+    Slice(std::slice::Iter<'tcx, GenericArg<'tcx>>),
+}
+
+impl<'tcx> DoubleEndedIterator for GenericArgsIter<'tcx> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            GenericArgsIter::One(one) => one.next_back(),
+            GenericArgsIter::Slice(iter) => iter.next_back().copied(),
+        }
+    }
+}
+
+
+unsafe impl<'tcx> std::iter::TrustedLen for GenericArgsIter<'tcx> {}
+
+impl<'tcx> ExactSizeIterator for GenericArgsIter<'tcx> {
+    fn len(&self) -> usize {
+        match self {
+            GenericArgsIter::One(_) => 1,
+            GenericArgsIter::Slice(iter) => iter.as_slice().len(),
+        }
+    }
+}
+
+impl<'tcx> Iterator for GenericArgsIter<'tcx> {
+    type Item = GenericArg<'tcx>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            GenericArgsIter::One(one) => one.next(),
+            GenericArgsIter::Slice(iter) => iter.next().copied(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len(), Some(self.len()))
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArgs<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        self.as_slice().visit_with(visitor)
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArgs<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.as_slice().encode(e)
     }
 }
 
 impl<'tcx> GenericArgs<'tcx> {
+    #[inline]
+    pub fn as_slice(&self) -> &[GenericArg<'tcx>] {
+        if self.ptr.addr().get() & 0b1 == 0b1 {
+            let ptr = self.ptr.map_addr(|a| {
+                // Safety: the address came from a reference, so even with the low bit masked,
+                // it's still nonzero.
+                unsafe { NonZero::new_unchecked(a.get() & !0b1) }
+            });
+
+            unsafe {
+                mem::transmute::<NonNull<()>, NonNull<GenericArgsUnsized<'tcx>>>(ptr).as_ref()
+            }
+            .as_slice()
+        } else {
+            let ptr_to_field: NonNull<NonNull<()>> = NonNull::from_ref(&self.ptr);
+            let ptr_to_ty: NonNull<Ty<'tcx>> = ptr_to_field.cast();
+            // GenericArg is itself a "pointer"
+            let ptr_to_generic_arg: NonNull<GenericArg<'tcx>> = ptr_to_ty.cast();
+
+            slice::from_ref(unsafe { ptr_to_generic_arg.as_ref() })
+        }
+    }
+
+    #[inline]
+    pub fn from_ty(ty: Ty<'tcx>) -> Self {
+        assert_eq!(align_of_val(&*ty.0.0) & 0b1, 0);
+        Self { ptr: NonNull::from(ty.0.0).cast(), marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn from_args(args: &'tcx GenericArgsUnsized<'tcx>) -> Self {
+        Self {
+            ptr: NonNull::from_ref(args)
+                .map_addr(|a| a | const { NonZero::new(0b1).unwrap() })
+                .cast(),
+            marker: PhantomData,
+        }
+    }
+
+    /// Returns a `GenericArgs`, unless there's 1 element, in which case `Err` is returned with
+    /// that single element.
+    #[inline]
+    pub fn as_tcx_slice_or_ty(self) -> Result<&'tcx GenericArgsUnsized<'tcx>, Ty<'tcx>> {
+        if self.ptr.addr().get() & 0b1 == 0b1 {
+            let ptr = self.ptr.map_addr(|a| {
+                // Safety: the address came from a reference, so even with the low bit masked,
+                // it's still nonzero.
+                unsafe { NonZero::new_unchecked(a.get() & !0b1) }
+            });
+            Ok(unsafe {
+                mem::transmute::<NonNull<()>, NonNull<GenericArgsUnsized<'tcx>>>(ptr).as_ref()
+            })
+        } else {
+            Err(Ty(Interned::new_unchecked(unsafe {
+                self.ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref()
+            })))
+        }
+    }
+
     #[inline]
     pub fn empty() -> Self {
         Self::from_args(List::empty())
@@ -443,7 +579,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Be careful.
     #[deprecated = "do not call this"]
     pub fn as_ptr(&self) -> *const () {
-        std::ptr::from_ref(self.0).cast()
+        self.ptr.as_ptr().cast()
     }
 
     #[inline]
@@ -462,11 +598,6 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[GenericArg<'tcx>] {
-        self.0.as_slice()
-    }
-
-    #[inline]
     pub fn is_empty(&self) -> bool {
         self.as_slice().is_empty()
     }
@@ -474,18 +605,6 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     pub fn len(&self) -> usize {
         self.as_slice().len()
-    }
-
-    // FIXME: we cannot easily provide this anymore in the future if we store 1 element inline.
-    // Use as little as possible.
-    #[inline]
-    pub fn as_tcx_slice(&self) -> &'tcx [GenericArg<'tcx>] {
-        self.0.as_slice()
-    }
-
-    #[inline]
-    pub fn from_args(args: &'tcx GenericArgsUnsized<'tcx>) -> Self {
-        Self(args)
     }
 
     /// Converts generic args to a type list.

@@ -149,7 +149,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
             .lock()
             .entry(c)
             .or_insert_with(|| highest_var_in_clauses(c));
-        let c_args = &self.var_values.as_tcx_slice()[..=index];
+        let c_args = self.var_values.as_tcx_slice_or_ty().map(|i| &i[..=index]);
 
         if let Some(c) = self.tcx.caches.clauses_cache.lock().get(&(c, c_args)) {
             c
