@@ -23,7 +23,7 @@ pub(crate) fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         // LLVM is eager to trash the link register when calling `noreturn` functions, which
         // breaks debugging. Preserve LR by default to prevent that from happening.
-        frame_pointer: FramePointer::Always,
+        frame_pointer: FramePointer::NonLeaf,
         // ARM supports multiple ABIs for enums, the linux one matches the default of 32 here
         // but any arm-none or thumb-none target will be defaulted to 8 on GCC.
         c_enum_min_bits: Some(8),

@@ -223,7 +223,7 @@ pub enum ValidityRequirement {
 }
 
 impl ValidityRequirement {
-    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+    pub fn from_rustc_intrinsic(intrinsic: Symbol) -> Option<Self> {
         match intrinsic {
             sym::assert_inhabited => Some(Self::Inhabited),
             sym::assert_zero_valid => Some(Self::Zero),
@@ -836,7 +836,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
+                tcx.mk_layout(LayoutData::uninhabited_variant(variant_index, fields))
             }
 
             Variants::Multiple { .. } => {
