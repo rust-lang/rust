@@ -47,11 +47,7 @@ enum MutexKind {
     ErrorCheck,
 }
 
-impl MetaObj for PthreadMutexAttr {
-    fn opaque(&self) -> bool {
-        true
-    }
-}
+impl MetaObj for PthreadMutexAttr {}
 
 fn mutexattr_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -122,10 +118,6 @@ impl MetaObj for PthreadMutex {
             );
         }
         interp_ok(())
-    }
-
-    fn opaque(&self) -> bool {
-        true
     }
 }
 
@@ -207,10 +199,6 @@ impl MetaObj for PthreadRwLock {
         }
         interp_ok(())
     }
-
-    fn opaque(&self) -> bool {
-        true
-    }
 }
 
 fn rwlock_get_data<'tcx, 'a>(
@@ -251,11 +239,7 @@ struct PthreadCondAttr {
     clock: TimeoutClock,
 }
 
-impl MetaObj for PthreadCondAttr {
-    fn opaque(&self) -> bool {
-        true
-    }
-}
+impl MetaObj for PthreadCondAttr {}
 
 fn condattr_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -309,10 +293,6 @@ impl MetaObj for PthreadCondvar {
             );
         }
         interp_ok(())
-    }
-
-    fn opaque(&self) -> bool {
-        true
     }
 }
 
@@ -378,10 +358,6 @@ impl MetaObj for PthreadSem {
             );
         }
         interp_ok(())
-    }
-
-    fn opaque(&self) -> bool {
-        true
     }
 }
 

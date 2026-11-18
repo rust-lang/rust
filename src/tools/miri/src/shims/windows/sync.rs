@@ -20,10 +20,6 @@ impl MetaObj for WindowsInitOnce {
         }
         interp_ok(())
     }
-
-    fn opaque(&self) -> bool {
-        true
-    }
 }
 
 struct WindowsFutex {
