@@ -613,7 +613,7 @@ fn execute_pipeline(
 
     // Final stage: Assemble the dist artifacts
     // The previous PGO-optimized rustc build and PGO-optimized LLVM builds should be reused.
-    timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
+    timer.section("Stage 4 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
     // possible regressions.
