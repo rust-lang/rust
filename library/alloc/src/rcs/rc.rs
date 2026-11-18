@@ -2783,7 +2783,14 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
-impl<T: ?Sized + Eq> MarkerEq for T {}
+impl<T: Eq> MarkerEq for T {}
+// We can *not* implement this for `dyn Trait` because comparing vtables is not meaningful!
+// See <https://github.com/rust-lang/rust/issues/164817>.
+// Ideally we'd have a way ask the trait system to check the actual unsized tail of the type
+// for us, but in lieu of that we can just list a bunch of known-good unsized types.
+impl<T: Eq> MarkerEq for [T] {}
+impl MarkerEq for str {}
+impl MarkerEq for core::ffi::CStr {}
 
 /// We're doing this specialization here, and not as a more general optimization on `&T`, because it
 /// would otherwise add a cost to all equality checks on refs. We assume that `Rc`s are used to
