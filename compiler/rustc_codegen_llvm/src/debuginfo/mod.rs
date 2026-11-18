@@ -59,8 +59,29 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 
-    /// Used to ensure that each `(scope, arg_index)` pair has just one `DILocalVariable`, which
-    /// LLVM requires. The `DIScope` is always for the enclosing `DISubprogram`.
+    /// A cache that lets different functions (within this CGU) that contain the same inlined
+    /// callee share a single `DISubprogram`.
+    inlined_function_scopes: RefCell<FxHashMap<Instance<'tcx>, &'ll DIScope>>,
+
+    /// Used alongside `inlined_function_scopes` to ensure that each `(subprogram, arg_index)` pair
+    /// has just one `DILocalVariable`, which LLVM requires.
+    ///
+    /// Consider the following example.
+    /// ```ignore (incomplete)
+    /// #[inline] fn callee(x: &[u8]) { ... }
+    /// fn f1(s: &[u8]) { callee(s) }
+    /// fn f2(s: &mut [u8]) { callee(&*s) }
+    /// fn f3(p: *const [u8]) { callee(unsafe { &*p }) }
+    /// ```
+    /// The `ReferencePropagation` pass eliminates reborrows, and we end up with a MIR local in
+    /// each of `f1`, `f2`, and `f3` that `callee`'s parameter debuginfo points to. But each of
+    /// those MIR locals has a different type: `&[u8]`, `&mut [u8]`, and `*const [u8]`. Naively, we
+    /// would end up with three distinct `DILocalVariable` entries, each one claiming to be param 1
+    /// of `callee`, identical except for their type. LLVM's debug verifier doesn't like this.
+    ///
+    /// With `params_seen`, we create a `DILocalVariable` for `f1` and then `f2` and `f3` reuse it.
+    /// (Though it's not guaranteed `f1` will come first.) That means they get a slightly wrong
+    /// type in the debugger (e.g. `&[u8]` instead of `&mut [u8]` in `f2`).
     params_seen: RefCell<FxHashMap<(&'ll DISubprogram, usize), &'ll DIVariable>>,
 }
 
@@ -115,6 +136,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             adt_stack: Default::default(),
             namespace_map: Default::default(),
             recursion_marker_type: OnceCell::new(),
+            inlined_function_scopes: Default::default(),
             params_seen: Default::default(),
         }
     }
@@ -138,6 +160,14 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         maybe_definition_llfn: Option<Value<'ll>>,
     ) -> &'ll DIScope {
         let tcx = self.tcx;
+
+        // If `maybe_definition_llfn` is `None` then it's an inlined callee. Reuse the previously
+        // generated scope for that callee, if there is one.
+        if maybe_definition_llfn.is_none()
+            && let Some(scope) = debug_context(self).inlined_function_scopes.borrow().get(&instance)
+        {
+            return scope;
+        }
 
         let def_id = instance.def_id();
         let (containing_scope, is_method) = get_containing_scope(self, instance);
@@ -215,7 +245,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             )
         });
 
-        return unsafe {
+        let scope = unsafe {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
@@ -234,6 +264,10 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 decl,
             )
         };
+        if maybe_definition_llfn.is_none() {
+            debug_context(self).inlined_function_scopes.borrow_mut().insert(instance, scope);
+        }
+        return scope;
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,

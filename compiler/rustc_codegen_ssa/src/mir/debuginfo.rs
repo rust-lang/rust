@@ -7,8 +7,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, bug, hygiene, sym};
@@ -18,12 +18,9 @@ use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef, PerLocalVarDebugInfoIndexVec};
 use crate::traits::*;
 
-pub struct FunctionDebugContext<'tcx, S, L> {
+pub struct FunctionDebugContext<S, L> {
     /// Maps from source code to the corresponding debug info scope.
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
-
-    /// Maps from an inlined function to its debug info declaration.
-    pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
 }
 
 #[derive(Copy, Clone)]
@@ -730,7 +727,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Initialize fn debug context (including scopes).
         self.debug_context = Some(FunctionDebugContext {
             scopes: IndexVec::with_capacity(self.mir.source_scopes.len()),
-            inlined_function_scopes: Default::default(),
         });
 
         // Find all scopes with variables defined in them.
@@ -793,16 +789,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let dbg_scope = match scope_data.inlined {
             Some((callee, _)) => {
                 let callee = self.monomorphize(callee);
-                *self
-                    .debug_context
-                    .as_mut()
-                    .unwrap()
-                    .inlined_function_scopes
-                    .entry(callee)
-                    .or_insert_with(|| {
-                        let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
-                        bx.dbg_scope_fn(callee, callee_fn_abi, None)
-                    })
+                let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
+                bx.dbg_scope_fn(callee, callee_fn_abi, None)
             }
             None => bx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
         };

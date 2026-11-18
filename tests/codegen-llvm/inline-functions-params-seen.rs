@@ -1,4 +1,5 @@
-// Checks that the LLVM backend's `CodegenUnitDebugContext::params_seen` hashmap is working.
+// Checks that the LLVM backend's `CodegenUnitDebugContext::params_seen` hashmap is working. See
+// the comment on its declaration for details.
 
 // Note: -Copt-level=1 ensures the required `ReferencePropagation` pass runs.
 //@ compile-flags: -Zinline-mir=yes -Copt-level=1 -Cdebuginfo=2 -Ccodegen-units=1 -Zverify-llvm-ir
@@ -28,4 +29,16 @@ pub fn f1(s1: &u8, s2: &mut u8, s3: *const u8) {
     callee(s1);
     callee(&*s2);
     callee(unsafe { &*s3 });
+}
+
+pub fn f2(s: &u8) {
+    callee(s)
+}
+
+pub fn f3(s: &mut u8) {
+    callee(&*s)
+}
+
+pub fn f4(s: *const u8) {
+    callee(unsafe { &*s })
 }
