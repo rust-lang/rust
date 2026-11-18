@@ -32,9 +32,9 @@ use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::{self, ConstKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, TyEncodable, TyDecodable)]
-pub struct AdtFlags(u16);
+pub struct AdtFlags(u32);
 bitflags::bitflags! {
-    impl AdtFlags: u16 {
+    impl AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
