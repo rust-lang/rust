@@ -1,9 +1,17 @@
-//! Test for <https://github.com/rust-lang/rust/issues/157755>.
+//! Built-in impls for checked alias types
+//! Regression test for <https://github.com/rust-lang/rust/issues/157755>
 
 //@ check-pass
 //@ edition: 2024
 
-#![feature(async_drop, checked_type_aliases, coerce_unsized, derive_coerce_pointee, dispatch_from_dyn, reborrow, unsize)]
+#![feature(
+    async_drop,
+    checked_type_aliases,
+    coerce_unsized,
+    derive_coerce_pointee,
+    dispatch_from_dyn,
+    reborrow, unsize
+)]
 #![allow(incomplete_features)]
 
 use std::pin::Pin;
@@ -49,23 +57,24 @@ struct CoerceSharedMut<'a>(&'a mut u8);
 type CoerceSharedMutAlias<'a> = CoerceSharedMut<'a>;
 
 #[derive(Clone, Copy)]
-pub struct CoercedSharedLocal<'a>(&'a u8);
-type CoerchedShareLocalAlias<'a> = CoercedSharedLocal<'a>; 
+struct CoercedSharedLocal<'a>(&'a u8);
+type CoercedShareLocalAlias<'a> = CoercedSharedLocal<'a>;
 
 impl<'a> Reborrow for CoerceSharedMutAlias<'a> {}
-impl<'a> CoerceShared<CoerchedShareLocalAlias<'a>> for CoerceSharedMutAlias<'a> {}
+impl<'a> CoerceShared<CoercedShareLocalAlias<'a>> for CoerceSharedMutAlias<'a> {}
 
 struct DispatchFromDynLocal<T: ?Sized>(*const T);
 type DispatchFromDynLocalAlias<T: ?Sized> = DispatchFromDynLocal<T>;
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<DispatchFromDynLocalAlias<U>> for DispatchFromDynLocalAlias<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<DispatchFromDynLocalAlias<U>>
+    for DispatchFromDynLocalAlias<T> {}
 
 
 type CoercePointeeLocalAlias<T: ?Sized> = *const T;
 
 #[derive(CoercePointee)]
 #[repr(transparent)]
-pub struct CoercePointeeLocal<T: ?Sized> {
+struct CoercePointeeLocal<T: ?Sized> {
     foo: CoercePointeeLocalAlias<T>,
 }
 
