@@ -1915,7 +1915,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
                     // FIXME: Avoid re-HIR-ty-lowering.
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
-                    let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
+                    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(cx.tcx, *def_id);
                     let ct =
                         cx.tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ct));
                     print_const(cx.tcx, ct)

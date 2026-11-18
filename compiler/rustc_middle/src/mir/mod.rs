@@ -428,7 +428,7 @@ impl<'tcx> Body<'tcx> {
                     )
                 }
                 MirPhase::Analysis(AnalysisPhase::PostCleanup) | MirPhase::Runtime(_) => {
-                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                    TypingEnv::post_analysis_no_rigid_aliases(tcx, self.source.def_id())
                 }
             }
         } else {
@@ -438,7 +438,7 @@ impl<'tcx> Body<'tcx> {
                     ty::TypingMode::non_body_analysis(),
                 ),
                 MirPhase::Analysis(AnalysisPhase::PostCleanup) | MirPhase::Runtime(_) => {
-                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                    TypingEnv::post_analysis_no_rigid_aliases(tcx, self.source.def_id())
                 }
             }
         }

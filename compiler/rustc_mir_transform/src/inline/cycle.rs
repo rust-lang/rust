@@ -167,7 +167,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     // into the call graph, we're probably not going to find any useful MIR inlining.
     let recursion_limit = tcx.recursion_limit() / 8;
     let mut involved = FxHashSet::default();
-    let typing_env = ty::TypingEnv::post_analysis(tcx, root);
+    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, root);
     let root_instance =
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {

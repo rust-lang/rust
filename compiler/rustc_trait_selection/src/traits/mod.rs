@@ -705,7 +705,8 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                             }
                             Err(_) | Ok(None) => {
                                 let args = GenericArgs::identity_for_item(tcx, def_id);
-                                let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
+                                let typing_env =
+                                    ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, def_id);
                                 (args, typing_env)
                             }
                         }
@@ -737,7 +738,7 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                     // To prevent this we discard all the generic arguments and evalaute with identity args
                     // and in its own environment instead of the current environment we are normalizing in.
                     let args = GenericArgs::identity_for_item(tcx, def_id);
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
+                    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, def_id);
 
                     (args, typing_env)
                 }

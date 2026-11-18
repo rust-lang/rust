@@ -145,7 +145,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();
-                    let typing_env = ty::TypingEnv::post_analysis(self.tcx, variant.def_id);
+                    let typing_env =
+                        ty::TypingEnv::post_analysis_no_rigid_aliases(self.tcx, variant.def_id);
                     let field = variant.fields.iter().find(|field| {
                         let ty = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         let is_zst = self

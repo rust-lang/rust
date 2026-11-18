@@ -141,7 +141,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
-    let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, body.source.def_id());
 
     let mut assignments =
         AssignmentResult::find_dead_assignments(tcx, typing_env, &checked_places, &mut live, body);

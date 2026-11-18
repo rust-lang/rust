@@ -53,7 +53,7 @@ fn dump_abi_of_fn_item(
     attr_span: Span,
     attr_kind: RustcAbiAttrKind,
 ) {
-    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
+    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
     let instance = match Instance::try_resolve(tcx, typing_env, item_def_id.into(), args) {
         Ok(Some(instance)) => instance,
@@ -110,7 +110,7 @@ fn dump_abi_of_fn_type(
     attr_span: Span,
     attr_kind: RustcAbiAttrKind,
 ) {
-    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
+    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
     let span = tcx.def_span(item_def_id);
     if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {

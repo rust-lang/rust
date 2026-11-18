@@ -419,7 +419,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                     .as_slice()
         {
             (
-                ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
+                ty::TypingEnv::post_analysis_no_rigid_aliases(self.tcx, impl_def_id),
                 self_ty.instantiate_identity().skip_norm_wip(),
                 impl_trait_ref
                     .map(|impl_trait_ref| impl_trait_ref.instantiate_identity().skip_norm_wip()),

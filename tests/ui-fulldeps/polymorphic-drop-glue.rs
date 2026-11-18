@@ -68,7 +68,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
         // Regression test for ICE due to the drop glue code not correctly handling generic
         // contexts.
         let ty = tcx.type_of(contains_array).instantiate_identity().skip_norm_wip();
-        let typing_env = ty::TypingEnv::post_analysis(tcx, contains_array);
+        let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, contains_array);
         rustc_mir_transform::build_drop_shim(tcx, drop_glue, Some(ty), typing_env);
 
         Compilation::Stop

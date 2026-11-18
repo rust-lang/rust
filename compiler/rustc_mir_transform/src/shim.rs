@@ -1011,7 +1011,7 @@ fn build_call_shim<'tcx>(
 pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let typing_env = ty::TypingEnv::post_analysis(tcx, ctor_id);
+    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, ctor_id);
 
     // Normalize the sig.
     let sig = tcx
