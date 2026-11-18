@@ -168,10 +168,10 @@ impl LimitStack {
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[rustc_attr_ir::Attribute], name: Symbol, mut f: F) {
     let attrs = attrs.iter().filter_map(move |attr| {
-        if let rustc_attr_ir::Attribute::Tool(t) = attr
-            && *t.path.segments == [sym::clippy, name]
+        if let rustc_attr_ir::Attribute::Tool { item, .. } = attr
+            && *item.path.segments == [sym::clippy, name]
         {
-            Some(&**t)
+            Some(&**item)
         } else {
             None
         }

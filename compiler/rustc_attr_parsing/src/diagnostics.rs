@@ -949,6 +949,24 @@ pub(crate) struct ToolReserved {
 }
 
 #[derive(Diagnostic)]
+#[diag("unrecognized tool option `{$option}`")]
+pub(crate) struct UnrecognizedToolOption {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) option: AttrPath,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "the tool attribute `{$tool}` is predefined and cannot be marked as being available for reflection"
+)]
+pub(crate) struct PredefinedToolReflective {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
+}
+
+#[derive(Diagnostic)]
 #[diag("unknown diagnostic attribute")]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]

@@ -9,7 +9,7 @@ LL | #![register_tool(foo::bar)]
 help: must be of the form
    |
 LL - #![register_tool(foo::bar)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error: aborting due to 1 previous error

@@ -1601,7 +1601,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     suggestions.extend(
                         this.registered_attr_tools
                             .iter()
-                            .map(|ident| TypoSuggestion::new(ident.name, ident.span, res)),
+                            .map(|(tool, _)| TypoSuggestion::new(tool.name, tool.span, res)),
                     );
                 }
                 Scope::StdLibPrelude => {

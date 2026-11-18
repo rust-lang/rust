@@ -12,6 +12,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_lint_defs::ToolOptions;
 use rustc_macros::{
     Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
 };
@@ -1167,8 +1168,8 @@ pub enum AttributeKind {
 
     /// Represents `#[register_attribute_tool]`, `#[register_lint_tool]` and `#[register_tool]`
     RegisterTool {
-        attr_tools: ThinVec<Ident>,
-        lint_tools: ThinVec<Ident>,
+        attr_tools: ThinVec<(Ident, ToolOptions)>,
+        lint_tools: ThinVec<(Ident, ToolOptions)>,
     },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).

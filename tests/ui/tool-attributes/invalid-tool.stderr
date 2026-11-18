@@ -9,7 +9,7 @@ LL | #![register_tool(1)]
 help: must be of the form
    |
 LL - #![register_tool(1)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error: expected identifier, found reserved identifier `_`
@@ -29,7 +29,7 @@ LL | #![register_tool(_)]
 help: must be of the form
    |
 LL - #![register_tool(_)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error[E0565]: malformed `register_tool` attribute input
@@ -43,7 +43,7 @@ LL | #![register_tool(crate)]
 help: must be of the form
    |
 LL - #![register_tool(crate)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error[E0565]: malformed `register_tool` attribute input
@@ -57,7 +57,7 @@ LL | #![register_tool(self)]
 help: must be of the form
    |
 LL - #![register_tool(self)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error[E0565]: malformed `register_tool` attribute input
@@ -71,7 +71,7 @@ LL | #![register_tool(Self)]
 help: must be of the form
    |
 LL - #![register_tool(Self)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error[E0565]: malformed `register_tool` attribute input
@@ -85,7 +85,7 @@ LL | #![register_tool(super)]
 help: must be of the form
    |
 LL - #![register_tool(super)]
-LL + #![register_tool(tool1, tool2, ...)]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
    |
 
 error: aborting due to 7 previous errors

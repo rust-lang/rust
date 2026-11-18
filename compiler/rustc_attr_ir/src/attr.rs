@@ -5,6 +5,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, DelimArgs, MetaItemLit, ast, join_path_idents};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_lint_defs::ToolOptions;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
 
@@ -112,7 +113,7 @@ pub enum Attribute {
     ///
     /// Tool attributes, with the exception of diagnostic attributes, are not converted into a
     /// parsed form.
-    Tool(Box<AttrItem>),
+    Tool { item: Box<AttrItem>, opts: ToolOptions },
 
     /// A derive helper attribute.
     ///
@@ -125,7 +126,7 @@ pub enum Attribute {
 impl Attribute {
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => match n.as_ref() {
+            Attribute::Tool { item: n, .. } | Attribute::DeriveHelper(n) => match n.as_ref() {
                 AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
                 _ => None,
             },
@@ -135,7 +136,7 @@ impl Attribute {
 
     pub fn is_prefix_attr_for_suggestions(&self) -> bool {
         match self {
-            Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => {
+            Attribute::Tool { item: attr, .. } | Attribute::DeriveHelper(attr) => {
                 attr.span.desugaring_kind().is_none()
             }
             // Other parsed attributes that can appear on expressions originate from source and
