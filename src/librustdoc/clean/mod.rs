@@ -1385,7 +1385,7 @@ pub(crate) fn clean_impl_item<'tcx>(
 
 pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocContext<'_>) -> Item {
     let tcx = cx.tcx;
-    let kind = match assoc_item.kind {
+    let kind = cx.with_param_env(assoc_item.def_id, |cx| match assoc_item.kind {
         ty::AssocKind::Const { .. } => {
             let type_ = clean_middle_ty(
                 ty::Binder::dummy(
@@ -1573,7 +1573,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 type_: type_.map(|type_| AliasedType { type_, middle_type: None }),
             }))
         }
-    };
+    });
 
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, tcx)
 }
