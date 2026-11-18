@@ -17,6 +17,7 @@ As a general rule:
 The following external projects are managed using a Josh `subtree`:
 
 * [clippy](https://github.com/rust-lang/rust-clippy)
+* [hashbrown](https://github.com/rust-lang/hashbrown)
 * [miri](https://github.com/rust-lang/miri)
 * [portable-simd](https://github.com/rust-lang/portable-simd)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
