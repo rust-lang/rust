@@ -514,10 +514,23 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     LLVMRustSetLastError(ErrorInfo.c_str());
     return LLVMRustResult::Failure;
   }
+  auto BOS = buffer_ostream(OS);
 
   std::unique_ptr<llvm::raw_pwrite_stream> DwoOS = nullptr;
   std::unique_ptr<llvm::raw_pwrite_stream> BDwoOS = nullptr;
-  auto BOS = buffer_ostream(OS);
+  if (DwoPath) {
+    DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
+    if (EC) {
+      ErrorInfo = EC.message();
+      DwoOS.reset();
+    }
+    if (ErrorInfo != "") {
+      LLVMRustSetLastError(ErrorInfo.c_str());
+      return LLVMRustResult::Failure;
+    }
+    if (DwoOS)
+      BDwoOS = std::make_unique<llvm::buffer_ostream>(*DwoOS);
+  }
 
   if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
     assert(
@@ -539,20 +552,6 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
       LLVMRustSetLastError(error.c_str());
       return LLVMRustResult::Failure;
     }
-  }
-
-  if (DwoPath) {
-    DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
-    if (EC) {
-      ErrorInfo = EC.message();
-      DwoOS.reset();
-    }
-    if (ErrorInfo != "") {
-      LLVMRustSetLastError(ErrorInfo.c_str());
-      return LLVMRustResult::Failure;
-    }
-    if (DwoOS)
-      BDwoOS = std::make_unique<llvm::buffer_ostream>(*DwoOS);
   }
 
 #if LLVM_VERSION_GE(24, 0)
