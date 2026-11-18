@@ -294,7 +294,7 @@ impl AttributeParser for NakedParser {
                 if other_attr
                     .segments()
                     .next()
-                    .is_some_and(|i| tools.iter().any(|tool| tool.name == i.name))
+                    .is_some_and(|i| tools.iter().any(|(tool, _)| tool.name == i.name))
                 {
                     // effectively skips the error message  being emitted below
                     // if it's a tool attribute

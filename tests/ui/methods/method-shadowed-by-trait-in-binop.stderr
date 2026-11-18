@@ -1,0 +1,67 @@
+error[E0599]: no method named `abs` found for reference `&std::sync::MutexGuard<'_, RefCell<i32>>` in the current scope
+  --> $DIR/method-shadowed-by-trait-in-binop.rs:16:28
+   |
+LL |         let opt_target = cell.borrow();
+   |                               ------ this method is `std::borrow::Borrow::borrow`
+...
+LL |         let _ = opt_target.abs();
+   |                            ^^^ method not found in `&std::sync::MutexGuard<'_, RefCell<i32>>`
+   |
+note: this returns `&std::sync::MutexGuard<'_, RefCell<i32>>`
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+note: you might have meant to call `std::cell::RefCell::<T>::borrow` instead
+  --> $SRC_DIR/core/src/cell.rs:LL:COL
+help: consider calling `std::cell::RefCell::<T>::borrow` using the fully-qualified path
+   |
+LL -         let opt_target = cell.borrow();
+LL +         let opt_target = RefCell::<i32>::borrow(&cell);
+   |
+
+error[E0369]: binary operation `>` cannot be applied to type `std::sync::MutexGuard<'_, RefCell<i32>>`
+  --> $DIR/method-shadowed-by-trait-in-binop.rs:20:29
+   |
+LL |         let opt_target = cell.borrow();
+   |                               ------ this method is `std::borrow::Borrow::borrow`
+...
+LL |         let _ = *opt_target > 1;
+   |                 ----------- ^ - {integer}
+   |                 |
+   |                 std::sync::MutexGuard<'_, RefCell<i32>>
+   |
+note: `std::sync::MutexGuard<'_, RefCell<i32>>` does not implement `PartialOrd<{integer}>`
+  --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
+  ::: $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
+   |
+   = note: `std::sync::MutexGuard<'_, RefCell<i32>>` is defined in another crate
+note: this returns `std::sync::MutexGuard<'_, RefCell<i32>>`
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+note: you might have meant to call `std::cell::RefCell::<T>::borrow` instead
+  --> $SRC_DIR/core/src/cell.rs:LL:COL
+help: consider calling `std::cell::RefCell::<T>::borrow` using the fully-qualified path
+   |
+LL -         let opt_target = cell.borrow();
+LL +         let opt_target = RefCell::<i32>::borrow(&cell);
+   |
+
+error[E0277]: can't compare `{integer}` with `std::sync::MutexGuard<'_, RefCell<i32>>`
+  --> $DIR/method-shadowed-by-trait-in-binop.rs:26:11
+   |
+LL |         1 < *opt_target
+   |           ^ no implementation for `{integer} < std::sync::MutexGuard<'_, RefCell<i32>>` and `{integer} > std::sync::MutexGuard<'_, RefCell<i32>>`
+   |
+   = help: the trait `PartialOrd<std::sync::MutexGuard<'_, RefCell<i32>>>` is not implemented for `{integer}`
+   = help: the following other types implement trait `PartialOrd<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0369, E0599.
+For more information about an error, try `rustc --explain E0277`.

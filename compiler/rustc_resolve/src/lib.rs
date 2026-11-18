@@ -1901,10 +1901,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .collect(),
             registered_attr_tool_decls: registered_attr_tools
                 .iter()
-                .map(|&ident| {
+                .map(|(&tool, _)| {
                     let res = Res::ToolMod;
-                    let decl = arenas.new_pub_def_decl(res, ident.span, LocalExpnId::ROOT);
-                    (IdentKey::new(ident), decl)
+                    let decl = arenas.new_pub_def_decl(res, tool.span, LocalExpnId::ROOT);
+                    (IdentKey::new(tool), decl)
                 })
                 .collect(),
             registered_attr_tools,

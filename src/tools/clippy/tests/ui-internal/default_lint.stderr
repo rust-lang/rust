@@ -6,7 +6,7 @@ LL | |
 LL | |     pub clippy::TEST_LINT_DEFAULT,
 LL | |     Warn,
 LL | |     "default lint description",
-LL | |     report_in_external_macro: true
+LL | |     @report_in_external_macro = true
 LL | | }
    | |_^
    |

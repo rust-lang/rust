@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{FieldIdx, PackCoroutineLayout, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
@@ -53,6 +53,11 @@ pub struct CoroutineLayout<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    /// Coroutine layout packing
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub pack: PackCoroutineLayout,
 }
 
 impl Debug for CoroutineLayout<'_> {

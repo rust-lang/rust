@@ -26,13 +26,23 @@ error[E0599]: no method named `poll` found for struct `Pin<&mut impl Future<Outp
   --> $DIR/dont-project-to-specializable-projection.rs:48:28
    |
 LL |         match fut.as_mut().poll(ctx) {
-   |                            ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |                   ------   ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |                   |
+   |                   this method is `std::pin::Pin::<Ptr>::as_mut`
    |
   --> $SRC_DIR/core/src/future/future.rs:LL:COL
    |
    = note: the method is available for `Pin<&mut impl Future<Output = ()>>` here
-   |
+note: this returns `Pin<&mut impl Future<Output = ()>>`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+note: you might have meant to call `std::convert::AsMut::as_mut` instead
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = help: items from traits can only be used if the trait is in scope
+help: consider calling `std::convert::AsMut::as_mut` using the fully-qualified path
+   |
+LL -         match fut.as_mut().poll(ctx) {
+LL +         match <_ as AsMut<_>>::as_mut(&mut fut).poll(ctx) {
+   |
 help: trait `Future` which provides `poll` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::future::Future;

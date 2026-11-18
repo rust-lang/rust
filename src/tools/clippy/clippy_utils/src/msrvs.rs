@@ -272,7 +272,7 @@ fn parse_ast_attrs(attrs: &[Attribute]) -> Option<RustcVersion> {
 
 fn parse_hir_attrs(attrs: &[rustc_attr_ir::Attribute]) -> Option<RustcVersion> {
     let msrv = attrs.iter().find_map(|attr| {
-        if let rustc_attr_ir::Attribute::Tool(item) = attr
+        if let rustc_attr_ir::Attribute::Tool { item, .. } = attr
             && let [sym::clippy, sym::msrv] = item.path.segments
         {
             attr.value_lit().and_then(rustc_ast::MetaItemLit::value_as_str)

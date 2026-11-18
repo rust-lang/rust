@@ -10,9 +10,10 @@ use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, Hash
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
-use rustc_lint_defs::{LintId, RegisteredTools};
+use rustc_lint_defs::Reflectiveness::NonReflective;
+use rustc_lint_defs::{LintId, RegisteredTools, ToolOptions};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::attributes::doc_comment::target_check_doc_comment;
@@ -470,7 +471,7 @@ impl<'sess> AttributeParser<'sess> {
                         // we could be here in the `#[lint::attribute_macro] not found` case,
                         // which recovers with a `NonMacroAttr` res.
                         if let Some(tools) = self.attr_tools
-                            && tools.iter().any(|i| i.name == sym::lint)
+                            && tools.iter().any(|(i, _)| i.name == sym::lint)
                         {
                             self.emit_err(diagnostics::UnknownLintHelper {
                                 span: n.item.span,
@@ -507,7 +508,19 @@ impl<'sess> AttributeParser<'sess> {
                         let attr = match attr_path.segments.len() {
                             0 => unreachable!("no path for {attr:?}"),
                             1 => Attribute::DeriveHelper(Box::new(attr)),
-                            _ => Attribute::Tool(Box::new(attr)),
+                            _ => {
+                                if let Some(tools) = self.attr_tools
+                                    && let Some(opts) =
+                                        tools.get(&Ident::with_dummy_span(attr_path.segments[0]))
+                                {
+                                    Attribute::Tool { item: Box::new(attr), opts: opts.clone() }
+                                } else {
+                                    Attribute::Tool {
+                                        item: Box::new(attr),
+                                        opts: ToolOptions { reflectiveness: NonReflective },
+                                    }
+                                }
+                            }
                         };
 
                         attributes.push(attr);
