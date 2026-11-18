@@ -47,24 +47,37 @@ fn test_cycle_fused() {
     assert!(fused.next().is_none());
 
     // `Cycle<I>` is also unconditionally `FusedIterator`.
-    let curr = std::cell::Cell::new(0);
-    let iter = std::iter::from_fn(|| {
-        let n = curr.get() + 1;
-        curr.set(n);
-        (n >= 3).then_some("some")
-    });
-    let mut fused = iter.cycle();
-    assert!(fused.next().is_none());
-    assert!(fused.next().is_none());
-    assert!(fused.next().is_none());
-    assert!(fused.next().is_none());
+    use std::cell::Cell;
+    use std::iter::FusedIterator;
+
+    #[derive(Default)]
+    pub struct ClonesEmpty(Option<i32>, Cell<usize>);
+    impl Clone for ClonesEmpty {
+        fn clone(&self) -> Self {
+            self.1.update(|it| it + 1);
+            Self((self.1.get() % 2 == 1).then_some(1), Default::default())
+        }
+    }
+    impl Iterator for ClonesEmpty {
+        type Item = i32;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.take()
+        }
+    }
+    impl FusedIterator for ClonesEmpty {} // correctness follows from correctness for `Option::IntoIter`
+
+    let mut idk = ClonesEmpty::default().cycle();
+    assert!(idk.next().is_some());
+    assert!(idk.next().is_none());
+    assert!(idk.next().is_none());
+    assert!(idk.next().is_none());
 }
 
 // Ensure that `<Cycle<I>>::try_fold` behaves properly (i.e. doesn't loop infinitely)
 // when a *later* clone of `I` is empty.
 #[test]
 fn test_cycle_fold() {
-    let c = std::cell::Cell::new(0);
+    let c = std::cell::Cell::new(1);
     // the first 5 clones of `iter` will yield `[Some(42), None]`,
     // then all later clones will yield only `None`
     let iter = std::iter::from_fn(|| {
