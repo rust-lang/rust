@@ -3,7 +3,7 @@
 use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test, stable_only_test};
@@ -135,7 +135,13 @@ fn print_config_writes_to_file() {
     assert_eq!(exit_code, 0);
 }
 
-// Can only run this test on nightly becuase the call to `file!` below
+fn this_file() -> String {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let p = p.join("tests/rustfmt/main.rs");
+    p.into_os_string().into_string().expect("assumes UTF-8 path")
+}
+
+// Can only run this test on nightly because the call to `file!` below
 // will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
 #[nightly_only_test]
 #[test]
@@ -143,8 +149,8 @@ fn print_config_merges_override_from_args() {
     let args = &[
         "--print-config",
         "current",
-        // running with `file!` will load the root `rustfmt.toml`
-        file!(),
+        // load the root `rustfmt.toml` (of rustfmt subtree)
+        &this_file(),
         "--config=color=Never,edition=2018",
     ];
 
@@ -158,7 +164,7 @@ fn print_config_merges_override_from_args() {
     assert_eq!(exit_code, 0);
 }
 
-// Can only run this test on nightly becuase the call to `file!` below
+// Can only run this test on nightly because the call to `file!` below
 // will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
 #[nightly_only_test]
 #[test]
@@ -166,8 +172,8 @@ fn print_config_merges_multiple_overrides_from_args() {
     let args = &[
         "--print-config",
         "current",
-        // running with `file!` will load the root `rustfmt.toml`
-        file!(),
+        // load the root `rustfmt.toml` (of rustfmt subtree)
+        &this_file(),
         "--config",
         "color=never,edition=2018",
         "--config",
