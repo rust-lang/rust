@@ -183,14 +183,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         global_alloc: GlobalAlloc<'tcx>,
         schema: Option<&PointerAuthSchema>,
     ) -> Result<Value<'ll>, u64> {
-        let alloc = match global_alloc {
-            GlobalAlloc::Function { instance, .. } => {
-                return Ok(self.get_fn_addr(instance, schema));
-            }
+        match global_alloc {
+            GlobalAlloc::Function { instance, .. } => Ok(self.get_fn_addr(instance, schema)),
             GlobalAlloc::Static(def_id) => {
                 assert!(self.tcx.is_static(def_id));
                 assert!(!self.tcx.is_thread_local_static(def_id));
-                return Ok(
+                Ok(
                     // `alloc_to_backend` might be called by `global_asm!` codegen. In which case
                     // `global_asm!` would need to find the renamed statics to use for symbol name.
                     self.renamed_statics
@@ -198,12 +196,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                         .get(&def_id)
                         .copied()
                         .unwrap_or_else(|| self.get_static(def_id)),
-                );
+                )
             }
             GlobalAlloc::TypeId { .. } => {
                 // Drop the provenance, the offset contains the bytes of the hash, so
                 // just return 0 as base address.
-                return Err(0);
+                Err(0)
             }
 
             GlobalAlloc::Memory(alloc) => {
@@ -214,34 +212,33 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                     return Err(alloc.inner().align.bytes());
                 }
 
-                alloc
+                let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+                let alloc = alloc.inner();
+
+                let value = match alloc.mutability {
+                    Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+                    Mutability::Not => self.static_addr_of_impl(init, alloc.align, None),
+                };
+
+                if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
+                    let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                        let mut hasher = StableHasher::new();
+                        alloc.stable_hash(&mut hcx, &mut hasher);
+                        hasher.finish::<Hash128>()
+                    });
+                    llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
+                }
+
+                Ok(value)
             }
             GlobalAlloc::VTable(self_ty, dyn_ty) => {
                 let principal = dyn_ty
                     .principal()
                     .map(|principal| self.tcx.instantiate_bound_regions_with_erased(principal));
 
-                return Ok(rustc_codegen_ssa::meth::get_vtable(self, self_ty, principal));
+                Ok(rustc_codegen_ssa::meth::get_vtable(self, self_ty, principal))
             }
-        };
-
-        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
-        let alloc = alloc.inner();
-
-        let value = match alloc.mutability {
-            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-            Mutability::Not => self.static_addr_of_impl(init, alloc.align, None),
-        };
-        if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
-            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
-                let mut hasher = StableHasher::new();
-                alloc.stable_hash(&mut hcx, &mut hasher);
-                hasher.finish::<Hash128>()
-            });
-            llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
         }
-
-        Ok(value)
     }
 }
 
