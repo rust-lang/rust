@@ -264,6 +264,9 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             // GH Mac runners are currently too slow to optimize tools.
             let optimize_tools = false;
 
+            // They are also currently too slow to optimize LLVM.
+            let optimize_llvm = false;
+
             let checkout_dir: Utf8PathBuf = std::env::current_dir()?.try_into()?;
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -285,6 +288,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .optimize_clippy(optimize_tools)
                 .optimize_cranelift(optimize_tools)
                 .optimize_rustdoc(optimize_tools)
+                .optimize_llvm(optimize_llvm)
                 .build()?;
 
             (env, shared.build_args)
@@ -308,6 +312,10 @@ fn execute_pipeline(
             copy_and_build_rustc_perf(env, &rustc_perf_checkout_dir)
         }
     })?;
+
+    // We generally need to build LLVM on CI, but may have to avoid optimizing it. Some builders
+    // only have enough capacity to PGO rustc itself.
+    let optimize_llvm = env.optimize_llvm;
 
     let optimize_cargo = env.optimize_cargo;
     let optimize_clippy = !is_fast_try_build() && env.optimize_clippy;
@@ -449,7 +457,7 @@ fn execute_pipeline(
     // Stage 2: Gather LLVM PGO profiles
     // Here we build a PGO-instrumented LLVM, reusing the previously PGO-optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
-    let llvm_pgo_profile = if env.build_llvm() {
+    let llvm_pgo_profile = if env.build_llvm() && optimize_llvm {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
             if !env.download_ci_llvm {
                 // Remove the previous, uninstrumented build of LLVM.
