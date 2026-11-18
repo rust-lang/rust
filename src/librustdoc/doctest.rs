@@ -113,9 +113,7 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     for lib_str in &options.lib_strs {
         content.push(format!("-L{lib_str}"));
     }
-    for extern_str in &options.extern_strs {
-        content.push(format!("--extern={extern_str}"));
-    }
+
     content.push("-Ccodegen-units=1".to_string());
     for codegen_options_str in &options.codegen_options_strs {
         content.push(format!("-C{codegen_options_str}"));
