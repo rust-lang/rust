@@ -1305,7 +1305,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some((kind, def_id)) = private_candidate {
             return Err(MethodError::PrivateMatch(kind, def_id, out_of_scope_traits));
         }
-        let similar_candidate = self.probe_for_similar_candidate()?;
+        let similar_candidate = self.probe_for_similar_candidate(&out_of_scope_traits)?;
 
         Err(MethodError::NoMatch(NoMatchData {
             static_candidates,
@@ -2519,6 +2519,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn probe_for_similar_candidate(
         &mut self,
+        out_of_scope_traits: &[DefId],
     ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
@@ -2547,6 +2548,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
+                    // Methods of out-of-scope traits can't be called here. Drop them before
+                    // picking, or they could win over (or be ambiguous with) one that can.
+                    pcx.extension_candidates.retain(|candidate| {
+                        !out_of_scope_traits.contains(&candidate.item.container_id(self.tcx))
+                    });
                     pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();

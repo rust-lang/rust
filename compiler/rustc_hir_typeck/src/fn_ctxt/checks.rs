@@ -3479,7 +3479,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
                 callee_ty.peel_refs(),
                 self.call_ctxt.callee_expr.unwrap().hir_id,
                 TraitsInScope,
-                |mut ctxt| ctxt.probe_for_similar_candidate(),
+                |mut ctxt| ctxt.probe_for_similar_candidate(&[]),
             )
             && assoc.is_method()
         {
