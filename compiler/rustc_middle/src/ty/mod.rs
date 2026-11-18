@@ -2061,6 +2061,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
+                    // FIXME(-Zpack-coroutine-layout): Stop ignoring the flag here.
+                    pack: rustc_abi::PackCoroutineLayout::Classic,
                 };
                 return Ok(self.arena.alloc(proxy_layout));
             } else {

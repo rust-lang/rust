@@ -30,6 +30,26 @@ use crate::{
     StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
 };
 
+/// This option controls how coroutine saved locals are packed
+/// into the coroutine state data
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(
+        rustc_macros::Encodable_NoContext,
+        rustc_macros::Decodable_NoContext,
+        rustc_macros::StableHash,
+    )
+)]
+pub enum PackCoroutineLayout {
+    /// The classic layout where captures are always promoted to coroutine state prefix
+    #[default]
+    Classic,
+    /// Captures are first saved into the `UNRESUMED` state and promoted
+    /// when they are used across more than one suspension
+    CapturesOnly,
+}
+
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
 #[derive(Clone, Debug, PartialEq)]
 enum SavedLocalEligibility<VariantIdx, FieldIdx> {
