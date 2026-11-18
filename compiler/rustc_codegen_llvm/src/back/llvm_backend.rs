@@ -288,8 +288,8 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         CodegenBackendInit {
             global_backend_features,
-            replaced_intrinsics,
-            fallback_intrinsics,
+            replaced_rustc_intrinsics: replaced_intrinsics,
+            fallback_rustc_intrinsics: fallback_intrinsics,
             thin_lto_supported: true,
         }
     }
