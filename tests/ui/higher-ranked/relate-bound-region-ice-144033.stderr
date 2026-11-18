@@ -46,7 +46,7 @@ note: method defined here
    |
 LL | trait FooMut {
 LL |     fn bar<I>(self, _: I)
-   |        ^^^          -
+   |        ^^^          ----
 
 error: aborting due to 2 previous errors
 
