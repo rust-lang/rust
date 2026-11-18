@@ -208,6 +208,20 @@ where
     let region_obligations = infcx.take_registered_region_obligations();
     let region_assumptions = infcx.take_registered_region_assumptions();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
+
+    // If all of these are empty we can skip calling `make_query_region_constraints`.
+    if region_obligations.is_empty() && region_assumptions.is_empty() && region_constraint_data.is_empty() {
+        debug_assert!(query_response::make_query_region_constraints(
+            region_obligations,
+            &region_constraint_data,
+            region_assumptions,
+        ).is_empty());
+        return Ok((
+            TypeOpOutput { output: value, constraints: None, error_info: None },
+            region_constraint_data,
+        ))
+    }
+
     let region_constraints = query_response::make_query_region_constraints(
         region_obligations,
         &region_constraint_data,
@@ -215,10 +229,7 @@ where
     );
 
     if region_constraints.is_empty() {
-        Ok((
-            TypeOpOutput { output: value, constraints: None, error_info: None },
-            region_constraint_data,
-        ))
+        unreachable!();
     } else {
         Ok((
             TypeOpOutput {
