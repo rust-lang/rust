@@ -13,6 +13,7 @@ mod dyn_trait;
 mod error;
 mod eval_queries;
 mod fn_queries;
+mod intrinsics;
 mod machine;
 mod type_info;
 mod valtrees;
