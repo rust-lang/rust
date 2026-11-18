@@ -20,7 +20,7 @@ declare_tool_lint! {
     pub clippy::ALMOST_STANDARD_LINT_FORMULATION,
     Warn,
     "lint formulations must have a standardized format.",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 impl_lint_pass!(AlmostStandardFormulation => [ALMOST_STANDARD_LINT_FORMULATION]);
