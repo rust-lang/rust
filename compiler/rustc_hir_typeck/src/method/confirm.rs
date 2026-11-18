@@ -333,43 +333,32 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
                 }
 
-                self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
-                    // The object data has no entry for the Self
-                    // Type. For the purposes of this method call, we
-                    // instantiate the object type itself. This
-                    // wouldn't be a sound instantiation in all cases,
-                    // since each instance of the object type is a
-                    // different existential and hence could match
-                    // distinct types (e.g., if `Self` appeared as an
-                    // argument type), but those cases have already
-                    // been ruled out when we deemed the trait to be
-                    // "dyn-compatible".
-                    let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
-                    let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
-                    let upcast_trait_ref =
-                        this.instantiate_binder_with_fresh_vars(upcast_poly_trait_ref);
-                    debug!(
-                        "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
-                        original_poly_trait_ref, upcast_trait_ref, trait_def_id
-                    );
-                    upcast_trait_ref.args
-                })
-                .unwrap_or_else(|| {
-                    // An invalid receiver can still lead to an ObjectPick even when we
-                    // can't reach the trait object. if the method failed WF checking,
-                    // recover instead of ICEing.
-                    if pick.item.def_id.as_local().is_some_and(|def_id| {
-                        self.tcx.ensure_result().check_well_formed(def_id).is_err()
-                    }) {
-                        ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[])
-                    } else {
-                        span_bug!(
-                            self.span,
-                            "self-type `{}` for ObjectPick never dereferenced to an object",
-                            self_ty
-                        )
-                    }
-                })
+                self.extract_existential_trait_ref(
+                    self_ty,
+                    trait_def_id,
+                    |this, object_ty, principal| {
+                        // The object data has no entry for the Self
+                        // Type. For the purposes of this method call, we
+                        // instantiate the object type itself. This
+                        // wouldn't be a sound instantiation in all cases,
+                        // since each instance of the object type is a
+                        // different existential and hence could match
+                        // distinct types (e.g., if `Self` appeared as an
+                        // argument type), but those cases have already
+                        // been ruled out when we deemed the trait to be
+                        // "dyn-compatible".
+                        let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
+                        let upcast_poly_trait_ref =
+                            this.upcast(original_poly_trait_ref, trait_def_id);
+                        let upcast_trait_ref =
+                            this.instantiate_binder_with_fresh_vars(upcast_poly_trait_ref);
+                        debug!(
+                            "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
+                            original_poly_trait_ref, upcast_trait_ref, trait_def_id
+                        );
+                        upcast_trait_ref.args
+                    },
+                )
             }
 
             probe::TraitPick { .. } => {
@@ -391,13 +380,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
     }
 
-    fn extract_existential_trait_ref<R, F>(
+    fn extract_existential_trait_ref<F>(
         &mut self,
         self_ty: Ty<'tcx>,
+        trait_def_id: DefId,
         mut closure: F,
-    ) -> Option<R>
+    ) -> GenericArgs<'tcx>
     where
-        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>) -> R,
+        F: FnMut(
+            &mut ConfirmContext<'a, 'tcx>,
+            Ty<'tcx>,
+            ty::PolyExistentialTraitRef<'tcx>,
+        ) -> GenericArgs<'tcx>,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -414,16 +408,25 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             autoderef = autoderef.use_receiver_trait();
         }
 
-        autoderef.include_raw_pointers().find_map(|(ty, _)| match ty.kind() {
-            ty::Dynamic(data, ..) => Some(closure(
-                self,
-                ty,
-                data.principal().unwrap_or_else(|| {
-                    span_bug!(self.span, "calling trait method on empty object?")
-                }),
-            )),
-            _ => None,
-        })
+        autoderef
+            .include_raw_pointers()
+            .find_map(|(ty, _)| match ty.kind() {
+                ty::Dynamic(data, ..) => Some(closure(
+                    self,
+                    ty,
+                    data.principal().unwrap_or_else(|| {
+                        span_bug!(self.span, "calling trait method on empty object?")
+                    }),
+                )),
+                _ => None,
+            })
+            .unwrap_or_else(|| {
+                self.dcx().span_delayed_bug(
+                    self.span,
+                    format!("self-type `{self_ty}` for ObjectPick never dereferenced to an object"),
+                );
+                ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[])
+            })
     }
 
     fn instantiate_method_args(
