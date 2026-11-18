@@ -1,7 +1,6 @@
 //@ build-pass
 //@ add-minicore
 //@ min-llvm-version: 23
-//@ ignore-backends: gcc
 //
 //@ revisions: riscv opt-0-bitcode-no opt-0 opt-s-bitcode-no
 //

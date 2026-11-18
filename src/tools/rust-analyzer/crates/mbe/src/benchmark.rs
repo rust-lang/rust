@@ -229,7 +229,7 @@ fn invocation_fixtures(
             tt::Leaf::Ident(tt::Ident {
                 span: DUMMY,
                 sym: Symbol::intern(ident),
-                is_raw: tt::IdentIsRaw::No,
+                kind: tt::IdentKind::Normal,
             })
         }
         fn make_punct(char: char) -> tt::Leaf {

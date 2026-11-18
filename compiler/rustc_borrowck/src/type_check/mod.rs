@@ -18,7 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations, ScrubbedTraitError};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
@@ -977,7 +977,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     //
                     // Unbound parts of arguments were never required to be Sized
                     // - maybe we should make that a warning.
-                    return;
                 }
                 LocalKind::Temp => {
                     let span = local_decl.source_info.span;
@@ -1847,7 +1846,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
+                    args.terms().map(ty::ClauseKind::WellFormed),
                     locations,
                     ConstraintCategory::Boring,
                 );
@@ -2800,10 +2799,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         let (mut output, region_constraints) =
-            scrape_region_constraints(infcx, root_def_id, "InstantiateOpaqueType", span, |ocx| {
-                ocx.register_obligations(self.obligations.clone());
-                Ok(())
-            })?;
+            scrape_region_constraints::<_, _, ScrubbedTraitError<'tcx>>(
+                infcx,
+                root_def_id,
+                "InstantiateOpaqueType",
+                span,
+                |ocx| {
+                    ocx.register_obligations(self.obligations.clone());
+                    Ok(())
+                },
+            )?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

@@ -1,11 +1,22 @@
 //@ignore-target: windows # No libc socket on Windows
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
+//@run-native
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
 
 fn main() {
     test_accept_nonblock();
@@ -30,6 +41,9 @@ fn test_accept_nonblock() {
 
     // Start server thread.
     let handle = thread::spawn(move || {
+        // Let main thread go first.
+        yield_now();
+
         // Accepting when there is an existing incoming connection should
         // succeed without blocking.
 
@@ -51,11 +65,14 @@ fn test_send_recv_nonblock() {
 
     // Start server thread.
     let handle = thread::spawn(move || {
+        // Let main thread go first.
+        yield_now();
+
         let (mut stream, _addr) = listener.accept().unwrap();
 
         // Yield back to client thread to ensure that the first read
         // is before we write anything into the socket.
-        thread::yield_now();
+        yield_now();
 
         stream.write_all(TEST_BYTES).unwrap();
     });

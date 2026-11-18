@@ -304,6 +304,12 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         bug!("unsupported ppcf128 type")
     }
 
+    fn type_x87_f80(&self) -> Type<'gcc> {
+        // FIXME(x87_f80): The GCC gcc_jit_types enum (which CType is based on) does not
+        // have __float80. It does have long double but it may not correspond to x87 f80.
+        bug!("unsupported x87_f80 type")
+    }
+
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
@@ -396,14 +402,14 @@ pub fn struct_fields<'gcc, 'tcx>(
 
     let mut packed = false;
     let mut offset = Size::ZERO;
-    let mut prev_effective_align = layout.align.abi;
+    let mut prev_effective_align = layout.align;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i);
         let field = layout.field(cx, i);
         let effective_field_align =
-            layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);
-        packed |= effective_field_align < field.align.abi;
+            layout.align.min(field.align).restrict_for_offset(target_offset);
+        packed |= effective_field_align < field.align;
 
         assert!(target_offset >= offset);
         let padding = target_offset - offset;

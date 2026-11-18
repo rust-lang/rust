@@ -301,8 +301,6 @@ declare_features! (
     /// Allows features specific to auto traits.
     /// Renamed from `optin_builtin_traits`.
     (unstable, auto_traits, "1.50.0", Some(13231)),
-    /// Allows builtin # foo() syntax
-    (internal, builtin_syntax, "1.71.0", Some(110680)),
     /// Allows `#[doc(notable_trait)]`.
     /// Renamed from `doc_spotlight`.
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
@@ -310,6 +308,8 @@ declare_features! (
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
+    /// Allows internal syntax.
+    (internal, internal_syntax, "1.101.0", Some(110680)),
     /// Allows using `#[link_name="llvm.*"]`.
     (internal, link_llvm_intrinsics, "1.0.0", Some(29602)),
     /// Allows using the `#[linkage = ".."]` attribute.
@@ -318,8 +318,6 @@ declare_features! (
     (internal, needs_panic_runtime, "1.10.0", Some(32837)),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837)),
-    /// Allows using pattern types.
-    (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
@@ -390,6 +388,8 @@ declare_features! (
     (unstable, asm_goto_with_outputs, "1.85.0", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
+    /// Allows `_` for the name of associated constants.
+    (unstable, associated_const_underscore, "CURRENT_RUSTC_VERSION", Some(158944)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
     /// Allows implementing `AsyncDrop`.
@@ -429,7 +429,7 @@ declare_features! (
     (unstable, cfg_target_object_format, "1.97.0", Some(152586)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
-    /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
+    /// Allows the use of `#[cfg(ub_checks)]` to check if UB checks are enabled.
     (unstable, cfg_ub_checks, "1.79.0", Some(123499)),
     /// Allow conditional compilation depending on rust version
     (unstable, cfg_version, "1.45.0", Some(64796)),
@@ -521,6 +521,8 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
+    /// Externally implementable items with default impls
+    (incomplete, extern_item_default_impls, "CURRENT_RUSTC_VERSION", Some(125418)),
     /// Externally implementable items
     (incomplete, extern_item_impls, "1.94.0", Some(125418)),
     /// Allows defining `extern type`s.
@@ -550,15 +552,17 @@ declare_features! (
     /// Traits for function pointers and items
     (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
-    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
+    (unstable, forced_keywords, "1.101.0", Some(153839)),
+    /// The `Forget` autotrait.
+    (incomplete, forget_trait, "1.101.0", Some(165370)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
     /// Allow function args to be const generics
-    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
+    (incomplete, function_arg_const_generics, "1.101.0", Some(163261)),
     /// Allows using ADTs in directly represented generic const args.
-    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
+    (incomplete, gca_adts, "1.101.0", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
     (incomplete, gca_const_items, "1.95.0", Some(151972)),
     /// Allows directly represented gca_const_items without the `gca!` macro.
@@ -632,7 +636,7 @@ declare_features! (
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows explicitly marking type aliases as unchecked / opting type aliases
     /// out of being checked even if `checked_type_aliases` is enabled or they're a TAIT.
-    (unstable, marked_unchecked_type_aliases, "CURRENT_RUSTC_VERSION", Some(112792)),
+    (unstable, marked_unchecked_type_aliases, "1.101.0", Some(112792)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
@@ -647,11 +651,13 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// The `movdir64b` target feature on x86.
-    (unstable, movdir64b_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    (unstable, movdir64b_target_feature, "1.101.0", Some(163741)),
     /// The `movdiri` target feature on x86.
-    (unstable, movdiri_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    (unstable, movdiri_target_feature, "1.101.0", Some(163741)),
     /// Allows `move(expr)` in closures.
     (incomplete, move_expr, "1.97.0", Some(155050)),
+    /// The `Move` autotrait.
+    (incomplete, move_trait, "CURRENT_RUSTC_VERSION", Some(149607)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -765,6 +771,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
+    /// Allows using reflection features
+    (unstable, type_info, "1.94.0", Some(146922)),
     /// Allows using `_ = <range-or-int>` enum variants.
     (incomplete, unnamed_enum_variants, "1.98.0", Some(156628)),
     /// Allows using `unsafe<'a> &'a T` unsafe binder types.
@@ -778,8 +786,6 @@ declare_features! (
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
-    /// Allows view types.
-    (unstable, view_types, "1.97.0", Some(155938)),
     /// Target features on wasm.
     (unstable, wasm_target_feature, "1.30.0", Some(150260)),
     /// Allows use of attributes in `where` clauses.

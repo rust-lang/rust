@@ -1416,8 +1416,8 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         #[allow(rustc::potential_query_instability)]
         let mut subset_errors: Vec<_> = polonius_output
             .subset_errors
-            .iter()
-            .flat_map(|(_location, subset_errors)| subset_errors.iter())
+            .values()
+            .flat_map(|subset_errors| subset_errors.iter())
             .collect();
         subset_errors.sort();
         subset_errors.dedup();

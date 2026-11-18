@@ -9,10 +9,8 @@ extern crate notable_dep;
 use notable_dep::Spaceship;
 
 //@ has 'foo/struct.Rocket.html'
-// The badge is present...
 //@ has - '//div[@class="notable-trait-badge-container"]/a' 'Spaceship'
-// ...but unlinked: no badge carries an `href`.
-//@ count - '//div[@class="notable-trait-badge-container"]/a[@href]' 1
-//@ has - '//div[@class="notable-trait-badge-container"]/a[@href="#"]' 'ⓘ'
+// We ensure that the `tabindex` is set so you can focus the `span`.
+//@ has - '//div[@class="notable-trait-badge-container"]/span/@tabindex' '0'
 pub struct Rocket;
 impl Spaceship for Rocket {}

@@ -192,7 +192,7 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
     let ecx = ConstEvalCtxt::new(cx);
     let ctxt = span.ctxt();
     if match (ecx.eval_full_int(left, ctxt), ecx.eval_full_int(right, ctxt)) {
-        (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv.abs(),
+        (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.unsigned_abs() < rv.unsigned_abs(),
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
     } {

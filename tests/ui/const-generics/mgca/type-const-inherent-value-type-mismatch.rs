@@ -17,7 +17,5 @@ impl Struct {
 }
 
 fn f() -> [u8; const { Struct::N }] {}
-//~^ ERROR mismatched types [E0308]
-//[next]~| ERROR type annotations needed
 
 fn main() {}

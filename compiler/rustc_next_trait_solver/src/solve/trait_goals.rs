@@ -10,9 +10,9 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, ClausePolarity, ExistentialPredicate, FieldInfo, Interner, MayBeErased, Movability,
-    Region, TraitClause, TraitRef, TypeVisitableExt as _, TypingMode, Unnormalized, Upcast as _,
-    elaborate,
+    self as ty, ClausePolarity, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
+    Interner, MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _,
+    TypingMode, Unnormalized, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace, warn};
 
@@ -212,6 +212,19 @@ where
             return Err(NoSolution.into());
         }
 
+        // Fast path: when the feature is disabled,
+        // assume all types implement `Move`.
+        //
+        // This will trivially make the addition of
+        // `Move` backward compatible with trait bounds
+        if !cx.features().move_trait()
+            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+        {
+            return ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));
+        }
+
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
             return result;
         }
@@ -352,6 +365,33 @@ where
                     Err(NoSolution.into())
                 }
             }
+        }
+    }
+
+    fn consider_builtin_fn_static_trait_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let self_ty = goal.predicate.self_ty();
+        match goal.predicate.polarity {
+            // impl FnStatic for FnDef {}
+            ty::ClausePolarity::Positive => match self_ty.kind() {
+                ty::FnDef(_, _) => {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                }
+                _ => Err(NoSolution.into()),
+            },
+            //  impl !FnStatic for T where T != FnDef && T is rigid {}
+            ty::ClausePolarity::Negative => match self_ty.kind() {
+                ty::FnDef(_, _) if self_ty.is_known_rigid() => {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                }
+                _ => Err(NoSolution.into()),
+            },
         }
     }
 
@@ -802,6 +842,9 @@ where
                 ) => {
                     panic!("unexpected type `{ty:?}`")
                 }
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1413,7 +1456,13 @@ where
 
             // Backward compatibility for default auto traits.
             // Test: ui/traits/default_auto_traits/extern-types.rs
-            ty::Foreign(..) if self.cx().is_default_trait(goal.predicate.def_id()) => check_impls(),
+            ty::Foreign(..)
+                if self
+                    .cx()
+                    .is_implicit_trait(goal.predicate.def_id(), IncludeSizedImplicitBounds::No) =>
+            {
+                check_impls()
+            }
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
@@ -1485,6 +1534,9 @@ where
             ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_, _) => {
                 panic!("unexpected type `{self_ty:?}`")
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

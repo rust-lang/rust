@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 //@ check-fail
 //@ needs-llvm-components: aarch64
 

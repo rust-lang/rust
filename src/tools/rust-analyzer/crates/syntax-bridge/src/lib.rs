@@ -304,7 +304,7 @@ where
                             tt::Ident {
                                 span: conv.span_for(abs_range),
                                 sym: Symbol::intern(&token.to_text(conv)),
-                                is_raw: tt::IdentIsRaw::No,
+                                kind: tt::IdentKind::Normal,
                             }
                             .into()
                         };
@@ -335,7 +335,7 @@ where
                                     abs_range.start() + TextSize::of('\''),
                                     abs_range.end(),
                                 )),
-                                is_raw: tt::IdentIsRaw::No,
+                                kind: tt::IdentKind::Normal,
                             });
                             builder.push(ident);
                             continue;
@@ -425,7 +425,7 @@ fn convert_doc_comment(
     builder: &mut tt::TopSubtreeBuilder,
 ) {
     let mk_ident = |s: &str| {
-        tt::Leaf::from(tt::Ident { sym: Symbol::intern(s), span, is_raw: tt::IdentIsRaw::No })
+        tt::Leaf::from(tt::Ident { sym: Symbol::intern(s), span, kind: tt::IdentKind::Normal })
     };
 
     let mk_punct =
@@ -947,10 +947,13 @@ impl TtTreeSink<'_> {
                 break match self.cursor.token_tree() {
                     Some(tt::TokenTree::Leaf(leaf)) => match leaf {
                         tt::Leaf::Ident(ident) => {
-                            if ident.is_raw.yes() {
-                                self.buf.push_str("r#");
-                                self.text_pos += TextSize::of("r#");
-                            }
+                            let prefix = match ident.kind {
+                                tt::IdentKind::Normal => "",
+                                tt::IdentKind::Raw => "r#",
+                                tt::IdentKind::ForcedKeyword => "k#",
+                            };
+                            self.buf.push_str(prefix);
+                            self.text_pos += TextSize::of(prefix);
                             let text = ident.sym.as_str();
                             self.buf += text;
                             self.text_pos += TextSize::of(text);

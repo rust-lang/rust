@@ -11,7 +11,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.bmi.").unwrap();
@@ -26,15 +26,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // All intrinsics of the "bmi" namespace belong to the "bmi2" ISA extension.
         // The exception is "bextr", which belongs to "bmi1".
         let target_feature = if unprefixed_name == "bextr" { "bmi1" } else { "bmi2" };
-        this.expect_target_feature_for_intrinsic(link_name, target_feature)?;
+        ecx.expect_target_feature_for_intrinsic(link_name, target_feature)?;
 
-        if is_64_bit && this.tcx.sess.target.arch != Arch::X86_64 {
+        if is_64_bit && ecx.tcx.sess.target.arch != Arch::X86_64 {
             return interp_ok(EmulateItemResult::NotSupported);
         }
 
-        let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-        let left = this.read_scalar(left)?;
-        let right = this.read_scalar(right)?;
+        let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+        let left = ecx.read_scalar(left)?;
+        let right = ecx.read_scalar(right)?;
 
         let left = if is_64_bit { left.to_u64()? } else { u64::from(left.to_u32()?) };
         let right = if is_64_bit { right.to_u64()? } else { u64::from(right.to_u32()?) };
@@ -100,7 +100,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             Scalar::from_u32(u32::try_from(result).unwrap())
         };
-        this.write_scalar(result, dest)?;
+        ecx.write_scalar(result, dest)?;
 
         interp_ok(EmulateItemResult::NeedsReturn)
     }

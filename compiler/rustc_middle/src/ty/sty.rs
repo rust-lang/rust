@@ -18,7 +18,8 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{
-    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeVisitableExt, elaborate,
+    self as ir, BoundVar, CallerBoundsIterator, CollectAndApply, MayBeErased, TypeVisitableExt,
+    elaborate,
 };
 use tracing::instrument;
 use ty::util::IntTypeExt;
@@ -327,7 +328,7 @@ impl ParamConst {
 
     #[instrument(level = "debug")]
     pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().non_trait_clauses().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(param_ct, ty) => {
@@ -636,41 +637,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgs<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
-        if cfg!(debug_assertions) {
-            match tcx.def_kind(def.did()) {
-                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
-                DefKind::Mod
-                | DefKind::Variant
-                | DefKind::Trait
-                | DefKind::TyAlias
-                | DefKind::ForeignTy
-                | DefKind::TraitAlias
-                | DefKind::AssocTy
-                | DefKind::TyParam
-                | DefKind::Fn
-                | DefKind::Const
-                | DefKind::ConstParam
-                | DefKind::Static { .. }
-                | DefKind::Ctor(..)
-                | DefKind::AssocFn
-                | DefKind::AssocConst
-                | DefKind::Macro(..)
-                | DefKind::ExternCrate
-                | DefKind::Use
-                | DefKind::ForeignMod
-                | DefKind::AnonConst
-                | DefKind::OpaqueTy
-                | DefKind::Field
-                | DefKind::LifetimeParam
-                | DefKind::GlobalAsm
-                | DefKind::Impl { .. }
-                | DefKind::Closure
-                | DefKind::SyntheticCoroutineBody
-                | DefKind::TestBinderConstraints => {
-                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
-                }
-            }
-        }
+        tcx.debug_assert_adt_def_kind_compatible(def);
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -866,6 +833,25 @@ impl<'tcx> Ty<'tcx> {
                 }
             });
         Ty::new_coroutine_witness(tcx, def_id, args)
+    }
+
+    pub fn new_view(
+        tcx: TyCtxt<'tcx>,
+        def: AdtDef<'tcx>,
+        args: GenericArgs<'tcx>,
+        fields: &[FieldIdx],
+    ) -> Ty<'tcx> {
+        tcx.debug_assert_args_compatible(def.did(), args);
+        tcx.debug_assert_adt_def_kind_compatible(def);
+
+        let base = Ty::new_adt(tcx, def, args);
+
+        let fields = fields
+            .iter()
+            .map(|field| Ty::new_field_representing_type(tcx, base, FIRST_VARIANT, *field));
+        let fields = Ty::new_tup_from_iter(tcx, fields);
+
+        Ty::new(tcx, TyKind::View(def, args, fields))
     }
 
     // misc
@@ -1760,6 +1746,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1792,6 +1781,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_) => Ok(tcx.types.unit),
             // Extern types have metadata = ().
             ty::Foreign(..) => Ok(tcx.types.unit),
+            // FIXME(scrabsha): i expect views to behave like foreign types here?
+            ty::View(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             ty::Adt(..) => Ok(tcx.types.unit),
@@ -1998,7 +1989,9 @@ impl<'tcx> Ty<'tcx> {
                 ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
             }),
 
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) | ty::View(..) => {
+                false
+            }
 
             ty::Infer(ty::TyVar(_)) => false,
 
@@ -2064,6 +2057,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
                 false
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2109,6 +2105,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Alias(..)
+            | ty::View(..)
             | ty::Error(_) => false,
         }
     }

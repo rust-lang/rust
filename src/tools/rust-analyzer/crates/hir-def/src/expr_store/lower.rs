@@ -1645,7 +1645,13 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Expr::YieldExpr(e) => {
                 self.is_lowering_coroutine = true;
-                let expr = e.expr().map(|e| self.collect_expr(e));
+                let mut expr = e.expr().map(|e| self.collect_expr(e));
+                if matches!(self.awaitable_context, Some(Awaitable::Yes)) {
+                    // `async gen`.
+                    let yielded = expr.unwrap_or_else(|| self.alloc_expr_desugared_with_ptr(Expr::Tuple { exprs: Box::new([]) }, syntax_ptr));
+                    let async_gen_ready = self.alloc_expr_desugared(self.lang_path_expr(self.lang_items().AsyncGenReady));
+                    expr = Some(self.alloc_expr_desugared_with_ptr(Expr::Call { callee: async_gen_ready, args: Box::new([yielded]) }, syntax_ptr))
+                }
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
             ast::Expr::YeetExpr(e) => {

@@ -22,7 +22,7 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
-use rustc_session::config::{OptLevel, OutputFilenames, OutputType};
+use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_session::{BorrowedIncrCompSession, Session};
 use rustc_span::Symbol;
 
@@ -318,11 +318,7 @@ impl WriteBackendMethods for AotDriver {
     type TargetMachine = ();
     type ThinData = Infallible;
 
-    fn target_machine_factory(
-        &self,
-        _sess: &Session,
-        _opt_level: OptLevel,
-    ) -> TargetMachineFactoryFn<Self> {
+    fn target_machine_factory(&self, _sess: &Session) -> TargetMachineFactoryFn<Self> {
         Arc::new(|_, _| ())
     }
 

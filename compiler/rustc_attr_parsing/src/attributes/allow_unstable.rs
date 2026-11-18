@@ -83,7 +83,7 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         match cx.ast_target {
-            AstTarget::Fn(_) | AstTarget::Method(_) => {
+            AstTarget::Fn(_) | AstTarget::Method(..) => {
                 let fn_sig =
                     cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
                 if matches!(fn_sig.header.constness, Const::No) {

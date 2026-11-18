@@ -1,0 +1,33 @@
+error: unresolved link to `configration`
+  --> $DIR/reference-label-typo-no-suggestion-issue-132788.rs:4:12
+   |
+LL | /// [Read](configration).
+   |            ^^^^^^^^^^^^ no item named `configration` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+note: the lint level is defined here
+  --> $DIR/reference-label-typo-no-suggestion-issue-132788.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `zebra`
+  --> $DIR/reference-label-typo-no-suggestion-issue-132788.rs:11:6
+   |
+LL | /// [zebra].
+   |      ^^^^^ no item named `zebra` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[zebra]: https://...`
+
+error: unresolved link to `configration`
+  --> $DIR/reference-label-typo-no-suggestion-issue-132788.rs:19:6
+   |
+LL | /// [configration].
+   |      ^^^^^^^^^^^^ no item named `configration` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[configration]: https://...`
+
+error: aborting due to 3 previous errors
+

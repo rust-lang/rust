@@ -93,7 +93,6 @@ impl<'db> ObligationStorage<'db> {
             // we get all obligations involved in the overflow. We pretty much check: if
             // we were to do another step of `try_evaluate_obligations`, which goals would
             // change.
-            // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
             self.overflowed.extend(
                 self.pending
                     .extract_if(.., |(o, stalled_on)| {

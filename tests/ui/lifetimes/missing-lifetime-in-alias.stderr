@@ -53,6 +53,8 @@ LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
 note: associated type defined here, with 1 lifetime parameter: `'b`
   --> $DIR/missing-lifetime-in-alias.rs:4:10
    |
+LL | trait Trait<'a> {
+...
 LL |     type Bar<'b>
    |          ^^^ --
 help: add missing lifetime argument

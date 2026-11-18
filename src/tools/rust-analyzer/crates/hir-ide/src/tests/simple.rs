@@ -2112,16 +2112,17 @@ fn test(mut cx: Context<'_>) {
         expect![[r#"
             91..97 'mut cx': Context<'?>
             112..239 '{     ...cx); }': ()
-            122..135 'mut generator': impl AsyncIterator<Item = {unknown}>
-            138..174 'async ...     }': impl AsyncIterator<Item = {unknown}>
+            122..135 'mut generator': impl AsyncIterator<Item = i8>
+            138..174 'async ...     }': impl AsyncIterator<Item = i8>
+            158..167 'yield 1i8': Poll<Option<i8>>
             158..167 'yield 1i8': ()
             164..167 '1i8': i8
-            184..190 'result': Poll<Option<{unknown}>>
-            193..201 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = {unknown}>>(&'? mut impl AsyncIterator<Item = {unknown}>) -> Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
-            193..217 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
-            193..236 'Pin::n...ut cx)': Poll<Option<{unknown}>>
-            202..216 '&mut generator': &'? mut impl AsyncIterator<Item = {unknown}>
-            207..216 'generator': impl AsyncIterator<Item = {unknown}>
+            184..190 'result': Poll<Option<i8>>
+            193..201 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = i8>>(&'? mut impl AsyncIterator<Item = i8>) -> Pin<&'? mut impl AsyncIterator<Item = i8>>
+            193..217 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = i8>>
+            193..236 'Pin::n...ut cx)': Poll<Option<i8>>
+            202..216 '&mut generator': &'? mut impl AsyncIterator<Item = i8>
+            207..216 'generator': impl AsyncIterator<Item = i8>
             228..235 '&mut cx': &'? mut Context<'?>
             233..235 'cx': Context<'?>
         "#]],
@@ -2179,6 +2180,7 @@ fn test(mut cx: Context<'_>) {
         "#,
         expect![[r#"
             103..120 '{     ... (); }': ()
+            109..117 'yield ()': Poll<Option<()>>
             109..117 'yield ()': ()
             115..117 '()': ()
             130..136 'mut cx': Context<'?>
@@ -3828,8 +3830,8 @@ fn offset_of() {
     check_types(
         r#"
 fn main() {
-    builtin#offset_of((,), 0);
- // ^^^^^^^^^^^^^^^^^^^^^^^^^ usize
+    k#offset_of((,), 0);
+ // ^^^^^^^^^^^^^^^^^^^ usize
 }
 "#,
     );
@@ -3843,8 +3845,8 @@ fn builtin_format_args() {
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
- // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'?>
+    k#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'?>
 }
 "#,
     );
@@ -4099,13 +4101,13 @@ fn foo() {
             24..27 '123': i32
             37..38 's': &'? str
             46..48 '{}': ()
-            !0..68 'builti...");},)': ()
-            !40..43 'bar': fn bar() -> i32
-            !40..45 'bar()': i32
-            !51..66 '{baz("hello");}': ()
-            !52..55 'baz': fn baz(&'? str)
-            !52..64 'baz("hello")': ()
-            !56..63 '"hello"': &'static str
+            !0..62 'k#asm(...");},)': ()
+            !34..37 'bar': fn bar() -> i32
+            !34..39 'bar()': i32
+            !45..60 '{baz("hello");}': ()
+            !46..49 'baz': fn baz(&'? str)
+            !46..58 'baz("hello")': ()
+            !50..57 '"hello"': &'static str
             59..257 '{     ...   } }': ()
             65..255 'unsafe...     }': ()
         "#]],

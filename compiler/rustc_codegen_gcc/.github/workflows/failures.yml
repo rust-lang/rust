@@ -100,6 +100,10 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: ./y.sh prepare
 
+    - name: Check out rust-lang/rust
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
+      uses: ./.github/actions/checkout-rust
+
     - name: Run tests
       # FIXME: re-enable those tests for libgccjit 12.
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'

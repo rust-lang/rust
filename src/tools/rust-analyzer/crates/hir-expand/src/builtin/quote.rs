@@ -3,12 +3,12 @@
 use intern::{Symbol, sym};
 use span::Span;
 use syntax::ToSmolStr;
-use tt::IdentIsRaw;
+use tt::IdentKind;
 
 use crate::{name::Name, tt::TopSubtreeBuilder};
 
 pub(crate) fn dollar_crate(span: Span) -> tt::Ident {
-    tt::Ident { sym: sym::dollar_crate, span, is_raw: tt::IdentIsRaw::No }
+    tt::Ident { sym: sym::dollar_crate, span, kind: tt::IdentKind::Normal }
 }
 
 // A helper macro quote macro
@@ -80,7 +80,7 @@ macro_rules! quote_impl__ {
             $crate::tt::Leaf::Ident($crate::tt::Ident {
                 sym: intern::Symbol::intern(stringify!($tt)),
                 span: $span,
-                is_raw: tt::IdentIsRaw::No,
+                kind: tt::IdentKind::Normal,
             })
         );
     };
@@ -201,7 +201,7 @@ impl_to_to_tokentrees! {
     span: u32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: usize => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: i32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
-    span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
+    span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, kind: tt::IdentKind::Normal } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
@@ -209,19 +209,19 @@ impl_to_to_tokentrees! {
     span: &str => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
     span: String => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
     span: Name => self {
-        let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
-        crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }
+        let (kind, s) = IdentKind::split_from_symbol(self.as_str());
+        crate::tt::Ident{sym: Symbol::intern(s), span, kind }
     };
     span: Symbol => self {
-        let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
-        crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }
+        let (kind, s) = IdentKind::split_from_symbol(self.as_str());
+        crate::tt::Ident{sym: Symbol::intern(s), span, kind }
     };
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tt;
-    use ::tt::IdentIsRaw;
+    use ::tt::IdentKind;
     use expect_test::expect;
     use intern::Symbol;
     use span::{Edition, ROOT_ERASED_FILE_AST_ID, SpanAnchor, SyntaxContext};
@@ -261,8 +261,8 @@ mod tests {
     }
 
     fn mk_ident(name: &str) -> crate::tt::Ident {
-        let (is_raw, s) = IdentIsRaw::split_from_symbol(name);
-        crate::tt::Ident { sym: Symbol::intern(s), span: DUMMY, is_raw }
+        let (kind, s) = IdentKind::split_from_symbol(name);
+        crate::tt::Ident { sym: Symbol::intern(s), span: DUMMY, kind }
     }
 
     #[test]

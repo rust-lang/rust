@@ -57,7 +57,7 @@ pub fn rustc_minicore() -> Rustc {
     let mut builder = rustc();
 
     let minicore_path = source_root().join("tests/auxiliary/minicore.rs");
-    builder.input(minicore_path).crate_name("minicore").crate_type("rlib");
+    builder.input(minicore_path).crate_name("minicore").crate_type("rlib").edition("2024");
 
     builder
 }
@@ -109,6 +109,9 @@ impl Rustc {
         if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
             cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
         }
+
+        // Use a single frontend thread by default, for now
+        cmd.arg("-Zthreads=1");
 
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }

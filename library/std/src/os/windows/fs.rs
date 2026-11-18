@@ -386,17 +386,15 @@ pub trait OpenOptionsExt {
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
-    /// # #[cfg(for_demonstration_only)]
-    /// extern crate winapi;
-    /// # mod winapi { pub const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000; }
-    ///
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
+    ///
+    /// # pub const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000;
     ///
     /// let file = OpenOptions::new()
     ///     .create(true)
     ///     .write(true)
-    ///     .custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE)
+    ///     .custom_flags(FILE_FLAG_DELETE_ON_CLOSE)
     ///     .open("foo.txt");
     /// ```
     ///
@@ -425,17 +423,15 @@ pub trait OpenOptionsExt {
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
-    /// # #[cfg(for_demonstration_only)]
-    /// extern crate winapi;
-    /// # mod winapi { pub const FILE_ATTRIBUTE_HIDDEN: u32 = 2; }
-    ///
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
+    ///
+    /// # pub const FILE_ATTRIBUTE_HIDDEN: u32 = 2;
     ///
     /// let file = OpenOptions::new()
     ///     .write(true)
     ///     .create(true)
-    ///     .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
+    ///     .attributes(FILE_ATTRIBUTE_HIDDEN)
     ///     .open("foo.txt");
     /// ```
     ///
@@ -468,19 +464,15 @@ pub trait OpenOptionsExt {
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
-    /// # #[cfg(for_demonstration_only)]
-    /// extern crate winapi;
-    /// # mod winapi { pub const SECURITY_IDENTIFICATION: u32 = 0; }
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
+    ///
+    /// # pub const SECURITY_IDENTIFICATION: u32 = 0;
     ///
     /// let file = OpenOptions::new()
     ///     .write(true)
     ///     .create(true)
-    ///
-    ///     // Sets the flag value to `SecurityIdentification`.
-    ///     .security_qos_flags(winapi::SECURITY_IDENTIFICATION)
-    ///
+    ///     .security_qos_flags(SECURITY_IDENTIFICATION)
     ///     .open(r"\\.\pipe\MyPipe");
     /// ```
     ///

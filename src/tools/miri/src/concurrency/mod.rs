@@ -13,7 +13,7 @@ pub mod weak_memory;
 #[cfg_attr(
     not(all(
         feature = "genmc",
-        target_os = "linux",
+        any(target_os = "linux", target_os = "macos"),
         target_pointer_width = "64",
         target_endian = "little"
     )),

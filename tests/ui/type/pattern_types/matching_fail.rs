@@ -1,4 +1,4 @@
-#![feature(pattern_types, pattern_type_macro, structural_match)]
+#![feature(pattern_types, structural_match)]
 
 use std::pat::pattern_type;
 

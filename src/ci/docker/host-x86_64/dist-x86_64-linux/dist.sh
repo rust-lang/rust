@@ -16,8 +16,10 @@ python3 ../x.py build --set rust.debug=true opt-dist
 # Use GCC for building GCC components, as it seems to behave badly when built with Clang
 # Only build GCC on full builds, not try builds
 if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
-    # We add the binutils binary path to ensure that it uses the 2.47 version of binutils,
-    # which is needed for the `retain` attribute feature.
+    # We add the binutils binary path to ensure that it uses the 2.38 version of binutils.
+    # We need the 2.36 version for the `retain` attribute feature but we're stuck with an
+    # old assembler in another CI image so we cannot go above 2.38, otherwise it doesn't
+    # work anymore. Fun times.
     export PATH="/tmp/binutils-install/bin:$PATH"
 
     CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ \

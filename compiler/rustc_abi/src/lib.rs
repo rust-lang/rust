@@ -41,7 +41,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZero, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub};
 use std::range::RangeInclusive;
 use std::str::FromStr;
 
@@ -327,6 +327,7 @@ pub struct TargetDataLayout {
     pub f16_align: Align,
     pub f32_align: Align,
     pub f64_align: Align,
+    pub x87_f80_align: Align,
     pub f128_align: Align,
     pub aggregate_align: Align,
 
@@ -367,6 +368,7 @@ impl Default for TargetDataLayout {
             f16_align: align(16),
             f32_align: align(32),
             f64_align: align(64),
+            x87_f80_align: align(128),
             f128_align: align(128),
             aggregate_align: align(8),
             vector_align: vec![
@@ -510,6 +512,7 @@ impl TargetDataLayout {
                 ["f16", a @ ..] => dl.f16_align = parse_align_seq(a, "f16")?,
                 ["f32", a @ ..] => dl.f32_align = parse_align_seq(a, "f32")?,
                 ["f64", a @ ..] => dl.f64_align = parse_align_seq(a, "f64")?,
+                ["f80", a @ ..] => dl.x87_f80_align = parse_align_seq(a, "f80")?,
                 ["f128", a @ ..] => dl.f128_align = parse_align_seq(a, "f128")?,
                 [p, s, a @ ..] if p.starts_with("p") => {
                     let mut p = p.strip_prefix('p').unwrap();
@@ -1216,46 +1219,6 @@ impl Align {
     }
 }
 
-/// A pair of alignments, ABI-mandated and preferred.
-///
-/// The "preferred" alignment is an LLVM concept that is virtually meaningless to Rust code:
-/// it is not exposed semantically to programmers nor can they meaningfully affect it.
-/// The only concern for us is that preferred alignment must not be less than the mandated alignment
-/// and thus in practice the two values are almost always identical.
-///
-/// An example of a rare thing actually affected by preferred alignment is aligning of statics.
-/// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub struct AbiAlign {
-    pub abi: Align,
-}
-
-impl AbiAlign {
-    #[inline]
-    pub fn new(align: Align) -> AbiAlign {
-        AbiAlign { abi: align }
-    }
-
-    #[inline]
-    pub fn min(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.min(other.abi) }
-    }
-
-    #[inline]
-    pub fn max(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.max(other.abi) }
-    }
-}
-
-impl Deref for AbiAlign {
-    type Target = Align;
-
-    fn deref(&self) -> &Self::Target {
-        &self.abi
-    }
-}
-
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -1427,10 +1390,22 @@ pub enum Float {
     F16B,
     F32,
     F64,
+    /// `x87_f80`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    ///
+    /// Here we define the 80-bit scalar value that corresponds to the `x87_f80_raw` lang item.
+    /// In `core::arch::{x86, x86_64}` this type is wrapped by the `x87_f80` lang item that adds
+    /// the proper alignment and bumps the size to either 12 or 16 bytes depending on the target.
+    ///
+    /// Only used on x86 and x86_64 targets.
+    X87F80,
     F128,
     /// `ppcf128`. This is not a builtin type in Rust (it is exposed as a lang item),
     /// but it is a builtin type in LLVM so needs to be explicitly represented
     /// in the backend.
+    ///
+    /// Only used on powerpc and powerpc64 targets.
     PpcF128,
 }
 
@@ -1443,6 +1418,7 @@ impl Float {
             F16B => Size::from_bits(16),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
+            X87F80 => Size::from_bits(80),
             F128 => Size::from_bits(128),
             PpcF128 => Size::from_bits(128),
         }
@@ -1456,6 +1432,9 @@ impl Float {
             F16 | F16B => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
+            // Use an alignment of 1 for x87_f80_raw,
+            // so that its size really is 80 bits in memory.
+            X87F80 => Align::ONE,
             F128 => dl.f128_align,
             PpcF128 => dl.f128_align,
         }
@@ -1469,6 +1448,7 @@ impl Float {
             F16B => "f16b",
             F32 => "f32",
             F64 => "f64",
+            X87F80 => "x87_f80",
             F128 => "f128",
             PpcF128 => "ppcf128",
         }
@@ -1479,7 +1459,7 @@ impl Float {
 
         match self {
             F16 | F32 | F64 | F128 => true,
-            F16B | PpcF128 => false,
+            F16B | X87F80 | PpcF128 => false,
         }
     }
 }
@@ -1505,9 +1485,9 @@ impl Numeric {
         match self {
             Numeric::Int(_, _) => RegKind::Integer,
             Numeric::Float(Float::PpcF128) => RegKind::PpcF128,
-            Numeric::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
-                RegKind::Float
-            }
+            Numeric::Float(
+                Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::X87F80 | Float::F128,
+            ) => RegKind::Float,
         }
     }
 }
@@ -1818,12 +1798,12 @@ impl NumScalableVectors {
         NumScalableVectors(1)
     }
 
-    // Returns `NumScalableVectors` for values of two through eight, which are a valid number of
-    // fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
-    // but not for a tuple which would have a field count.
+    /// Returns `NumScalableVectors` for values of two through eight, which are a valid number of
+    /// fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
+    /// but not for a tuple which would have a field count.
     pub fn from_field_count(count: usize) -> Option<Self> {
         match count {
-            2..8 => Some(NumScalableVectors(count as u8)),
+            2..=8 => Some(NumScalableVectors(count as u8)),
             _ => None,
         }
     }
@@ -2261,7 +2241,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
     pub uninhabited: bool,
 
-    pub align: AbiAlign,
+    pub align: Align,
     pub size: Size,
 
     /// The largest alignment explicitly requested with `repr(align)` on this type or any field.

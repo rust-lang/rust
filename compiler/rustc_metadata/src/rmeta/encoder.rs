@@ -945,26 +945,22 @@ struct AnalyzeAttrState {
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
 fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -> bool {
-    let mut should_encode = false;
-    if let rustc_attr_ir::Attribute::Parsed(p) = attr
-        && p.encode_cross_crate() == EncodeCrossCrate::No
-    {
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
-        // We keep all doc comments reachable to rustdoc because they might be "imported" into
-        // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
-        // their own.
-        if state.is_exported {
-            should_encode = true;
+    match attr {
+        Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+            // We keep all doc comments reachable to rustdoc because they might be "imported" into
+            // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
+            // their own.
+            state.is_exported
         }
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
-        should_encode = true;
-        if d.hidden.is_some() {
-            state.is_doc_hidden = true;
+        Attribute::Parsed(AttributeKind::Doc(d)) => {
+            if d.hidden.is_some() {
+                state.is_doc_hidden = true;
+            }
+            true
         }
-    } else {
-        should_encode = true;
+        Attribute::Parsed(p) => p.encode_cross_crate() == EncodeCrossCrate::Yes,
+        Attribute::Tool(_) | Attribute::DeriveHelper(_) => true,
     }
-    should_encode
 }
 
 fn should_encode_span(def_kind: DefKind) -> bool {
@@ -1159,7 +1155,9 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// Computing, optimizing and encoding the MIR is a relatively expensive operation.
 /// We want to avoid this work when not required. Therefore:
 /// - we only compute `mir_for_ctfe` on items with const-eval semantics;
-/// - we skip `optimized_mir` for check runs.
+/// - we skip `optimized_mir` for check runs. `reachable_set` is used to determine which of
+///   the generic functions could need their mir downstream. During check runs this should be
+///   `None`, as calculating it is expensive
 /// - we only encode `optimized_mir` that could be generated in other crates, that is, a code that
 ///   is either generic or has inline hint, and is reachable from the other crates (contained
 ///   in reachable set).
@@ -1176,9 +1174,11 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// ```
 fn should_encode_mir(
     tcx: TyCtxt<'_>,
-    reachable_set: &LocalDefIdSet,
+    reachable_set: Option<&LocalDefIdSet>,
     def_id: LocalDefId,
 ) -> (bool, bool) {
+    assert_eq!(reachable_set.is_some(), tcx.sess.opts.output_types.should_codegen());
+
     match tcx.def_kind(def_id) {
         // instance_mir uses mir_for_ctfe rather than optimized_mir for constructors
         DefKind::Ctor(_, _) => (true, false),
@@ -1190,8 +1190,7 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
-                || (tcx.sess.opts.output_types.should_codegen()
-                    && reachable_set.contains(&def_id)
+                || (reachable_set.is_some_and(|reachable_set| reachable_set.contains(&def_id))
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // Comptime fns do not have optimized MIR at all.
@@ -1899,6 +1898,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         self.table_writer().assoc_container(def_id, item.container);
 
+        if let Some(item_name) = item.opt_name() {
+            self.table_writer().opt_item_name(def_id, Some(item_name));
+        }
+
         if let AssocContainer::Trait = item.container
             && item.is_type()
         {
@@ -1935,7 +1938,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        let reachable_set = tcx.reachable_set(());
+        // skip reachable_set calculation when not doing codegen. It is only used when checking
+        // whether something could be monomorphized downstream
+        let reachable_set =
+            tcx.sess.opts.output_types.should_codegen().then(|| tcx.reachable_set(()));
 
         let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
             let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
@@ -2480,7 +2486,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         if tcx.is_trivial_const(def_id) {
             return;
         }
-        let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
+        let (encode_const, encode_opt) = should_encode_mir(tcx, Some(reachable_set), def_id);
 
         if encode_const {
             tcx.ensure_done().mir_for_ctfe(def_id);
@@ -2656,7 +2662,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         return;
     };
 
-    if tcx.sess.opts.jobs.frontend.is_some() {
+    if tcx.sess.opts.jobs.frontend.is_parallel() {
         // Prefetch some queries used by metadata encoding.
         // This is not necessary for correctness, but is only done for performance reasons.
         // It can be removed if it turns out to cause trouble or be detrimental to performance.

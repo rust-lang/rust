@@ -10,8 +10,8 @@ use rustc_hir::PolyTraitRef;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
-    self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, Upcast,
+    self as ty, IncludeSizedImplicitBounds, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, bug, kw};
 use rustc_trait_selection::traits;
@@ -138,6 +138,29 @@ fn add_trait_bound<'tcx>(
 }
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Adds implicit sizedness, and in the future `Move` and `Forget`, and default trait bounds.
+    pub(crate) fn add_implicit_bounds(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &[hir::GenericBound<'_>],
+        context: ImpliedBoundsContext<'tcx>,
+        span: Span,
+        // Sized is treated slightly more specially than the other implicit bounds.
+        include_sized: IncludeSizedImplicitBounds,
+    ) {
+        // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
+        if find_attr!(self.tcx(), crate, RustcNoImplicitBounds) {
+            return;
+        }
+
+        self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
+
+        if let IncludeSizedImplicitBounds::Yes = include_sized {
+            self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
+        }
+    }
+
     /// Adds sizedness bounds to a trait, trait alias, parameter, opaque type or associated type.
     ///
     /// - On parameters, opaque type and associated types, add default `Sized` bound if no explicit
@@ -146,7 +169,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///   bounds are present.
     /// - On parameters, opaque type, associated types and trait aliases, add a `MetaSized` bound if
     ///   a `?Sized` bound is present.
-    pub(crate) fn add_implicit_sizedness_bounds(
+    fn add_implicit_sizedness_bounds(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
@@ -155,11 +178,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
-
-        // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
-        if find_attr!(tcx, crate, RustcNoImplicitBounds) {
-            return;
-        }
 
         let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
         let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
@@ -208,7 +226,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    pub(crate) fn add_default_traits(
+    fn add_default_traits(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
@@ -224,7 +242,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `experimental_default_bounds` bound to the `bounds` if appropriate.
     ///
     /// Doesn't add the bound if the HIR bounds contain any of `Trait`, `?Trait` or `!Trait`.
-    pub(crate) fn add_default_trait(
+    fn add_default_trait(
         &self,
         trait_: LangItem,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
@@ -244,21 +262,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let Some(trait_did) = tcx.lang_items().get(trait_)
-            && self.should_add_default_traits(trait_did, hir_bounds, context)
+            && !collect_bounds(hir_bounds, context, trait_did).any()
         {
             add_trait_bound(tcx, bounds, self_ty, trait_did, span);
         }
-    }
-
-    /// Returns `true` if default trait bound should be added.
-    fn should_add_default_traits(
-        &self,
-        trait_def_id: DefId,
-        hir_bounds: &[hir::GenericBound<'_>],
-        context: ImpliedBoundsContext<'tcx>,
-    ) -> bool {
-        let collected = collect_bounds(hir_bounds, context, trait_def_id);
-        !find_attr!(self.tcx(), crate, RustcNoImplicitBounds) && !collected.any()
     }
 
     pub(crate) fn require_bound_to_relax_default_trait(
@@ -269,7 +276,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
-            && (tcx.is_lang_item(def_id, LangItem::Sized) || tcx.is_default_trait(def_id))
+            && (tcx.is_lang_item(def_id, LangItem::Sized)
+                || tcx.is_implicit_trait(def_id, IncludeSizedImplicitBounds::No))
         {
             return;
         }

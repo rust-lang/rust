@@ -38,6 +38,7 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
             Float::F16B => bug!("f16b is not supported by the Cranelift codegen backend"),
             Float::F32 => types::F32,
             Float::F64 => types::F64,
+            Float::X87F80 => bug!("cranelift does not support x87 floats"),
             Float::F128 => types::F128,
             Float::PpcF128 => bug!("cranelift does not support powerpc"),
         },

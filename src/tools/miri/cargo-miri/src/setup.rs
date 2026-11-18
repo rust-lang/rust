@@ -19,10 +19,11 @@ pub fn setup(
     rustc_version: &VersionMeta,
     verbose: usize,
     quiet: bool,
+    args: &Args,
 ) -> PathBuf {
     let only_setup = matches!(subcommand, MiriCommand::Setup);
     let ask_user = !only_setup;
-    let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let print_sysroot = only_setup && args.has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     let show_setup = only_setup && !print_sysroot;
     if !only_setup && let Some(sysroot) = std::env::var_os("MIRI_SYSROOT") {
         // Skip setup step if MIRI_SYSROOT is explicitly set, *unless* we are `cargo miri setup`.

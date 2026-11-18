@@ -1,7 +1,7 @@
 use syntax::{
     Direction, SyntaxKind, T,
     ast::{self, AstNode, edit::IndentLevel},
-    syntax_editor::{Element, Position},
+    syntax_editor::{Element, Position, index_no_trivia},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -65,7 +65,7 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
                 make.or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
             };
             let new_match_arm = make.match_arm(new_pat, match_arm.guard(), match_arm_body);
-            let mut pipe_index = pipe_token.index();
+            let mut pipe_index = index_no_trivia(&pipe_token.clone().into());
             if pipe_token
                 .prev_sibling_or_token()
                 .is_some_and(|it| it.kind() == SyntaxKind::WHITESPACE)
@@ -75,7 +75,7 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             for child in or_pat
                 .syntax()
                 .children_with_tokens()
-                .skip_while(|child| child.index() < pipe_index)
+                .skip_while(|child| index_no_trivia(child) < pipe_index)
             {
                 editor.delete(child.syntax_element());
             }

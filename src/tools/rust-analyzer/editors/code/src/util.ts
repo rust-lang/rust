@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, spawn, type SpawnOptionsWithoutStdio, type ExecOptions } from "child_process";
+import {
+    exec,
+    spawn,
+    type SpawnOptionsWithoutStdio,
+    type ExecOptionsWithStringEncoding,
+} from "child_process";
 import { inspect } from "util";
 import type { CargoRunnableArgs, ShellRunnableArgs } from "./lsp_ext";
 
@@ -138,7 +143,7 @@ export function memoizeAsync<Ret, TThis, Param extends string>(
 }
 
 /** Awaitable wrapper around `child_process.exec` */
-export function execute(command: string, options: ExecOptions): Promise<string> {
+export function execute(command: string, options: ExecOptionsWithStringEncoding): Promise<string> {
     log.info(`running command: ${command}`);
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, stderr) => {

@@ -372,6 +372,11 @@ impl<I: Interner> FlagComputation<I> {
                     computation.add_ty(ty);
                 })
             }
+
+            ty::View(_, args, fields) => {
+                self.add_args(args.as_slice());
+                self.add_ty(fields);
+            }
         }
     }
 

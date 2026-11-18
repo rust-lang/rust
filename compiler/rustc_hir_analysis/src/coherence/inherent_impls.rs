@@ -225,6 +225,9 @@ impl<'tcx> InherentCollect<'tcx> {
             }
             // We could bail out here, but that will silence other useful errors.
             ty::Error(_) => Ok(()),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

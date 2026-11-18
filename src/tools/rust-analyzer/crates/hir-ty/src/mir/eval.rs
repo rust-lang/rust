@@ -1501,15 +1501,22 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 }
                 CastKind::IntToFloat => {
                     let current_ty = self.operand_ty(operand, locals)?;
-                    let is_signed = matches!(current_ty.kind(), TyKind::Int(_)).into();
-                    let value = pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed);
-                    let value = i128::from_le_bytes(value);
+                    let is_signed = matches!(current_ty.kind(), TyKind::Int(_));
+                    let value =
+                        pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed.into());
+                    let value = u128::from_le_bytes(value);
                     let TyKind::Float(target_ty) = target_ty.as_ref().kind() else {
                         not_supported!("invalid int to float cast");
                     };
                     match target_ty {
-                        rustc_type_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
-                        rustc_type_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        rustc_type_ir::FloatTy::F32 => {
+                            let value = if is_signed { value as i128 as f32 } else { value as f32 };
+                            Owned(value.to_le_bytes().to_vec())
+                        }
+                        rustc_type_ir::FloatTy::F64 => {
+                            let value = if is_signed { value as i128 as f64 } else { value as f64 };
+                            Owned(value.to_le_bytes().to_vec())
+                        }
                         rustc_type_ir::FloatTy::F16 | rustc_type_ir::FloatTy::F128 => {
                             not_supported!("unstable floating point type f16 and f128");
                         }
@@ -2103,7 +2110,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 self.stack.copy_within(src..src + r.size, dst)
             }
             (Heap(dst), Heap(src)) => {
-                if self.stack.len() < src + r.size || self.stack.len() < dst + r.size {
+                if self.heap.len() < src + r.size || self.heap.len() < dst + r.size {
                     return Err(oob());
                 }
                 self.heap.copy_within(src..src + r.size, dst)

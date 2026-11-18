@@ -7,6 +7,7 @@ LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
 note: associated type defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/missing_lifetime_args.rs:2:10
    |
+LL | trait X {
 LL |     type Y<'a, 'b>;
    |          ^ --  --
 help: add missing lifetime arguments

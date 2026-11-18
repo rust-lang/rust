@@ -22,6 +22,7 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_f64(&self) -> Self::Type;
     fn type_f128(&self) -> Self::Type;
     fn type_ppcf128(&self) -> Self::Type;
+    fn type_x87_f80(&self) -> Self::Type;
 
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
     fn type_ptr(&self) -> Self::Type;
@@ -79,6 +80,7 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
             F16B => self.type_f16b(),
             F32 => self.type_f32(),
             F64 => self.type_f64(),
+            X87F80 => self.type_x87_f80(),
             F128 => self.type_f128(),
             PpcF128 => self.type_ppcf128(),
         }
@@ -121,8 +123,12 @@ impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
 }
 
 pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
-    /// The backend type used for a rust type when it's in memory,
-    /// such as when it's stack-allocated or when it's being loaded or stored.
+    /// The backend type used for a Rust type when it is being loaded from or
+    /// stored to memory.
+    ///
+    /// Note that this type may be different from the type used for allocas.
+    /// For instance for x87_f80 the store size and allocation size is different,
+    /// so different types are used to represent it in memory versus on the stack.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::FunctionSignature;
@@ -168,6 +174,42 @@ pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,
     );
+    /// Losslessly convert a `f32` or `f64` to a float to be returned on the x87 floating point
+    /// stack. Because `MaybeUninit` `f32`s/`f64`s are also returned on the floating point stack,
+    /// `value` being uninitialized must not cause undefined behaviour unless `true` is passed in
+    /// the `no_undef` argument. This method is used to avoid an LLVM bug where signalling NaNs get
+    /// quietened when being returned on the x87 stack on 32-bit x86. For more details, see:
+    /// * <https://github.com/rust-lang/rust/issues/115567>
+    /// * <https://github.com/llvm/llvm-project/issues/66803>
+    fn x87_lossless_float_to_fp_stack(
+        &mut self,
+        value: Self::Value,
+        no_undef: bool,
+    ) -> Self::Value {
+        let _ = no_undef;
+        // Default to leaving the value unchanged. The backend can override this method if it needs
+        // extra codegen to avoid quietening signalling NaNs.
+        value
+    }
+    /// Losslessly convert a `f32` or `f64` from a float that was returned on the x87 floating point
+    /// stack. Because `MaybeUninit` `f32`s/`f64`s are also returned on the floating point stack,
+    /// `value` being uninitialized must not cause undefined behaviour unless `true` is passed in
+    /// the `no_undef` argument. This method is used to avoid an LLVM bug where signalling NaNs get
+    /// quietened when being returned on the x87 stack on 32-bit x86. For more details, see:
+    /// * <https://github.com/rust-lang/rust/issues/115567>
+    /// * <https://github.com/llvm/llvm-project/issues/66803>
+    fn x87_lossless_fp_stack_to_float(
+        &mut self,
+        value: Self::Value,
+        float_type: Self::Type,
+        no_undef: bool,
+    ) -> Self::Value {
+        let _ = float_type;
+        let _ = no_undef;
+        // Default to leaving the value unchanged. The backend can override this method if it needs
+        // extra codegen to avoid quietening signalling NaNs.
+        value
+    }
 }
 
 pub trait TypeCodegenMethods<'tcx> = DerivedTypeCodegenMethods<'tcx>

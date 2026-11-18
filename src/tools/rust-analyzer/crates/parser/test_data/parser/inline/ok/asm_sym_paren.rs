@@ -1,3 +1,3 @@
 fn foo() {
-    builtin#asm("", f = sym (foo::bar));
+    k#asm("", f = sym (foo::bar));
 }

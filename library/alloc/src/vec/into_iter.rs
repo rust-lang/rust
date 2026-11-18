@@ -46,7 +46,7 @@ macro non_null {
 #[rustc_insignificant_dtor]
 pub struct IntoIter<
     T,
-    #[stable(feature = "vec_into_iter_allocator", since = "CURRENT_RUSTC_VERSION")] A: Allocator = Global,
+    #[stable(feature = "vec_into_iter_allocator", since = "1.101.0")] A: Allocator = Global,
 > {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
@@ -112,7 +112,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[stable(feature = "vec_into_iter_allocator", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_into_iter_allocator", since = "1.101.0")]
     #[inline]
     pub fn allocator(&self) -> &A {
         &self.alloc

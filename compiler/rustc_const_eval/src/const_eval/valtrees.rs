@@ -208,6 +208,9 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     visited.remove(place);
@@ -382,6 +385,9 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::UnsafeBinder(_) => {
             bug!("no ValTree should have been created for type {:?}", cv.ty.kind())
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

@@ -16,7 +16,7 @@ use crate::llvm::{self, Value};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
-pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
+pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> Value<'ll> {
     let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);

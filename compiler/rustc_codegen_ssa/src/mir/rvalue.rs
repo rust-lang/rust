@@ -430,7 +430,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Notably, Scalar ⇌ ScalarPair cases go here to avoid padding
                 // and endianness issues, as do SimdVector ones to avoid worrying
                 // about things like f32x8 ⇌ ptrx4 that would need multiple steps.
-                let align = Ord::max(operand.layout.align.abi, cast.align.abi);
+                let align = Ord::max(operand.layout.align, cast.align);
                 let size = Ord::max(operand.layout.size, cast.size);
                 let temp = PlaceValue::alloca(bx, size, align);
                 bx.lifetime_start(temp.llval, size);

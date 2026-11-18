@@ -10,9 +10,29 @@ pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
     unimplemented!();
 }
 
+pub fn pub_fn_returning_result_with_never_error() -> Result<(), !> {
+    unimplemented!();
+}
+
+pub enum Never {}
+
+pub fn pub_fn_returning_result_with_enum_never_error() -> Result<(), Never> {
+    unimplemented!();
+}
+
+pub fn pub_fn_returning_result_with_never_ok() -> Result<!, ()> {
+    //~^ missing_errors_doc
+
+    unimplemented!();
+}
+
 pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
     //~^ missing_errors_doc
 
+    unimplemented!();
+}
+
+pub async fn async_pub_fn_returning_result_with_never_error() -> Result<(), !> {
     unimplemented!();
 }
 

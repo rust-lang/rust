@@ -15,8 +15,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
-        this.expect_target_feature_for_intrinsic(link_name, "sse2")?;
+        let ecx = self.eval_context_mut();
+        ecx.expect_target_feature_for_intrinsic(link_name, "sse2")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse2.").unwrap();
 
@@ -35,15 +35,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm_avg_epu8 and _mm_avg_epu16 functions.
             // Averages packed unsigned 8/16-bit integers in `left` and `right`.
             "pavg.b" | "pavg.w" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pavg(this, left, right, dest)?;
+                pavg(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_sad_epu8 function.
             "psad.bw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                psadbw(this, left, right, dest)?
+                psadbw(ecx, left, right, dest)?
             }
             // Used to implement the _mm_{sll,srl,sra}_epi{16,32,64} functions
             // (except _mm_sra_epi64, which is not available in SSE2).
@@ -55,7 +55,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is copied to remaining bits.
             "psll.w" | "psrl.w" | "psra.w" | "psll.d" | "psrl.d" | "psra.d" | "psll.q"
             | "psrl.q" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "psll.w" | "psll.d" | "psll.q" => ShiftOp::Left,
@@ -64,16 +64,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                shift_simd_by_scalar(this, left, right, which, dest)?;
+                shift_simd_by_scalar(ecx, left, right, which, dest)?;
             }
             // Used to implement the _mm_cvtps_epi32, _mm_cvttps_epi32, _mm_cvtpd_epi32
             // and _mm_cvttpd_epi32 functions.
             // Converts packed f32/f64 to packed i32.
             "cvtps2dq" | "cvttps2dq" | "cvtpd2dq" | "cvttpd2dq" => {
-                let [op] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [op] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (op_len, _) = op.layout.ty.simd_size_and_type(*this.tcx);
-                let (dest_len, _) = dest.layout.ty.simd_size_and_type(*this.tcx);
+                let (op_len, _) = op.layout.ty.simd_size_and_type(*ecx.tcx);
+                let (dest_len, _) = dest.layout.ty.simd_size_and_type(*ecx.tcx);
                 match unprefixed_name {
                     "cvtps2dq" | "cvttps2dq" => {
                         // f32x4 to i32x4 conversion
@@ -101,31 +101,31 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                convert_float_to_int(this, op, rnd, dest)?;
+                convert_float_to_int(ecx, op, rnd, dest)?;
             }
             // Used to implement the _mm_packs_epi16 function.
             // Converts two 16-bit integer vectors to a single 8-bit integer
             // vector with signed saturation.
             "packsswb.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packsswb(this, left, right, dest)?;
+                packsswb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_packus_epi16 function.
             // Converts two 16-bit signed integer vectors to a single 8-bit
             // unsigned integer vector with saturation.
             "packuswb.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packuswb(this, left, right, dest)?;
+                packuswb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_packs_epi32 function.
             // Converts two 32-bit integer vectors to a single 16-bit integer
             // vector with signed saturation.
             "packssdw.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packssdw(this, left, right, dest)?;
+                packssdw(ecx, left, right, dest)?;
             }
             // Used to implement _mm_min_sd and _mm_max_sd functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -133,7 +133,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // matches the IEEE min/max operations, while x86 has different
             // semantics.
             "min.sd" | "max.sd" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "min.sd" => FloatBinOp::Min,
@@ -141,7 +141,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Double>(ecx, which, left, right, dest)?;
             }
             // Used to implement _mm_min_pd and _mm_max_pd functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -149,7 +149,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // matches the IEEE min/max operations, while x86 has different
             // semantics.
             "min.pd" | "max.pd" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "min.pd" => FloatBinOp::Min,
@@ -157,7 +157,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Double>(ecx, which, left, right, dest)?;
             }
             // Used to implement the _mm_cmp*_sd functions.
             // Performs a comparison operation on the first component of `left`
@@ -168,12 +168,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_sd are SSE2 functions
             // with hard-coded operations.
             "cmp.sd" => {
-                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right, imm] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which =
-                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
+                    FloatBinOp::cmp_from_imm(ecx, ecx.read_scalar(imm)?.to_i8()?, link_name)?;
 
-                bin_op_simd_float_first::<Double>(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Double>(ecx, which, left, right, dest)?;
             }
             // Used to implement the _mm_cmp*_pd functions.
             // Performs a comparison operation on each component of `left`
@@ -184,12 +184,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_pd are SSE2 functions
             // with hard-coded operations.
             "cmp.pd" => {
-                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right, imm] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which =
-                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
+                    FloatBinOp::cmp_from_imm(ecx, ecx.read_scalar(imm)?.to_i8()?, link_name)?;
 
-                bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Double>(ecx, which, left, right, dest)?;
             }
             // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_sd functions.
             // Compares the first component of `left` and `right` and returns
@@ -197,15 +197,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "comieq.sd" | "comilt.sd" | "comile.sd" | "comigt.sd" | "comige.sd" | "comineq.sd"
             | "ucomieq.sd" | "ucomilt.sd" | "ucomile.sd" | "ucomigt.sd" | "ucomige.sd"
             | "ucomineq.sd" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
 
                 assert_eq!(left_len, right_len);
 
-                let left = this.read_scalar(&this.project_index(&left, 0)?)?.to_f64()?;
-                let right = this.read_scalar(&this.project_index(&right, 0)?)?.to_f64()?;
+                let left = ecx.read_scalar(&ecx.project_index(&left, 0)?)?.to_f64()?;
+                let right = ecx.read_scalar(&ecx.project_index(&right, 0)?)?.to_f64()?;
                 // The difference between the com* and ucom* variants is signaling
                 // of exceptions when either argument is a quiet NaN. We do not
                 // support accessing the SSE status register from miri (or from Rust,
@@ -219,16 +219,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "comineq.sd" | "ucomineq.sd" => left != right,
                     _ => unreachable!(),
                 };
-                this.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
+                ecx.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
             }
             // Use to implement the _mm_cvtsd_si32, _mm_cvttsd_si32,
             // _mm_cvtsd_si64 and _mm_cvttsd_si64 functions.
             // Converts the first component of `op` from f64 to i32/i64.
             "cvtsd2si" | "cvttsd2si" | "cvtsd2si64" | "cvttsd2si64" => {
-                let [op] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let (op, _) = this.project_to_simd(op)?;
+                let [op] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let (op, _) = ecx.project_to_simd(op)?;
 
-                let op = this.read_immediate(&this.project_index(&op, 0)?)?;
+                let op = ecx.read_immediate(&ecx.project_index(&op, 0)?)?;
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
@@ -240,34 +240,34 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
+                let res = ecx.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
                     // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
-                this.write_immediate(*res, dest)?;
+                ecx.write_immediate(*res, dest)?;
             }
             // Used to implement the _mm_cvtsd_ss function.
             // Converts the first f64 from `right` to f32 and copies the remaining
             // elements from `left`
             "cvtsd2ss" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, _) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, _) = ecx.project_to_simd(right)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, left_len);
 
                 // Convert first element of `right`
-                let right0 = this.read_immediate(&this.project_index(&right, 0)?)?;
-                let dest0 = this.project_index(&dest, 0)?;
-                let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
-                this.write_immediate(*res0, &dest0)?;
+                let right0 = ecx.read_immediate(&ecx.project_index(&right, 0)?)?;
+                let dest0 = ecx.project_index(&dest, 0)?;
+                let res0 = ecx.float_to_float_or_int(&right0, dest0.layout)?;
+                ecx.write_immediate(*res0, &dest0)?;
 
                 // Copy remaining from `left`
                 for i in 1..dest_len {
-                    this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
+                    ecx.copy_op(&ecx.project_index(&left, i)?, &ecx.project_index(&dest, i)?)?;
                 }
             }
             // Used to implement the _mm_madd_epi16 function.
@@ -275,13 +275,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
             // intermediate 32-bit integers, and pack the results in `dest`.
             "pmadd.wd" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pmaddwd(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmaddwd(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_mulhi_epi16 and _mm_mulhi_epu16 functions.
             "pmulh.w" | "pmulhu.w" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pmulh(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmulh(ecx, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

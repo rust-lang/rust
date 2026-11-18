@@ -461,6 +461,12 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
+    fn is_implicit_trait(
+        self,
+        def_id: Self::TraitId,
+        including_sized: IncludeSizedImplicitBounds,
+    ) -> bool;
+
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
     fn as_projection_lang_item(
@@ -785,4 +791,9 @@ impl<I: Interner> search_graph::Cx for I {
     fn assert_evaluation_is_concurrent(&self) {
         self.assert_evaluation_is_concurrent()
     }
+}
+
+pub enum IncludeSizedImplicitBounds {
+    Yes,
+    No,
 }

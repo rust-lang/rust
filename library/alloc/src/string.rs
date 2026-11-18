@@ -58,7 +58,7 @@ use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
 use core::str::pattern::{Pattern, Utf8Pattern};
-use core::{fmt, hash, hint, ptr, slice};
+use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
@@ -1697,57 +1697,54 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        let len = self.len();
-        if len == 0 {
-            // Explicit check results in better optimization
-            return;
-        }
-
-        struct PanicGuard<'a> {
+        struct SetLenOnDrop<'a> {
             s: &'a mut String,
-            write: usize,
+            idx: usize,
+            del_bytes: usize,
         }
 
-        impl Drop for PanicGuard<'_> {
+        impl<'a> Drop for SetLenOnDrop<'a> {
             fn drop(&mut self) {
-                debug_assert!(self.write <= self.s.len());
-                debug_assert!(str::from_utf8(&self.s.vec[..self.write]).is_ok());
+                let new_len = self.idx - self.del_bytes;
+                debug_assert!(new_len <= self.s.len());
                 // SAFETY: Restore the string length to the number of bytes written so far.
-                unsafe { self.s.vec.set_len(self.write) }
+                unsafe { self.s.vec.set_len(new_len) };
             }
         }
 
-        // Fast path: find the first character that should be removed or return early.
-        let mut chars = self.char_indices();
-        let (mut read, write) = loop {
-            let Some((idx, ch)) = chars.next() else { return };
-            if hint::unlikely(!f(ch)) {
-                break (idx + ch.len_utf8(), idx);
-            }
-        };
-        drop(chars);
+        let len = self.len();
+        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
 
-        // Slow path: at least one character is going to be removed.
-        let mut g = PanicGuard { s: self, write };
-        while read < len {
-            // SAFETY: `read` is within bound because `read` < `len`, so taking
-            // a slice with `len` is safe.
-            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+        while guard.idx < len {
+            let ch =
+                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
+                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
+                // a unicode code point so the `Chars` always return one character.
+                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
             let ch_len = ch.len_utf8();
-            if f(ch) {
-                // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
-                // within bounds because it is always behind `read`.
-                unsafe {
-                    let ptr = g.s.vec.as_mut_ptr();
-                    ptr::copy(ptr.add(read), ptr.add(g.write), ch_len);
-                }
-                g.write += ch_len;
+
+            if !f(ch) {
+                guard.del_bytes += ch_len;
+            } else if guard.del_bytes > 0 {
+                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
+                // bytes that are erased from the string so the resulting `guard.idx -
+                // guard.del_bytes` always represent a valid unicode code point.
+                //
+                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
+                // is safe.
+                ch.encode_utf8(unsafe {
+                    crate::slice::from_raw_parts_mut(
+                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
+                        ch.len_utf8(),
+                    )
+                });
             }
-            read += ch_len;
+
+            // Point idx to the next char
+            guard.idx += ch_len;
         }
 
-        // All bytes processed; commit the final length by dropping the guard.
-        drop(g);
+        drop(guard);
     }
 
     /// Inserts a character into this `String` at byte position `idx`.
@@ -1786,9 +1783,8 @@ impl String {
         let ch_len = ch.len_utf8();
         self.reserve(ch_len);
 
-        // SAFETY: Move the bytes starting from `idx` to their new location `ch_len`
-        // bytes ahead. This is safe because sufficient capacity was reserved, and `idx`
-        // is a char boundary.
+        // Move the bytes starting from `idx` to their new location `ch_len` bytes ahead.
+        // SAFETY: Sufficient capacity was reserved, and `idx` is a char boundary.
         unsafe {
             ptr::copy(
                 self.vec.as_ptr().add(idx),
@@ -1797,13 +1793,15 @@ impl String {
             );
         }
 
-        // SAFETY: Encode the character into the vacated region if `idx != len`,
+        // Encode the character into the vacated region if `idx != len`,
         // or into the uninitialized spare capacity otherwise.
+        // SAFETY: `idx + ch_len` is in bounds in either case, and `idx` is a char boundary.
         unsafe {
             core::char::encode_utf8_raw_unchecked(ch as u32, self.vec.as_mut_ptr().add(idx));
         }
 
-        // SAFETY: Update the length to include the newly added bytes.
+        // Update the length to include the newly added bytes.
+        // SAFETY: We just wrote to all locations in the range `idx..len + ch_len`.
         unsafe {
             self.vec.set_len(len + ch_len);
         }
@@ -1843,21 +1841,21 @@ impl String {
         let amt = string.len();
         self.reserve(amt);
 
-        // SAFETY: Move the bytes starting from `idx` to their new location `amt` bytes
-        // ahead. This is safe because sufficient capacity was just reserved, and `idx`
-        // is a char boundary.
+        // Move the bytes starting from `idx` to their new location `amt` bytes ahead.
+        // SAFETY: Sufficient capacity was just reserved, and `idx` is a char boundary.
         unsafe {
             ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
         }
 
-        // SAFETY: Copy the new string slice into the vacated region if `idx != len`,
-        // or into the uninitialized spare capacity otherwise. The borrow checker
-        // ensures that the source and destination do not overlap.
+        // Copy the new string slice into the vacated region if `idx != len`,
+        // or into the uninitialized spare capacity otherwise.
+        // SAFETY: The borrow checker ensures that the source and destination do not overlap.
         unsafe {
             ptr::copy_nonoverlapping(string.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
         }
 
-        // SAFETY: Update the length to include the newly added bytes.
+        // Update the length to include the newly added bytes.
+        // SAFETY: We just wrote to all locations in the range `idx..len + amt`.
         unsafe {
             self.vec.set_len(len + amt);
         }
@@ -2098,7 +2096,7 @@ impl String {
     /// [`char`]: prim@char
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     pub fn into_chars(self) -> IntoChars {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
@@ -2740,7 +2738,7 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
+unsafe impl<'b> Pattern for &'b String {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
@@ -3610,12 +3608,12 @@ impl fmt::Write for String {
 /// [`into_chars`]: String::into_chars
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 pub struct IntoChars {
     bytes: vec::IntoIter<u8>,
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl fmt::Debug for IntoChars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoChars").field(&self.as_str()).finish()
@@ -3637,7 +3635,7 @@ impl IntoChars {
     /// chars.next();
     /// assert_eq!(chars.as_str(), "");
     /// ```
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -3658,7 +3656,7 @@ impl IntoChars {
     /// assert_eq!(chars.into_string(), "ef");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[inline]
     pub fn into_string(self) -> String {
         // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
@@ -3671,7 +3669,7 @@ impl IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl Iterator for IntoChars {
     type Item = char;
 
@@ -3705,7 +3703,7 @@ impl Iterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl DoubleEndedIterator for IntoChars {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3722,7 +3720,7 @@ impl DoubleEndedIterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.

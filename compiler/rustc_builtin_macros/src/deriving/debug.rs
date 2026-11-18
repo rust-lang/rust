@@ -7,7 +7,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_debug(
+pub(crate) fn expand_derive_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -39,12 +39,15 @@ pub(crate) fn expand_deriving_debug(
             name: sym::fmt,
             generics: cx.empty_generics(span),
             explicit_self: true,
-            nonself_args: smallvec![(fmtr, sym::f)],
+            nonself_args: smallvec![(sym::f, fmtr)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
-            attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
+            attributes: thin_vec![
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
+            ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
+            body: Box::new(|cx, span, substr| debug_body(
                 cx,
                 span,
                 substr,
@@ -57,7 +60,7 @@ pub(crate) fn expand_deriving_debug(
     trait_def.expand_ext(cx, item, push, all_fieldless);
 }
 
-fn show_substructure(
+fn debug_body(
     cx: &ExtCtxt<'_>,
     span: Span,
     substr: Substructure<'_>,
@@ -71,7 +74,7 @@ fn show_substructure(
     let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        StaticEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
+        StaticEnum(enum_def) => return debug_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -107,7 +110,7 @@ fn show_substructure(
         } else {
             // Unsized types need an extra indirection, but only the last field
             // may be unsized.
-            cx.expr_addr_of(field.span, field.self_expr)
+            cx.expr_ref(field.span, field.self_expr)
         }
     };
 
@@ -118,11 +121,7 @@ fn show_substructure(
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
-        let debug = if is_struct {
-            format!("debug_struct_field{}_finish", fields.len())
-        } else {
-            format!("debug_tuple_field{}_finish", fields.len())
-        };
+        let debug = format!("debug_struct_field{}_finish", fields.len());
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
         let mut args = ThinVec::with_capacity(2 + fields.len());
@@ -196,13 +195,8 @@ fn show_substructure(
             cx.expr_array_ref(span, value_exprs),
         );
 
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)` or
-        // `fmt::Formatter::debug_tuple_fields_finish(fmt, name, values)`
-        let sym_debug = if is_struct {
-            sym::debug_struct_fields_finish
-        } else {
-            sym::debug_tuple_fields_finish
-        };
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)`
+        let sym_debug = sym::debug_struct_fields_finish;
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
         let args = thin_vec![
@@ -236,13 +230,13 @@ fn show_substructure(
 ///     }
 /// }
 /// ```
-fn show_fieldless_enum(
+fn debug_fieldless_enum(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, type_ident) {
+    if let Some(expr) = debug_fieldless_enum_concat_str(cx, span, def, type_ident) {
         return BlockOrExpr::new_expr(expr);
     }
     let fmt = cx.expr_name(span, sym::f);
@@ -287,7 +281,7 @@ fn show_fieldless_enum(
 ///     }
 /// }
 /// ```
-fn show_fieldless_enum_concat_str(
+fn debug_fieldless_enum_concat_str(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,

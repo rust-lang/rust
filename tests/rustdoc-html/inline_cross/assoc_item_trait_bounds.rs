@@ -50,7 +50,7 @@ pub use aux::Aid;
 
 //@ has main/struct.Implementor.html
 //@ has - '//*[@id="associatedtype.Alias"]' \
-// "type Alias<T: Eq> = T \
+// "type Alias<T: Eq> = T\
 // where \
 //     String: From<T>, \
 //     <Implementor as Implementee>::Alias<T>: From<<Implementor as Implementee>::Alias<T>>"

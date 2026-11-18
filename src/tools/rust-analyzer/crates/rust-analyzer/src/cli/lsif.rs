@@ -293,8 +293,8 @@ impl flags::Lsif {
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
-            prefill_caches: false,
-            num_worker_threads: 1,
+            prefill_caches: true,
+            num_worker_threads: self.num_threads.unwrap_or_else(num_cpus::get_physical),
             proc_macro_processes: 1,
         };
         let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(self.path));

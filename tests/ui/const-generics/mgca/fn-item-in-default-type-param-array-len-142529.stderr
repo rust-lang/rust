@@ -1,0 +1,14 @@
+error: function items cannot be used as const args
+  --> $DIR/fn-item-in-default-type-param-array-len-142529.rs:4:24
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<(u8, T)>]>(T, U);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: function items cannot be used as const args
+  --> $DIR/fn-item-in-default-type-param-array-len-142529.rs:7:24
+   |
+LL | struct Bar<T, U = [u8; size_of::<T>]>(T, U);
+   |                        ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

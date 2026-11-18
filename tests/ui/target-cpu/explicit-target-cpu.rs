@@ -22,7 +22,6 @@
 //@[avr_cpu] compile-flags: -Ctarget-cpu=atmega328p
 //@[avr_cpu] build-pass
 
-//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 // We don't want to link in any other crate as this would make it necessary to specify

@@ -1159,7 +1159,7 @@ impl<'a> Parser<'a> {
         let open_delim_span = self.token.span;
         self.bump(); // `[`
         let index = self.parse_expr()?;
-        self.suggest_missing_semicolon_before_array(prev_token.span, open_delim_span)?;
+        self.recover_from_missing_semicolon_before_array(prev_token.span, open_delim_span)?;
         self.expect(exp!(CloseBracket)).map_err(|mut err| {
             if prev_token.is_non_reserved_ident() {
                 err.span_suggestion_verbose(
@@ -1315,8 +1315,6 @@ impl<'a> Parser<'a> {
                 })
             } else if this.check(exp!(OpenBracket)) {
                 this.parse_expr_array_or_repeat(exp!(CloseBracket))
-            } else if this.is_builtin() {
-                this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.token.is_keyword(kw::Move)
@@ -1385,6 +1383,14 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.eat_forced_keyword_noexpect(kw::OffsetOf) {
+                this.parse_expr_offset_of(lo)
+            } else if this.eat_forced_keyword_noexpect(kw::TypeAscribe) {
+                this.parse_expr_type_ascribe(lo)
+            } else if this.eat_forced_keyword_noexpect(kw::WrapBinder) {
+                this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)
+            } else if this.eat_forced_keyword_noexpect(kw::UnwrapBinder) {
+                this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -1826,58 +1832,9 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    /// Parse `builtin # ident(args,*)`.
-    fn parse_expr_builtin(&mut self) -> PResult<'a, Box<Expr>> {
-        self.parse_builtin(|this, lo, ident| {
-            Ok(match ident.name {
-                sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
-                sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
-                sym::wrap_binder => {
-                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)?)
-                }
-                sym::unwrap_binder => {
-                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
-                }
-                _ => None,
-            })
-        })
-    }
-
-    pub(crate) fn parse_builtin<T>(
-        &mut self,
-        parse: impl FnOnce(&mut Parser<'a>, Span, Ident) -> PResult<'a, Option<T>>,
-    ) -> PResult<'a, T> {
-        let lo = self.token.span;
-
-        self.bump(); // `builtin`
-        self.bump(); // `#`
-
-        let Some((ident, IdentKind::Normal)) = self.token.ident() else {
-            let err = self
-                .dcx()
-                .create_err(crate::diagnostics::ExpectedBuiltinIdent { span: self.token.span });
-            return Err(err);
-        };
-        self.psess.gated_spans.gate(sym::builtin_syntax, ident.span);
-        self.bump();
-
-        self.expect(exp!(OpenParen))?;
-        let ret = if let Some(res) = parse(self, lo, ident)? {
-            Ok(res)
-        } else {
-            let err = self.dcx().create_err(crate::diagnostics::UnknownBuiltinConstruct {
-                span: lo.to(ident.span),
-                name: ident,
-            });
-            return Err(err);
-        };
-        self.expect(exp!(CloseParen))?;
-
-        ret
-    }
-
-    /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -1900,16 +1857,26 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
 
-    /// Built-in macro for type ascription expressions.
     pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(Comma))?;
         let ty = self.parse_ty()?;
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
@@ -1918,9 +1885,15 @@ impl<'a> Parser<'a> {
         lo: Span,
         kind: UnsafeBinderCastKind,
     ) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+
         let expr = self.parse_expr()?;
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
 
@@ -2133,48 +2106,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(expr)
         }
-    }
-
-    fn suggest_missing_semicolon_before_array(
-        &self,
-        prev_span: Span,
-        open_delim_span: Span,
-    ) -> PResult<'a, ()> {
-        if !self.may_recover() {
-            return Ok(());
-        }
-
-        if self.token == token::Comma {
-            if !self.psess.source_map().is_multiline(prev_span.until(self.token.span)) {
-                return Ok(());
-            }
-            let mut snapshot = self.create_snapshot_for_diagnostic();
-            snapshot.bump();
-            match snapshot.parse_seq_to_before_end(
-                exp!(CloseBracket),
-                SeqSep::trailing_allowed(exp!(Comma)),
-                |p| p.parse_expr(),
-            ) {
-                Ok(_)
-                    // When the close delim is `)`, `token.kind` is expected to be `token::CloseParen`,
-                    // but the actual `token.kind` is `token::CloseBracket`.
-                    // This is because the `token.kind` of the close delim is treated as the same as
-                    // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
-                    // Therefore, `token.kind` should not be compared here.
-                    if snapshot
-                        .span_to_snippet(snapshot.token.span)
-                        .is_ok_and(|snippet| snippet == "]") =>
-                {
-                    return Err(self.dcx().create_err(crate::diagnostics::MissingSemicolonBeforeArray {
-                        open_delim: open_delim_span,
-                        semicolon: prev_span.shrink_to_hi(),
-                    }));
-                }
-                Ok(_) => (),
-                Err(err) => err.cancel(),
-            }
-        }
-        Ok(())
     }
 
     /// Parses a block or unsafe block.
@@ -3138,8 +3069,15 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
-            let pat = Box::new(pat);
+
+            let pat = Box::new(this.parse_pat_no_top_guard(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?);
+
+            let guard = this.parse_match_arm_guard()?;
 
             let span_before_body = this.prev_token.span;
             let arm_body;
@@ -3375,52 +3313,6 @@ impl<'a> Parser<'a> {
         Ok(Box::new(guard))
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Guard>>)> {
-        if self.token == token::OpenParen {
-            let left = self.token.span;
-            let pat = self.parse_pat_no_top_guard(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            if let ast::PatKind::Paren(subpat) = &pat.kind
-                && let ast::PatKind::Guard(..) = &subpat.kind
-            {
-                // Detect and recover from `($pat if $cond) => $arm`.
-                // FIXME(guard_patterns): convert this to a normal guard instead
-                let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut guard) = subpat.kind else { unreachable!() };
-                self.psess.gated_spans.ungate_last(sym::guard_patterns, guard.span());
-                let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-                checker.visit_expr(&mut guard.cond);
-
-                let right = self.prev_token.span;
-                self.dcx().emit_err(crate::diagnostics::ParenthesesInMatchPat {
-                    span: vec![left, right],
-                    sugg: crate::diagnostics::ParenthesesInMatchPatSugg { left, right },
-                });
-
-                if let Some(guar) = checker.found_incorrect_let_chain {
-                    guard.cond = *self.mk_expr_err(guard.span(), guar);
-                }
-                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(guard)))
-            } else {
-                Ok((pat, self.parse_match_arm_guard()?))
-            }
-        } else {
-            // Regular parser flow:
-            let pat = self.parse_pat_no_top_guard(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            Ok((pat, self.parse_match_arm_guard()?))
-        }
-    }
-
     fn parse_match_guard_condition(
         &mut self,
         force_collect: ForceCollect,
@@ -3463,10 +3355,6 @@ impl<'a> Parser<'a> {
             },
         )?;
         Ok(expr)
-    }
-
-    pub(crate) fn is_builtin(&self) -> bool {
-        self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
     /// Parses a `try {...}` or `try bikeshed Ty {...}` expression (`try` token already eaten).

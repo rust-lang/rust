@@ -260,8 +260,9 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.unit.align(cx)
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
+        self.unit.scratch_align(cx)
     }
 
     /// Pass using one or more values of the given type, without requiring them to be consecutive.
@@ -296,6 +297,12 @@ pub struct CastTarget {
     pub rest_offset: Option<Size>,
     pub rest: Uniform,
     pub attrs: ArgAttributes,
+    /// If `true`, indicates that this type will be passed on the x87 floating point stack on
+    /// 32-bit x86, changing the backend type to `x87_f80`. This is needed as LLVM needs to generate
+    /// extra code to ensure that signalling NaNs are passed losslessly on the x87 floating point
+    /// stack. Only valid on return types on 32-bit x86 with a cast target of either `Reg::f32()` or
+    /// `Reg::f64()`.
+    pub pass_via_x87_floating_point_stack: bool,
 }
 
 impl From<Reg> for CastTarget {
@@ -312,7 +319,13 @@ impl From<Uniform> for CastTarget {
 
 impl CastTarget {
     pub fn prefixed(prefix: ArrayVec<Reg, 8>, rest: Uniform) -> Self {
-        Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
+        Self {
+            prefix,
+            rest_offset: None,
+            rest,
+            attrs: ArgAttributes::new(),
+            pass_via_x87_floating_point_stack: false,
+        }
     }
 
     pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
@@ -323,6 +336,7 @@ impl CastTarget {
             rest_offset: Some(offset_from_start),
             rest: b.into(),
             attrs: ArgAttributes::new(),
+            pass_via_x87_floating_point_stack: false,
         }
     }
 
@@ -358,12 +372,10 @@ impl CastTarget {
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.prefix
-            .iter()
-            .map(|reg| reg.align(cx))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
-                acc.max(align)
-            })
+        self.prefix.iter().map(|reg| reg.scratch_align(cx)).fold(
+            cx.data_layout().aggregate_align.max(self.rest.scratch_align(cx)),
+            |acc, align| acc.max(align),
+        )
     }
 
     /// Checks if these two `CastTarget` are equal enough to be considered "the same for all
@@ -374,17 +386,20 @@ impl CastTarget {
             rest_offset: rest_offset_l,
             rest: rest_l,
             attrs: attrs_l,
+            pass_via_x87_floating_point_stack: x87_l,
         } = self;
         let CastTarget {
             prefix: prefix_r,
             rest_offset: rest_offset_r,
             rest: rest_r,
             attrs: attrs_r,
+            pass_via_x87_floating_point_stack: x87_r,
         } = other;
         prefix_l == prefix_r
             && rest_offset_l == rest_offset_r
             && rest_l == rest_r
             && attrs_l.eq_abi(attrs_r)
+            && x87_l == x87_r
     }
 }
 
@@ -436,7 +451,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoUndef)
             .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
-        attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align);
 
         if layout.is_unsized() {
             PassMode::IndirectUnsized { attrs, meta_attrs: ArgAttributes::new() }
@@ -619,21 +634,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
-pub enum RiscvInterruptKind {
-    Machine,
-    Supervisor,
-}
-
-impl RiscvInterruptKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Machine => "machine",
-            Self::Supervisor => "supervisor",
-        }
-    }
-}
-
 /// Metadata describing how the arguments to a native function
 /// should be passed in order to respect the native ABI.
 ///
@@ -698,9 +698,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         match &spec.arch {
             Arch::X86 => {
                 let flavor = match abi {
-                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
-                        x86::Flavor::FastcallOrVectorcall
-                    }
+                    ExternAbi::Fastcall { .. } => x86::Flavor::Fastcall,
+                    ExternAbi::Vectorcall { .. } => x86::Flavor::Vectorcall,
                     ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
                         x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
                     }

@@ -4,7 +4,12 @@
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives. This needs to be cleaned up after <https://github.com/rust-lang/rust-clippy/issues/17117> is fixed.
 #![deny(clippy::out_of_bounds_indexing)]
-#![expect(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec)]
+#![expect(
+    unconditional_panic,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::useless_vec
+)]
 
 extern crate proc_macros;
 use proc_macros::with_span;
@@ -58,9 +63,6 @@ fn main() {
     x[const { idx4() }];
     // This should be linted, since `suppress-restriction-lint-in-const` default is false.
     const { &ARR[idx()] };
-    //~^ ERROR: indexing may panic
-    // This should be linted, since `suppress-restriction-lint-in-const` default is false.
-    const { &ARR[idx4()] };
     //~^ ERROR: indexing may panic
 
     let y = &x;

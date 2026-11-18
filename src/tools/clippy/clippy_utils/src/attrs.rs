@@ -2,7 +2,6 @@
 
 use crate::source::SpanExt as _;
 use crate::{sym, tokenize_with_text};
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{AttrArgs, find_attr};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -14,7 +13,7 @@ use rustc_span::{Span, Symbol};
 use std::str::FromStr as _;
 
 /// Validates a single clippy attribute and emits errors for unknown or deprecated ones.
-pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
+pub fn check_clippy_attr(sess: &Session, attr: &rustc_ast::ast::Attribute) {
     if let [clippy, segment2] = &*attr.path()
         && *clippy == sym::clippy
     {
@@ -40,26 +39,12 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
             | sym::dump
             | sym::msrv
             | sym::has_significant_drop
+            | sym::may_panic
             | sym::format_args => {},
             _ => {
                 sess.dcx().span_err(path_span, "usage of unknown attribute");
             },
         }
-    }
-}
-
-/// Retrieves the span of a Clippy attribute, such as `#[clippy::format_args]`.
-///
-/// Panics if used on an attribute that isn't a tool attribute, so always check
-/// for that first with e.g. `path` or `path_matches`.
-pub fn span_of_clippy_attr(attr: &(impl AttributeExt + 'static)) -> Span {
-    let a: &dyn core::any::Any = attr;
-    if let Some(a) = a.downcast_ref::<rustc_ast::ast::Attribute>() {
-        a.span
-    } else if let Some(rustc_attr_ir::Attribute::Tool(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
-        u.span
-    } else {
-        panic!("attribute {attr:?} is not a clippy attribute")
     }
 }
 
@@ -84,8 +69,8 @@ pub fn get_clippy_attr(tcx: TyCtxt<'_>, did: impl Into<DefId>, name: Symbol) -> 
 
 /// Checks whether `attrs` contain any of `proc_macro`, `proc_macro_derive` or
 /// `proc_macro_attribute`
-pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
-    attrs.iter().any(AttributeExt::is_proc_macro_attr)
+pub fn is_proc_macro(attrs: &[rustc_attr_ir::Attribute]) -> bool {
+    find_attr!(attrs, ProcMacro | ProcMacroAttribute | ProcMacroDerive { .. })
 }
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`

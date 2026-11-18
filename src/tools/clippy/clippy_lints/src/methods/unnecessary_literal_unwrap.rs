@@ -98,9 +98,19 @@ pub(super) fn check(
                 };
                 Some(vec![(expr.span, format!("{default_ty_string}::default()"))])
             },
-            (sym::None, sym::unwrap_or, _) => Some(vec![
+            (sym::Some | sym::Ok, sym::unwrap_or | sym::expect, _) | (sym::Err, sym::expect_err, _)
+                if args[0].can_have_side_effects() =>
+            {
+                None
+            },
+            (sym::Err, sym::unwrap_or, _) if call_args[0].can_have_side_effects() => None,
+            (sym::None | sym::Err, sym::unwrap_or, _) => Some(vec![
                 (expr.span.with_hi(args[0].span.lo()), String::new()),
                 (expr.span.with_lo(args[0].span.hi()), String::new()),
+            ]),
+            (sym::Err, sym::expect_err, _) => Some(vec![
+                (recv.span.with_hi(call_args[0].span.lo()), String::new()),
+                (expr.span.with_lo(call_args[0].span.hi()), String::new()),
             ]),
             (sym::None, sym::unwrap_or_else, _) => match args[0].kind {
                 hir::ExprKind::Closure(hir::Closure { body, .. }) => Some(vec![

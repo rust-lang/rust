@@ -67,9 +67,11 @@ macro_rules! hash_substruct {
 /// Target modifier enum value + user value ('2') from external crate
 /// is converted into description: prefix ('Z'), name ('regparm'), tech value ('Some(2)').
 pub struct ExtendedTargetModifierInfo {
-    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags)
+    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags). And empty string
+    /// indicates a synthetic target modifier, which does not correspond directly to a flag.
     pub prefix: String,
-    /// Flag name
+    /// Flag name. For synthetic features, this is still relevant as the name used to suppress
+    /// the error for mismatches involving this target modifier.
     pub name: String,
     /// Flag parsed technical value
     pub tech_value: String,
@@ -173,6 +175,25 @@ mod target_modifier_consistency_check {
         };
         l_tech_value == r_tech_value
     }
+    pub(super) fn codegen_backend_name(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        let l_val = l.value_name.as_str();
+        let r_val = match r {
+            Some(r) => r.value_name.as_str(),
+            None => option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("dummy"),
+        };
+        if l_val == r_val {
+            // Same codegen backend: all good.
+            // (We assume codegen backends with the same name are compatible wrt target features.)
+            return true;
+        }
+        // If the codegen backends differ, there must be no LLVM target features. (Those are
+        // themselves a target modifier so we know they are consistent across the crate graph.)
+        sess.opts.unstable_opts.llvm_target_feature.is_empty()
+    }
 }
 
 impl TargetModifier {
@@ -205,6 +226,10 @@ impl TargetModifier {
                     return target_modifier_consistency_check::target_cpu(sess, self, other);
                 }
             },
+            OptionsTargetModifiers::CodegenBackendName => {
+                return target_modifier_consistency_check::codegen_backend_name(sess, self, other);
+            }
+            _ => {}
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -243,6 +268,14 @@ macro_rules! top_level_options {
                     $tmod_variant($tmod_enum),
                 )?
             )*
+
+            // Synthetic target modifiers, manually computed.
+
+            /// List of target features that are actually target modifiers.
+            TargetFeatures,
+            /// Name of the codegen backend.
+            /// (Not the full path to the .so file to avoid storing file system paths.)
+            CodegenBackendName,
         }
 
         impl OptionsTargetModifiers {
@@ -253,11 +286,30 @@ macro_rules! top_level_options {
                             Self::$tmod_variant(v) => v.reparse(user_value),
                         )?
                     )*
+
+                    // Synthetic target modifiers.
+                    Self::TargetFeatures => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "target-feature".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+                    Self::CodegenBackendName => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "codegen-backend-name".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+
                     #[allow(unreachable_patterns)]
                     _ => panic!("unknown target modifier option: {self:?}"),
                 }
             }
 
+            /// Used by `-Cunsafe-allow-abi-mismatch` to determine whether this is a valid thing to
+            /// allow.
             pub fn is_target_modifier(flag_name: &str) -> bool {
                 $(
                     $(
@@ -266,6 +318,12 @@ macro_rules! top_level_options {
                         }
                     )?
                 )*
+
+                // Synthetic target modifiers. The names must match `reparse` above.
+                if flag_name == "target-feature" || flag_name == "codegen-backend-name" {
+                    return true;
+                }
+
                 false
             }
         }
@@ -277,6 +335,8 @@ macro_rules! top_level_options {
                 $(#[$attr])*
                 pub $opt: $t,
             )*
+            /// Store values for target modifiers. `gather_target_modifiers` takes those values
+            /// to decide what to store in metadata.
             pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
             pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
         }
@@ -315,6 +375,7 @@ macro_rules! top_level_options {
 
             pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
                 let mut mods = Vec::<TargetModifier>::new();
+                // Forward values from `self.target_modifiers` into `mods`.
                 $(
                     $(
                         // Only expand for flags that have `TARGET_MODIFIER`.
@@ -322,6 +383,8 @@ macro_rules! top_level_options {
                         self.$opt.gather_target_modifiers(&mut mods, &self.target_modifiers);
                     )?
                 )*
+                tmod_push_impl(OptionsTargetModifiers::TargetFeatures, &self.target_modifiers, &mut mods);
+                tmod_push_impl(OptionsTargetModifiers::CodegenBackendName, &self.target_modifiers, &mut mods);
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
@@ -904,6 +967,7 @@ mod desc {
     pub(crate) const parse_target_feature: &str = parse_string;
     pub(crate) const parse_terminal_url: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
+    pub(crate) const parse_llvm_tpde: &str = "either no value or one of: `try` (default), `only`";
     pub(crate) const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub(crate) const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -917,8 +981,7 @@ mod desc {
         "either no value or one of `legacy` (the default), `off`, or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
-    pub(crate) const parse_stack_protector: &str =
-        "one of (`none` (default), `basic`, `strong`, or `all`)";
+    pub(crate) const parse_stack_protector: &str = "one of (`none` (default), `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
@@ -1901,6 +1964,15 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_llvm_tpde(slot: &mut Option<LlvmTpde>, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("try") | None => Some(LlvmTpde::Try),
+            Some("only") => Some(LlvmTpde::Only),
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_symbol_mangling_version(
         slot: &mut Option<SymbolManglingVersion>,
         v: Option<&str>,
@@ -2710,6 +2782,9 @@ options! {
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
+    next_solver_overflow_fcw_limit: Option<usize> = (None, parse_opt_number, [TRACKED_NO_CRATE_HASH],
+        "set the depth limit for displaying the overflow FCW chain \
+        (final limit = min(this, recursion_limit_from_crate * 2))"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
@@ -2951,6 +3026,7 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
+    llvm_tpde: Option<LlvmTpde> = (None, parse_llvm_tpde, [TRACKED], "enable the experimental TPDE-LLVM codegen backend for debug builds"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],

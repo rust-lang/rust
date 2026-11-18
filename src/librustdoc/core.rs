@@ -31,6 +31,7 @@ use tracing::debug;
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
+use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
@@ -143,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Returns `true` if the JSON output format is enabled for generating the crate content.
     ///
-    /// If another option like `--show-coverage` is enabled, it will return `false`.
+    /// If another option like `--coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
         self.output_format == OutputFormat::IrJson
     }
@@ -171,14 +172,15 @@ pub(crate) fn new_dcx(
 ) -> rustc_errors::DiagCtxt {
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => Box::new(
+            HumanReadableErrorType { no_graphics, short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .ui_testing(unstable_opts.ui_testing),
+                    .ui_testing(unstable_opts.ui_testing)
+                    .no_graphics(no_graphics),
             ),
         },
         ErrorOutputType::Json { pretty, json_rendered, color_config } => {
@@ -348,7 +350,10 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
+) -> Result<
+    (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>),
+    Error,
+> {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -432,11 +437,8 @@ pub(crate) fn run_global_ctxt(
     let store;
     (krate, store) = passes::run(krate, &mut ctxt, show_coverage);
 
-    if show_coverage
-        && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
-    {
-        eprintln!("{error}");
-        std::process::exit(1);
+    if show_coverage {
+        crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)?;
     }
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
@@ -448,7 +450,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.dcx().abort_if_errors();
 
-    (krate, render_options, ctxt.cache, expanded_macros)
+    Ok((krate, render_options, ctxt.cache, expanded_macros))
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

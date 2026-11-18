@@ -6,8 +6,8 @@ use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{
-    SpanlessEq, get_ref_operators, is_none_pattern, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators,
-    span_contains_non_whitespace,
+    SpanlessEq, get_ref_operators, is_none_pattern, is_refutable, is_unit_expr, peel_blocks_with_stmt,
+    peel_ref_operators, span_contains_non_whitespace,
 };
 use core::ops::ControlFlow;
 use rustc_ast::BorrowKind;
@@ -25,8 +25,9 @@ use crate::collapsible_if::{parens_around, peel_parens};
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], msrv: Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         let last_non_wildcard = arms.iter().rposition(|arm| !arm_is_wild_like(cx, arm));
+        let els_is_refutable = is_refutable(cx, els_arm.pat);
         for (idx, arm) in arms.iter().enumerate() {
-            let only_wildcards_after = last_non_wildcard.is_none_or(|lnw| idx >= lnw);
+            let only_wildcards_after = last_non_wildcard.is_none_or(|lnw| idx >= lnw) && !els_is_refutable;
             check_arm(
                 cx,
                 arm.span.ctxt(),

@@ -1,6 +1,12 @@
 //@aux-build: proc_macros.rs
 #![warn(clippy::unnecessary_lazy_evaluations)]
-#![expect(clippy::bind_instead_of_map, clippy::needless_borrow, clippy::redundant_closure)]
+#![expect(
+    arithmetic_overflow,
+    unconditional_panic,
+    clippy::bind_instead_of_map,
+    clippy::needless_borrow,
+    clippy::redundant_closure
+)]
 #![allow(clippy::unit_arg, clippy::unnecessary_literal_unwrap)]
 
 use std::ops::Deref;

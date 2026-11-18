@@ -9,17 +9,17 @@
 // errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
-#![feature(builtin_syntax)]
+#![feature(internal_syntax)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
+#![feature(forced_keywords)]
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(pattern_types)]
-#![feature(pattern_type_macro)]
 #![feature(prelude_import)]
 #![feature(specialization)]
 #![feature(trace_macros)]
@@ -144,7 +144,7 @@ mod expressions {
     /// ExprKind::Type
     fn expr_type() {
         let expr;
-        builtin # type_ascribe(expr, T);
+        k#type_ascribe(expr, T);
     }
 
     /// ExprKind::Let
@@ -845,7 +845,7 @@ mod types {
 
     /// TyKind::Pat
     fn ty_pat() {
-        let _: core::pattern_type!(u32 is 1..);
+        let _: pattern_type!(u32 is 1..);
     }
 }
 

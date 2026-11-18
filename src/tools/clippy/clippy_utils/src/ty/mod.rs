@@ -23,8 +23,8 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgs, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
+    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, CallerBoundsIterator as _,
+    FnSig, GenericArg, GenericArgKind, GenericArgs, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
     TypeSuperVisitable as _, TypeVisitable, TypeVisitableExt as _, TypeVisitor, UintTy, Unnormalized, VariantDef,
     VariantDiscr,
 };
@@ -821,9 +821,10 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
         {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
-            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
+            _ => sig_for_projection(cx, proj)
+                .or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds().all_clauses(cx.tcx).iter(), None)),
         },
-        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None),
+        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds().all_clauses(cx.tcx).iter(), None),
         _ => None,
     }
 }

@@ -848,6 +848,10 @@ See:
 - [Lints | The rustc book](https://doc.rust-lang.org/rustc/lints/index.html)
 - [Lint reasons | Reference](https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-reasons)
 
+## `tests/ui/lint_helper_namespace/`
+
+Tests for lint helper attributes such as `#[lint::as_ptr]`.
+
 ## `tests/ui/liveness/`
 
 Tests exercising analysis for unused variables, unreachable statements, functions which are supposed to return a value but do not, as well as values moved elsewhere before they could be used by a function.
@@ -1409,6 +1413,10 @@ Broad category for parallelism and multi-threaded tests, including attempting to
 ## `tests/ui/tool-attributes/`: External tool attributes
 
 Exercises [tool attributes](https://doc.rust-lang.org/reference/attributes.html#tool-attributes).
+
+## `tests/ui/tpde`
+
+Exercises the experimental TPDE-LLVM codegen backend.
 
 ## `tests/ui/track-diagnostics/`
 

@@ -407,6 +407,7 @@ impl<'a> GccLinker<'a> {
             self.link_arg(&arg);
         }
 
+        // The plugin has no distinct size setting: `s` and `z` both map to `O2`, as `More` does.
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
@@ -698,9 +699,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::More
-            || self.sess.opts.optimize == config::OptLevel::Aggressive
-        {
+        if self.sess.optimization_objective() == config::OptimizationObjective::Speed {
             self.link_arg("-O1");
         }
     }
@@ -1021,7 +1020,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // MSVC's ICF (Identical COMDAT Folding) link optimization is
         // slow for Rust and thus we disable it by default when not in
         // optimization build.
-        if self.sess.opts.optimize != config::OptLevel::No {
+        if self.sess.optimization_objective() != config::OptimizationObjective::None {
             self.link_arg("/OPT:REF,ICF");
         } else {
             // It is necessary to specify NOICF here, because /OPT:REF

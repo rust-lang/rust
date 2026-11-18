@@ -14,9 +14,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           OFFSET_OF_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            OFFSET_OF_KW "offset_of"
+            OFFSET_OF_KW "k#offset_of"
             L_PAREN "("
             PATH_TYPE
               PATH

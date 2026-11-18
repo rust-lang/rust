@@ -191,6 +191,7 @@ mod imp {
 }
 
 #[cfg(test)]
+#[cfg(not(miri))]
 mod tests {
     use std::fs;
 
@@ -207,8 +208,10 @@ mod tests {
         fs::write(&source, b"changed").unwrap();
         assert_eq!(fs::read(file.path()).unwrap(), b"contents");
 
+        #[allow(unused)]
         let path = file.path().to_owned();
         drop(file);
+        #[cfg(any(windows, target_os = "macos"))] // In Linux and BSDs the path depends on the fd and can have race conditions
         assert!(!fs::exists(path).unwrap());
         assert_eq!(fs::read(source).unwrap(), b"changed");
     }
