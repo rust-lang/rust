@@ -2195,9 +2195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::GenericParamKind::Const { arg_pos: Some(pos), .. } = param.kind
                 && let Some(idx) = (pos as usize).checked_sub(is_method as usize)
             {
-                params_with_generics
-                    .raw
-                    .insert(idx, (None, FnParam::Ident(Some(param.name.ident()))));
+                params_with_generics.raw.insert(idx, (None, FnParam::GenericParam(param)));
             }
         }
         Some((params_with_generics, generics))
@@ -2227,20 +2225,15 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Ident(Option<Ident>),
+    /// For function args const generics
+    GenericParam(&'hir hir::GenericParam<'hir>),
 }
 
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
             Self::Param(param) => param.span,
-            Self::Ident(ident) => {
-                if let Some(ident) = ident {
-                    ident.span
-                } else {
-                    DUMMY_SP
-                }
-            }
+            Self::GenericParam(param) => param.span,
         }
     }
 
@@ -2256,8 +2249,8 @@ impl FnParam<'_> {
                     {
                         Some(ident.name)
                     }
-                    FnParam::Ident(ident)
-                        if let Some(ident) = ident
+                    FnParam::GenericParam(param)
+                        if let ident = param.name.ident()
                             && ident.name != kw::Underscore =>
                     {
                         Some(ident.name)
