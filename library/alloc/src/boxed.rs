@@ -569,8 +569,6 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_ext)]
-    ///
     /// use std::alloc::System;
     ///
     /// let mut five = Box::<u32, _>::new_uninit_in(System);
@@ -580,12 +578,12 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[stable(feature = "box_new_uninit_zeroed_in", since = "CURRENT_RUSTC_VERSION")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
-        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // NOTE: Prefer match over unwrap_or_else because a closure is sometimes not inlineable.
         // That would make code size bigger.
         match Box::try_new_uninit_in(alloc) {
             Ok(m) => m,
@@ -632,8 +630,6 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_ext)]
-    ///
     /// use std::alloc::System;
     ///
     /// let zero = Box::<u32, _>::new_zeroed_in(System);
@@ -643,12 +639,12 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[stable(feature = "box_new_uninit_zeroed_in", since = "CURRENT_RUSTC_VERSION")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
-        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // NOTE: Prefer match over unwrap_or_else because a closure is sometimes not inlineable.
         // That would make code size bigger.
         match Box::try_new_zeroed_in(alloc) {
             Ok(m) => m,
