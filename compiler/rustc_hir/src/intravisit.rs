@@ -1309,10 +1309,10 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_const_item_rhs, default);
         }
-        TraitItemKind::Fn(ref sig, TraitFn::Required(param_idents)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required(params)) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_idents.iter().copied() {
-                visit_opt!(visitor, visit_ident, ident);
+            for param in params {
+                try_visit!(visitor.visit_param(param));
             }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {

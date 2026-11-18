@@ -1145,6 +1145,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_
 }
 
 enum ParamsSrc<'tcx> {
+    #[allow(unused)] //TODO
     Idents(&'tcx [Option<Ident>]),
     Params(&'tcx [hir::Param<'tcx>]),
 }
@@ -1314,7 +1315,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                         ParamsSrc::Params(cx.tcx.hir_body(body).params),
                         Some(Defaultness::from_trait_item(trait_item.defaultness)),
                     ),
-                    hir::TraitFn::Required(idents) => (ParamsSrc::Idents(idents), None),
+                    hir::TraitFn::Required(params) => (ParamsSrc::Params(params), None),
                 };
                 let (generics, decl) =
                     clean_function(cx, sig, trait_item.generics, params, local_did);

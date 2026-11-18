@@ -173,15 +173,7 @@ impl LateLintPass<'_> for MinIdentChars {
         if self.min_chars_threshold == 0 {
             return;
         }
-        if let TraitItemKind::Fn(_, TraitFn::Required(idents)) = i.kind {
-            for &ident in idents {
-                if let Some(ident) = ident
-                    && let Some(missing) = self.check_sym(ident.name)
-                {
-                    self.emit(cx, ident, missing);
-                }
-            }
-        }
+
         if let Some(missing) = self.check_sym(i.ident.name)
             && !(matches!(i.kind, TraitItemKind::Fn(_, TraitFn::Provided(_)))
                 && cx.tcx.codegen_fn_attrs(i.owner_id.def_id).contains_extern_indicator())

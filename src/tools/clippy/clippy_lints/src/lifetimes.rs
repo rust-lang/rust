@@ -16,7 +16,7 @@ use rustc_hir::intravisit::{
 use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
-    PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
+    Param, PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
     WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
@@ -24,7 +24,7 @@ use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::symbol::kw;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv, || {
+            check_fn_inner(cx, sig, Some(id), cx.tcx.hir_body(id).params, generics, item.span, true, self.msrv, || {
                 is_from_proc_macro(cx, item)
             });
         } else if let ItemKind::Impl(impl_) = &item.kind
@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 cx,
                 sig,
                 Some(id),
-                None,
+                cx.tcx.hir_body(id).params,
                 item.generics,
                 item.span,
                 report_extra_lifetimes,
@@ -185,15 +185,15 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
-            let (body, trait_sig) = match *body {
-                TraitFn::Required(sig) => (None, Some(sig)),
-                TraitFn::Provided(id) => (Some(id), None),
+            let (body, params) = match *body {
+                TraitFn::Required(sig) => (None, sig),
+                TraitFn::Provided(id) => (Some(id), cx.tcx.hir_body(id).params),
             };
             check_fn_inner(
                 cx,
                 sig,
                 body,
-                trait_sig,
+                params,
                 item.generics,
                 item.span,
                 true,
@@ -209,7 +209,7 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Option<Ident>]>,
+    params: &[Param<'tcx>],
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
@@ -266,7 +266,7 @@ fn check_fn_inner<'tcx>(
         }
     }
 
-    let elidable = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv);
+    let elidable = could_use_elision(cx, sig.decl, body, params, generics.params, msrv);
     let has_elidable_lts = elidable
         .as_ref()
         .is_some_and(|(_, usages)| !usages.iter().any(|usage| usage.ident.span.ctxt() != span.ctxt()));
@@ -294,7 +294,7 @@ fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Option<Ident>]>,
+    params: &[Param<'tcx>],
     named_generics: &'tcx [GenericParam<'_>],
     msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
@@ -330,19 +330,12 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(&[trait_sig]) = trait_sig
-        && non_elidable_self_type(cx, func, trait_sig, msrv)
-    {
+    if non_elidable_self_type(cx, func, params, msrv) {
         return None;
     }
 
     if let Some(body_id) = body {
         let body = cx.tcx.hir_body(body_id);
-
-        let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
-        if non_elidable_self_type(cx, func, first_ident, msrv) {
-            return None;
-        }
 
         let mut checker = BodyLifetimeChecker::new(cx);
         if checker.visit_expr(body.value).is_break() {
@@ -414,9 +407,10 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 }
 
 // elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
-fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
-    if let Some(ident) = ident
-        && ident.name == kw::SelfLower
+fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, params: &[Param<'tcx>], msrv: Msrv) -> bool {
+    if let &[first_param, ..] = params
+        && let Some(first_ident) = first_param.pat.simple_ident()
+        && first_ident.name == kw::SelfLower
         && !func.implicit_self().has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
         && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)

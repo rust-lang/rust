@@ -20,8 +20,8 @@ use rustc_attr_ir::{AttrArgs, AttrItem, Attribute, AttributeKind, PrintAttribute
 use rustc_hir as hir;
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
-    PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
+    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, Param,
+    PatKind, PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
@@ -990,10 +990,10 @@ impl<'a> State<'a> {
         ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
-        arg_idents: &[Option<Ident>],
+        params: &[Param<'_>],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.header, Some(ident.name), generics, m.decl, arg_idents, &[], body_id);
+        self.print_fn(m.header, Some(ident.name), generics, m.decl, &[], params, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -1005,8 +1005,8 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_idents)) => {
-                self.print_method_sig(ti.ident, sig, ti.generics, arg_idents, None);
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(params)) => {
+                self.print_method_sig(ti.ident, sig, ti.generics, params, None);
                 self.word(";");
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {

@@ -861,7 +861,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(Fn { sig, ident, generics, body: None, define_opaque, .. }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
-                let idents = self.lower_fn_params_to_idents(&sig.decl);
+                let params = self.lower_fn_params(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -870,8 +870,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
-                    // Parameters are discarded for functions without a body
-                    DiscardParams::Yes,
+                    DiscardParams::No,
                 );
                 if define_opaque.is_some() {
                     self.dcx().span_err(
@@ -882,7 +881,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (
                     *ident,
                     generics,
-                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(idents)),
+                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(params)),
                     false,
                 )
             }

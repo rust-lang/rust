@@ -2142,13 +2142,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
+        //TODO cleanup
         let (sig, generics, params, idents) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             }) => match trait_fn {
-                hir::TraitFn::Required(params) => (sig, generics, None, Some(params)),
+                hir::TraitFn::Required(params) => {
+                    (sig, generics, Some(params), None::<&[Option<Ident>]>)
+                }
                 hir::TraitFn::Provided(body) => {
                     (sig, generics, Some(self.tcx.hir_body(body).params), None)
                 }

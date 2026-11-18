@@ -4470,23 +4470,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ..
                                 })) = id
                                 {
-                                    let self_first_arg = match method {
-                                        hir::TraitFn::Required([ident, ..]) => {
-                                            matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
-                                        }
+                                    let params = match method {
+                                        hir::TraitFn::Required(params) => params,
                                         hir::TraitFn::Provided(body_id) => {
-                                            self.tcx.hir_body(*body_id).params.first().is_some_and(
-                                                |param| {
-                                                    matches!(
-                                                        param.pat.kind,
-                                                        hir::PatKind::Binding(_, _, ident, _)
-                                                            if ident.name == kw::SelfLower
-                                                    )
-                                                },
-                                            )
+                                            self.tcx.hir_body(*body_id).params
                                         }
-                                        _ => false,
                                     };
+                                    let self_first_arg = params.first().is_some_and(|param| {
+                                        matches!(
+                                            param.pat.kind,
+                                            hir::PatKind::Binding(_, _, ident, _) if ident.name == kw::SelfLower
+                                        )
+                                    });
 
                                     if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg
