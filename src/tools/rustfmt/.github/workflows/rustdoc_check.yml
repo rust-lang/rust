@@ -20,6 +20,7 @@ jobs:
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
         sh rustup-init.sh -y --default-toolchain none
+        rustup toolchain install
         rustup target add x86_64-unknown-linux-gnu
 
     - name: document rustfmt

@@ -1,11 +1,11 @@
 use std::io::Error;
 use std::process::ExitCode;
 
-use check_diff::{
-    Edition, ReleaseChannel, StyleEdition, check_diff, clone_repositories_for_diff_check,
-    compile_rustfmt,
-};
 use clap::Parser;
+use diff_check::{
+    Edition, ReleaseChannel, StyleEdition, clone_repositories_for_diff_check, compile_rustfmt,
+    diff_check,
+};
 use tempfile::tempdir;
 use tracing::{error, info};
 
@@ -39,12 +39,19 @@ const REPOS: &[&str] = &[
     "https://github.com/SergioBenitez/Rocket.git",
     "https://github.com/Stebalien/tempfile.git",
     // Unicode / international text coverage (see rustfmt#5884)
-    "https://github.com/unicode-rs/unicode-width.git",
-    "https://github.com/unicode-rs/unicode-segmentation.git",
+    "https://github.com/unicode-org/icu4x.git",
+    "https://github.com/unicode-rs/rust-caseless.git",
+    "https://github.com/unicode-rs/unicode-charname",
     "https://github.com/unicode-rs/unicode-normalization.git",
+    "https://github.com/unicode-rs/unicode-properties",
+    "https://github.com/unicode-rs/unicode-security.git",
+    "https://github.com/unicode-rs/unicode-segmentation.git",
+    "https://github.com/unicode-rs/unicode-script.git",
+    "https://github.com/unicode-rs/unicode-width.git",
+    "https://github.com/unicode-rs/unicode-xid.git",
 ];
 
-/// Inputs for the check_diff script
+/// Inputs for the Diff Check script
 #[derive(Parser)]
 struct CliInputs {
     /// Git url of a rustfmt fork to compare against the latest main rustfmt
@@ -74,7 +81,7 @@ struct CliInputs {
 
 fn main() -> Result<ExitCode, Error> {
     tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_env("CHECK_DIFF_LOG"))
+        .with_env_filter(tracing_subscriber::EnvFilter::from_env("DIFF_CHECK_LOG"))
         .init();
     let args = CliInputs::parse();
     let tmp_dir = tempdir()?;
@@ -103,7 +110,7 @@ fn main() -> Result<ExitCode, Error> {
     let repositories = clone_repositories_for_diff_check(REPOS);
 
     info!("Starting the Diff Check");
-    let errors = check_diff(&diff_checker, &repositories, args.worker_threads);
+    let errors = diff_check(&diff_checker, &repositories, args.worker_threads);
 
     if errors.is_empty() {
         info!("No diff found 😊");
