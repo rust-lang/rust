@@ -3011,6 +3011,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .span_err(path.span, "static items cannot be used as const arguments");
                 return Const::new_error(tcx, guar);
             }
+            Res::SelfCtor(_) => {
+                let guar = self
+                    .dcx()
+                    .span_err(span, "the `Self` constructor cannot be used as a const argument");
+                return Const::new_error(tcx, guar);
+            }
             // FIXME(const_generics): create real consts to allow fn items as const paths.
             // Lowering these to recovered `FnDef` consts currently interacts poorly with WF
             // checking: WF of a `FnDef` walks the function signature, so a signature that mentions
@@ -3054,7 +3060,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             | Res::PrimTy(_)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. }
-            | Res::SelfCtor(_)
             | Res::Local(_)
             | Res::ToolMod
             | Res::OpenMod(..)
