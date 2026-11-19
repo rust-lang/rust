@@ -35,6 +35,7 @@
 //! pre-"runtime" MIR!
 
 use itertools::Itertools as _;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -158,8 +159,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
                 debug!("simplifying {:?}", bb);
 
-                let mut terminator =
-                    self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
+                let mut terminator = self.take_terminator(bb).expect("invalid terminator state");
 
                 terminator.successors_mut(|successor| {
                     self.collapse_goto_chain(successor, &mut changed);
@@ -207,6 +207,18 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         outer_changed
     }
 
+    /// Replaces the terminator of a basic block with a dummy value.
+    fn take_terminator(&mut self, bb: BasicBlock) -> Option<Terminator<'tcx>> {
+        if has_dummy_terminator(&self.basic_blocks[bb]) {
+            return None;
+        }
+        let dummy_terminator = Terminator {
+            source_info: SourceInfo { span: DUMMY_SP, scope: SourceScope::ZERO },
+            kind: TerminatorKind::Goto { target: BasicBlock::MAX, loop_hint_attrs: ThinVec::new() },
+        };
+        std::mem::replace(&mut self.basic_blocks[bb].terminator, Some(dummy_terminator))
+    }
+
     /// This function will return `None` if
     /// * the block has statements
     /// * the block has a terminator other than `goto`
@@ -218,7 +230,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 terminator:
                     ref mut terminator @ Some(Terminator { kind: TerminatorKind::Goto { .. }, .. }),
                 ..
-            } if statements.is_empty() => terminator.take(),
+            } if statements.is_empty() => self.take_terminator(bb),
             // if `terminator` is None, this means we are in a loop. In that
             // case, let all the loop collapse to its entry.
             _ => None,
@@ -289,7 +301,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         debug!("merging block {:?} into {:?}", target, terminator);
-        *terminator = match self.basic_blocks[target].terminator.take() {
+        *terminator = match self.take_terminator(target) {
             Some(terminator) => terminator,
             None => {
                 // unreachable loop - this should not be possible, as we
@@ -350,12 +362,12 @@ pub(super) fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>)
 
 pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     let should_deduplicate_unreachable = |bbdata: &BasicBlockData<'_>| {
-        // CfgSimplifier::simplify leaves behind some unreachable basic blocks without a
-        // terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
+        // CfgSimplifier::simplify leaves behind some unreachable basic blocks with
+        // dummy terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
         // before then so we need to handle missing terminators.
         // We also need to prevent confusing cleanup and non-cleanup blocks. In practice we
         // don't emit empty unreachable cleanup blocks, so this simple check suffices.
-        bbdata.terminator.is_some() && bbdata.is_empty_unreachable() && !bbdata.is_cleanup
+        !has_dummy_terminator(bbdata) && bbdata.is_empty_unreachable() && !bbdata.is_cleanup
     };
 
     let reachable = traversal::reachable_as_bitset(body);
@@ -411,6 +423,13 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
 
     for block in basic_blocks {
         block.terminator_mut().successors_mut(|target| *target = replacements[target.index()]);
+    }
+}
+
+fn has_dummy_terminator(bbdata: &BasicBlockData<'_>) -> bool {
+    match bbdata.terminator().kind {
+        TerminatorKind::Goto { target, .. } => target == BasicBlock::MAX,
+        _ => false,
     }
 }
 
