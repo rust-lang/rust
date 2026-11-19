@@ -103,15 +103,19 @@ use crate::sync::atomic::{
 /// A type for atomic ordering parameters for intrinsics. This is a separate type from
 /// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
 /// risk of leaking that to stable code.
-#[allow(missing_docs)]
 #[derive(Debug, ConstParamTy, PartialEq, Eq)]
 pub enum AtomicOrdering {
     // These values must match the compiler's `AtomicOrdering` defined in
     // `rustc_middle/src/ty/consts/int.rs`!
+    /// [`Ordering::Relaxed`][`crate::sync::atomic::Ordering::Relaxed`]
     Relaxed = 0,
+    /// [`Ordering::Release`][`crate::sync::atomic::Ordering::Release`]
     Release = 1,
+    /// [`Ordering::Acquire`][`crate::sync::atomic::Ordering::Acquire`]
     Acquire = 2,
+    /// [`Ordering::AcqRel`][`crate::sync::atomic::Ordering::AcqRel`]
     AcqRel = 3,
+    /// [`Ordering::SeqCst`][`crate::sync::atomic::Ordering::SeqCst`]
     SeqCst = 4,
 }
 
