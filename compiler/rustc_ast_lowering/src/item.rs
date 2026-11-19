@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_attr_ir::target::AstTarget;
-use rustc_attr_ir::{AttributeKind, EiiImplResolution, LangItem, find_attr};
+use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, DropImpl, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
