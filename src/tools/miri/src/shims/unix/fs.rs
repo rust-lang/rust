@@ -679,7 +679,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let append = flag & o_append == o_append;
         if append {
             flag &= !o_append;
-            options.append(true);
+            // The flag is a NOP if the file is not writable.
+            if writable {
+                options.append(true);
+            }
         }
         let o_trunc = ecx.eval_libc_i32("O_TRUNC");
         if flag & o_trunc == o_trunc {
@@ -713,6 +716,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             } else {
                 options.create(true);
             }
+            // Creating a file requires opening it for writing.
+            // Write accesses will still get rejected as `writable` is not set on the `FileHandle`.
+            options.write(true);
         }
         let o_cloexec = ecx.eval_libc_i32("O_CLOEXEC");
         if flag & o_cloexec == o_cloexec {

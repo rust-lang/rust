@@ -160,6 +160,12 @@ fn test_append_seek_read_write() {
         let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY)).unwrap();
         assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"abcde");
         errno_check(libc::close(fd));
+
+        // Read-only append works but we cannot actually write.
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY | libc::O_APPEND)).unwrap();
+        let err = libc_utils::write_all(fd, b"e").unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+        errno_check(libc::close(fd));
     }
 }
 
@@ -715,7 +721,7 @@ fn test_unlinkat() {
 fn test_create_read_write() {
     let content = b"hello test";
     let path = utils::prepare("miri_test_create_read_write.txt");
-    let cpath = utils::into_c_string(path);
+    let cpath = utils::into_c_string(&path);
 
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT, 0o666) })
@@ -730,6 +736,17 @@ fn test_create_read_write() {
     assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
     let data = libc_utils::read_to_end(fd).unwrap();
     assert_eq!(*content, *data);
+    errno_check(unsafe { libc::close(fd) });
+
+    // We can also create with RDONLY.
+    fs::remove_file(&path).unwrap();
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY | libc::O_CREAT, 0o666) })
+            .unwrap();
+    let write_err = libc_utils::write_all(fd, content).unwrap_err();
+    assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
+    let data = libc_utils::read_to_end(fd).unwrap();
+    assert!(data.is_empty());
     errno_check(unsafe { libc::close(fd) });
 }
 
