@@ -83,7 +83,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return Ok(());
         }
 
-        let mini_graph = MiniGraph::new(&self, only_consider_snapshot);
+        let mini_graph =
+            MiniGraph::new(&self, only_consider_snapshot, tcx.assumptions_on_binders());
 
         let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;
@@ -361,20 +362,27 @@ impl<'tcx> MiniGraph<'tcx> {
     fn new(
         region_constraints: &RegionConstraintCollector<'_, 'tcx>,
         only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
+        assumptions_on_binders: bool,
     ) -> Self {
         let mut nodes = FxIndexMap::default();
         let mut edges = Vec::new();
 
         // Note that if `R2: R1`, we get a callback `r1, r2`, so `target` is first parameter.
-        Self::iterate_region_constraints(
-            region_constraints,
-            only_consider_snapshot,
-            |target, source| {
-                let source_node = Self::add_node(&mut nodes, source);
-                let target_node = Self::add_node(&mut nodes, target);
-                edges.push((source_node, target_node));
-            },
-        );
+        let each_edge = |target, source| {
+            let source_node = Self::add_node(&mut nodes, source);
+            let target_node = Self::add_node(&mut nodes, target);
+            edges.push((source_node, target_node));
+        };
+
+        if assumptions_on_binders {
+            Self::iterate_solver_region_constraints(
+                region_constraints,
+                only_consider_snapshot,
+                each_edge,
+            );
+        } else {
+            Self::iterate_region_constraints(region_constraints, only_consider_snapshot, each_edge);
+        }
         let graph = VecGraph::<_, false>::new(nodes.len(), edges);
         let sccs = Sccs::new(&graph);
         Self { nodes, sccs }
@@ -408,8 +416,10 @@ impl<'tcx> MiniGraph<'tcx> {
                         "we never add verifications while doing higher-ranked things",
                     ),
                     &AddCombination(..) | &AddVar(..) => {}
-                    // FIXME(-Zassumptions-on-binders): we probably need to handle this in some manner
-                    &OverwriteSolverRegionConstraint { .. } => {}
+                    &OverwriteSolverRegionConstraint { .. }
+                    | &AddSolverLeafRegionConstraint(..) => {
+                        unreachable!()
+                    }
                 }
             }
         } else {
@@ -425,6 +435,44 @@ impl<'tcx> MiniGraph<'tcx> {
                         ty::VisibleForLeakCheck::Unreachable => unreachable!(),
                     }
                 })
+        }
+    }
+
+    /// [`iterate_region_constraints`] but use the new-style constraint.
+    fn iterate_solver_region_constraints(
+        region_constraints: &RegionConstraintCollector<'_, 'tcx>,
+        only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
+        mut each_edge: impl FnMut(ty::Region<'tcx>, ty::Region<'tcx>),
+    ) {
+        let mut handle_leaf = |leaf: RawSolverLeafRegionConstraint<'tcx>| {
+            if let SolverLeafRegionConstraint::RegionOutlives(sup, sub) = leaf.leaf {
+                match leaf.visible_for_leak_check {
+                    ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
+                    ty::VisibleForLeakCheck::No => {}
+                    ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                }
+            }
+        };
+        if let Some(snapshot) = only_consider_snapshot {
+            for undo_entry in
+                region_constraints.undo_log.region_constraints_in_snapshot(&snapshot.undo_snapshot)
+            {
+                match undo_entry {
+                    &AddConstraint(_) | &AddVerify(_) => {
+                        bug!("We use the old region constraint when assumptions_on_binders is on")
+                    }
+
+                    &AddCombination(..) | &AddVar(..) => {}
+                    &OverwriteSolverRegionConstraint { .. } => {}
+                    &AddSolverLeafRegionConstraint(index) => {
+                        handle_leaf(region_constraints.solver_data().get_leaf(index).unwrap());
+                    }
+                }
+            }
+        } else {
+            for leaf in region_constraints.solver_data().iter_leafs() {
+                handle_leaf(leaf);
+            }
         }
     }
 

@@ -1,7 +1,8 @@
 //@ run-pass
-//@ revisions: old next
+//@ revisions: old next abby
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@[abby] compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 #![allow(coherence_leak_check)]
 
 trait Trait: Sized {

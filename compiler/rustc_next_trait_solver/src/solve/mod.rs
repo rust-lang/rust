@@ -109,7 +109,10 @@ where
                 use rustc_type_ir::region_constraint::RegionConstraint;
 
                 let constraint = self.destructure_type_outlives(ty, lt);
-                self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
+                self.register_solver_region_constraint(
+                    RegionConstraint::new_from_or(constraint),
+                    VisibleForLeakCheck::No,
+                );
             } else {
                 self.register_ty_outlives(ty, lt);
             }
@@ -131,8 +134,8 @@ where
             };
 
             let constraint =
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
-            self.register_solver_region_constraint(constraint);
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b), NoSpan);
+            self.register_solver_region_constraint(constraint, VisibleForLeakCheck::Yes);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
         }

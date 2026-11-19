@@ -26,8 +26,8 @@ core::test_binder_constraints! {
         forall<> {
             predicates &'a (): Same<&'b ()>
         } expect {
-            'b: 'a,
             'a: 'b,
+            'b: 'a,
         }
     }
 }

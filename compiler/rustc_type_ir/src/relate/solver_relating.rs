@@ -242,7 +242,7 @@ where
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if self.cx().assumptions_on_binders() {
             let region_outlives = |a, b| {
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan))
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b), NoSpan)
             };
 
             match self.ambient_variance {
@@ -250,16 +250,28 @@ where
                     unreachable!("Expected bivariance to be handled in relate_with_variance")
                 }
                 _ if a == b => return Ok(a),
-                ty::Covariant => {
-                    self.infcx.register_solver_region_constraint(region_outlives(a, b), self.span)
-                }
-                ty::Contravariant => {
-                    self.infcx.register_solver_region_constraint(region_outlives(b, a), self.span)
-                }
+                ty::Covariant => self.infcx.register_solver_region_constraint(
+                    region_outlives(a, b),
+                    VisibleForLeakCheck::Yes,
+                    self.span,
+                ),
+                ty::Contravariant => self.infcx.register_solver_region_constraint(
+                    region_outlives(b, a),
+                    VisibleForLeakCheck::Yes,
+                    self.span,
+                ),
                 ty::Invariant => {
                     self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
-                    self.infcx.register_solver_region_constraint(region_outlives(a, b), self.span);
-                    self.infcx.register_solver_region_constraint(region_outlives(b, a), self.span);
+                    self.infcx.register_solver_region_constraint(
+                        region_outlives(a, b),
+                        VisibleForLeakCheck::Yes,
+                        self.span,
+                    );
+                    self.infcx.register_solver_region_constraint(
+                        region_outlives(b, a),
+                        VisibleForLeakCheck::Yes,
+                        self.span,
+                    );
                 }
             }
         } else {

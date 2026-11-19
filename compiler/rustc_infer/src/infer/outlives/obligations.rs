@@ -140,8 +140,12 @@ impl<'tcx> InferCtxt<'tcx> {
         inner.region_obligations.push(obligation);
     }
 
-    pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
-        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c);
+    pub fn register_solver_region_constraint(
+        &self,
+        c: SolverRegionConstraint<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+    ) {
+        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c, vis);
     }
 
     pub fn register_type_outlives_constraint(
@@ -280,7 +284,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         if constraint.is_false() {
             match failing_leafs.first() {
-                Some(PlaceholderTyOutlives(_a, _b, span)) => {
+                Some((PlaceholderTyOutlives(_a, _b), span)) => {
                     self.dcx()
                         .struct_span_err(
                             *span,
@@ -288,7 +292,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         )
                         .emit();
                 }
-                Some(AliasTyOutlivesViaEnv(_, span)) => {
+                Some((AliasTyOutlivesViaEnv(_), span)) => {
                     self.dcx()
                         .struct_span_err(
                             *span,
@@ -303,15 +307,14 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
+        for (c, span) in constraint.and_constraint.into_iter().chain(
             constraint
                 .or_constraint
-                .0
                 .into_iter()
-                .flat_map(|and_constraint| and_constraint.0.into_iter()),
+                .flat_map(|and_constraint| and_constraint.into_iter()),
         ) {
             match c {
-                Ambiguity(span) => {
+                Ambiguity => {
                     self.dcx()
                         .struct_span_err(
                             span,
@@ -319,7 +322,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         )
                         .emit();
                 }
-                RegionOutlives(a, b, span) => {
+                RegionOutlives(a, b) => {
                     let origin = SubregionOrigin::SolverRegionConstraint(span);
                     let category = origin.to_constraint_category();
                     conversion.push_sub_region_constraint(
