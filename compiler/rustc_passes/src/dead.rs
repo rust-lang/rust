@@ -16,6 +16,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
+use rustc_index::IndexVec;
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -119,11 +120,12 @@ enum ImplItemCheckResult {
     Dead { require: LocalDefId },
 }
 
-#[derive(Eq, Hash, PartialEq, Debug)]
-struct ScannedItem {
-    id: LocalDefId,
-    propagated: ComesFromAllowExpect,
-    trivial_usage_site: Option<LocalDefId>,
+#[derive(Clone, Copy, Default)]
+enum ScanState {
+    #[default]
+    Unscanned,
+    AllowExpect,
+    Scanned,
 }
 
 #[derive(Default, Clone)]
@@ -173,7 +175,8 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<WorkItem>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: FxHashSet<ScannedItem>,
+    scanned: IndexVec<LocalDefId, ScanState>,
+    scanned_trivial: FxHashMap<(LocalDefId, LocalDefId), ScanState>,
     live_symbols: LiveSymbols,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd_or_scalable: bool,
@@ -499,31 +502,27 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         propagated: ComesFromAllowExpect,
         trivial_usage_site: Option<LocalDefId>,
     ) -> bool {
-        // If the item was previously scanned from a normal live seed,
-        // we don't need to scan it again.
-        if self.scanned.contains(&ScannedItem {
-            id,
-            propagated: ComesFromAllowExpect::No,
-            trivial_usage_site: None,
-        }) {
-            return true;
+        let scan_state = if let Some(trivial_usage_site) = trivial_usage_site {
+            self.scanned_trivial.entry((id, trivial_usage_site)).or_default()
+        } else {
+            let index = id.local_def_index.as_usize();
+            if index >= self.scanned.len() {
+                self.scanned.resize(index + 1, ScanState::Unscanned);
+            }
+            &mut self.scanned[id]
+        };
+        match (propagated, *scan_state) {
+            (_, ScanState::Scanned) => true,
+            (ComesFromAllowExpect::No, ScanState::AllowExpect | ScanState::Unscanned) => {
+                *scan_state = ScanState::Scanned;
+                false
+            }
+            (ComesFromAllowExpect::Yes, ScanState::Unscanned) => {
+                *scan_state = ScanState::AllowExpect;
+                false
+            }
+            (ComesFromAllowExpect::Yes, ScanState::AllowExpect) => true,
         }
-        // If the item was scanned from the same allow/expect context and the same
-        // trivial usage site, we don't need to scan it again
-        if !self.scanned.insert(ScannedItem { id, propagated, trivial_usage_site }) {
-            return true;
-        }
-        // If the item is not coming from an `#[allow]` or `#[expect]`,
-        // we also mark it as scanned with `ComesFromAllowExpect::Yes`
-        // to avoid re-scanning it in the future.
-        if propagated == ComesFromAllowExpect::No {
-            self.scanned.insert(ScannedItem {
-                id,
-                propagated: ComesFromAllowExpect::Yes,
-                trivial_usage_site,
-            });
-        }
-        false
     }
 
     fn get_trivial_field_reads_attr(&mut self, id: LocalDefId, node: &Node<'_>) -> Option<Span> {
@@ -1171,6 +1170,7 @@ fn live_symbols_and_trivial_usage_sites(
         tcx,
         maybe_typeck_results: None,
         scanned: Default::default(),
+        scanned_trivial: FxHashMap::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd_or_scalable: false,
