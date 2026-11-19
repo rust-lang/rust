@@ -18,6 +18,26 @@ LL |         unstable_intrinsic::align_of_val(&x);
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: use of unstable library feature `unstable`
+  --> $DIR/const-unstable-intrinsic.rs:30:9
+   |
+LL |         unstable_intrinsic::llvm_fshl(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable`
+  --> $DIR/const-unstable-intrinsic.rs:33:9
+   |
+LL |         unstable_intrinsic::llvm_fshl2(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: `size_of_val` is not yet stable as a const intrinsic
   --> $DIR/const-unstable-intrinsic.rs:17:9
    |
@@ -64,8 +84,54 @@ LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const fn const_main() {
    |
 
+error: `llvm.fshl.i64` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:30:9
+   |
+LL |         unstable_intrinsic::llvm_fshl(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
+
+error: `llvm.fshl.i64` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:33:9
+   |
+LL |         unstable_intrinsic::llvm_fshl2(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:37:9
+   |
+LL |         llvm_fshl(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:39:9
+   |
+LL |         llvm_fshl2(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+
 error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
-  --> $DIR/const-unstable-intrinsic.rs:47:14
+  --> $DIR/const-unstable-intrinsic.rs:69:14
    |
 LL |     unsafe { copy(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +139,7 @@ LL |     unsafe { copy(src, dst, count) }
    = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
-  --> $DIR/const-unstable-intrinsic.rs:55:9
+  --> $DIR/const-unstable-intrinsic.rs:77:9
    |
 LL |         super::size_of_val(src);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,19 +151,37 @@ LL |     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
    |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
-  --> $DIR/const-unstable-intrinsic.rs:65:9
+  --> $DIR/const-unstable-intrinsic.rs:83:9
+   |
+LL |         super::llvm_fshl(a, b, sh)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
+LL |     const unsafe fn llvm_fshl(a: i64, b: i64, sh: i64) -> i64 {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:93:9
    |
 LL |         super::align_of_val(x)
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:101:9
+   |
+LL |         super::llvm_fshl2(a, b, sh)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: intrinsic `non_const_fallback::size_of_val` cannot be (indirectly) exposed to stable
-  --> $DIR/const-unstable-intrinsic.rs:84:18
+  --> $DIR/const-unstable-intrinsic.rs:120:18
    |
 LL |         unsafe { size_of_val(x) }
    |                  ^^^^^^^^^^^^^^
    |
    = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
-error: aborting due to 10 previous errors
+error: aborting due to 18 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

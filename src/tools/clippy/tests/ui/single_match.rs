@@ -497,3 +497,41 @@ fn issue14493() {
         _ => println!("neq"),
     }
 }
+
+mod issue16579 {
+    // Previous tests already covered those cases, this module only tests desugers.
+    use super::dummy;
+
+    fn for_loop(opt: Option<u8>) {
+        match opt {
+            Some(n) => {
+                for n in 0..n {
+                    dummy()
+                }
+            },
+            None => {},
+        }
+        //~^^^^^^^^ single_match
+    }
+
+    fn with_result() -> Result<(), ()> {
+        Ok(())
+    }
+    fn try_op(opt: Option<u8>) -> Result<(), ()> {
+        match opt {
+            Some(_) => with_result()?,
+            None => {},
+        }
+        //~^^^^ single_match
+        Ok(())
+    }
+
+    async fn as_fn() {}
+    async fn await_op(opt: Option<u8>) {
+        match opt {
+            Some(n) => as_fn().await,
+            None => {},
+        }
+        //~^^^^ single_match
+    }
+}

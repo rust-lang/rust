@@ -244,7 +244,7 @@ fn split_block(
     let block_data = &mut basic_blocks[location.block];
 
     // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData::new_stmts(
+    let new_block = BasicBlockData::maybe_unterminated_stmts(
         block_data.statements.split_off(location.statement_index),
         block_data.terminator.take(),
         block_data.is_cleanup,
@@ -348,7 +348,7 @@ fn insert_direct_enum_check<'tcx>(
     new_block: BasicBlock,
 ) {
     // Insert a new target block that is branched to in case of an invalid discriminant.
-    let invalid_discr_block_data = BasicBlockData::new(None, false);
+    let invalid_discr_block_data = BasicBlockData::maybe_unterminated(None, false);
     let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
     let block_data = &mut basic_blocks[current_block];
     let discr_place = insert_discr_cast_to_u128(

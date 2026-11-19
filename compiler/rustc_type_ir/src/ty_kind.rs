@@ -307,6 +307,13 @@ pub enum TyKind<I: Interner> {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::Tys),
 
+    /// A view over an [`Adt`].
+    ///
+    /// This variant contains the same data as `Adt` as well as a `Ty` field that represents the
+    /// set of fields that are viewed. This `Ty` should be either a type variable or a tuple of
+    /// `FieldRepresentingType`.
+    View(I::AdtDef, I::GenericArgs, I::Ty),
+
     /// A projection, opaque type, free type alias, or inherent associated type.
     ///
     /// All of these types are represented as pairs of def-id and args, and can
@@ -361,24 +368,48 @@ pub enum TyKind<I: Interner> {
 impl<I: Interner> Eq for TyKind<I> {}
 
 impl<I: Interner> TyKind<I> {
-    pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
-        self.unnormalized_fn_sig(interner).skip_normalization()
-    }
-
     pub fn unnormalized_fn_sig(self, interner: I) -> Unnormalized<I, ty::Binder<I, ty::FnSig<I>>> {
         match self {
             ty::FnPtr(sig_tys, hdr) => Unnormalized::new_wip(sig_tys.with(hdr)),
             ty::FnDef(def_id, args) => {
                 interner.fn_sig(def_id).instantiate(interner, args.no_bound_vars().unwrap())
             }
-            ty::Error(_) => {
-                // ignore errors (#54954)
-                Unnormalized::dummy(ty::Binder::dummy(ty::FnSig::dummy()))
-            }
+            // ignore errors (#54954)
+            ty::Error(_) => Unnormalized::dummy(ty::Binder::dummy(ty::FnSig::dummy())),
             ty::Closure(..) => panic!(
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
             ),
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self),
+        }
+    }
+
+    pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
+        self.unnormalized_fn_sig(interner).skip_normalization()
+    }
+
+    pub fn fn_sig_abi(self, interner: I) -> ExternAbi {
+        match self {
+            ty::FnPtr(_, hdr) => hdr.abi(),
+            ty::FnDef(def_id, _) => interner.fn_sig(def_id).skip_binder().abi(),
+            // ignore errors (#54954)
+            ty::Error(_) => FnSig::<I>::dummy().abi(),
+            ty::Closure(..) => panic!(
+                "to get the ABI of a closure, use `args.as_closure().sig().abi()` not `fn_sig_abi()`",
+            ),
+            _ => panic!("`fn_sig_abi` called on non-fn type: {:?}", self),
+        }
+    }
+
+    pub fn fn_sig_safety(self, interner: I) -> I::Safety {
+        match self {
+            ty::FnPtr(_, hdr) => hdr.safety(),
+            ty::FnDef(def_id, _) => interner.fn_sig(def_id).skip_binder().safety(),
+            // ignore errors (#54954)
+            ty::Error(_) => FnSig::<I>::dummy().safety(),
+            ty::Closure(..) => panic!(
+                "to get the safety of a closure, use `args.as_closure().sig().safety()` not `fn_sig_safety()`",
+            ),
+            _ => panic!("`fn_sig_safety` called on non-fn type: {:?}", self),
         }
     }
 
@@ -421,6 +452,9 @@ impl<I: Interner> TyKind<I> {
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
@@ -488,6 +522,9 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

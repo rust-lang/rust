@@ -26,6 +26,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
 use crate::traits::ObligationCause;
+use crate::ty::intrinsic::Intrinsic;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgs, Ty, TyCtxt, TypeFoldable,
@@ -1217,6 +1218,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1267,6 +1271,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1321,6 +1328,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1490,6 +1500,9 @@ impl<'tcx> Ty<'tcx> {
             }
 
             ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) | ty::UnsafeBinder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1595,6 +1608,9 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -1718,15 +1734,22 @@ pub fn doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Option<&'_ NotableTr
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if tcx.features().intrinsics() && find_attr!(tcx, def_id, RustcIntrinsic) {
+    if tcx.features().intrinsics()
+        // find any rustc_intrinsic attribute, possibly with a "llvm = ..." argument
+        && let Some(maybe_llvm) = find_attr!(tcx, def_id, RustcIntrinsic{llvm} => *llvm)
+    {
         let must_be_overridden = match tcx.hir_node_by_def_id(def_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
                 !has_body
             }
             _ => true,
         };
+        let name = match maybe_llvm {
+            Some(s) => Intrinsic::Backend { llvm: s },
+            None => Intrinsic::Rustc(tcx.item_name(def_id)),
+        };
         Some(ty::IntrinsicDef {
-            name: tcx.item_name(def_id),
+            name,
             must_be_overridden,
             const_stable_indirect: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
         })

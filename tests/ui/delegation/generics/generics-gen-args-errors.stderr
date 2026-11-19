@@ -613,6 +613,7 @@ LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
 note: method defined here, with 1 lifetime parameter: `'d`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
+LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^ --
 help: add missing lifetime argument
@@ -631,6 +632,7 @@ LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
 note: method defined here, with 2 generic parameters: `U`, `M`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
+LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^         -  -------------
 
@@ -687,6 +689,7 @@ LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _,
 note: method defined here, with 1 lifetime parameter: `'d`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
+LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^ --
 help: add missing lifetime argument
@@ -705,6 +708,7 @@ LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _,
 note: method defined here, with 2 generic parameters: `U`, `M`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
+LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^         -  -------------
 

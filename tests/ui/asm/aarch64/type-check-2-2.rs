@@ -33,3 +33,7 @@ fn main() {
         // Sym operands must point to a function or static
     }
 }
+
+//@ reference: asm.operand-type.supported-operands-in
+//@ reference: asm.operand-type.supported-operands-inout
+//@ reference: asm.operand-type.supported-operands-out

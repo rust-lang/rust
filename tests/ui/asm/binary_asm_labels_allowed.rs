@@ -11,7 +11,6 @@ fn main() {
         asm!("0: bl 0b");
         asm!("1: bl 1b");
         asm!("10: bl 10b");
-        asm!("01: bl 01b");
         asm!("1001101: bl 1001101b");
     }
 }

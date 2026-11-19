@@ -1,5 +1,5 @@
 //@ignore-target: windows # no libc
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 use std::thread;
@@ -11,6 +11,16 @@ use libc_utils::*;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
 fn main() {
     test_poll_returns_masked();
     test_poll_already_fulfilled();
@@ -19,6 +29,7 @@ fn main() {
     test_poll_negative_fd_interest();
     test_poll_invalid_non_negative_fd_interest();
     test_poll_zero_timeout();
+    test_poll_nfds_too_big();
     test_readiness_event_after_poll_blocked();
     test_poll_race();
 }
@@ -90,9 +101,8 @@ fn test_poll_readiness_update() {
     unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
 
     let t1 = thread::spawn(move || {
-        // Yield to main thread to ensure it's blocked on `poll` before
-        // we write into the socket.
-        thread::sleep(Duration::from_millis(10));
+        // Yield to main thread to ensure it's blocked on `poll` before we write into the socket.
+        yield_now();
 
         unsafe {
             errno_result(libc::write(fds[1], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
@@ -162,6 +172,15 @@ fn test_poll_zero_timeout() {
     assert!(before.elapsed() < Duration::from_millis(100))
 }
 
+/// Test that `poll` fails with EINVAL when `nfds` is larger than the open file limit.
+/// Miri used to ICE here because it read `nfds` as a signed integer.
+fn test_poll_nfds_too_big() {
+    let err = unsafe {
+        errno_result(libc::poll(std::ptr::null_mut(), libc::nfds_t::MAX, 0)).unwrap_err()
+    };
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
 /// Before <https://github.com/rust-lang/miri/pull/5172> Miri would ICE when
 /// any file description readiness is updated after a `poll` invocation has
 /// blocked.
@@ -170,9 +189,8 @@ fn test_readiness_event_after_poll_blocked() {
     unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
 
     let t1 = thread::spawn(move || {
-        // Yield to main thread to ensure it's blocked on `poll` before
-        // we write into the socket.
-        thread::sleep(Duration::from_millis(10));
+        // Yield to main thread to ensure it's blocked on `poll` before we write into the socket.
+        yield_now();
 
         unsafe {
             errno_result(libc::write(fds[1], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
@@ -207,7 +225,7 @@ fn test_poll_race() {
         write_all(fds[0], TEST_BYTES).unwrap();
     });
     // Make the other thread go first.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
     // Wait for `fds[1]` to be come readable.
     let mut interests = [libc::pollfd { fd: fds[1], events: libc::POLLIN, revents: 0 }];
     let ready = unsafe {

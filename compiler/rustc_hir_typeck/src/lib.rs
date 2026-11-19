@@ -17,6 +17,7 @@ mod coercion;
 mod demand;
 mod diagnostics;
 mod diverges;
+mod errors;
 mod expectation;
 mod expr;
 mod inline_asm;
@@ -163,10 +164,15 @@ fn typeck_with_inspect<'tcx>(
 
         fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
             fn_sig
-                .inputs_and_output
+                .inputs()
                 .iter()
                 .enumerate()
-                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(ty))),
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(*ty)))
+                .chain([fcx.normalize_with_cause(
+                    decl.output.span(),
+                    Unnormalized::new_wip(fn_sig.output()),
+                    ObligationCauseCode::ReturnType,
+                )]),
         );
 
         if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -191,7 +197,11 @@ fn typeck_with_inspect<'tcx>(
 
         loops::check(tcx, def_id, body);
 
-        let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
+        let expected_type = fcx.normalize_with_cause(
+            body.value.span,
+            Unnormalized::new_wip(expected_type),
+            ObligationCauseCode::BlockTailExpression(body.value.hir_id, hir::MatchSource::Normal),
+        );
 
         let wf_code = ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);

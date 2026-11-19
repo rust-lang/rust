@@ -12,7 +12,8 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    self, CallerBoundsIterator, FieldInfo, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_span::{bug, span_bug, sym};
 use tracing::{debug, instrument};
@@ -798,7 +799,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds(),
+        obligation.param_env.caller_bounds().all_clauses(selcx.tcx()).iter(),
         false,
     );
 }
@@ -1140,6 +1141,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Placeholder(..)
                         | ty::Infer(..)
                         | ty::Error(_) => false,
+
+                        // FIXME(scrabsha)
+                        ty::View(..) => unimplemented!(),
                     },
                     Some(LangItem::PointeeTrait) => {
                         let tail = selcx.tcx().struct_tail_raw(
@@ -1187,6 +1191,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::Adt(..)
                             // If returned by `struct_tail` this is the empty tuple.
                             | ty::Tuple(..)
+                            // FIXME(scrabsha): i guess view types behave like foreign types here?
+                            | ty::View(_, _, _)
                             // Integers and floats are always Sized, and so have unit type metadata.
                             | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
                             // This happens if we reach the recursion limit when finding the struct tail.

@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // UDP sockets are not supported in Miri
+
 use crate::io::ErrorKind;
 use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;
@@ -354,7 +356,7 @@ fn ttl() {
 }
 
 #[test]
-#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+#[cfg(any(target_family = "unix", target_os = "windows"))]
 fn hop_limit() {
     let hlim = 100;
 

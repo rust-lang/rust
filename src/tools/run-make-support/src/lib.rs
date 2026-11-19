@@ -17,6 +17,7 @@ pub mod env;
 pub mod external_deps;
 pub mod linker;
 pub mod obj;
+pub mod parallel;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;

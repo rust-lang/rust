@@ -4,7 +4,6 @@
 //@ compile-flags: -Ctarget-feature=-forced-atomics
 // For now this is just a warning.
 //@ build-pass
-//@ ignore-backends: gcc
 //@ add-minicore
 
 #![feature(no_core)]

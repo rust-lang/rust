@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty};
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::Symbol;
 
 use super::BackendTypes;
 
@@ -13,8 +12,7 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), Self::Value>>;
     fn apply_vcall_visibility_metadata(
         &self,
-        _ty: Ty<'tcx>,
-        _poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
+        _trait_hierarchy: &[ty::ExistentialTraitRef<'tcx>],
         _vtable: Self::Value,
     ) {
     }
@@ -28,6 +26,9 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     fn sess(&self) -> &Session;
     fn set_frame_pointer_type(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
+    /// Applies the compilation's optimization attributes to a function that no item produced,
+    /// such as the C entry shim.
+    fn apply_default_optimisation_attrs(&self, _llfn: Self::Function) {}
     /// Declares the extern "C" main function for the entry point. Returns None if the symbol
     /// already exists.
     fn declare_c_main(&self, fn_type: Self::FunctionSignature) -> Option<Self::Function>;
@@ -36,5 +37,5 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     /// when emitting code for the intrinsic `name`.
     ///
     /// This is discouraged, but here for now to simplify migration to using OperandValues
-    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool;
+    fn intrinsic_call_expects_place_always(&self, name: Intrinsic) -> bool;
 }

@@ -5,6 +5,7 @@ LL | /// [error]
    |      ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: unresolved link to `error1`
@@ -14,6 +15,7 @@ LL | /// docs [error1]
    |           ^^^^^^ no item named `error1` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error1]: https://...`
 
 warning: unresolved link to `error2`
   --> $DIR/warning-crlf.rs:15:11
@@ -22,6 +24,7 @@ LL | /// docs [error2]
    |           ^^^^^^ no item named `error2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error2]: https://...`
 
 warning: unresolved link to `error`
   --> $DIR/warning-crlf.rs:23:20
@@ -30,6 +33,7 @@ LL |  * It also has an [error].
    |                    ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: 4 warnings emitted
 

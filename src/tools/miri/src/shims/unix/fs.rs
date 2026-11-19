@@ -7,17 +7,21 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
 
-use rustc_abi::{FieldIdx, Size};
+use rand::RngExt;
+use rustc_abi::Size;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
-use crate::shims::FdId;
-use crate::shims::files::{DirHandle, FdNum, FileHandle, open_file_or_dir};
+use crate::shims::files::{
+    BIG_ACCESS, DirHandle, DynFileDescriptionRef, EvalContextExt as _, FdNum, FileHandle,
+    open_file_or_dir,
+};
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
+use crate::shims::{FdId, FileDescription};
 use crate::*;
 
 /// An open directory stream (`DIR`), tracked by DirTable.
@@ -70,41 +74,29 @@ impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
         &self,
         communicate_allowed: bool,
-        offset: u64,
         ptr: Pointer,
-        len: usize,
+        len: u64,
+        offset: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         if !self.readable {
             return finish.call(ecx, Err(LibcError("EBADF")));
         }
 
-        let mut bytes = vec![0; len];
+        let file = &mut &self.file;
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
-        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
-        let file = &mut &self.file;
-        let mut f = || {
+        let result = ecx.read_from_host(ptr, len, |buf| {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.read(&mut bytes);
+            let res = file.read(buf);
             // Attempt to restore cursor position even if the read has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
-        };
-        let result = match f() {
-            Ok(read_size) => {
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                // Crucially, if fewer than `bytes.len()` bytes were read, only write
-                // that much into the output buffer!
-                ecx.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
-                Ok(read_size)
-            }
-            Err(e) => Err(IoError::HostError(e)),
-        };
+        })?;
         finish.call(ecx, result)
     }
 
@@ -112,32 +104,29 @@ impl UnixFileDescription for FileHandle {
         &self,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         offset: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         if !self.writable {
             return finish.call(ecx, Err(LibcError("EBADF")));
         }
 
+        let file = &mut &self.file;
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
-        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
-        let file = &mut &self.file;
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        let mut f = || {
+        let result = ecx.write_to_host(ptr, len, |buf| {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.write(bytes);
+            let res = file.write(buf);
             // Attempt to restore cursor position even if the write has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
-        };
-        let result = f();
-        finish.call(ecx, result.map_err(IoError::HostError))
+        })?;
+        finish.call(ecx, result)
     }
 
     fn flock<'tcx>(
@@ -262,6 +251,20 @@ fn host_file_times_from_updates(access: TimeUpdate, modified: TimeUpdate) -> Fil
     filetimes
 }
 
+fn same_host_file(file1: &fs::Metadata, file2: &fs::Metadata) -> bool {
+    cfg_select! {
+        unix => {
+            use std::os::unix::fs::MetadataExt;
+            file1.dev() == file2.dev() && file1.ino() == file2.ino()
+        }
+        windows => {
+            use std::os::windows::fs::MetadataExt;
+            file1.volume_serial_number().unwrap() == file2.volume_serial_number().unwrap()
+                && file1.file_index().unwrap() == file2.file_index().unwrap()
+        }
+    }
+}
+
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Decode one `futimens` `timespec`, handling the `UTIME_NOW`/`UTIME_OMIT` `tv_nsec` values.
@@ -275,7 +278,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         assert!(this.machine.communicate(), "isolation should have prevented reaching this");
 
         // `tv_nsec` and the `UTIME_*` constants are `c_long`, i.e. the target's `isize`.
-        let nsec_place = this.project_field(tp, FieldIdx::ONE)?;
+        let nsec_place = this.project_field_named(tp, "tv_nsec")?;
         let nsec = this.read_scalar(&nsec_place)?.to_target_isize(this)?;
 
         if nsec == this.eval_libc("UTIME_OMIT").to_target_isize(this)? {
@@ -296,17 +299,16 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `None` means a `timespec` is invalid and the caller should report `EINVAL`.
     fn parse_utimens_times(
         &self,
-        times_ptr: Pointer,
+        times: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, Option<(TimeUpdate, TimeUpdate)>> {
         let this = self.eval_context_ref();
 
-        if this.ptr_is_null(times_ptr)? {
+        if this.ptr_is_null(times.ptr())? {
             let now = TimeUpdate::Set(SystemTime::now());
             interp_ok(Some((now, now)))
         } else {
-            let timespec = this.libc_ty_layout("timespec");
-            let access_place = this.ptr_to_mplace(times_ptr, timespec);
-            let modified_place = access_place.offset(timespec.size, timespec, this)?;
+            let access_place = this.project_c_array_field(times, 0)?;
+            let modified_place = this.project_c_array_field(times, 1)?;
             let Some(access) = this.parse_utimens_timespec(&access_place)? else {
                 return interp_ok(None);
             };
@@ -425,15 +427,44 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
-    fn host_permissions_from_mode(&self, mode: u32) -> InterpResult<'tcx, fs::Permissions> {
+    fn host_permissions_from_mode(
+        &self,
+        mode: u32,
+        old_permissions: impl FnOnce() -> io::Result<fs::Permissions>,
+    ) -> InterpResult<'tcx, io::Result<fs::Permissions>> {
         cfg_select! {
             unix => {
                 use std::os::unix::fs::PermissionsExt;
-                interp_ok(fs::Permissions::from_mode(mode))
+
+                let _ = old_permissions;
+                interp_ok(Ok(fs::Permissions::from_mode(mode)))
             }
             _ => {
-                let _ = mode;
-                throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+                let ecx = self.eval_context_ref();
+
+                let mut permissions = match old_permissions() {
+                    Ok(p) => p,
+                    Err(err) => return interp_ok(Err(err)),
+                };
+                // Only support default mode for non-UNIX (i.e. Windows) host.
+                // Ignore the "regular file" bit which is a NOP.
+                let s_ifreg = ecx.eval_libc("S_IFREG");
+                let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                match mode & !s_ifreg {
+                    0o666 => {
+                        permissions.set_readonly(false);
+                    }
+                    0o444 => {
+                        permissions.set_readonly(true);
+                    }
+                    _ => {
+                        throw_unsup_format!(
+                            "changing permissions to mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
+                }
+                interp_ok(Ok(permissions))
             }
         }
     }
@@ -453,31 +484,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         #[cfg(windows)]
         use std::os::windows::fs::OpenOptionsExt;
 
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let open_name = if dirfd.is_some() { "openat" } else { "open" };
 
         let dirfd = match dirfd {
-            Some(dirfd) => Some(this.read_scalar(dirfd)?.to_i32()?),
+            Some(dirfd) => Some(ecx.read_scalar(dirfd)?.to_i32()?),
             None => None,
         };
-        let path_raw = this.read_pointer(path_raw)?;
-        let flag = this.read_scalar(flag)?.to_i32()?;
+        let path_raw = ecx.read_pointer(path_raw)?;
+        let flag = ecx.read_scalar(flag)?.to_i32()?;
 
-        let path = this.read_path_from_c_str(path_raw)?;
+        let path = ecx.read_path_from_c_str(path_raw)?;
         // Files in `/proc` won't work properly.
-        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::Illumos | Os::Solaris)
+        if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::Illumos | Os::Solaris)
             && path::absolute(&path).is_ok_and(|path| path.starts_with("/proc"))
         {
-            this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
+            ecx.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
         }
 
         // Helper for those flags that read the `mode` parameter.
-        let read_mode = |this: &MiriInterpCx<'tcx>,
+        let read_mode = |ecx: &MiriInterpCx<'tcx>,
                          options: &mut OpenOptions,
                          fn_name: &str|
          -> InterpResult<'tcx> {
-            let ([mode], _) = this.check_varargs(
-                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
+            let ([mode], _) = ecx.check_varargs(
+                if ecx.libc_ty_layout("mode_t").size.bytes() >= 4 {
                     // `mode_t` is big enough, no C integer promotion.
                     shim_varargs![libc::mode_t]
                 } else {
@@ -488,7 +519,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 varargs,
                 fn_name,
             )?;
-            let mode = this.read_scalar(&mode)?.to_u32()?;
+            let mode = ecx.read_scalar(&mode)?.to_u32()?;
 
             cfg_select! {
                 unix => {
@@ -498,8 +529,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 _ => {
                     let _unused = options;
 
-                    // Only support default mode for non-UNIX (i.e. Windows) host
-                    if mode != 0o666 {
+                    // Only support default mode for non-UNIX (i.e. Windows) host.
+                    // Ignore the "regular file" bit which is a NOP.
+                    let s_ifreg = ecx.eval_libc("S_IFREG");
+                    let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                    if mode & !s_ifreg != 0o666 {
                         throw_unsup_format!(
                             "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
                             mode
@@ -517,9 +551,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut options = OpenOptions::new();
         let mut custom_flags = 0;
 
-        let o_rdonly = this.eval_libc_i32("O_RDONLY");
-        let o_wronly = this.eval_libc_i32("O_WRONLY");
-        let o_rdwr = this.eval_libc_i32("O_RDWR");
+        let o_rdonly = ecx.eval_libc_i32("O_RDONLY");
+        let o_wronly = ecx.eval_libc_i32("O_WRONLY");
+        let o_rdwr = ecx.eval_libc_i32("O_RDWR");
         // The first two bits of the flag correspond to the access mode in linux, macOS and
         // windows. We need to check that in fact the access mode flags for the current target
         // only use these two bits, otherwise we are in an unsupported target and should error.
@@ -530,7 +564,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut readable = true;
 
         // Now we check the access mode
-        let access_mode = flag & this.eval_libc_i32("O_ACCMODE");
+        let access_mode = flag & ecx.eval_libc_i32("O_ACCMODE");
         flag &= !access_mode;
 
         if access_mode == o_rdonly {
@@ -545,18 +579,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("{open_name}: unsupported access mode {:#x}", access_mode);
         }
 
-        if this.tcx.sess.target.os == Os::Linux {
-            let o_largefile = this.eval_libc_i32("O_LARGEFILE");
+        if ecx.tcx.sess.target.os == Os::Linux {
+            let o_largefile = ecx.eval_libc_i32("O_LARGEFILE");
             if flag & o_largefile == o_largefile {
                 flag &= !o_largefile;
                 // `fs::File` always opens in largefile mode so this is a NOP.
             }
-            let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
+            let o_tmpfile = ecx.eval_libc_i32("O_TMPFILE");
             // Note that this overaps with O_DIRECTORY! So we have to check O_TMPFILE first.
             if flag & o_tmpfile == o_tmpfile {
                 // This flag requires a mode.
                 read_mode(
-                    this,
+                    ecx,
                     &mut options,
                     if dirfd.is_some() {
                         "openat(dirfd, pathname, O_TMPFILE, ...)"
@@ -566,10 +600,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 // We don't currently support this, error gracefully.
-                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
+                return ecx.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
             }
         }
-        let o_directory = this.eval_libc_i32("O_DIRECTORY");
+        let o_directory = ecx.eval_libc_i32("O_DIRECTORY");
         let mut want_directory = false;
         if flag & o_directory == o_directory {
             flag &= !o_directory;
@@ -583,22 +617,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 custom_flags |= libc::O_DIRECTORY;
             }
         }
-        let o_append = this.eval_libc_i32("O_APPEND");
-        if flag & o_append == o_append {
+        let o_append = ecx.eval_libc_i32("O_APPEND");
+        let append = flag & o_append == o_append;
+        if append {
             flag &= !o_append;
             options.append(true);
         }
-        let o_trunc = this.eval_libc_i32("O_TRUNC");
+        let o_trunc = ecx.eval_libc_i32("O_TRUNC");
         if flag & o_trunc == o_trunc {
             flag &= !o_trunc;
             options.truncate(true);
         }
-        let o_creat = this.eval_libc_i32("O_CREAT");
+        let o_creat = ecx.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
             // Get the mode.
             read_mode(
-                this,
+                ecx,
                 &mut options,
                 if dirfd.is_some() {
                     "openat(dirfd, pathname, O_CREAT, ...)"
@@ -609,11 +644,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             if want_directory {
                 // O_CREAT + O_DIRECTORY is invalid.
-                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
             }
 
             // O_EXCL is only allowed if O_CREAT is set.
-            let o_excl = this.eval_libc_i32("O_EXCL");
+            let o_excl = ecx.eval_libc_i32("O_EXCL");
             if flag & o_excl == o_excl {
                 flag &= !o_excl;
                 options.create_new(true);
@@ -621,13 +656,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 options.create(true);
             }
         }
-        let o_cloexec = this.eval_libc_i32("O_CLOEXEC");
+        let o_cloexec = ecx.eval_libc_i32("O_CLOEXEC");
         if flag & o_cloexec == o_cloexec {
             flag &= !o_cloexec;
             // We do not need to do anything for this flag because `std` already sets it.
             // (Technically we do not support *not* setting this flag, but we ignore that.)
         }
-        let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
+        let o_nofollow = ecx.eval_libc_i32("O_NOFOLLOW");
         let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
             flag &= !o_nofollow;
@@ -654,22 +689,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation(&format!("`{open_name}`"), reject_with)?;
-            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation(&format!("`{open_name}`"), reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         let dirfd = match dirfd {
             Some(dirfd) => {
-                if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
+                if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
                     None
                 } else {
                     // relative to dirfd, which must be a directory handle
-                    let Some(fd) = this.machine.fds.get(dirfd) else {
-                        return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                    let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                        return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
                     };
                     let Some(dir) = fd.downcast::<DirHandle>() else {
-                        return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                        return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
                     };
                     Some(dir)
                 }
@@ -679,7 +714,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Empty path should consistently error.
         if path.is_empty() {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
         }
         // Windows does not support "." relative to a `Dir` handle, but the empty path works.
         // (https://github.com/rust-lang/rust/issues/163032)
@@ -696,39 +731,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             options.custom_flags(custom_flags),
         );
         match f_or_d {
-            Err(err) => this.set_errno_and_return_neg1_i32(err),
+            Err(err) => ecx.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
                 // This means it cannot be a symlink, so `nofollow` is fine.
                 if writable {
                     // On Windows, opening a folder writable can succeed.
                     // But here we want it to always fail.
-                    return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
 
-                let fd = this.machine.fds.insert_new(DirHandle {
-                    dir,
-                    #[cfg(bootstrap)]
-                    fallback: match &dirfd {
-                        Some(dirfd) => dirfd.fallback.join(&path).canonicalize().unwrap(),
-                        None => path.canonicalize().unwrap(),
-                    },
-                });
+                let Some(fd) = ecx.machine.fds.insert_new(DirHandle { dir }) else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
                 interp_ok(Scalar::from_i32(fd))
             }
             Ok(Either::Left(file)) => {
                 if want_directory {
-                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
                 }
                 if file.metadata().unwrap().is_symlink() {
                     if nofollow {
                         // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it
                         // just opens the symlink rather than the target. Turn that into an error.
-                        return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
+                        return ecx.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
                     }
                     panic!("we should not get a symlink here");
                 }
 
-                let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+                let Some(fd) =
+                    ecx.machine.fds.insert_new(FileHandle { file, writable, readable, append })
+                else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
                 interp_ok(Scalar::from_i32(fd))
             }
         }
@@ -1038,8 +1072,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         statxbuf_op: &OpTy<'tcx>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
-        this.assert_target_os(Os::Linux, "statx");
+        this.assert_target_os_is_linux_like("statx");
 
         let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         let pathname_ptr = this.read_pointer(pathname_op)?;
@@ -1142,14 +1175,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("stx_mask", mask.into()),
                 ("stx_mode", metadata.mode.into()),
                 ("stx_blksize", metadata.blksize.unwrap_or(0).into()),
-                ("stx_attributes", 0),
                 ("stx_nlink", metadata.nlink.unwrap_or(0).into()),
                 ("stx_uid", metadata.uid.unwrap_or(0).into()),
                 ("stx_gid", metadata.gid.unwrap_or(0).into()),
                 ("stx_ino", metadata.ino.unwrap_or(0).into()),
                 ("stx_size", metadata.size.into()),
                 ("stx_blocks", metadata.blocks.unwrap_or(0).into()),
+                // These fields do not seem to have a bit in `mask`, they are "always present",
+                // so we make sure they get initialized.
                 ("stx_attributes_mask", 0),
+                ("stx_attributes", 0),
                 ("stx_rdev_major", 0),
                 ("stx_rdev_minor", 0),
                 ("stx_dev_major", 0),
@@ -1190,6 +1225,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &this.project_field_named(&statxbuf, "stx_mtime")?,
         )?;
 
+        // The remaining fields have a mask bit associated with them, a bit that we do not
+        // set. Therefore we also do not initialize them.
+
         interp_ok(Scalar::from_i32(0))
     }
 
@@ -1210,8 +1248,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
-        if let Err(err) = fs::set_permissions(path, permissions) {
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+            // We get here if we need to read the old permissions before we can set new ones.
+            // This is fundamentally racy. We cannot even use a file handle to make it less racy:
+            // setting permissions requires opening for writing, but opening for writing fails
+            // if the file is not already writable... so how do we make a read-only file writable?
+            fs::metadata(&path).map(|m| m.permissions())
+        })?;
+        let res = permissions.and_then(|permissions| fs::set_permissions(path, permissions));
+        if let Err(err) = res {
             return this.set_errno_and_return_neg1_i32(err);
         }
 
@@ -1238,8 +1283,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
-        if let Err(err) = file.file.set_permissions(permissions) {
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+            // We get here if we need to read the old permissions before we can set new ones.
+            // This is fundamentally racy.
+            file.file.metadata().map(|m| m.permissions())
+        })?;
+        let res = permissions.and_then(|permissions| file.file.set_permissions(permissions));
+        if let Err(err) = res {
             return this.set_errno_and_return_neg1_i32(err);
         }
 
@@ -1356,22 +1406,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(read_dir) => {
                 // Create an underlying FD as well, in case someone calls `dirfd` later.
                 // (We could do this lazily but that does not seem worth it.)
-                #[cfg(not(bootstrap))]
-                let dir = read_dir.dir();
-                #[cfg(bootstrap)]
-                let dir = fs::Dir::open(&name);
-                let Ok(dir) = dir else {
+                let Ok(dir) = read_dir.dir() else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle {
-                    dir,
-                    #[cfg(bootstrap)]
-                    fallback: name.canonicalize().unwrap(),
-                });
+                let dir = this.machine.fds.new_ref(DirHandle { dir });
                 let dir_fd_id = dir.id();
-                let dir_fd_num = this.machine.fds.insert(dir);
+                let Some(dir_fd_num) = this.machine.fds.insert(dir) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
 
                 let stream = DirStream::new(read_dir, dir_fd_num, dir_fd_id);
                 let id = this.machine.dirs.insert_new(stream);
@@ -1410,7 +1454,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir`", reject_with)?;
             this.set_last_error(LibcError("EBADF"))?;
-            this.write_null(dest)?;
+            this.write_int(0, dest)?;
             return interp_ok(());
         }
 
@@ -1481,7 +1525,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let entry = this.allocate_ptr(
                     Size::from_bytes(size),
-                    dirent_layout.align.abi,
+                    dirent_layout.align,
                     MiriMemoryKind::Runtime.into(),
                     AllocInit::Uninit,
                 )?;
@@ -1502,10 +1546,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Write "optional" fields.
                 if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
-                    this.write_null(&d_off)?;
+                    this.write_int(0, &d_off)?;
                 }
                 if let Some(d_seekoff) = this.try_project_field_named(&entry, "d_seekoff")? {
-                    this.write_null(&d_seekoff)?;
+                    this.write_int(0, &d_seekoff)?;
                 }
                 if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
                     this.write_int(name_len.strict_sub(1), &d_namlen)?;
@@ -1648,6 +1692,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         // This is mostly a copy of `posix_fallocate` except that errors are returned via errno.
         let this = self.eval_context_mut();
+        this.assert_target_os_is_linux_like("fallocate");
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1774,7 +1819,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
-        let times_ptr = this.read_pointer(times_op)?;
+        let times = this.deref_pointer(times_op)?;
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
@@ -1784,7 +1829,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+        let Some((access, modified)) = this.parse_utimens_times(&times)? else {
             return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         let result = file.file.set_times(host_file_times_from_updates(access, modified));
@@ -1804,7 +1849,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         let path_ptr = this.read_pointer(path_op)?;
-        let times_ptr = this.read_pointer(times_op)?;
+        let times = this.deref_pointer(times_op)?;
         let flags = this.read_scalar(flags_op)?.to_i32()?;
 
         if this.ptr_is_null(path_ptr)? {
@@ -1838,7 +1883,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("`utimensat` with a path relative to a `dirfd` is not supported");
         }
 
-        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+        let Some((access, modified)) = this.parse_utimens_times(&times)? else {
             return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         if matches!((access, modified), (TimeUpdate::Omit, TimeUpdate::Omit)) {
@@ -1856,7 +1901,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
     }
 
-    fn sync_file_range(
+    fn linux_sync_file_range(
         &mut self,
         fd_op: &OpTy<'tcx>,
         offset_op: &OpTy<'tcx>,
@@ -1864,6 +1909,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         flags_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
+        this.assert_target_os_is_linux_like("sync_file_range");
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let offset = this.read_scalar(offset_op)?.to_i64()?;
@@ -2134,11 +2180,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let file = fopts.open(bytes_to_os_str(template_bytes)?);
             match file {
                 Ok(f) => {
-                    let fd = this.machine.fds.insert_new(FileHandle {
+                    let Some(fd) = this.machine.fds.insert_new(FileHandle {
                         file: f,
                         writable: true,
                         readable: true,
-                    });
+                        append: false,
+                    }) else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                    };
                     return interp_ok(Scalar::from_i32(fd));
                 }
                 Err(e) =>
@@ -2157,6 +2206,100 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We ran out of attempts to create the file, return an error.
         this.set_errno_and_return_neg1_i32(LibcError("EEXIST"))
+    }
+
+    /// Only supports null offset pointers, i.e. copying from and advancing the file positions.
+    fn linux_copy_file_range(
+        &mut self,
+        fd_in_op: &OpTy<'tcx>,
+        off_in_op: &OpTy<'tcx>,
+        fd_out_op: &OpTy<'tcx>,
+        off_out_op: &OpTy<'tcx>,
+        len_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_linux_like("copy_file_range");
+
+        let fd_in = ecx.read_scalar(fd_in_op)?.to_i32()?;
+        let off_in = ecx.read_pointer(off_in_op)?;
+        let fd_out = ecx.read_scalar(fd_out_op)?.to_i32()?;
+        let off_out = ecx.read_pointer(off_out_op)?;
+        let len = ecx.read_target_usize(len_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
+
+        let (Some(fd_in), Some(fd_out)) = (ecx.machine.fds.get(fd_in), ecx.machine.fds.get(fd_out))
+        else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+        if flags != 0 {
+            throw_unsup_format!("`copy_file_range` with non-zero flags is not supported");
+        }
+        if !ecx.ptr_is_null(off_in)? || !ecx.ptr_is_null(off_out)? {
+            throw_unsup_format!("`copy_file_range` with non-null offset pointers is not supported");
+        }
+        // Like Linux, check for directories (EISDIR), then other non-regular files (EINVAL),
+        // then the access modes (EBADF).
+        let is_dir = |fd: &DynFileDescriptionRef| fd.clone().downcast::<DirHandle>().is_some();
+        let as_regular_file = |fd: DynFileDescriptionRef| {
+            let file = fd.downcast::<FileHandle>()?;
+            // Ensure we catch on-disk FIFOs and unix domain sockets.
+            file.file.metadata().is_ok_and(|metadata| metadata.is_file()).then_some(file)
+        };
+        if is_dir(&fd_in) || is_dir(&fd_out) {
+            return ecx.set_errno_and_return_neg1(LibcError("EISDIR"), dest);
+        }
+        let (Some(file_in), Some(file_out)) = (as_regular_file(fd_in), as_regular_file(fd_out))
+        else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        if !file_in.readable || !file_out.writable || file_out.append {
+            // The docs explicitly say that O_APPEND on the output file is forbidden.
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        }
+        assert!(ecx.machine.communicate(), "isolation should have prevented even opening a file");
+
+        // Non-deterministically decide to further reduce the length, simulating a partial copy (but
+        // never to 0, that would indicate EOF).
+        let len = if ecx.machine.short_fd_operations
+            && (file_in.short_fd_operations() || file_out.short_fd_operations())
+            && len >= 2
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
+        {
+            // Also cap length to remaining input length as otherwise halving it does nothing.
+            let mut input = &file_in.file;
+            let remaining_bytes =
+                try { input.stream_len()?.saturating_sub(input.stream_position()?).clamp_to(2..) };
+            let len = len.clamp_to(..=remaining_bytes.unwrap_or(u64::MAX));
+            len / 2 // since `len` is at least 2, the result is still at least 1
+        } else {
+            len
+        };
+
+        let copy = || -> io::Result<u64> {
+            let (mut input, mut output) = (&file_in.file, &file_out.file);
+            let (pos_in, pos_out) = (input.stream_position()?, output.stream_position()?);
+
+            // Error if both FDs refer to the same file and the ranges overlap.
+            let (meta_in, meta_out) = (input.metadata()?, output.metadata()?);
+            if same_host_file(&meta_in, &meta_out)
+                && (pos_in.checked_add(len).is_none_or(|end_in| end_in > pos_out)
+                    && pos_out.checked_add(len).is_none_or(|end_out| end_out > pos_in))
+            {
+                return Err(io::ErrorKind::InvalidInput.into());
+            }
+
+            io::copy(&mut input.take(len), &mut output).inspect_err(|_| {
+                // Like Linux, leave the file positions unchanged on error. See
+                // <https://github.com/torvalds/linux/blob/81dfa035891f0502674332ee97db348a16486de0/fs/read_write.c#L1686-L1703>.
+                let _ = input.seek(SeekFrom::Start(pos_in));
+                let _ = output.seek(SeekFrom::Start(pos_out));
+            })
+        };
+        ecx.return_io_result_via_errno(copy(), dest)
     }
 }
 
@@ -2260,17 +2403,10 @@ impl FileMetadata {
             // (https://github.com/rust-lang/rust/issues/163032)
             let path =
                 if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
-            #[cfg(not(bootstrap))]
             let metadata = if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
             } else {
                 dir.dir.metadata(path)
-            };
-            #[cfg(bootstrap)]
-            let metadata = if symlink_nofollow_flag {
-                dir.fallback.join(path).symlink_metadata()
-            } else {
-                dir.fallback.join(path).metadata()
             };
             FileMetadata::from_host(ecx, metadata)
         }
@@ -2367,7 +2503,7 @@ impl FileMetadata {
             }
             _ => {
                 // Emulate "everyone can read" or "everyone can read and write".
-                mode |= if metadata.permissions().readonly() { 0o111 } else { 0o333 };
+                mode |= if metadata.permissions().readonly() { 0o444 } else { 0o666 };
 
                 interp_ok(Ok(FileMetadata {
                     mode,

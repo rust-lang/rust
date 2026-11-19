@@ -50,12 +50,11 @@ use netc as c;
 //
 // On Windows, the relevant syscall takes an `i32` (unlike for read/write!),
 // so we need to clamp to i32::MAX.
-const MAX_SEND_LEN: usize =
-    cfg_select! {
-        any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => c_int::MAX as usize,
-        target_os = "windows" => i32::MAX as usize,
-        _ => libc::ssize_t::MAX as usize,
-    };
+const MAX_SEND_LEN: usize = cfg_select! {
+    any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => c_int::MAX as usize,
+    target_os = "windows" => i32::MAX as usize,
+    _ => libc::ssize_t::MAX as usize,
+};
 
 /// Some systems support setting the nonblocking mode upon socket creation, which
 /// saves a syscall.
@@ -559,26 +558,24 @@ impl TcpStream {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(target_family = "unix", target_os = "windows") => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+            _ => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
-            _ => unsafe {
-                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
-            },
         }
     }
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
-            _ => {
+            any(target_family = "unix", target_os = "windows") => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
                 Ok(raw as u8)
             }
+            _ => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
         }
     }
 
@@ -712,26 +709,24 @@ impl TcpListener {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(target_family = "unix", target_os = "windows") => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+            _ => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
-            _ => unsafe {
-                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
-            },
         }
     }
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
-            _ => {
+            any(target_family = "unix", target_os = "windows") => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
                 Ok(raw as u8)
             }
+            _ => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
         }
     }
 
@@ -957,51 +952,47 @@ impl UdpSocket {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(target_family = "unix", target_os = "windows") => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+            _ => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
-            _ => unsafe {
-                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
-            },
         }
     }
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
-            _ => {
+            any(target_family = "unix", target_os = "windows") => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
                 Ok(raw as u8)
             }
+            _ => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
         }
     }
 
     pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(target_family = "unix", target_os = "windows") => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
+            },
+            _ => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
-            _ => unsafe {
-                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
-            },
         }
     }
 
     pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
-            _ => {
+            any(target_family = "unix", target_os = "windows") => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
                 Ok(raw as u8)
             }
+            _ => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
         }
     }
 

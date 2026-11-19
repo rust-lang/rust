@@ -313,6 +313,9 @@ where
                     | ty::Error(_) => {
                         bug!("unexpected type returned by `needs_drop_components`: {component}")
                     }
+
+                    // FIXME(scrabsha)
+                    ty::View(..) => unimplemented!(),
                 }
             }
         }

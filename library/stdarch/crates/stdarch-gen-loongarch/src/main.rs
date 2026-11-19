@@ -607,7 +607,7 @@ fn gen_bind_body(
     let function = format!(
         r#"
 #[inline]{target_feature}
-#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_loongarch_simd", since = "1.101.0")]
 {fn_decl}{{
     {call_params}
 }}

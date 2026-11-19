@@ -41,7 +41,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZero, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub};
 use std::range::RangeInclusive;
 use std::str::FromStr;
 
@@ -72,7 +72,10 @@ pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 #[cfg(feature = "nightly")]
 pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
-pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
+pub use layout::{
+    FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, PackCoroutineLayout,
+    VariantIdx,
+};
 #[cfg(feature = "nightly")]
 pub use layout::{Layout, TyAbiInterface, TyAndLayout};
 pub use wrapping_range::WrappingRange;
@@ -318,8 +321,6 @@ pub struct PointerSpec {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TargetDataLayout {
     pub endian: Endian,
-    pub i1_align: Align,
-    pub i8_align: Align,
     pub i16_align: Align,
     pub i32_align: Align,
     pub i64_align: Align,
@@ -327,6 +328,7 @@ pub struct TargetDataLayout {
     pub f16_align: Align,
     pub f32_align: Align,
     pub f64_align: Align,
+    pub x87_f80_align: Align,
     pub f128_align: Align,
     pub aggregate_align: Align,
 
@@ -358,8 +360,6 @@ impl Default for TargetDataLayout {
         let align = |bits| Align::from_bits(bits).unwrap();
         TargetDataLayout {
             endian: Endian::Big,
-            i1_align: align(8),
-            i8_align: align(8),
             i16_align: align(16),
             i32_align: align(32),
             i64_align: align(32),
@@ -367,6 +367,7 @@ impl Default for TargetDataLayout {
             f16_align: align(16),
             f32_align: align(32),
             f64_align: align(64),
+            x87_f80_align: align(128),
             f128_align: align(128),
             aggregate_align: align(8),
             vector_align: vec![
@@ -392,6 +393,7 @@ pub enum TargetDataLayoutError<'a> {
     InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
     MissingAlignment { cause: &'a str },
     InvalidAlignment { cause: &'a str, err: AlignFromBytesError },
+    AlignmentTooLargeForType { cause: &'a str, align: Align },
     InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
     InconsistentTargetPointerWidth { pointer_size: u64, target: u16 },
     InvalidBitsSize { err: String },
@@ -423,6 +425,9 @@ impl Diagnostic<'_> for TargetDataLayoutError<'_> {
                 Diag::new(dcx, level, msg!("invalid alignment for `{$cause}` in \"data-layout\": {$err}"))
                     .with_arg("cause", cause)
                     .with_arg("err", err.to_string())
+            }
+            TargetDataLayoutError::AlignmentTooLargeForType { cause, align } => {
+                Diag::new(dcx, level, msg!("alignment of `{$align}` bytes in \"data-layout\" is too large for `{$cause}`")).with_arg("align", align.bytes()).with_arg("cause", cause)
             }
             TargetDataLayoutError::InconsistentTargetArchitecture { dl, target } => {
                 Diag::new(dcx, level, msg!("inconsistent target specification: \"data-layout\" claims architecture is {$dl}-endian, while \"target-endian\" is `{$target}`"))
@@ -475,22 +480,28 @@ impl TargetDataLayout {
             |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
-        let parse_align_str = |s: &'a str, cause: &'a str| {
+        let parse_align_str = |s: &'a str, cause: &'a str, size_bits: u64| {
             let align_from_bits = |bits| {
                 Align::from_bits(bits)
                     .map_err(|err| TargetDataLayoutError::InvalidAlignment { cause, err })
             };
-            let abi = parse_bits(s, "alignment", cause)?;
-            Ok(align_from_bits(abi)?)
+            let align_bits = parse_bits(s, "alignment", cause)?;
+            let align = align_from_bits(align_bits)?;
+            let max_align_bytes = size_bits.div_ceil(8).next_power_of_two();
+            if align.bytes() > max_align_bytes {
+                Err(TargetDataLayoutError::AlignmentTooLargeForType { cause, align })
+            } else {
+                Ok(align)
+            }
         };
 
         // Parse an alignment sequence, possibly in the form `<align>[:<preferred_alignment>]`,
         // ignoring the secondary alignment specifications.
-        let parse_align_seq = |s: &[&'a str], cause: &'a str| {
+        let parse_align_seq = |s: &[&'a str], cause: &'a str, size_bits: u64| {
             if s.is_empty() {
                 return Err(TargetDataLayoutError::MissingAlignment { cause });
             }
-            parse_align_str(s[0], cause)
+            parse_align_str(s[0], cause, size_bits)
         };
 
         let mut dl = TargetDataLayout::default();
@@ -506,11 +517,12 @@ impl TargetDataLayout {
                 [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", a @ ..] => dl.aggregate_align = parse_align_seq(a, "a")?,
-                ["f16", a @ ..] => dl.f16_align = parse_align_seq(a, "f16")?,
-                ["f32", a @ ..] => dl.f32_align = parse_align_seq(a, "f32")?,
-                ["f64", a @ ..] => dl.f64_align = parse_align_seq(a, "f64")?,
-                ["f128", a @ ..] => dl.f128_align = parse_align_seq(a, "f128")?,
+                ["a", a @ ..] => dl.aggregate_align = parse_align_seq(a, "a", u64::MAX)?,
+                ["f16", a @ ..] => dl.f16_align = parse_align_seq(a, "f16", 16)?,
+                ["f32", a @ ..] => dl.f32_align = parse_align_seq(a, "f32", 32)?,
+                ["f64", a @ ..] => dl.f64_align = parse_align_seq(a, "f64", 64)?,
+                ["f80", a @ ..] => dl.x87_f80_align = parse_align_seq(a, "f80", 80)?,
+                ["f128", a @ ..] => dl.f128_align = parse_align_seq(a, "f128", 128)?,
                 [p, s, a @ ..] if p.starts_with("p") => {
                     let mut p = p.strip_prefix('p').unwrap();
                     let mut _is_fat = false;
@@ -538,7 +550,7 @@ impl TargetDataLayout {
                     };
 
                     let pointer_size = parse_size(s, "p-")?;
-                    let pointer_align = parse_align_seq(a, "p-")?;
+                    let pointer_align = parse_align_seq(a, "p-", pointer_size.bits())?;
                     let info = PointerSpec {
                         pointer_offset: pointer_size,
                         pointer_size,
@@ -582,9 +594,10 @@ impl TargetDataLayout {
                         AddressSpace::ZERO
                     };
 
+                    let pointer_size = parse_size(s, "p-")?;
                     let info = PointerSpec {
-                        pointer_size: parse_size(s, "p-")?,
-                        pointer_align: parse_align_str(a, "p-")?,
+                        pointer_size,
+                        pointer_align: parse_align_str(a, "p-", pointer_size.bits())?,
                         pointer_offset: parse_size(i, "p-")?,
                         _is_fat,
                     };
@@ -606,10 +619,10 @@ impl TargetDataLayout {
                         parse_size(&s[1..], "i")?; // For the user error.
                         continue;
                     };
-                    let a = parse_align_seq(a, s)?;
+                    let a = parse_align_seq(a, s, bits)?;
                     match bits {
-                        1 => dl.i1_align = a,
-                        8 => dl.i8_align = a,
+                        // i1 and i8 always have an alignment of 1 byte - this has already been
+                        // checked by `parse_align_seq` above.
                         16 => dl.i16_align = a,
                         32 => dl.i32_align = a,
                         64 => dl.i64_align = a,
@@ -624,7 +637,7 @@ impl TargetDataLayout {
                 }
                 [s, a @ ..] if s.starts_with('v') => {
                     let v_size = parse_size(&s[1..], "v")?;
-                    let a = parse_align_seq(a, s)?;
+                    let a = parse_align_seq(a, s, v_size.bits())?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
                         v.1 = a;
                         continue;
@@ -1216,52 +1229,6 @@ impl Align {
     }
 }
 
-/// A pair of alignments, ABI-mandated and preferred.
-///
-/// The "preferred" alignment is an LLVM concept that is virtually meaningless to Rust code:
-/// it is not exposed semantically to programmers nor can they meaningfully affect it.
-/// The only concern for us is that preferred alignment must not be less than the mandated alignment
-/// and thus in practice the two values are almost always identical.
-///
-/// An example of a rare thing actually affected by preferred alignment is aligning of statics.
-/// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub struct AbiAlign {
-    pub abi: Align,
-}
-
-impl fmt::Debug for AbiAlign {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.abi, f)
-    }
-}
-
-impl AbiAlign {
-    #[inline]
-    pub fn new(align: Align) -> AbiAlign {
-        AbiAlign { abi: align }
-    }
-
-    #[inline]
-    pub fn min(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.min(other.abi) }
-    }
-
-    #[inline]
-    pub fn max(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.max(other.abi) }
-    }
-}
-
-impl Deref for AbiAlign {
-    type Target = Align;
-
-    fn deref(&self) -> &Self::Target {
-        &self.abi
-    }
-}
-
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -1323,7 +1290,7 @@ impl Integer {
         let dl = cx.data_layout();
 
         match self {
-            I8 => dl.i8_align,
+            I8 => Align::ONE,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
@@ -1433,10 +1400,22 @@ pub enum Float {
     F16B,
     F32,
     F64,
+    /// `x87_f80`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    ///
+    /// Here we define the 80-bit scalar value that corresponds to the `x87_f80_raw` lang item.
+    /// In `core::arch::{x86, x86_64}` this type is wrapped by the `x87_f80` lang item that adds
+    /// the proper alignment and bumps the size to either 12 or 16 bytes depending on the target.
+    ///
+    /// Only used on x86 and x86_64 targets.
+    X87F80,
     F128,
     /// `ppcf128`. This is not a builtin type in Rust (it is exposed as a lang item),
     /// but it is a builtin type in LLVM so needs to be explicitly represented
     /// in the backend.
+    ///
+    /// Only used on powerpc and powerpc64 targets.
     PpcF128,
 }
 
@@ -1449,6 +1428,7 @@ impl Float {
             F16B => Size::from_bits(16),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
+            X87F80 => Size::from_bits(80),
             F128 => Size::from_bits(128),
             PpcF128 => Size::from_bits(128),
         }
@@ -1462,6 +1442,9 @@ impl Float {
             F16 | F16B => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
+            // Use an alignment of 1 for x87_f80_raw,
+            // so that its size really is 80 bits in memory.
+            X87F80 => Align::ONE,
             F128 => dl.f128_align,
             PpcF128 => dl.f128_align,
         }
@@ -1475,6 +1458,7 @@ impl Float {
             F16B => "f16b",
             F32 => "f32",
             F64 => "f64",
+            X87F80 => "x87_f80",
             F128 => "f128",
             PpcF128 => "ppcf128",
         }
@@ -1485,7 +1469,7 @@ impl Float {
 
         match self {
             F16 | F32 | F64 | F128 => true,
-            F16B | PpcF128 => false,
+            F16B | X87F80 | PpcF128 => false,
         }
     }
 }
@@ -1511,9 +1495,9 @@ impl Numeric {
         match self {
             Numeric::Int(_, _) => RegKind::Integer,
             Numeric::Float(Float::PpcF128) => RegKind::PpcF128,
-            Numeric::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
-                RegKind::Float
-            }
+            Numeric::Float(
+                Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::X87F80 | Float::F128,
+            ) => RegKind::Float,
         }
     }
 }
@@ -1824,12 +1808,12 @@ impl NumScalableVectors {
         NumScalableVectors(1)
     }
 
-    // Returns `NumScalableVectors` for values of two through eight, which are a valid number of
-    // fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
-    // but not for a tuple which would have a field count.
+    /// Returns `NumScalableVectors` for values of two through eight, which are a valid number of
+    /// fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
+    /// but not for a tuple which would have a field count.
     pub fn from_field_count(count: usize) -> Option<Self> {
         match count {
-            2..8 => Some(NumScalableVectors(count as u8)),
+            2..=8 => Some(NumScalableVectors(count as u8)),
             _ => None,
         }
     }
@@ -2267,7 +2251,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
     pub uninhabited: bool,
 
-    pub align: AbiAlign,
+    pub align: Align,
     pub size: Size,
 
     /// The largest alignment explicitly requested with `repr(align)` on this type or any field.

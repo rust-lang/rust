@@ -11,8 +11,8 @@ pub struct Foo {
 
 #[derive(Default)]
 pub enum Bar {
-    #[default]
-    Foo { //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Foo {
         bar: S = S, //~ ERROR default values on fields are experimental
         baz: i32 = 42 + 3, //~ ERROR default values on fields are experimental
     }
@@ -51,8 +51,8 @@ pub struct Opt {
 
 #[derive(Default)]
 pub enum OptEnum {
-    #[default]
-    Variant { //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Variant {
         mandatory: Option<()>,
         optional: () = (), //~ ERROR default values on fields are experimental
     }

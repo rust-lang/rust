@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
 use std::fmt::Write;
@@ -94,7 +95,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
     let sess_args = tg_opts.chain(cg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
+        sess_args.clone().map(llvm_arg_to_arg_name).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -143,20 +144,17 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         }
 
         for arg in sess_args {
-            add(&(*arg), true);
+            add(arg, true);
         }
 
-        match (
-            sess.opts.unstable_opts.small_data_threshold,
-            sess.target.small_data_threshold_support(),
-        ) {
-            // Set up the small-data optimization limit for architectures that use
-            // an LLVM argument to control this.
-            (Some(threshold), SmallDataThresholdSupport::LlvmArg(arg)) => {
-                add(&format!("--{arg}={threshold}"), false)
-            }
-            _ => (),
-        };
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM argument to control this.
+        if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+            && let SmallDataThresholdSupport::LlvmArg(arg) =
+                sess.target.small_data_threshold_support()
+        {
+            add(&format!("--{arg}={threshold}"), false);
+        }
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
@@ -326,7 +324,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
     require_inited();
     let target_features = global_llvm_features(sess, /* for_cfg */ true);
 
-    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let triple = SmallCStr::new(&llvm_target(sess));
     let cpu = SmallCStr::new(target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
@@ -336,7 +334,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         sess,
         |feature| {
             to_llvm_features(&sess.target, feature)
-                .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
+                .map(SmallVec::<[&str; 2]>::from_iter)
                 .unwrap_or_default()
         },
         |feature| {
@@ -344,13 +342,8 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(&sess.target, feature)
-                && mc_subtarget_info.has_features(feat)
-            {
-                true
-            } else {
-                false
-            }
+            to_llvm_features(&sess.target, feature)
+                .is_some_and(|feat| mc_subtarget_info.has_features(feat))
         },
     );
 
@@ -473,6 +466,18 @@ pub(crate) fn get_version() -> (u32, u32, u32) {
     (llvm_major, llvm_minor, llvm_patch)
 }
 
+/// The LLVM target triple to use for the session's target.
+///
+/// The UEFI targets are lowered through LLVM's `*-unknown-uefi` targets with
+/// LLVM 24 or later, and through the Windows targets with older LLVMs.
+pub(crate) fn llvm_target(sess: &EarlySession) -> Cow<'_, str> {
+    let triple = versioned_llvm_target(sess);
+    if sess.target.os == Os::Uefi && get_version() < (24, 0, 0) {
+        return triple.replace("-unknown-uefi", "-unknown-windows").into();
+    }
+    triple
+}
+
 pub(crate) fn print_passes() {
     // Can be called without initializing LLVM
     unsafe {
@@ -515,7 +520,7 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
 
 fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let cpu_names = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+        llvm::LLVMRustPrintTargetCPUs(tm, s);
     })
     .unwrap();
 
@@ -581,7 +586,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
             }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
-            let llvm_feature = to_llvm_features(&sess.target, *feature)?.llvm_feature_name;
+            let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {
@@ -776,7 +781,7 @@ pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<St
     // asm logic uses that to check which registers may be used).
     llvm_features_by_flags(sess, &mut features);
 
-    // `-Zllvm-target-features`, all the way at the end to overwrite everything.
+    // `-Zllvm-target-feature`, all the way at the end to overwrite everything.
     // Should be picked up by `cfg` (e.g. if someone enables AVX this way).
     for feature in sess.opts.unstable_opts.llvm_target_feature.split(',') {
         if feature.is_empty() {

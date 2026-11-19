@@ -4,7 +4,6 @@
 #![allow(dead_code)]
 //@ proc-macro: derive-atob.rs
 //@ proc-macro: derive-ctod.rs
-//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate derive_atob;

@@ -182,7 +182,7 @@ pub enum ShimKind<'tcx> {
     /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
     ///
     /// The `DefId` is for `FnPtr::as_ptr`, the `Ty` is the type `T`.
-    FnPtrAsPtr(DefId, Ty<'tcx>),
+    FnAddrAsPtr(DefId, Ty<'tcx>),
 
     /// Compiler-generated `<T as FnPtr>::from_ptr` implementation.
     ///
@@ -351,7 +351,7 @@ impl<'tcx> ShimKind<'tcx> {
             }
             | ShimKind::DropGlue(def_id, _)
             | ShimKind::Clone(def_id, _)
-            | ShimKind::FnPtrAsPtr(def_id, _)
+            | ShimKind::FnAddrAsPtr(def_id, _)
             | ShimKind::FnPtrFromPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
@@ -374,7 +374,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
-            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
@@ -395,7 +395,7 @@ impl<'tcx> ShimKind<'tcx> {
             ShimKind::Clone(..)
             | ShimKind::ThreadLocal(..)
             | ShimKind::FnPtr(..)
-            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnPtrFromPtr(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)

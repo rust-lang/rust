@@ -126,6 +126,9 @@ impl<'tcx> AbiStableHash<'tcx> for Ty<'tcx> {
             | ty::UnsafeBinder(_) => unreachable!(),
 
             ty::Error(_) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

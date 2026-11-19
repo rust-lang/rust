@@ -1,6 +1,7 @@
 //@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat
 //@ edition: 2024
 //@ aux-crate: offload_strategies=offload_strategies.rs
+//@ needs-offload
 
 // This test ensures an error is emitted when a `Region` is nested inside another
 // type instead of being passed by value.
@@ -9,6 +10,7 @@
 #![feature(gpu_offload)]
 
 use core::offload::Region;
+
 use offload_strategies::Dummy;
 
 fn kernel_shared(_region: &Region<'_, f32, Dummy>) {}

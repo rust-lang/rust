@@ -48,7 +48,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         StorageLive(_5);
         StorageLive(_4);
         _4 = copy _1;
-        _5 = Lt(move _4, copy _2);
+        _5 = Gt(copy _2, move _4);
         StorageDead(_4);
         switchInt(move _5) -> [0: bb2, otherwise: bb4];
     }

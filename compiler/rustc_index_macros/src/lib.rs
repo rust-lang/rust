@@ -41,7 +41,7 @@ mod newtype;
         rustc_attrs,
         trusted_step,
         pattern_types,
-        pattern_type_macro,
+        pattern_type_macro, // cfg(bootstrap) FIXME: remove on bump
         structural_match,
     )
 )]

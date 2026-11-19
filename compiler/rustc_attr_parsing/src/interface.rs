@@ -3,19 +3,20 @@ use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_ast::{self as ast, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
-use rustc_lint_defs::{LintId, RegisteredTools};
+use rustc_lint_defs::Reflectiveness::NonReflective;
+use rustc_lint_defs::{LintId, RegisteredTools, ToolOptions};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
+use crate::attributes::doc_comment::target_check_doc_comment;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
     FinalizeFn, FinalizeOutput, SharedContext,
@@ -24,7 +25,8 @@ use crate::diagnostics::ParsedDescription;
 use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
-use crate::{AttributeTemplate, ShouldEmit};
+use crate::validate_attr::parse_meta;
+use crate::{AttributeTemplate, ShouldEmit, diagnostics};
 
 pub struct EmitAttribute(
     pub  Box<
@@ -46,7 +48,7 @@ pub struct AttributeParser<'sess> {
     /// *Only* parse attributes that passes this filter.
     ///
     /// Used in cases where we want the lowering infrastructure for parse just limited attributes.
-    parse_filter: Option<&'sess dyn Fn(&ast::Attribute) -> bool>,
+    pub(crate) parse_filter: Option<&'sess dyn Fn(&ast::Attribute) -> bool>,
 }
 
 impl<'sess> AttributeParser<'sess> {
@@ -108,7 +110,7 @@ impl<'sess> AttributeParser<'sess> {
             sess,
             attrs,
             Some(parse_filter),
-            Target::Crate,
+            AstTarget::None(Target::Crate),
             target_span,
             CRATE_NODE_ID,
             features,
@@ -150,7 +152,7 @@ impl<'sess> AttributeParser<'sess> {
         sess: &'sess Session,
         attrs: &[ast::Attribute],
         parse_filter: Option<&dyn Fn(&ast::Attribute) -> bool>,
-        target: Target,
+        ast_target: AstTarget<'_>,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -161,8 +163,7 @@ impl<'sess> AttributeParser<'sess> {
         p.parse_attribute_list(
             attrs,
             target_span,
-            target,
-            AstTarget::None,
+            ast_target,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -177,7 +178,6 @@ impl<'sess> AttributeParser<'sess> {
         attr: &ast::Attribute,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
@@ -208,7 +208,6 @@ impl<'sess> AttributeParser<'sess> {
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
-            target,
             ast_target,
             features,
             emit_errors,
@@ -231,7 +230,6 @@ impl<'sess> AttributeParser<'sess> {
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
@@ -256,7 +254,7 @@ impl<'sess> AttributeParser<'sess> {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
-                target,
+                target: Target::from_ast_target(&ast_target),
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
@@ -322,7 +320,6 @@ impl<'sess> AttributeParser<'sess> {
         &mut self,
         attrs: &[ast::Attribute],
         target_span: Span,
-        target: Target,
         ast_target: AstTarget<'_>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
@@ -331,6 +328,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
         let mut generated_attr_state = GeneratedAttrState::default();
+        let mut has_target_checked_doc_comment = false;
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -345,6 +343,14 @@ impl<'sess> AttributeParser<'sess> {
             let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
+                    target_check_doc_comment(
+                        &self,
+                        attr,
+                        &ast_target,
+                        target_span,
+                        &mut emit_lint,
+                        &mut has_target_checked_doc_comment,
+                    );
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: DocFragmentKind::Sugared(*comment_kind),
@@ -365,7 +371,8 @@ impl<'sess> AttributeParser<'sess> {
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
                     let inner_span = lower_span(n.item.span);
 
-                    if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
+                    let accepter = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice());
+                    if let Some(accept) = accepter {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
@@ -410,6 +417,14 @@ impl<'sess> AttributeParser<'sess> {
                             // emit an error with `AcceptContext`.
                             && let Some(comment) = nv.value_as_str()
                         {
+                            target_check_doc_comment(
+                                &self,
+                                attr,
+                                &ast_target,
+                                target_span,
+                                &mut emit_lint,
+                                &mut false, // always linted
+                            );
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                                 style: attr.style,
                                 kind: DocFragmentKind::Raw(nv.value_span),
@@ -423,7 +438,7 @@ impl<'sess> AttributeParser<'sess> {
                             shared: SharedContext {
                                 cx: self,
                                 target_span,
-                                target,
+                                target: Target::from_ast_target(&ast_target),
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
@@ -451,6 +466,23 @@ impl<'sess> AttributeParser<'sess> {
                         }
                     } else if let [sym::diagnostic, _unknown, ..] = &*parts {
                         self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
+                    } else if let [sym::lint, unknown, ..] = &*parts {
+                        // Avoid cascading errors. If the `lint` tool has not been registered,
+                        // we could be here in the `#[lint::attribute_macro] not found` case,
+                        // which recovers with a `NonMacroAttr` res.
+                        if let Some(tools) = self.attr_tools
+                            && tools.iter().any(|(i, _)| i.name == sym::lint)
+                        {
+                            self.emit_err(diagnostics::UnknownLintHelper {
+                                span: n.item.span,
+                                unknown: *unknown,
+                            });
+                        } else {
+                            self.dcx().span_delayed_bug(
+                                n.item.span,
+                                "encountered `lint` tool attribute but error not reported",
+                            );
+                        }
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
@@ -468,7 +500,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
 
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
-                            && target == Target::Crate
+                            && Target::from_ast_target(&ast_target) == Target::Crate
                         {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
@@ -476,11 +508,35 @@ impl<'sess> AttributeParser<'sess> {
                         let attr = match attr_path.segments.len() {
                             0 => unreachable!("no path for {attr:?}"),
                             1 => Attribute::DeriveHelper(Box::new(attr)),
-                            _ => Attribute::Tool(Box::new(attr)),
+                            _ => {
+                                if let Some(tools) = self.attr_tools
+                                    && let Some(opts) =
+                                        tools.get(&Ident::with_dummy_span(attr_path.segments[0]))
+                                {
+                                    Attribute::Tool { item: Box::new(attr), opts: opts.clone() }
+                                } else {
+                                    Attribute::Tool {
+                                        item: Box::new(attr),
+                                        opts: ToolOptions { reflectiveness: NonReflective },
+                                    }
+                                }
+                            }
                         };
 
                         attributes.push(attr);
                     };
+
+                    if accepter.is_none()
+                        && let rustc_ast::AttrArgs::Eq { .. } = n.item.args
+                    {
+                        // All key-value attributes are restricted to meta-item syntax.
+                        match parse_meta(&self.sess.psess, &attr) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                err.emit();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -498,7 +554,7 @@ impl<'sess> AttributeParser<'sess> {
                 shared: SharedContext {
                     cx: self,
                     target_span,
-                    target,
+                    target: Target::from_ast_target(&ast_target),
                     ast_target,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
@@ -523,7 +579,7 @@ impl<'sess> AttributeParser<'sess> {
                         shared: SharedContext {
                             cx: self,
                             target_span,
-                            target,
+                            target: Target::from_ast_target(&ast_target),
                             ast_target,
                             emit_lint: &mut emit_lint,
                             #[cfg(debug_assertions)]
@@ -537,7 +593,9 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
+        if !matches!(self.should_emit, ShouldEmit::Nothing)
+            && Target::from_ast_target(&ast_target) == Target::WherePredicate
+        {
             self.check_invalid_where_predicate_attrs(attributes.iter());
         }
 
@@ -586,18 +644,23 @@ impl<'sess> AttributeParser<'sess> {
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
             ast::AttrArgs::Eq { eq_span, expr } => {
-                // In valid code the value always ends up as a single literal. Otherwise, a dummy
-                // literal suffices because the error is handled elsewhere.
+                // We perform error handling elsewhere, not here, so we only delay bugs.
+
+                if let Err(diag) =
+                    crate::validate_attr::check_attrs_on_rhs_expr(&self.sess.psess, expr)
+                {
+                    diag.delay_as_bug();
+                }
+
                 let lit = if let ast::ExprKind::Lit(token_lit) = expr.kind
                     && let Ok(lit) =
                         ast::MetaItemLit::from_token_lit(token_lit, lower_span(expr.span))
                 {
                     lit
                 } else {
-                    let guar = self.dcx().span_delayed_bug(
-                        args.span().unwrap_or(DUMMY_SP),
-                        "expr in place where literal is expected (builtin attr parsing)",
-                    );
+                    let span = args.span().unwrap_or(DUMMY_SP);
+                    let guar =
+                        self.dcx().span_delayed_bug(span, "non-literal expr in key-value attr");
                     ast::MetaItemLit {
                         symbol: sym::dummy,
                         suffix: None,

@@ -144,6 +144,11 @@ impl abi::Float {
             ),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            X87F80 => Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.require_lang_item(LangItem::X87F80Raw, DUMMY_SP)),
+                ty::GenericArgs::empty(),
+            ),
             F128 => tcx.types.f128,
             PpcF128 => Ty::new_adt(
                 tcx,
@@ -218,7 +223,7 @@ pub enum ValidityRequirement {
 }
 
 impl ValidityRequirement {
-    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+    pub fn from_rustc_intrinsic(intrinsic: Symbol) -> Option<Self> {
         match intrinsic {
             sym::assert_inhabited => Some(Self::Inhabited),
             sym::assert_zero_valid => Some(Self::Zero),
@@ -387,7 +392,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         let err = match tcx.layout_of(typing_env.as_query_input(ty)) {
             Ok(layout) => {
                 if layout.is_sized() {
-                    return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
+                    return Ok(SizeSkeleton::Known(layout.size, Some(layout.align)));
                 } else {
                     // Just to be safe, don't claim a known layout for unsized types.
                     return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
@@ -831,7 +836,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
+                tcx.mk_layout(LayoutData::uninhabited_variant(variant_index, fields))
             }
 
             Variants::Multiple { .. } => {
@@ -1028,6 +1033,9 @@ where
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
 
@@ -1098,7 +1106,7 @@ where
                         }
                     };
 
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo { safe: Some(kind), size, align: layout.align }
                 })
             }
 
@@ -1116,7 +1124,7 @@ where
                     PointeeInfo {
                         safe: Some(PointerKind::Box { unpin, global: this.ty.is_box_global(tcx) }),
                         size,
-                        align: layout.align.abi,
+                        align: layout.align,
                     }
                 })
             }
@@ -1253,6 +1261,12 @@ where
     fn is_complex_number_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
         let Some(def) = this.ty.ty_adt_def() else { return false };
         cx.tcx().is_lang_item(def.did(), LangItem::Complex)
+    }
+
+    /// Is this type `core::arch::{x86, x86_64}::x87_f80`?
+    fn is_x87_f80_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let Some(def) = this.ty.ty_adt_def() else { return false };
+        cx.tcx().is_lang_item(def.did(), LangItem::X87F80)
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {

@@ -225,8 +225,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, ShimKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Intrinsic, ShimKind, Ty,
+    TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::{DebugInfo, EntryFnType, Offload};
@@ -869,7 +869,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 );
 
                 if let ty::FnDef(def_id, _) = *callee_ty.kind()
-                    && self.tcx.is_intrinsic(def_id, rustc_span::sym::offload)
+                    && self.tcx.is_rustc_intrinsic(def_id, rustc_span::sym::offload)
                     && let Some(kernel) = args.first()
                 {
                     let kernel_ty = kernel.node.ty(self.body, self.tcx);
@@ -1004,7 +1004,14 @@ fn visit_instance_use<'tcx>(
         return;
     }
     if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
-        if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
+        let intrinsic_is_replaced = if let Intrinsic::Rustc(name) = intrinsic.name {
+            tcx.sess.replaced_rustc_intrinsics.contains(&name)
+        } else {
+            false
+        };
+        if let Intrinsic::Rustc(name) = intrinsic.name
+            && let Some(_requirement) = ValidityRequirement::from_rustc_intrinsic(name)
+        {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
             // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
@@ -1015,8 +1022,7 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
         } else if !intrinsic.must_be_overridden
-            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback
-                || !tcx.sess.replaced_intrinsics.contains(&intrinsic.name))
+            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback || !intrinsic_is_replaced)
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
             // We have to skip this otherwise as there's no body to codegen.
@@ -1065,7 +1071,7 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
         | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
         | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
-        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..))
         | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..)) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
@@ -1662,14 +1668,6 @@ impl<'v> RootCollector<'_, 'v> {
                 // Otherwise the value is only collected when explicitly mentioned in other items.
                 if self.strategy == MonoItemCollectionStrategy::Eager {
                     let def_id = id.owner_id.to_def_id();
-                    // Type Consts don't have bodies to evaluate
-                    // nor do they make sense as a static.
-                    if self.tcx.const_of_item(def_id).is_some() {
-                        // FIXME(mgca): Is this actually what we want? We may want to
-                        // normalize to a ValTree then convert to a const allocation and
-                        // collect that?
-                        return;
-                    }
                     if self.tcx.generics_of(id.owner_id).own_requires_monomorphization() {
                         return;
                     }

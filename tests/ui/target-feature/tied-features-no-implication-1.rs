@@ -3,7 +3,6 @@
 //@ needs-llvm-components: aarch64
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
-//@ ignore-backends: gcc
 //@ add-minicore
 // FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
 //@ minicore-compile-flags: -C target-feature=-pacg,-paca

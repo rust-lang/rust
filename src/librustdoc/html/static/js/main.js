@@ -546,13 +546,8 @@ function preLoadCss(cssUrl) {
         if (ev !== null && window.searchState.isDisplayed() && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
-            switchDisplayedElement(null);
+            window.searchState.hideResults();
             const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
-            if (browserSupportsHistoryApi()) {
-                // `window.location.search`` contains all the query parameters, not just `search`.
-                history.replaceState(null, "",
-                    getNakedUrl() + window.location.search + "#" + hash);
-            }
             const elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();

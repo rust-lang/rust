@@ -2,7 +2,6 @@
 //@ compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ needs-llvm-components: arm
 //@ build-pass
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]
@@ -26,3 +25,5 @@ pub fn thumb() {
         asm!("", out("r11") _);
     }
 }
+
+//@ reference: asm.register-names.not-for-io

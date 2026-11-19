@@ -14,10 +14,12 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned, bug, span_bug};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
+use rustc_target::callconv::{
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode,
+};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -299,7 +301,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 // If the return value was retagged as it was stored,
                 // then we might be in a different basic block now.
                 // Update the cached block for `target` to point to this new
-                // block, where codegen will continue.
+                // block, where codegen will continue. Additionally, store_return() may have
+                // required a branch into a new codegen backend basic block (currently this occurs
+                // when `cast_target.pass_via_x87_floating_point_stack` is set).
                 fx.cached_llbbs[target] = CachedLlbb::Some(bx.llbb());
             }
             MergingSucc::False
@@ -603,11 +607,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
-                if let Ref(place_val) = op.val {
-                    bx.load_from_place(bx.backend_type(op.layout), place_val)
-                } else {
-                    op.immediate_or_packed_pair(bx)
-                }
+                op.immediate_or_packed_pair(bx)
             }
 
             PassMode::Cast { cast: cast_ty, pad_i32_count: _ } => {
@@ -628,10 +628,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         scratch.val.llval
                     }
                     Ref(place_val) => {
-                        assert_eq!(
-                            place_val.align, op.layout.align.abi,
-                            "return place is unaligned!"
-                        );
+                        assert_eq!(place_val.align, op.layout.align, "return place is unaligned!");
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
@@ -644,7 +641,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.clear_padding_cmse(bx, llslot, ret_layout.size, ret_layout);
                 }
 
-                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
+                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align)
             }
             PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
@@ -905,7 +902,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) else {
+        let Intrinsic::Rustc(name) = intrinsic.name else {
+            return None;
+        };
+        let Some(requirement) = ValidityRequirement::from_rustc_intrinsic(name) else {
             return None;
         };
 
@@ -1037,7 +1037,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
 
                         if let Some(place) = result_place
-                            && place.align < result_layout.align.abi
+                            && place.align < result_layout.align
                         {
                             // Currently, MIR code generation does not create calls
                             // that store directly to fields of packed structs (in
@@ -1943,7 +1943,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let discr_ty = layout.ty.discriminant_ty(bx.tcx());
         let enum_ptr = bx.inbounds_ptradd(base_ptr, bx.const_usize(base_offset.bytes()));
         let operand = OperandRef {
-            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align.abi)),
+            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align)),
             layout,
             move_annotation: None,
         };
@@ -2010,8 +2010,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment. This can happen, e.g. when passing types with <4 byte alignment
                         // on the stack on x86.
                         let required_align = match attrs.pointee_align {
-                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                            None => arg.layout.align.abi,
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
                         };
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
@@ -2027,8 +2027,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let required_align = match attrs.pointee_align {
-                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                            None => arg.layout.align.abi,
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
                         };
                         // Copy to an alloca when the argument is neither by-val nor by-move.
                         if op_place_val.align < required_align
@@ -2473,7 +2473,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, dest.as_ref())
         };
         if fn_ret.is_indirect() {
-            if dest.val.align < dest.layout.align.abi {
+            if dest.val.align < dest.layout.align {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps).
@@ -2555,7 +2555,7 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     align: Align,
 ) -> Bx::Value {
     let cast_ty = bx.cast_backend_type(cast);
-    if let Some(offset_from_start) = cast.rest_offset {
+    let value = if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
         let first_ty = bx.reg_backend_type(&cast.prefix[0]);
@@ -2567,7 +2567,21 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let res = bx.insert_value(res, first, 0);
         bx.insert_value(res, second, 1)
     } else {
-        bx.load(cast_ty, ptr, align)
+        let load_ty = if cast.pass_via_x87_floating_point_stack {
+            match cast.rest.unit.size.bytes() {
+                4 => bx.type_f32(),
+                8 => bx.type_f64(),
+                _ => bug!(),
+            }
+        } else {
+            cast_ty
+        };
+        bx.load(load_ty, ptr, align)
+    };
+    if cast.pass_via_x87_floating_point_stack {
+        bx.x87_lossless_float_to_fp_stack(value, cast.attrs.contains(ArgAttribute::NoUndef))
+    } else {
+        value
     }
 }
 
@@ -2578,6 +2592,20 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ptr: Bx::Value,
     align: Align,
 ) {
+    let value = if cast.pass_via_x87_floating_point_stack {
+        let float_type = match cast.rest.unit.size.bytes() {
+            4 => bx.type_f32(),
+            8 => bx.type_f64(),
+            _ => bug!(),
+        };
+        bx.x87_lossless_fp_stack_to_float(
+            value,
+            float_type,
+            cast.attrs.contains(ArgAttribute::NoUndef),
+        )
+    } else {
+        value
+    };
     if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);

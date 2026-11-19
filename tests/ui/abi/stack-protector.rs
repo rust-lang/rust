@@ -4,7 +4,6 @@
 //@ [ssp] compile-flags: -Z stack-protector=all -Z allow-partial-mitigations=stack-protector
 //@ compile-flags: -C opt-level=2
 //@ compile-flags: -g
-//@ ignore-backends: gcc
 
 #![allow(function_casts_as_integer)]
 

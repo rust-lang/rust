@@ -25,9 +25,9 @@ where
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
-            RegKind::Float => true,
-            RegKind::PpcF128 => unreachable!(),
+            RegKind::Float => unit.size.bits() == 32 || unit.size.bits() == 64,
             RegKind::Vector { .. } => unit.size.bits() == 64 || unit.size.bits() == 128,
+            RegKind::PpcF128 => unreachable!(),
         };
 
         valid_unit.then_some(Uniform::consecutive(unit, size))
@@ -119,9 +119,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let abi_kind = if cx.target_spec().os == Os::WatchOs {
+    let target = cx.target_spec();
+    let abi_kind = if target.os == Os::WatchOs {
         ArmAbiKind::Aapcs16Vfp
-    } else if cx.target_spec().cfg_abi == CfgAbi::EabiHf {
+    } else if target.cfg_abi == CfgAbi::EabiHf || target.os == Os::Windows {
         ArmAbiKind::AapcsVfp
     } else {
         ArmAbiKind::Aapcs

@@ -10,6 +10,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModId};
 use rustc_hir::{self as hir, HirId, Mutability};
 use rustc_metadata::creader::{CStore, LoadedMacro};
+use rustc_middle::middle::resolve::ModChild;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -19,7 +20,7 @@ use tracing::{debug, instrument, trace};
 
 use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
-    self, Attributes, CfgInfo, ImplKind, ItemId, Type, clean_bound_vars, clean_generics,
+    self, Attributes, CfgInfo, ImplKind, ItemId, ItemKind, Type, clean_bound_vars, clean_generics,
     clean_impl_item, clean_middle_assoc_item, clean_middle_field, clean_middle_ty,
     clean_poly_fn_sig, clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type,
     clean_ty_generics, clean_variant_def, utils,
@@ -48,7 +49,7 @@ pub(crate) fn try_inline(
 ) -> Option<Vec<clean::Item>> {
     fn try_inline_inner(
         cx: &mut DocContext<'_>,
-        kind: clean::ItemKind,
+        kind: ItemKind,
         did: DefId,
         name: Symbol,
         import_def_id: Option<LocalDefId>,
@@ -97,52 +98,55 @@ pub(crate) fn try_inline(
             record_extern_fqn(cx, did, ItemType::Trait);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::TraitItem(Box::new(build_trait(cx, did)))
+                ItemKind::Trait(Box::new(build_trait(cx, did)))
             })
         }
         Res::Def(DefKind::TraitAlias, did) => {
             record_extern_fqn(cx, did, ItemType::TraitAlias);
-            cx.with_param_env(did, |cx| clean::TraitAliasItem(build_trait_alias(cx, did)))
+            cx.with_param_env(did, |cx| ItemKind::TraitAlias(build_trait_alias(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);
             cx.with_param_env(did, |cx| {
-                clean::enter_impl_trait(cx, |cx| clean::FunctionItem(build_function(cx, did)))
+                clean::enter_impl_trait(cx, |cx| {
+                    let (generics, decl) = build_function(cx, did);
+                    ItemKind::Function(Box::new(clean::Function { generics, decl }))
+                })
             })
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, ItemType::Struct);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::StructItem(build_struct(cx, did))
+                ItemKind::Struct(build_struct(cx, did))
             })
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, ItemType::Union);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::UnionItem(build_union(cx, did))
+                ItemKind::Union(build_union(cx, did))
             })
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::TypeAlias);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::TypeAliasItem(build_type_alias(cx, did, &mut ret))
+                ItemKind::TypeAlias(build_type_alias(cx, did, &mut ret))
             })
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::EnumItem(build_enum(cx, did))
+                ItemKind::Enum(build_enum(cx, did))
             })
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, ItemType::ForeignType);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::ForeignTypeItem
+                ItemKind::ForeignType
             })
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -152,19 +156,19 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => return Some(Vec::new()),
         Res::Def(DefKind::Mod, did) => {
             record_extern_fqn(cx, did, ItemType::Module);
-            clean::ModuleItem(build_module(cx, did, name, visited))
+            ItemKind::Module(build_module(cx, did, name, visited))
         }
         Res::Def(DefKind::Static { .. }, did) => {
             record_extern_fqn(cx, did, ItemType::Static);
             cx.with_param_env(did, |cx| {
-                clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
+                ItemKind::Static(build_static(cx, did, cx.tcx.is_mutable_static(did)))
             })
         }
         Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
             cx.with_param_env(did, |cx| {
                 let ct = build_const_item(cx, did);
-                clean::ConstantItem(Box::new(ct))
+                ItemKind::Constant(Box::new(ct))
             })
         }
         Res::Def(DefKind::Macro(kinds), did) => {
@@ -334,7 +338,10 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     clean::TraitAlias { generics, bounds }
 }
 
-pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
+pub(super) fn build_function(
+    cx: &mut DocContext<'_>,
+    def_id: DefId,
+) -> (clean::Generics, clean::FnDecl) {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
     // The generics need to be cleaned before the signature.
     let mut generics = clean_ty_generics(cx, def_id);
@@ -362,7 +369,7 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
 
     let decl = clean_poly_fn_sig(cx, Some(def_id), sig);
 
-    Box::new(clean::Function { decl, generics })
+    (generics, decl)
 }
 
 fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
@@ -399,12 +406,7 @@ fn build_type_alias(
     let type_ = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(did), None);
     let inner_type = clean_ty_alias_inner_type(ty, cx, ret);
 
-    Box::new(clean::TypeAlias {
-        type_,
-        generics: clean_ty_generics(cx, did),
-        inner_type,
-        item_type: None,
-    })
+    Box::new(clean::TypeAlias { type_, generics: clean_ty_generics(cx, did), inner_type })
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
@@ -538,6 +540,7 @@ pub(crate) fn build_impl(
                 .items
                 .iter()
                 .map(|&item| tcx.hir_impl_item(item))
+                .filter(|item| !item.is_anon_const())
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
@@ -607,8 +610,9 @@ pub(crate) fn build_impl(
     };
     let trait_ = associated_trait
         .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
-    if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
-        && polarity != ty::ImplPolarity::Negative
+    if trait_
+        .as_ref()
+        .is_some_and(|t| polarity != ty::ImplPolarity::Negative && t.is_deref_trait(tcx))
     {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -661,7 +665,7 @@ pub(crate) fn build_impl(
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
-        clean::ImplItem(Box::new(clean::Impl {
+        ItemKind::Impl(Box::new(clean::Impl {
             safety: hir::Safety::Safe,
             generics,
             trait_,
@@ -729,6 +733,48 @@ fn build_module_items(
     allowed_def_ids: Option<&DefIdSet>,
     attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
 ) -> Vec<clean::Item> {
+    #[inline]
+    fn make_import_item(
+        tcx: TyCtxt<'_>,
+        module_def_id: DefId,
+        module_name: Symbol,
+        def_id: Option<DefId>,
+        items: &mut Vec<clean::Item>,
+        item: &ModChild,
+        res: Res,
+    ) {
+        // We don't inline foreign `use`.
+        if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
+            return;
+        }
+        let mut segments = ThinVec::new();
+        if !module_def_id.is_local() && !module_def_id.is_crate_root() {
+            segments.push(clean::PathSegment {
+                name: tcx.crate_name(module_def_id.krate),
+                args: clean::GenericArgs::empty_angle_bracketed(),
+            });
+        }
+        segments.push(clean::PathSegment {
+            name: module_name,
+            args: clean::GenericArgs::empty_angle_bracketed(),
+        });
+        segments.push(clean::PathSegment {
+            name: def_id.map(|def_id| tcx.item_name(def_id)).unwrap_or(item.ident.name),
+            args: clean::GenericArgs::empty_angle_bracketed(),
+        });
+        let item = Item::from_def_id_and_parts(
+            module_def_id,
+            None,
+            ItemKind::Import(clean::Import::new_simple(
+                item.ident.name,
+                clean::ImportSource { path: clean::Path { res, segments }, did: None },
+                true,
+            )),
+            tcx,
+        );
+        items.push(item);
+    }
+
     let mut items = Vec::new();
 
     // If we're re-exporting a re-export it may actually re-export something in
@@ -767,7 +813,7 @@ fn build_module_items(
                     item_id: ItemId::DefId(module_def_id),
                     attrs: Default::default(),
                     stability: None,
-                    kind: clean::ImportItem(clean::Import::new_simple(
+                    kind: ItemKind::Import(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {
                             path: clean::Path {
@@ -788,6 +834,17 @@ fn build_module_items(
                     inline_stmt_id: None,
                 }),
             });
+        } else if item.ident.name == rustc_span::kw::Underscore {
+            // We don't inline items (re)named `_`.
+            make_import_item(
+                cx.tcx,
+                module_def_id,
+                module_name,
+                res.opt_def_id(),
+                &mut items,
+                item,
+                res,
+            );
         } else if let Some(def_id) = res.opt_def_id()
             && let Some(reexport) = item.reexport_chain.first()
             && let Some(reexport_def_id) = reexport.id()
@@ -798,43 +855,16 @@ fn build_module_items(
                 if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
             )
         {
-            // We don't inline foreign `use`.
-            if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
-                continue;
-            }
             // This item is reexported as `no_inline` so it shouldn't be inlined.
-            let item = Item::from_def_id_and_parts(
-                module_def_id,
-                None,
-                clean::ImportItem(clean::Import::new_simple(
-                    item.ident.name,
-                    clean::ImportSource {
-                        path: clean::Path {
-                            res,
-                            segments: thin_vec![
-                                clean::PathSegment {
-                                    name: module_name,
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                },
-                                clean::PathSegment {
-                                    name: cx.tcx.item_name(def_id),
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                },
-                            ],
-                        },
-                        did: None,
-                    },
-                    true,
-                )),
+            make_import_item(
                 cx.tcx,
+                module_def_id,
+                module_name,
+                Some(def_id),
+                &mut items,
+                item,
+                res,
             );
-            items.push(item);
         } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
             items.extend(i)
         }
@@ -855,13 +885,13 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     let mut generics = clean_ty_generics(cx, def_id);
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
-    let ty = clean_middle_ty(
+    let type_ = clean_middle_ty(
         ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()),
         cx,
         None,
         None,
     );
-    clean::Constant { generics, type_: ty, kind: clean::ConstantKind::Extern { def_id } }
+    clean::Constant { generics, type_, body: clean::ConstantExpr::Extern { def_id } }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
@@ -877,24 +907,18 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
     }
 }
 
-fn build_macro(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-    name: Symbol,
-    macro_kinds: MacroKinds,
-) -> clean::ItemKind {
+fn build_macro(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol, macro_kinds: MacroKinds) -> ItemKind {
     match CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id) {
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
+            MacroKinds::DERIVE => ItemKind::ProcMacro(clean::ProcMacro {
                 kind: MacroKind::Derive,
                 helpers: Vec::new(),
             }),
-            MacroKinds::ATTR => clean::ProcMacroItem(clean::ProcMacro {
-                kind: MacroKind::Attr,
-                helpers: Vec::new(),
-            }),
-            _ => clean::MacroItem(
-                clean::Macro {
+            MacroKinds::ATTR => {
+                ItemKind::ProcMacro(clean::ProcMacro { kind: MacroKind::Attr, helpers: Vec::new() })
+            }
+            _ => ItemKind::DeclMacro(
+                clean::DeclMacro {
                     source: utils::display_macro_source(tcx, name, &def),
                     macro_rules: def.macro_rules,
                 },
@@ -909,7 +933,7 @@ fn build_macro(
                 MacroKinds::DERIVE => MacroKind::Derive,
                 _ => unreachable!(),
             };
-            clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs })
+            ItemKind::ProcMacro(clean::ProcMacro { kind, helpers: ext.helper_attrs })
         }
     }
 }

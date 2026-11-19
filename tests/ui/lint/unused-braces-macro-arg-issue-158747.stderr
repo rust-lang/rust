@@ -2,7 +2,7 @@ warning: unnecessary braces around function argument
   --> $DIR/unused-braces-macro-arg-issue-158747.rs:37:24
    |
 LL |     let _ = call_expr!({ 1 });
-   |                        ^^ ^^
+   |                        ^   ^
    |
 note: the lint level is defined here
   --> $DIR/unused-braces-macro-arg-issue-158747.rs:6:9

@@ -30,7 +30,7 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
         && let ty::RawPtr(to_ptr_ty, _) = *cast_to.kind()
         && let Ok(from_layout) = cx.layout_of(from_ptr_ty)
         && let Ok(to_layout) = cx.layout_of(to_ptr_ty)
-        && from_layout.align.abi < to_layout.align.abi
+        && from_layout.align < to_layout.align
         // with c_void, we inherently need to trust the user
         && !is_c_void(cx, from_ptr_ty)
         // when casting from a ZST, we don't know enough to properly lint

@@ -2,6 +2,27 @@
 #![expect(clippy::needless_ifs, clippy::useless_vec)]
 #![allow(clippy::const_is_empty)]
 
+use std::collections::VecDeque;
+use std::fmt::Debug;
+
+//
+fn vecdeque_no_assert<T>(element: T) {
+    let mut vecdeque = VecDeque::new();
+    vecdeque.push_front(element);
+    // This doesn't trigger assert_is_empty since T implement neither Debug or PartialEq
+    assert!(vecdeque.is_empty());
+}
+
+// T now needs PartialEq and Debug
+fn vecdeque_eq<T: Debug + PartialEq>(element: T) {
+    let mut vecdeque = VecDeque::new();
+    vecdeque.push_front(element);
+    assert!(vecdeque.is_empty());
+    //~^ assert_is_empty
+    assert!(!vecdeque.is_empty());
+    //~^ assert_is_empty
+}
+
 fn main() {
     let vec = vec![1, 2, 3];
     assert!(vec.is_empty());
@@ -109,4 +130,128 @@ fn main() {
     struct NotDebug;
     let not_debug = vec![NotDebug];
     assert!(not_debug.is_empty());
+
+    let mut vec_deque: VecDeque<i32> = VecDeque::new();
+    vec_deque.push_back(0);
+    assert!(vec_deque.is_empty());
+    //~^ assert_is_empty
+    assert!(!vec_deque.is_empty());
+    //~^ assert_is_empty
+
+    debug_assert!(vec_deque.is_empty());
+    //~^ assert_is_empty
+    debug_assert!(!vec_deque.is_empty());
+    //~^ assert_is_empty
+}
+
+mod issue17935 {
+    use std::collections::BinaryHeap;
+
+    fn binary_heap() {
+        let mut heap = BinaryHeap::new();
+        heap.push(42);
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+        assert!(!heap.is_empty());
+        //~^ assert_is_empty
+        debug_assert!(heap.is_empty());
+        //~^ assert_is_empty
+        debug_assert!(!heap.is_empty());
+        //~^ assert_is_empty
+
+        // Don't lint: has assert message.
+        assert!(heap.is_empty(), "expected an empty heap");
+    }
+
+    trait ElementExists {
+        const ELEMENT: Self;
+    }
+
+    fn binaryheap_eq<T: ElementExists + Ord + std::fmt::Debug>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    fn cross_eq<T: Ord + std::fmt::Debug + PartialEq<u8>>(heap: BinaryHeap<T>) {
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    fn references(heap: &mut BinaryHeap<i32>) {
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+
+        let heap_ref = &*heap;
+        assert!(heap_ref.is_empty());
+        //~^ assert_is_empty
+
+        let heap_ref_ref = &heap_ref;
+        assert!(!heap_ref_ref.is_empty());
+        //~^ assert_is_empty
+
+        let heap = &&heap;
+        assert!(!heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    // Don't lint: these element types do not support the suggestion.
+    fn not_debug() {
+        #[derive(Eq, Ord, PartialEq, PartialOrd)]
+        struct NotDebug;
+
+        let mut not_debug = BinaryHeap::new();
+        not_debug.push(NotDebug);
+        assert!(not_debug.is_empty());
+    }
+
+    fn binaryheap_normal<T: ElementExists + Ord>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert!(heap.is_empty());
+    }
+
+    fn opaque(heap: BinaryHeap<impl Ord + std::fmt::Debug>) {
+        assert!(heap.is_empty());
+    }
+
+    fn not_comparable<T: std::fmt::Debug>(heap: BinaryHeap<T>) {
+        assert!(heap.is_empty());
+    }
+
+    const fn const_heap(heap: &BinaryHeap<i32>) {
+        assert!(heap.is_empty());
+        assert!(!heap.is_empty());
+        debug_assert!(heap.is_empty());
+        debug_assert!(!heap.is_empty());
+    }
+}
+
+// TODO: turn into an MSRV aware lint after const traits are stable and `PartialEq` is const stable
+mod issue17930 {
+    const NOT_EMPTY: &str = "string";
+    const EMPTY: &str = "";
+    const X: () = assert!(!NOT_EMPTY.is_empty());
+    static Y: () = assert!(EMPTY.is_empty());
+
+    const fn in_constant_fn() {
+        assert!(EMPTY.is_empty())
+    }
+
+    fn in_constant() {
+        const {
+            assert!(!NOT_EMPTY.is_empty());
+        }
+    }
+
+    struct ImplWithConstMethod;
+
+    impl ImplWithConstMethod {
+        const Z: () = assert!(!NOT_EMPTY.is_empty());
+
+        const fn const_method(&self) {
+            assert!(EMPTY.is_empty());
+        }
+    }
 }

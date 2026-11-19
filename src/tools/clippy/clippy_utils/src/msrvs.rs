@@ -1,6 +1,5 @@
-use crate::{is_in_const_context, span_of_clippy_attr, sym};
+use crate::{is_in_const_context, sym};
 use rustc_ast::Attribute;
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{RustcVersion, StabilityLevel, StableSince};
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
@@ -33,16 +32,22 @@ msrv_aliases! {
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
     1,89,0 { NONNULL_FROM_MUT }
     1,88,0 { LET_CHAINS, AS_CHUNKS, RAW_PTR_DEFAULT }
-    1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
+    1,87,0 {
+        OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST,
+        CONST_STR_FROM_UTF8_UNCHECKED_MUT, CONST_STR_FROM_UTF8_UNCHECKED, STR_FROM_UTF8, STR_FROM_UTF8_MUT
+    }
     1,86,0 { VEC_POP_IF }
     1,85,0 {
         UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP, ABS_CONST, RADIANS_CONST, CONST_MEM_SWAP, CONST_PTR_SWAP,
     }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
-    1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
+    1,83,0 {
+        CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP,
+        CONST_STD_STR_FROM_UTF8_UNCHECKED_MUT
+    }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP, SPECIALIZED_TO_STRING_FOR_REFS }
     1,81,0 { LINT_REASONS_STABILIZATION, ERROR_IN_CORE, EXPLICIT_SELF_TYPE_ELISION, DURATION_ABS_DIFF }
-    1,80,0 { BOX_INTO_ITER, LAZY_CELL }
+    1,80,0 { BOX_INTO_ITER, LAZY_CELL, BINARY_HEAP_AS_SLICE }
     1,79,0 { CONST_BLOCKS, CSTR_COUNT_BYTES }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
@@ -62,7 +67,7 @@ msrv_aliases! {
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY, CONST_RAW_PTR_DEREF }
     1,57,0 { MAP_WHILE, CONST_PANIC }
     1,56,0 { CONST_FN_UNION }
-    1,55,0 { SEEK_REWIND }
+    1,55,0 { SEEK_REWIND, CONST_STD_STR_FROM_UTF8_UNCHECKED }
     1,54,0 { INTO_KEYS }
     1,53,0 { OR_PATTERNS, INTEGER_BITS, BTREE_MAP_RETAIN, BTREE_SET_RETAIN, ARRAY_INTO_ITERATOR }
     1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
@@ -89,12 +94,13 @@ msrv_aliases! {
     1,27,0 { ITERATOR_TRY_FOLD, DOUBLE_ENDED_ITERATOR_RFIND, DURATION_FROM_NANOS_MICROS }
     1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS, BOX_LEAK }
     1,24,0 { IS_ASCII_DIGIT, PTR_NULL }
+    1,20,0 { STD_STR_FROM_UTF8_MUT }
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT, RESULT_UNWRAP_OR_DEFAULT }
     1,15,0 { MAYBE_BOUND_IN_WHERE }
     1,13,0 { QUESTION_MARK_OPERATOR }
-    1,6,0 { CORE_PTR_SWAP }
+    1,6,0 { CORE_PTR_SWAP, CORE_STR_FROM_UTF8 }
     1,3,0 { DURATION_FROM_MILLIS_SECS }
 }
 
@@ -143,7 +149,7 @@ impl Msrv {
     fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
-            .find_map(|id| parse_attrs(tcx.hir_attrs(id)))
+            .find_map(|id| parse_hir_attrs(tcx.hir_attrs(id)))
             .or(self.0)
     }
 
@@ -246,28 +252,38 @@ impl MsrvStack {
     }
 
     pub fn check_attributes(&mut self, attrs: &[Attribute]) {
-        if let Some(version) = parse_attrs(attrs) {
+        if let Some(version) = parse_ast_attrs(attrs) {
             SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
     pub fn check_attributes_post(&mut self, attrs: &[Attribute]) {
-        if parse_attrs(attrs).is_some() {
+        if parse_ast_attrs(attrs).is_some() {
             self.stack.pop();
         }
     }
 }
 
-fn parse_attrs(attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+fn parse_ast_attrs(attrs: &[Attribute]) -> Option<RustcVersion> {
     let msrv_attr = attrs.iter().find(|attr| attr.path_matches(&[sym::clippy, sym::msrv]))?;
+    parse_version(msrv_attr.value_str()?)
+}
 
-    let msrv = msrv_attr.value_str()?;
-
+fn parse_hir_attrs(attrs: &[rustc_attr_ir::Attribute]) -> Option<RustcVersion> {
+    let msrv = attrs.iter().find_map(|attr| {
+        if let rustc_attr_ir::Attribute::Tool { item, .. } = attr
+            && let [sym::clippy, sym::msrv] = item.path.segments
+        {
+            attr.value_lit().and_then(rustc_ast::MetaItemLit::value_as_str)
+        } else {
+            None
+        }
+    })?;
     parse_version(msrv)
 }
 
-pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
+pub fn check_attrs(sess: &Session, attrs: &[Attribute]) {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
     let Some(msrv_attr) = msrv_attrs.next() else {
@@ -276,24 +292,18 @@ pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
 
     if let Some(duplicate) = msrv_attrs.next_back() {
         sess.dcx()
-            .struct_span_err(
-                span_of_clippy_attr(duplicate),
-                "`clippy::msrv` is defined multiple times",
-            )
-            .with_span_note(span_of_clippy_attr(msrv_attr), "first definition found here")
+            .struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
+            .with_span_note(msrv_attr.span, "first definition found here")
             .emit();
     }
 
     let Some(msrv) = msrv_attr.value_str() else {
-        sess.dcx()
-            .span_err(span_of_clippy_attr(msrv_attr), "bad clippy attribute");
+        sess.dcx().span_err(msrv_attr.span, "bad clippy attribute");
         return;
     };
 
     if parse_version(msrv).is_none() {
-        sess.dcx().span_err(
-            span_of_clippy_attr(msrv_attr),
-            format!("`{msrv}` is not a valid Rust version"),
-        );
+        sess.dcx()
+            .span_err(msrv_attr.span, format!("`{msrv}` is not a valid Rust version"));
     }
 }

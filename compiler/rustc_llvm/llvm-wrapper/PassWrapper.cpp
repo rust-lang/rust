@@ -1,6 +1,7 @@
 #include "LLVMWrapper.h"
 
 #include "llvm-c/Core.h"
+#include "llvm-c/Support.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -28,6 +29,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/TimeProfiler.h"
@@ -61,7 +63,9 @@
 
 using namespace llvm;
 
+#if LLVM_VERSION_LT(24, 0)
 static codegen::RegisterCodeGenFlags CGF;
+#endif
 
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
@@ -371,10 +375,12 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     return nullptr;
   }
 
-  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
-
 #if LLVM_VERSION_LT(24, 0)
+  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
   Options.FloatABIType = FloatABIType;
+#else
+  TargetOptions Options =
+      codegen::getTargetOptions(cl::getCAPILibraryOptions(), Trip);
 #endif
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
@@ -449,7 +455,19 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_GE(24, 0)
+  for (const cl::LibraryOptions *L : codegen::getToolOptions())
+    cl::addLibraryOptions(*L);
+  char *Err;
+  if (LLVMParseCommandLineOptionsWithError(Argc, Argv, "", &Err)) {
+    // FIXME: Report the error via Rust's diagnostics infrastructure.
+    errs() << Err;
+    LLVMDisposeMessage(Err);
+    exit(1);
+  }
+#else
   cl::ParseCommandLineOptions(Argc, Argv);
+#endif
 }
 
 enum class LLVMRustFileType {
@@ -468,11 +486,23 @@ static CodeGenFileType fromRust(LLVMRustFileType Type) {
   }
 }
 
-extern "C" LLVMRustResult
-LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
-                        const char *Path, const char *DwoPath,
-                        LLVMRustFileType RustFileType, bool VerifyIR,
-                        bool DisableSimplifyLibCalls) {
+extern "C" typedef llvm::PassPluginLibraryInfo (*LLVMGetPassPluginInfo)();
+
+enum class LLVMRustTpdeMode {
+  None,
+  Only,
+  Try,
+};
+
+struct LLVMRustTpdeOptions {
+  LLVMRustTpdeMode mode;
+  LLVMGetPassPluginInfo plugin;
+};
+
+extern "C" LLVMRustResult LLVMRustWriteOutputFile(
+    LLVMTargetMachineRef Target, LLVMModuleRef M, const char *Path,
+    const char *DwoPath, LLVMRustFileType RustFileType, bool VerifyIR,
+    bool DisableSimplifyLibCalls, LLVMRustTpdeOptions TpdeOptions) {
   auto FileType = fromRust(RustFileType);
 
   std::string ErrorInfo;
@@ -488,6 +518,22 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   std::unique_ptr<llvm::raw_pwrite_stream> DwoOS = nullptr;
   std::unique_ptr<llvm::raw_pwrite_stream> BDwoOS = nullptr;
   auto BOS = buffer_ostream(OS);
+
+  if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
+    assert(
+        TpdeOptions.plugin &&
+        "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
+    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+      return LLVMRustResult::Success;
+    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+      std::string error = "Failed to compile module " +
+                          unwrap(M)->getModuleIdentifier() + " with TPDE";
+      LLVMRustSetLastError(error.c_str());
+      return LLVMRustResult::Failure;
+    }
+  }
+
   if (DwoPath) {
     DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
     if (EC) {
@@ -506,6 +552,8 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   Error CodeGenError =
       runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, BDwoOS.get(),
                          FileType, !VerifyIR, DisableSimplifyLibCalls);
+  if (CodeGenError)
+    return LLVMRustResult::Failure;
 #else
   std::unique_ptr<llvm::legacy::PassManager> PM =
       std::make_unique<llvm::legacy::PassManager>();
@@ -949,7 +997,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   };
 
   ModulePassManager MPM;
-  bool NeedThinLTOBufferPasses = true;
+  bool NeedThinLTOBufferPasses = ThinLTOBufferRef != nullptr;
   auto ThinLTOBuffer = std::make_unique<LLVMRustBuffer>();
   auto ThinLTOSummaryBuffer = std::make_unique<LLVMRustBuffer>();
   raw_string_ostream ThinLTODataOS(ThinLTOBuffer->data);
@@ -1583,6 +1631,8 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
       PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
       ModulePassManager MPM;
+      MPM.addPass(CanonicalizeAliasesPass());
+      MPM.addPass(NameAnonGlobalPass());
 #if LLVM_VERSION_GE(23, 0)
       MPM.addPass(AssignGUIDPass());
 #endif

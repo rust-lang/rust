@@ -127,13 +127,13 @@ fn alloc_environ_block<'tcx>(
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn getenv(&self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_ref();
-        this.assert_target_os_is_unix("getenv");
+        let ecx = self.eval_context_ref();
+        ecx.assert_target_os_is_unix("getenv");
 
-        let name_ptr = this.read_pointer(name_op)?;
-        let name = this.read_os_str_from_c_str(name_ptr)?;
+        let name_ptr = ecx.read_pointer(name_op)?;
+        let name = ecx.read_os_str_from_c_str(name_ptr)?;
 
-        let var_ptr = this.machine.env_vars.unix().get_ptr(this, name)?;
+        let var_ptr = ecx.machine.env_vars.unix().get_ptr(ecx, name)?;
         interp_ok(var_ptr.unwrap_or_else(Pointer::null))
     }
 
@@ -142,79 +142,89 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         name_op: &OpTy<'tcx>,
         value_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("setenv");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("setenv");
 
-        let name_ptr = this.read_pointer(name_op)?;
-        let value_ptr = this.read_pointer(value_op)?;
+        let name_ptr = ecx.read_pointer(name_op)?;
+        let value_ptr = ecx.read_pointer(value_op)?;
 
         let mut new = None;
-        if !this.ptr_is_null(name_ptr)? {
-            let name = this.read_os_str_from_c_str(name_ptr)?;
+        if !ecx.ptr_is_null(name_ptr)? {
+            let name = ecx.read_os_str_from_c_str(name_ptr)?;
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
-                let value = this.read_os_str_from_c_str(value_ptr)?;
+                let value = ecx.read_os_str_from_c_str(value_ptr)?;
                 new = Some((name.to_owned(), value.to_owned()));
             }
         }
         if let Some((name, value)) = new {
-            let var_ptr = alloc_env_var(this, &name, &value)?;
-            if let Some(var) = this.machine.env_vars.unix_mut().map.insert(name, var_ptr) {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
+            let var_ptr = alloc_env_var(ecx, &name, &value)?;
+            if let Some(var) = ecx.machine.env_vars.unix_mut().map.insert(name, var_ptr) {
+                ecx.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
-            this.update_environ()?;
+            ecx.update_environ()?;
             interp_ok(Scalar::from_i32(0)) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
+            ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
 
     fn unsetenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("unsetenv");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("unsetenv");
 
-        let name_ptr = this.read_pointer(name_op)?;
+        let name_ptr = ecx.read_pointer(name_op)?;
         let mut success = None;
-        if !this.ptr_is_null(name_ptr)? {
-            let name = this.read_os_str_from_c_str(name_ptr)?.to_owned();
+        if !ecx.ptr_is_null(name_ptr)? {
+            let name = ecx.read_os_str_from_c_str(name_ptr)?.to_owned();
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
-                success = Some(this.machine.env_vars.unix_mut().map.remove(&name));
+                success = Some(ecx.machine.env_vars.unix_mut().map.remove(&name));
             }
         }
         if let Some(old) = success {
             if let Some(var) = old {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
+                ecx.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
-            this.update_environ()?;
+            ecx.update_environ()?;
             interp_ok(Scalar::from_i32(0))
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
+            ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
 
     fn getcwd(&mut self, buf_op: &OpTy<'tcx>, size_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("getcwd");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("getcwd");
 
-        let buf = this.read_pointer(buf_op)?;
-        let size = this.read_target_usize(size_op)?;
+        let buf = ecx.read_pointer(buf_op)?;
+        let size = ecx.read_target_usize(size_op)?;
 
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`getcwd`", reject_with)?;
-            this.set_last_error(ErrorKind::PermissionDenied)?;
+        if ecx.ptr_is_null(buf)? {
+            // glibc has special behavior here so avoid confusing UB reports.
+            throw_unsup_format!("getcwd with a null pointer for `buf` is not supported");
+        }
+
+        if size == 0 {
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(Pointer::null());
+        }
+
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`getcwd`", reject_with)?;
+            ecx.set_last_error(ErrorKind::PermissionDenied)?;
             return interp_ok(Pointer::null());
         }
 
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
-                if this.write_path_to_c_str(&cwd, buf, size)?.0 {
+                if ecx.write_path_to_c_str(&cwd, buf, size)?.0 {
                     return interp_ok(buf);
                 }
-                this.set_last_error(LibcError("ERANGE"))?;
+                ecx.set_last_error(LibcError("ERANGE"))?;
             }
-            Err(e) => this.set_last_error(e)?,
+            Err(e) => ecx.set_last_error(e)?,
         }
 
         interp_ok(Pointer::null())
@@ -225,11 +235,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         name_op: &OpTy<'tcx>,
         len_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("gethostname");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("gethostname");
 
-        let name = this.read_pointer(name_op)?;
-        let len = this.read_target_usize(len_op)?;
+        let name = ecx.read_pointer(name_op)?;
+        let len = ecx.read_target_usize(len_op)?;
 
         // macOS makes a length of zero UB by writing to `name[namelen - 1]`:
         // <https://github.com/apple-oss-distributions/Libc/blob/main/gen/FreeBSD/gethostname.c#L48-L60>
@@ -245,10 +255,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // The caller promises that `name` points to an array of `len` bytes, so validate that
         // entire range up front. Since `len` is non-zero, this also rejects null and dangling
         // pointers.
-        this.check_ptr_access(name, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
+        ecx.check_ptr_access(name, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
 
         if len > u64::try_from(HOSTNAME.len()).unwrap() {
-            let (written, _) = this.write_c_str(HOSTNAME, name, len)?;
+            let (written, _) = ecx.write_c_str(HOSTNAME, name, len)?;
             assert!(written); // Value should fit.
             return interp_ok(Scalar::from_i32(0));
         }
@@ -259,23 +269,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // > an insufficient length to hold the host name, then the returned name
         // > shall be truncated and it is unspecified whether the returned name is
         // > null-terminated.
-        match (&this.tcx.sess.target.os, &this.tcx.sess.target.env) {
+        match (&ecx.tcx.sess.target.os, &ecx.tcx.sess.target.env) {
             (Os::Android, _) => {
                 // Android violates POSIX and does not write anything:
                 // <https://raw.githubusercontent.com/aosp-mirror/platform_bionic/master/libc/bionic/gethostname.cpp>
-                this.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
+                ecx.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
             }
             (Os::Linux, Env::Gnu) | (Os::FreeBsd, _) => {
                 // Write what we can *without* trailing null.
                 let len: usize = len.try_into().unwrap();
-                this.write_bytes_ptr(name, HOSTNAME[..len].iter().copied())?;
-                this.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
+                ecx.write_bytes_ptr(name, HOSTNAME[..len].iter().copied())?;
+                ecx.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
             }
             (Os::Linux, _) | (Os::MacOs, _) | (Os::Solaris, _) | (Os::Illumos, _) => {
                 // Write what we can *with* trailing null.
                 let len: usize = len.try_into().unwrap();
                 let copy_len = len.strict_sub(1);
-                this.write_bytes_ptr(
+                ecx.write_bytes_ptr(
                     name,
                     HOSTNAME[..copy_len].iter().copied().chain(std::iter::once(0)),
                 )?;
@@ -290,62 +300,62 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interp_ok(Scalar::from_i32(0))
             }
             _ => {
-                throw_unsup_format!("`gethostname` is not supported on {}", this.tcx.sess.target.os)
+                throw_unsup_format!("`gethostname` is not supported on {}", ecx.tcx.sess.target.os)
             }
         }
     }
 
     fn chdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("chdir");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("chdir");
 
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
 
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`chdir`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`chdir`", reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         let result = env::set_current_dir(path).map(|()| 0);
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result)?))
     }
 
     /// Updates the `environ` static.
     fn update_environ(&mut self) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Deallocate the old environ list.
-        let environ = this.machine.env_vars.unix().environ.clone();
-        let old_vars_ptr = this.read_pointer(&environ)?;
-        this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Machine.into())?;
+        let environ = ecx.machine.env_vars.unix().environ.clone();
+        let old_vars_ptr = ecx.read_pointer(&environ)?;
+        ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Machine.into())?;
 
         // Write the new list.
-        let vals = this.machine.env_vars.unix().map.values().copied().collect();
-        let environ_block = alloc_environ_block(this, vals)?;
-        this.write_pointer(environ_block, &environ)?;
+        let vals = ecx.machine.env_vars.unix().map.values().copied().collect();
+        let environ_block = alloc_environ_block(ecx, vals)?;
+        ecx.write_pointer(environ_block, &environ)?;
 
         interp_ok(())
     }
 
     fn getpid(&self) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_ref();
-        this.assert_target_os_is_unix("getpid");
+        let ecx = self.eval_context_ref();
+        ecx.assert_target_os_is_unix("getpid");
 
         // The reason we need to do this wacky of a conversion is because
         // `libc::getpid` returns an i32, however, `std::process::id()` return an u32.
         // So we un-do the conversion that stdlib does and turn it back into an i32.
         // In `Scalar` representation, these are the same, so we don't need to anything else.
-        interp_ok(Scalar::from_u32(this.get_pid()))
+        interp_ok(Scalar::from_u32(ecx.get_pid()))
     }
 
     /// The `gettid`-like function for Unix platforms that take no parameters and return a 32-bit
     /// integer. It is not always named "gettid".
     fn unix_gettid(&mut self, link_name: &str) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_ref();
-        this.assert_target_os_is_unix(link_name);
+        let ecx = self.eval_context_ref();
+        ecx.assert_target_os_is_unix(link_name);
 
         // For most platforms the return type is an `i32`, but some are unsigned. The TID
         // will always be positive so we don't need to differentiate.
-        interp_ok(Scalar::from_u32(this.get_tid(this.active_thread())))
+        interp_ok(Scalar::from_u32(ecx.get_tid(ecx.active_thread())))
     }
 
     /// `fields_size`, if present, says how large each field of the struct is.
@@ -354,21 +364,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         uname: &OpTy<'tcx>,
         fields_size: Option<&OpTy<'tcx>>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os_is_unix("uname");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_unix("uname");
 
-        let uname_ptr = this.read_pointer(uname)?;
+        let uname_ptr = ecx.read_pointer(uname)?;
         let fields_size = match fields_size {
             None => None,
-            Some(size) => Some(this.read_scalar(size)?.to_i32()?),
+            Some(size) => Some(ecx.read_scalar(size)?.to_i32()?),
         };
 
-        if this.ptr_is_null(uname_ptr)? {
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        if ecx.ptr_is_null(uname_ptr)? {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let uname = this.deref_pointer(uname)?;
-        let arch = this.machine.tcx.sess.target.arch.desc_symbol();
+        let uname = ecx.deref_pointer(uname)?;
+        let arch = ecx.machine.tcx.sess.target.arch.desc_symbol();
         // Values required by POSIX.
         let mut values = vec![
             ("sysname", "Miri"),
@@ -377,19 +387,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ("version", concat!("Miri ", env!("CARGO_PKG_VERSION"))),
             ("machine", arch.as_str()),
         ];
-        if matches!(this.machine.tcx.sess.target.os, Os::Linux | Os::Android) {
+        if matches!(ecx.machine.tcx.sess.target.os, Os::Linux | Os::Android) {
             values.push(("domainname", "(none)"));
         }
 
         for (name, value) in values {
-            let field = this.project_field_named(&uname, name)?;
+            let field = ecx.project_field_named(&uname, name)?;
             let size = field.layout().layout.size().bytes();
             if fields_size.is_some_and(|fields_size| u64::try_from(fields_size) != Ok(size)) {
                 throw_unsup_format!(
                     "the fields size passed to `uname` does not match the type in the libc crate"
                 );
             }
-            let (written, _) = this.write_c_str(value.as_bytes(), field.ptr(), size)?;
+            let (written, _) = ecx.write_c_str(value.as_bytes(), field.ptr(), size)?;
             assert!(written); // All values should fit.
         }
         interp_ok(Scalar::from_i32(0))
@@ -404,32 +414,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         thread_op: &OpTy<'tcx>,
         tid_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::MacOs, "pthread_threadip_np");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::MacOs, "pthread_threadip_np");
 
-        let tid_dest = this.read_pointer(tid_op)?;
-        if this.ptr_is_null(tid_dest)? {
+        let tid_dest = ecx.read_pointer(tid_op)?;
+        if ecx.ptr_is_null(tid_dest)? {
             // If NULL is passed, an error is immediately returned
-            return interp_ok(this.eval_libc("EINVAL"));
+            return interp_ok(ecx.eval_libc("EINVAL"));
         }
 
-        let thread = this.read_scalar(thread_op)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = ecx.read_scalar(thread_op)?.to_int(ecx.libc_ty_layout("pthread_t").size)?;
         let thread = if thread == 0 {
             // Null thread ID indicates that we are querying the active thread.
-            this.machine.threads.active_thread()
+            ecx.machine.threads.active_thread()
         } else {
             // Our pthread_t is just the raw ThreadId.
             // macOS documents this to return an error and indeed it does not seem to segfault.
-            let Ok(thread) = this.thread_id_try_from(thread) else {
-                return interp_ok(this.eval_libc("ESRCH"));
+            let Ok(thread) = ecx.thread_id_try_from(thread) else {
+                return interp_ok(ecx.eval_libc("ESRCH"));
             };
             thread
         };
 
         // This returns an `int`, not a `pthread_t`, so we treat it like we treat `gettid` on Linux.
-        let tid = this.get_tid(thread);
-        let tid_dest = this.deref_pointer(tid_op)?;
-        this.write_int(tid, &tid_dest)?;
+        let tid = ecx.get_tid(thread);
+        let tid_dest = ecx.deref_pointer(tid_op)?;
+        ecx.write_int(tid, &tid_dest)?;
 
         // Possible errors have been handled, return success.
         interp_ok(Scalar::from_u32(0))

@@ -240,7 +240,7 @@ impl CodegenBackend for GccCodegenBackend {
                 panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
             }
         }
-        let global_backend_features = gcc_util::global_gcc_features(sess);
+        let global_backend_features = gcc_util::global_gcc_features(sess, false);
 
         #[cfg(feature = "master")]
         {
@@ -253,6 +253,11 @@ impl CodegenBackend for GccCodegenBackend {
             if target_cpu != "generic" {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
+            gcc_util::add_target_info_feature_options(
+                &context,
+                &sess.target.arch,
+                &gcc_util::global_gcc_features(sess, true),
+            );
             // libgccjit always passes -fPIC, which some targets reject (e.g. MIPS without -mabicalls).
             gcc_util::add_pic_option(&context, sess.relocation_model());
 
@@ -285,8 +290,8 @@ impl CodegenBackend for GccCodegenBackend {
 
         CodegenBackendInit {
             global_backend_features,
-            replaced_intrinsics: vec![],
-            fallback_intrinsics: vec![sym::type_id_eq],
+            replaced_rustc_intrinsics: vec![],
+            fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
         }
     }
@@ -404,11 +409,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         false
     }
 
-    fn target_machine_factory(
-        &self,
-        _sess: &Session,
-        _opt_level: OptLevel,
-    ) -> TargetMachineFactoryFn<Self> {
+    fn target_machine_factory(&self, _sess: &Session) -> TargetMachineFactoryFn<Self> {
         // FIXME(antoyo): set opt level.
         Arc::new(|_, _| ())
     }

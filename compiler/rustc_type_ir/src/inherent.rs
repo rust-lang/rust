@@ -15,8 +15,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, Const, FieldInfo, Interner, PredicateKind, Region,
-    UpcastFrom,
+    self as ty, CallerBoundsAccessor, ClauseKind, CollectAndApply, Const, FieldInfo, Interner,
+    NoClauses, PredicateKind, Region, UpcastFrom,
 };
 
 #[rust_analyzer::prefer_underscore_import]
@@ -202,6 +202,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
@@ -586,7 +589,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
+    fn caller_bounds(self) -> CallerBoundsAccessor<I, impl Iterator<Item = I::Clause>, NoClauses>;
 }
 
 #[rust_analyzer::prefer_underscore_import]
@@ -596,6 +599,8 @@ pub trait Features<I: Interner>: Copy {
     fn gca_const_items(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
+
+    fn move_trait(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }

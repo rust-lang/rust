@@ -145,7 +145,7 @@ where
         // See: <https://github.com/llvm/llvm-project/blob/5e691a1c9b0ad22689d4a434ddf4fed940e58dec/clang/lib/CodeGen/TargetInfo.cpp#L5816-L5823>
         arg.layout.unadjusted_abi_align
     } else {
-        arg.layout.align.abi
+        arg.layout.align
     };
     if size.bits() <= 128 {
         if align.bits() == 128 {

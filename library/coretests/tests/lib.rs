@@ -54,6 +54,7 @@
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
+#![feature(duration_display_seconds)]
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -70,9 +71,9 @@
 #![feature(freeze)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
+#![feature(get_set_bit)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(int_from_ascii)]
 #![feature(int_roundings)]
 #![feature(integer_casts)]
 #![feature(io_slice_as_bytes)]
@@ -105,6 +106,7 @@
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(raw_os_error_ty)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(signed_bigint_helpers)]
 #![feature(slice_from_ptr_range)]
@@ -138,6 +140,7 @@
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![register_tool(reflective_tool(reflect))] // to allow testing of attribute reflection in `mem/type_info.rs`
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {

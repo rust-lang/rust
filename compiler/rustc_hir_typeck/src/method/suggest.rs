@@ -583,8 +583,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-
+        self.detect_shadowed_method_on_incorrect_method_access(
+            &mut err, source, item_ident, rcvr_ty,
+        );
         err
+    }
+
+    fn detect_shadowed_method_on_incorrect_method_access(
+        &self,
+        err: &mut Diag<'_>,
+        source: SelfSource<'tcx>,
+        method_ident: Ident,
+        base_ty: Ty<'tcx>,
+    ) {
+        let SelfSource::MethodCall(expr) = source else { return };
+        self.find_shadowed_method_and_provide_diagnostic_context(err, base_ty, expr, |ty| {
+            self.autoderef(method_ident.span, ty)
+                .silence_errors()
+                .any(|(ty, _)| self.all_methods(method_ident, ty).next().is_some())
+        });
     }
 
     fn suggest_use_shadowed_binding_with_method(

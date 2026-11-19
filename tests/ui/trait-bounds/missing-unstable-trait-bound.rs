@@ -3,7 +3,6 @@
 
 //@ ignore-wasm32
 //@ ignore-wasm64
-//@ ignore-backends: gcc
 //
 //@ revisions: stable nightly
 //@[stable] act-as-stable

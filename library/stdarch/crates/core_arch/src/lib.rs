@@ -40,12 +40,15 @@
     movrs_target_feature,
     clflushopt_target_feature,
     min_adt_const_params,
-    num_internals
+    num_internals,
+    f16b,
+    cfg_target_has_reliable_f16b
 )]
 #![cfg_attr(
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(powerpc_ppcf128)
 )]
+#![cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), feature(x87_f80))]
 #![cfg_attr(
     test,
     feature(

@@ -24,7 +24,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
-pub use intrinsic::IntrinsicDef;
+pub use intrinsic::{Intrinsic, IntrinsicDef};
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, Size, VariantIdx,
 };
@@ -1030,7 +1030,10 @@ pub struct ParamEnv<'tcx> {
 static_assert_size!(ParamEnv<'_>, std::mem::size_of::<usize>());
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
+    #[inline]
+    fn caller_bounds(
+        self,
+    ) -> CallerBoundsAccessor<TyCtxt<'tcx>, impl Iterator<Item = ty::Clause<'tcx>>, NoClauses> {
         self.caller_bounds()
     }
 }
@@ -1048,8 +1051,10 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
-        self.caller_bounds.iter()
+    pub fn caller_bounds(
+        self,
+    ) -> CallerBoundsAccessor<TyCtxt<'tcx>, impl Iterator<Item = ty::Clause<'tcx>>, NoClauses> {
+        CallerBoundsAccessor::new(self.caller_bounds.iter())
     }
 
     #[inline]
@@ -1078,7 +1083,12 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
+            ParamEnv::new(
+                tcx,
+                tcx.reveal_opaque_types_in_bounds(
+                    tcx.mk_clauses_from_iter(self.caller_bounds().all_clauses(tcx).iter()),
+                ),
+            )
         }
     }
 }
@@ -1914,7 +1924,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
         #[expect(deprecated)]
         self.get_all_attrs(did).iter().filter_map(|attr| {
-            if let rustc_attr_ir::Attribute::Tool(t) = attr
+            if let rustc_attr_ir::Attribute::Tool { item: t, .. } = attr
                 && *t.path.segments == *name
             {
                 Some(&**t)
@@ -2051,6 +2061,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
+                    // FIXME(-Zpack-coroutine-layout): Stop ignoring the flag here.
+                    pack: rustc_abi::PackCoroutineLayout::Classic,
                 };
                 return Ok(self.arena.alloc(proxy_layout));
             } else {

@@ -4,7 +4,7 @@ use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, Mutability, Path,
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    TyKind, TyPatKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -326,8 +326,6 @@ impl<'a> Parser<'a> {
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
             self.parse_typeof_ty(lo)?
-        } else if self.is_builtin() {
-            self.parse_builtin_ty()?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -423,6 +421,12 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
+        } else if self.eat_forced_keyword_noexpect(kw::FieldOf) {
+            self.parse_ty_field_of(lo)?
+        } else if self.eat_forced_keyword_noexpect(kw::PatternType) {
+            self.parse_pat_ty(lo)?
+        } else if self.eat_forced_keyword_noexpect(kw::ViewType) {
+            self.parse_view_ty(lo)?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
@@ -826,16 +830,9 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Err(guar))
     }
 
-    fn parse_builtin_ty(&mut self) -> PResult<'a, TyKind> {
-        self.parse_builtin(|this, lo, ident| {
-            Ok(match ident.name {
-                sym::field_of => Some(this.parse_ty_field_of(lo)?),
-                _ => None,
-            })
-        })
-    }
+    fn parse_ty_field_of(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        self.expect(exp!(OpenParen))?;
 
-    pub(crate) fn parse_ty_field_of(&mut self, _lo: Span) -> PResult<'a, TyKind> {
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -844,32 +841,101 @@ impl<'a> Parser<'a> {
 
         if let Err(mut e) = self.expect_one_of(&[], &[exp!(CloseParen)]) {
             if trailing_comma {
-                e.note("unexpected third argument to field_of");
+                e.note("unexpected third argument to `field_of`");
             } else {
-                e.note("field_of expects dot-separated field and variant names");
+                e.note("`field_of` expects dot-separated field and variant names");
             }
             e.emit();
         }
 
-        // Eat tokens until the macro call ends.
+        // Eat tokens until the construct ends.
         if self.may_recover() {
             while !self.token.kind.is_close_delim_or_eof() {
                 self.bump();
             }
         }
 
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
+        let span = self.token.span;
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
         match *fields {
-            [] => Err(self.dcx().struct_span_err(
-                self.token.span,
-                "`field_of!` expects dot-separated field and variant names",
-            )),
+            [] => Err(self
+                .dcx()
+                .struct_span_err(span, "`field_of` expects dot-separated field and variant names")),
             [field] => Ok(TyKind::FieldOf(container, None, field)),
             [variant, field] => Ok(TyKind::FieldOf(container, Some(variant), field)),
             _ => Err(self.dcx().struct_span_err(
                 fields.iter().map(|f| f.span).collect::<Vec<_>>(),
-                "`field_of!` only supports a single field or a variant with a field",
+                "`field_of` only supports a single field or a variant with a field",
             )),
         }
+    }
+
+    fn parse_pat_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        self.expect(exp!(OpenParen))?;
+
+        let ty = self.parse_ty()?;
+        self.expect_keyword(exp!(Is))?;
+
+        let pat = if self.eat(exp!(Bang)) {
+            let lo = self.prev_token.span;
+            self.expect_keyword(exp!(Null))?;
+            Self::mk_ty_pat(TyPatKind::NotNull, lo.to(self.token.span))
+        } else {
+            let pat = self.parse_pat_no_top_guard(
+                None,
+                super::RecoverComma::No,
+                super::RecoverColon::No,
+                super::CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
+            self.pat_to_ty_pat(pat)
+        };
+
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
+        Ok(TyKind::Pat(ty, Box::new(pat)))
+    }
+
+    fn pat_to_ty_pat(&self, pat: ast::Pat) -> ast::TyPat {
+        let kind = match pat.kind {
+            ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
+                start.map(|value| Box::new(ast::AnonConst { id: DUMMY_NODE_ID, value })),
+                end.map(|value| Box::new(ast::AnonConst { id: DUMMY_NODE_ID, value })),
+                include_end,
+            ),
+            ast::PatKind::Or(variants) => {
+                TyPatKind::Or(variants.into_iter().map(|pat| self.pat_to_ty_pat(pat)).collect())
+            }
+            ast::PatKind::Err(guar) => TyPatKind::Err(guar),
+            ast::PatKind::Paren(p) => self.pat_to_ty_pat(*p).kind,
+            _ => TyPatKind::Err(
+                self.dcx().span_err(pat.span, "pattern not supported in pattern types"),
+            ),
+        };
+        Self::mk_ty_pat(kind, pat.span)
+    }
+
+    fn mk_ty_pat(kind: TyPatKind, span: Span) -> ast::TyPat {
+        ast::TyPat { id: DUMMY_NODE_ID, kind, span }
+    }
+
+    fn parse_view_ty(&mut self, lo: Span) -> PResult<'a, ast::TyKind> {
+        self.expect(exp!(OpenParen))?;
+        let ty = self.parse_ty()?;
+        self.expect(exp!(Dot))?;
+        let (fields, _) = self
+            .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| p.parse_field_name())?;
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.prev_token.span));
+
+        Ok(ast::TyKind::View(ty, fields))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).
@@ -1605,7 +1671,7 @@ impl<'a> Parser<'a> {
             }
         };
         let args = ast::ParenthesizedArgs {
-            span: fn_path_segment.span().to(self.prev_token.span),
+            span: inputs_lo.to(self.prev_token.span),
             inputs,
             inputs_span,
             output,

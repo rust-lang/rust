@@ -24,8 +24,8 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
+    AdtDef, BottomUpFolder, GenericArgKind, Intrinsic, RegionKind, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_span::sym;
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -835,12 +835,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().clauses_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
             tcx.ensure_ok().codegen_fn_attrs(def_id);
-            if let Some(i) = tcx.intrinsic(def_id) {
+            if let Some(i) = tcx.intrinsic(def_id)
+                && let Intrinsic::Rustc(name) = i.name
+            {
                 intrinsic::check_intrinsic_type(
                     tcx,
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
-                    i.name,
+                    name,
                 )
             }
         }
@@ -988,7 +990,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().clauses_of(def_id);
             let ty = tcx.type_of(def_id).instantiate_identity();
-            let span = tcx.def_span(def_id);
+            let span = match tcx.hir_node_by_def_id(def_id).alias_ty() {
+                Some(ty) => ty.span,
+                _ => tcx.def_span(def_id),
+            };
+
             if tcx.type_alias_is_checked(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                     let item_ty = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), ty);

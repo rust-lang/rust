@@ -86,13 +86,14 @@ impl Thread {
                     // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                     // Round up to the nearest page and try again.
                     let page_size = sys::pal::conf::page_size();
-                    let stack_size =
-                        (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
+                    let stack_size = stack_size.checked_next_multiple_of(page_size);
 
                     // Some libc implementations, e.g. musl, place an upper bound
                     // on the stack size, in which case we can only gracefully return
                     // an error here.
-                    if libc::pthread_attr_setstacksize(attr.get(), stack_size) != 0 {
+                    if stack_size.is_none_or(|stack_size| {
+                        libc::pthread_attr_setstacksize(attr.get(), stack_size) != 0
+                    }) {
                         return Err(io::const_error!(
                             io::ErrorKind::InvalidInput,
                             "invalid stack size"

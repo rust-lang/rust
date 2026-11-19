@@ -25,6 +25,9 @@ LL |     fn build<'a>(&mut self, commands: impl Iterator + 'a) -> impl Iterator 
    |                                       ------------------     ^^^^^^^^^^^^^^^^^^ expected `&mut Self`, found type parameter `impl Iterator + 'a`
    |                                       |
    |                                       found this type parameter
+...
+LL |         self.build(further_commands)
+   |         ---------------------------- `impl Iterator + '_` returned here
    |
    = note: expected associated type `impl Iterator + '_`
               found associated type `impl Iterator + 'a`

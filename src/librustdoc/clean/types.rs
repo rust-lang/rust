@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
-use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, SimplifiedType};
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, span_of_fragments,
@@ -33,10 +33,9 @@ use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents, span_bug};
 use tracing::{debug, trace};
 
-pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
+    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -453,9 +452,9 @@ impl Item {
         self.stability.is_some_and(|x| x.is_unstable())
     }
 
-    pub(crate) fn is_exported_macro(&self) -> bool {
+    pub(crate) fn is_exported_decl_macro(&self) -> bool {
         match self.kind {
-            ItemKind::MacroItem(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
+            ItemKind::DeclMacro(..) => find_attr!(&self.attrs.other_attrs, MacroExport { .. }),
             _ => false,
         }
     }
@@ -476,22 +475,14 @@ impl Item {
 
     /// Returns true if item is an associated function with a `self` parameter.
     pub(crate) fn has_self_param(&self) -> bool {
-        if let ItemKind::MethodItem(Function { decl, .. }, _) = &self.inner.kind {
-            decl.receiver_type().is_some()
-        } else {
-            false
-        }
+        matches!(&self.inner.kind, ItemKind::AssocFunction(f) if f.decl.receiver_type().is_some())
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
-        let kind = match &self.kind {
-            ItemKind::StrippedItem(k) => k,
-            _ => &self.kind,
-        };
-        match kind {
-            ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
-            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => None,
-            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
+        match self.kind.unstripped() {
+            ItemKind::Module(Module { span, .. }) => Some(*span),
+            ItemKind::Impl(Impl { kind: ImplKind::Auto, .. }) => None,
+            ItemKind::Impl(Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     Some(rustc_span(impl_id, tcx))
                 } else {
@@ -651,28 +642,26 @@ impl Item {
     pub(crate) fn is_variant(&self) -> bool {
         self.type_() == ItemType::Variant
     }
-    pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(AssocTypeItem(..)))
+    pub(crate) fn is_assoc_ty_with_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocType(AssocType { type_: Some(_), .. }))
     }
-    pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(RequiredAssocTypeItem(..)))
+    pub(crate) fn is_assoc_ty_without_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocType(AssocType { type_: None, .. }))
     }
-    pub(crate) fn is_associated_const(&self) -> bool {
+    pub(crate) fn is_assoc_const_with_body(&self) -> bool {
         matches!(
-            self.kind,
-            ProvidedAssocConstItem(..)
-                | ImplAssocConstItem(..)
-                | StrippedItem(ProvidedAssocConstItem(..) | ImplAssocConstItem(..))
+            self.kind.unstripped(),
+            ItemKind::AssocConstant(AssocConstant { body: Some(_), .. })
         )
     }
-    pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(RequiredAssocConstItem(..)))
+    pub(crate) fn is_assoc_const_without_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocConstant(AssocConstant { body: None, .. }))
     }
-    pub(crate) fn is_method(&self) -> bool {
-        self.type_() == ItemType::Method
+    pub(crate) fn is_assoc_fn_with_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithBody
     }
-    pub(crate) fn is_ty_method(&self) -> bool {
-        self.type_() == ItemType::TyMethod
+    pub(crate) fn is_assoc_fn_without_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithoutBody
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -705,18 +694,18 @@ impl Item {
     }
     pub(crate) fn is_stripped(&self) -> bool {
         match self.kind {
-            StrippedItem(..) => true,
-            ImportItem(ref i) => !i.should_be_displayed,
+            ItemKind::Stripped(..) => true,
+            ItemKind::Import(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match self.kind {
-            StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
-            UnionItem(ref union_) => Some(union_.has_stripped_entries()),
-            EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
-            VariantItem(ref v) => v.has_stripped_entries(),
-            TypeAliasItem(ref type_alias) => {
+            ItemKind::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
+            ItemKind::Union(ref union_) => Some(union_.has_stripped_entries()),
+            ItemKind::Enum(ref enum_) => Some(enum_.has_stripped_entries()),
+            ItemKind::Variant(ref v) => v.has_stripped_entries(),
+            ItemKind::TypeAlias(ref type_alias) => {
                 type_alias.inner_type.as_ref().and_then(|t| t.has_stripped_entries())
             }
             _ => None,
@@ -758,7 +747,7 @@ impl Item {
     /// Returns an item types. There is only one case where it can return more than one kind:
     /// for `macro_rules!` items which contain an attr/derive kind.
     pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
-        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+        if let ItemKind::DeclMacro(_, macro_kinds) = self.kind {
             Either::Right(macro_kinds.iter().map(|kind| match kind {
                 MacroKinds::ATTR => ItemType::DeclMacroAttribute,
                 MacroKinds::DERIVE => ItemType::DeclMacroDerive,
@@ -770,18 +759,10 @@ impl Item {
         }
     }
 
-    /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
+    /// Returns true if this is a macro declared with a `macro_rules!` or `macro` item
+    /// unless it was defined with only `derive()` or `attr()` branches.
     pub(crate) fn is_decl_macro(&self) -> bool {
-        matches!(self.kind, ItemKind::MacroItem(..))
-    }
-
-    pub(crate) fn defaultness(&self) -> Option<Defaultness> {
-        match self.kind {
-            ItemKind::MethodItem(_, defaultness) | ItemKind::RequiredMethodItem(_, defaultness) => {
-                Some(defaultness)
-            }
-            _ => None,
-        }
+        matches!(self.kind, ItemKind::DeclMacro(..))
     }
 
     /// Generates the HTML file name based on the item kind.
@@ -828,7 +809,7 @@ impl Item {
             }
         }
         let header = match self.kind {
-            ItemKind::ForeignFunctionItem(_, safety) => {
+            ItemKind::ForeignFunction(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
@@ -843,9 +824,7 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::FunctionItem(_)
-            | ItemKind::MethodItem(..)
-            | ItemKind::RequiredMethodItem(..) => {
+            ItemKind::Function(_) | ItemKind::AssocFunction(..) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -867,23 +846,17 @@ impl Item {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
-            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) | ItemKind::AttributeItem => {
+            ItemKind::Keyword | ItemKind::PrimitiveType(_) | ItemKind::Attribute => {
                 return Some(Visibility::Public);
             }
             // Variant fields inherit their enum's visibility.
-            StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
+            ItemKind::StructField(..) if is_field_vis_inherited(tcx, def_id) => {
                 return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) | ImplItem(..) => return None,
+            ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
-            RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | AssocTypeItem(..)
-            | RequiredAssocTypeItem(..)
-            | RequiredMethodItem(..)
-            | MethodItem(..) => {
+            ItemKind::AssocConstant(..) | ItemKind::AssocType(..) | ItemKind::AssocFunction(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
                     // we don't want to show `pub`.
@@ -913,68 +886,53 @@ impl Item {
 
 #[derive(Clone, Debug)]
 pub(crate) enum ItemKind {
-    ExternCrateItem {
+    ExternCrate {
         /// The crate's name, *not* the name it's imported as.
         src: Option<Symbol>,
     },
-    ImportItem(Import),
-    StructItem(Struct),
-    UnionItem(Union),
-    EnumItem(Enum),
-    FunctionItem(Box<Function>),
-    ModuleItem(Module),
-    TypeAliasItem(Box<TypeAlias>),
-    StaticItem(Static),
-    TraitItem(Box<Trait>),
-    TraitAliasItem(TraitAlias),
-    ImplItem(Box<Impl>),
+    Import(Import),
+    Struct(Struct),
+    Union(Union),
+    Enum(Enum),
+    Function(Box<Function>),
+    Module(Module),
+    TypeAlias(Box<TypeAlias>),
+    Static(Static),
+    Trait(Box<Trait>),
+    TraitAlias(TraitAlias),
+    Impl(Box<Impl>),
     /// This variant is used only as a placeholder for trait impls in order to correctly compute
     /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
-    PlaceholderImplItem,
-    /// A required method in a trait declaration meaning it's only a function signature.
-    RequiredMethodItem(Box<Function>, Defaultness),
-    /// A method in a trait impl or a provided method in a trait declaration.
-    ///
-    /// Compared to [RequiredMethodItem], it also contains a method body.
-    MethodItem(Box<Function>, Defaultness),
-    StructFieldItem(Type),
-    VariantItem(Variant),
+    PlaceholderImpl,
+    AssocFunction(Box<AssocFunction>),
+    StructField(Type),
+    Variant(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Box<Function>, hir::Safety),
+    ForeignFunction(Box<Function>, hir::Safety),
     /// `static`s from an extern block
-    ForeignStaticItem(Static, hir::Safety),
+    ForeignStatic(Static, hir::Safety),
     /// `type`s from an extern block
-    ForeignTypeItem,
+    ForeignType,
     /// A macro defined with `macro_rules` or the `macro` keyword. It can be multiple things (macro,
     /// derive and attribute, potentially multiple at once). Don't forget to look into the
     ///`MacroKinds` values.
     ///
     /// If a `macro_rules!` only contains a `attr`/`derive` branch, then it's not stored in this
     /// variant but in the `ProcMacroItem` variant.
-    MacroItem(Macro, MacroKinds),
-    ProcMacroItem(ProcMacro),
-    PrimitiveItem(PrimitiveType),
-    /// A required associated constant in a trait declaration.
-    RequiredAssocConstItem(Generics, Box<Type>),
-    ConstantItem(Box<Constant>),
-    /// An associated constant in a trait declaration with provided default value.
-    ProvidedAssocConstItem(Box<Constant>),
-    /// An associated constant in an inherent impl or trait impl.
-    ImplAssocConstItem(Box<Constant>),
-    /// A required associated type in a trait declaration.
-    ///
-    /// The bounds may be non-empty if there is a `where` clause.
-    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
-    /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
+    DeclMacro(DeclMacro, MacroKinds),
+    ProcMacro(ProcMacro),
+    PrimitiveType(PrimitiveType),
+    Constant(Box<Constant>),
+    AssocConstant(Box<AssocConstant>),
+    AssocType(Box<AssocType>),
     /// An item that has been stripped by a rustdoc pass
-    StrippedItem(Box<ItemKind>),
+    Stripped(Box<ItemKind>),
     /// This item represents an anonymous constant with a `#[doc(keyword = "...")]` attribute which is used
     /// to generate documentation for Rust keywords.
-    KeywordItem,
+    Keyword,
     /// This item represents an anonymous constant with a `#[doc(attribute = "...")]` attribute which is used
     /// to generate documentation for Rust builtin attributes.
-    AttributeItem,
+    Attribute,
 }
 
 impl ItemKind {
@@ -982,42 +940,45 @@ impl ItemKind {
     /// (for their variants). This method returns those contained items.
     pub(crate) fn inner_items(&self) -> impl Iterator<Item = &Item> {
         match self {
-            StructItem(s) => s.fields.iter(),
-            UnionItem(u) => u.fields.iter(),
-            VariantItem(v) => match &v.kind {
+            Self::Struct(s) => s.fields.iter(),
+            Self::Union(u) => u.fields.iter(),
+            Self::Variant(v) => match &v.kind {
                 VariantKind::CLike => [].iter(),
                 VariantKind::Tuple(t) => t.iter(),
                 VariantKind::Struct(s) => s.fields.iter(),
             },
-            EnumItem(e) => e.variants.iter(),
-            TraitItem(t) => t.items.iter(),
-            ImplItem(i) => i.items.iter(),
-            ModuleItem(m) => m.items.iter(),
-            ExternCrateItem { .. }
-            | ImportItem(_)
-            | FunctionItem(_)
-            | TypeAliasItem(_)
-            | StaticItem(_)
-            | ConstantItem(_)
-            | TraitAliasItem(_)
-            | RequiredMethodItem(..)
-            | MethodItem(..)
-            | StructFieldItem(_)
-            | ForeignFunctionItem(_, _)
-            | ForeignStaticItem(_, _)
-            | ForeignTypeItem
-            | MacroItem(..)
-            | ProcMacroItem(_)
-            | PrimitiveItem(_)
-            | RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | RequiredAssocTypeItem(..)
-            | AssocTypeItem(..)
-            | StrippedItem(_)
-            | KeywordItem
-            | AttributeItem
-            | PlaceholderImplItem => [].iter(),
+            Self::Enum(e) => e.variants.iter(),
+            Self::Trait(t) => t.items.iter(),
+            Self::Impl(i) => i.items.iter(),
+            Self::Module(m) => m.items.iter(),
+            Self::ExternCrate { .. }
+            | Self::Import(_)
+            | Self::Function(_)
+            | Self::TypeAlias(_)
+            | Self::Static(_)
+            | Self::Constant(_)
+            | Self::TraitAlias(_)
+            | Self::AssocFunction(..)
+            | Self::StructField(_)
+            | Self::ForeignFunction(_, _)
+            | Self::ForeignStatic(_, _)
+            | Self::ForeignType
+            | Self::DeclMacro(..)
+            | Self::ProcMacro(_)
+            | Self::PrimitiveType(_)
+            | Self::AssocConstant(..)
+            | Self::AssocType(..)
+            | Self::Stripped(_)
+            | Self::Keyword
+            | Self::Attribute
+            | Self::PlaceholderImpl => [].iter(),
+        }
+    }
+
+    pub(crate) fn unstripped(&self) -> &Self {
+        match self {
+            Self::Stripped(kind) => kind,
+            _ => self,
         }
     }
 }
@@ -1305,8 +1266,15 @@ impl Generics {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
-    pub(crate) decl: FnDecl,
     pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocFunction {
+    pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+    pub(crate) body: Option<Defaultness>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1380,6 +1348,22 @@ pub(crate) struct PolyTrait {
     pub(crate) generic_params: Vec<GenericParamDef>,
 }
 
+// Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.
+//
+// FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
+// to use type unification.
+// Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+// regress.
+pub(crate) fn impl_may_apply_to_type_alias(
+    tcx: TyCtxt<'_>,
+    alias_def_id: DefId,
+    impl_def_id: DefId,
+) -> bool {
+    let alias_ty = tcx.type_of(alias_def_id).skip_binder();
+    let for_ty = tcx.type_of(impl_def_id).skip_binder();
+    DeepRejectCtxt::relate_infer_infer(tcx).types_may_unify(alias_ty, for_ty)
+}
+
 /// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Type {
@@ -1421,6 +1405,8 @@ pub(crate) enum Type {
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath(Box<QPathData>),
+
+    View(Box<Path>, Box<str>),
 
     /// A type that is inferred: `_`
     Infer,
@@ -1469,7 +1455,7 @@ impl Type {
     ///
     /// An owned type is also the same as its borrowed variants (this is commutative),
     /// but `&T` is not the same as `&mut T`.
-    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
+    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cx: &Context<'_>) -> bool {
         // Strip the references so that it can compare the actual types, unless both are references.
         // If both are references, leave them alone and compare the mutabilities later.
         let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
@@ -1478,29 +1464,36 @@ impl Type {
             (self, other)
         };
 
-        // FIXME: `Cache` does not have the data required to unwrap type aliases,
-        // so we just assume they are equal.
-        // This is only remotely acceptable because we were previously
-        // assuming all types were equal when used
-        // as a generic parameter of a type in `Deref::Target`.
+        // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
+        // to use type unification.
+        // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
+        // regress.
+        //
+        // Extra note: we want to call `impl_may_apply_to_type_alias` only on `DefId` where
+        // `type_of` would work, otherwise it'll panic (so not primitives and `dyn` for example).
+        // Hence why we use `.real_def_id()` and not `.def_id()`.
         if self_cleared.is_type_alias() || other_cleared.is_type_alias() {
-            return true;
+            if let Some(self_def_id) = self_cleared.real_def_id()
+                && let Some(other_def_id) = other_cleared.real_def_id()
+            {
+                return impl_may_apply_to_type_alias(cx.tcx(), self_def_id, other_def_id);
+            }
         }
 
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cache))
+                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cx))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cx),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cx),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache)
+                mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cx)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cache),
+            ) => mutability == b_mutability && type_.is_doc_subtype_of(b_type_, cx),
             // Placeholders are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             // Generics match everything on the right, but not on the left.
@@ -1514,13 +1507,13 @@ impl Type {
                 a.def_id() == b.def_id()
                     && a.generics()
                         .zip(b.generics())
-                        .map(|(ag, bg)| ag.zip(bg).all(|(at, bt)| at.is_doc_subtype_of(bt, cache)))
+                        .map(|(ag, bg)| ag.zip(bg).all(|(at, bt)| at.is_doc_subtype_of(bt, cx)))
                         .unwrap_or(true)
             }
             // Other cases, such as primitives, just use recursion.
             (a, b) => a
-                .def_id(cache)
-                .and_then(|a| Some((a, b.def_id(cache)?)))
+                .def_id(cx.cache())
+                .and_then(|a| Some((a, b.def_id(cx.cache())?)))
                 .map(|(a, b)| a == b)
                 .unwrap_or(false),
         }
@@ -1602,6 +1595,31 @@ impl Type {
         matches!(self, Type::Tuple(v) if v.is_empty())
     }
 
+    /// Only returns "real" `DefId`s. ie that exists without the rustdoc's `Cache`.
+    pub(crate) fn real_def_id(&self) -> Option<DefId> {
+        match self {
+            Type::Path { path } => Some(path.def_id()),
+            BorrowedRef { type_: Generic(..), .. } => None,
+            BorrowedRef { type_, .. } => type_.real_def_id(),
+            QPath(QPathData { self_type, .. }) => self_type.real_def_id(),
+            View(path, _) => Some(path.def_id()),
+            DynTrait(..)
+            | Primitive(..)
+            | Tuple(..)
+            | BareFunction(..)
+            | Slice(..)
+            | Array(..)
+            | Type::Pat(..)
+            | Type::FieldOf(..)
+            | RawPointer(..)
+            | Generic(_)
+            | SelfTy
+            | Infer
+            | ImplTrait(_)
+            | UnsafeBinder(_) => None,
+        }
+    }
+
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// [clean]: crate::clean
@@ -1626,6 +1644,7 @@ impl Type {
             Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(QPathData { self_type, .. }) => return self_type.def_id(cache),
+            Type::View(path, _) => return Some(path.def_id()),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
@@ -1767,6 +1786,7 @@ impl PrimitiveType {
             | ty::Dynamic(..)
             | ty::Error(..)
             | ty::Foreign(..)
+            | ty::View(..)
             | ty::Infer(..)
             | ty::Param(..)
             | ty::Placeholder(..)
@@ -1853,7 +1873,7 @@ impl PrimitiveType {
             Char => sym::char,
             Array => sym::array,
             Pat => sym::pat,
-            FieldOf => sym::field_of,
+            FieldOf => kw::FieldOf,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,
@@ -2149,13 +2169,17 @@ impl Path {
             }
         })
     }
+
+    pub(crate) fn is_deref_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.lang_items().deref_trait() == Some(self.def_id())
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
-    Const(Box<ConstantKind>),
+    Const(Box<ConstantExpr>),
     Infer,
 }
 
@@ -2180,6 +2204,10 @@ pub(crate) enum GenericArgs {
 }
 
 impl GenericArgs {
+    pub(crate) fn empty_angle_bracketed() -> Self {
+        Self::AngleBracketed { args: Default::default(), constraints: ThinVec::new() }
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         match self {
             GenericArgs::AngleBracketed { args, constraints } => {
@@ -2257,18 +2285,27 @@ impl TypeAliasInnerType {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypeAlias {
-    pub(crate) type_: Type,
     pub(crate) generics: Generics,
+    pub(crate) type_: Type,
     /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
     /// to be shown directly on the typedef page.
     pub(crate) inner_type: Option<TypeAliasInnerType>,
-    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
-    /// alias instead of the final type. This will always have the final type, regardless of whether
-    /// `type_` came from HIR or from metadata.
-    ///
-    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
-    /// final type).
-    pub(crate) item_type: Option<Type>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocType {
+    pub(crate) generics: Generics,
+    pub(crate) bounds: Vec<GenericBound>,
+    pub(crate) type_: Option<AliasedType>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AliasedType {
+    pub(crate) type_: Type,
+    // FIXME: Somehow get rid of this field.
+    /// Iff [`Self::type_`] was cleaned from the HIR, this contains
+    /// the corresponding type cleaned from the middle::ty IR.
+    pub(crate) middle_type: Option<Type>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -2282,7 +2319,7 @@ pub(crate) struct BareFunctionDecl {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct UnsafeBinderTy {
     pub(crate) generic_params: Vec<GenericParamDef>,
-    pub(crate) ty: Type,
+    pub(crate) type_: Type,
 }
 
 #[derive(Clone, Debug)]
@@ -2292,17 +2329,24 @@ pub(crate) struct Static {
     pub(crate) expr: Option<BodyId>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Constant {
     pub(crate) generics: Generics,
-    pub(crate) kind: ConstantKind,
     pub(crate) type_: Type,
+    pub(crate) body: ConstantExpr,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocConstant {
+    pub(crate) generics: Generics,
+    pub(crate) type_: Type,
+    pub(crate) body: Option<ConstantExpr>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Term {
     Type(Type),
-    Constant(ConstantKind),
+    Constant(ConstantExpr),
 }
 
 impl Term {
@@ -2318,13 +2362,13 @@ impl From<Type> for Term {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) enum ConstantKind {
+pub(crate) enum ConstantExpr {
     /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
     /// `BodyId`, we need to handle it on its own.
     ///
     /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
     /// by a DefId. So this field must be different from `Extern`.
-    TyConst { expr: Box<str> },
+    TypeSystem { expr: Box<str> },
     /// A constant that is just a path (i.e., referring to a const param, free const, etc.).
     // FIXME: this is an unfortunate representation. rustdoc's logic around consts needs to be improved.
     Path { path: Box<str> },
@@ -2340,26 +2384,25 @@ pub(crate) enum ConstantKind {
     Infer,
 }
 
-impl ConstantKind {
-    pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> String {
+impl ConstantExpr {
+    pub(crate) fn rendered(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
-            ConstantKind::TyConst { ref expr } => expr.to_string(),
-            ConstantKind::Path { ref path } => path.to_string(),
-            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
-            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+            Self::TypeSystem { ref expr } => expr.to_string(),
+            Self::Path { ref path } => path.to_string(),
+            Self::Extern { def_id } => print_inlined_const(tcx, def_id),
+            Self::Local { body, .. } | Self::Anonymous { body } => {
                 rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body))
             }
-            ConstantKind::Infer => "_".to_string(),
+            Self::Infer => "_".to_string(),
         }
     }
 
-    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+    pub(crate) fn evaluated_rendered(&self, tcx: TyCtxt<'_>) -> Option<String> {
         match *self {
-            ConstantKind::TyConst { .. }
-            | ConstantKind::Path { .. }
-            | ConstantKind::Anonymous { .. }
-            | ConstantKind::Infer => None,
-            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+            Self::TypeSystem { .. } | Self::Path { .. } | Self::Anonymous { .. } | Self::Infer => {
+                None
+            }
+            Self::Extern { def_id } | Self::Local { def_id, .. } => {
                 print_evaluated_const(tcx, def_id, true, true)
             }
         }
@@ -2367,11 +2410,10 @@ impl ConstantKind {
 
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            ConstantKind::TyConst { .. }
-            | ConstantKind::Extern { .. }
-            | ConstantKind::Path { .. }
-            | ConstantKind::Infer => false,
-            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+            Self::TypeSystem { .. } | Self::Extern { .. } | Self::Path { .. } | Self::Infer => {
+                false
+            }
+            Self::Local { body, .. } | Self::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }
         }
@@ -2474,7 +2516,7 @@ pub(crate) struct ImportSource {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Macro {
+pub(crate) struct DeclMacro {
     pub(crate) source: String,
     /// Whether the macro was defined via `macro_rules!` as opposed to `macro`.
     pub(crate) macro_rules: bool,

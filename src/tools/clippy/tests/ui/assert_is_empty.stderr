@@ -1,11 +1,35 @@
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:7:5
+  --> tests/ui/assert_is_empty.rs:20:5
+   |
+LL |     assert!(vecdeque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::assert-is-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(vecdeque.is_empty());
+LL +     assert_eq!(vecdeque, VecDeque::new());
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:22:5
+   |
+LL |     assert!(!vecdeque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!vecdeque.is_empty());
+LL +     assert_ne!(vecdeque, VecDeque::new());
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:28:5
    |
 LL |     assert!(vec.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::assert-is-empty` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
 help: use `assert_eq!` to show the value on failure
    |
 LL -     assert!(vec.is_empty());
@@ -13,7 +37,7 @@ LL +     assert_eq!(vec, [] as [i32; 0]);
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:9:5
+  --> tests/ui/assert_is_empty.rs:30:5
    |
 LL |     assert!(!vec.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +49,7 @@ LL +     assert_ne!(vec, [] as [i32; 0]);
    |
 
 error: used `debug_assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:11:5
+  --> tests/ui/assert_is_empty.rs:32:5
    |
 LL |     debug_assert!(vec.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +61,7 @@ LL +     debug_assert_eq!(vec, [] as [i32; 0]);
    |
 
 error: used `debug_assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:13:5
+  --> tests/ui/assert_is_empty.rs:34:5
    |
 LL |     debug_assert!(!vec.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +73,7 @@ LL +     debug_assert_ne!(vec, [] as [i32; 0]);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:17:5
+  --> tests/ui/assert_is_empty.rs:38:5
    |
 LL |     assert!(vec_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +85,7 @@ LL +     assert_eq!(vec_ref.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:19:5
+  --> tests/ui/assert_is_empty.rs:40:5
    |
 LL |     assert!(!vec_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +97,7 @@ LL +     assert_ne!(vec_ref.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:23:5
+  --> tests/ui/assert_is_empty.rs:44:5
    |
 LL |     assert!(vec_mut_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +109,7 @@ LL +     assert_eq!(vec_mut_ref.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:27:5
+  --> tests/ui/assert_is_empty.rs:48:5
    |
 LL |     assert!(slice.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +121,7 @@ LL +     assert_eq!(slice, []);
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:29:5
+  --> tests/ui/assert_is_empty.rs:50:5
    |
 LL |     assert!(!slice.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +133,7 @@ LL +     assert_ne!(slice, []);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:33:5
+  --> tests/ui/assert_is_empty.rs:54:5
    |
 LL |     assert!(array.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +145,7 @@ LL +     assert_eq!(array.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:35:5
+  --> tests/ui/assert_is_empty.rs:56:5
    |
 LL |     assert!(!array.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -133,7 +157,7 @@ LL +     assert_ne!(array.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:39:5
+  --> tests/ui/assert_is_empty.rs:60:5
    |
 LL |     assert!(array_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,7 +169,7 @@ LL +     assert_eq!(array_ref.as_slice(), []);
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:43:5
+  --> tests/ui/assert_is_empty.rs:64:5
    |
 LL |     assert!(string.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +181,7 @@ LL +     assert_eq!(string, "");
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:45:5
+  --> tests/ui/assert_is_empty.rs:66:5
    |
 LL |     assert!(!string.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,7 +193,7 @@ LL +     assert_ne!(string, "");
    |
 
 error: used `assert!` to check that a value is empty
-  --> tests/ui/assert_is_empty.rs:49:5
+  --> tests/ui/assert_is_empty.rs:70:5
    |
 LL |     assert!(str_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +205,7 @@ LL +     assert_eq!(str_ref, "");
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:51:5
+  --> tests/ui/assert_is_empty.rs:72:5
    |
 LL |     assert!(!str_ref.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,7 +217,7 @@ LL +     assert_ne!(str_ref, "");
    |
 
 error: used `assert!` to check that a value is not empty
-  --> tests/ui/assert_is_empty.rs:63:5
+  --> tests/ui/assert_is_empty.rs:84:5
    |
 LL |     assert!(!items.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,5 +228,173 @@ LL -     assert!(!items.is_empty());
 LL +     assert_ne!(items, [] as [&str; 0]);
    |
 
-error: aborting due to 17 previous errors
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:136:5
+   |
+LL |     assert!(vec_deque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(vec_deque.is_empty());
+LL +     assert_eq!(vec_deque, VecDeque::new());
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:138:5
+   |
+LL |     assert!(!vec_deque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!vec_deque.is_empty());
+LL +     assert_ne!(vec_deque, VecDeque::new());
+   |
+
+error: used `debug_assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:141:5
+   |
+LL |     debug_assert!(vec_deque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_eq!` to show the value on failure
+   |
+LL -     debug_assert!(vec_deque.is_empty());
+LL +     debug_assert_eq!(vec_deque, VecDeque::new());
+   |
+
+error: used `debug_assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:143:5
+   |
+LL |     debug_assert!(!vec_deque.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_ne!` to show the value on failure
+   |
+LL -     debug_assert!(!vec_deque.is_empty());
+LL +     debug_assert_ne!(vec_deque, VecDeque::new());
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:153:9
+   |
+LL |         assert!(heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -         assert!(heap.is_empty());
+LL +         assert_eq!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:155:9
+   |
+LL |         assert!(!heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -         assert!(!heap.is_empty());
+LL +         assert_ne!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `debug_assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:157:9
+   |
+LL |         debug_assert!(heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_eq!` to show the value on failure
+   |
+LL -         debug_assert!(heap.is_empty());
+LL +         debug_assert_eq!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `debug_assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:159:9
+   |
+LL |         debug_assert!(!heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_ne!` to show the value on failure
+   |
+LL -         debug_assert!(!heap.is_empty());
+LL +         debug_assert_ne!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:173:9
+   |
+LL |         assert!(heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -         assert!(heap.is_empty());
+LL +         assert_eq!(heap.as_slice(), [] as [T; 0]);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:178:9
+   |
+LL |         assert!(heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -         assert!(heap.is_empty());
+LL +         assert_eq!(heap.as_slice(), [] as [T; 0]);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:183:9
+   |
+LL |         assert!(heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -         assert!(heap.is_empty());
+LL +         assert_eq!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:187:9
+   |
+LL |         assert!(heap_ref.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -         assert!(heap_ref.is_empty());
+LL +         assert_eq!(heap_ref.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:191:9
+   |
+LL |         assert!(!heap_ref_ref.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -         assert!(!heap_ref_ref.is_empty());
+LL +         assert_ne!(heap_ref_ref.as_slice(), [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:195:9
+   |
+LL |         assert!(!heap.is_empty());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -         assert!(!heap.is_empty());
+LL +         assert_ne!(heap.as_slice(), [] as [i32; 0]);
+   |
+
+error: aborting due to 33 previous errors
 

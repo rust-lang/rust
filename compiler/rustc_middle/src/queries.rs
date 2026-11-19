@@ -57,7 +57,8 @@ use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
 use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_crate_store::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+    CrateDepKind, CrateSource, CrateSourceFlags, ExternCrate, ForeignModule, LinkagePreference,
+    NativeLib,
 };
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -74,7 +75,7 @@ use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_middle::middle::resolve::TypeRelativeDelegationRes;
 use rustc_session::Limits;
-use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::config::{EntryFnType, OutputFilenames, SymbolManglingVersion};
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
@@ -1229,7 +1230,7 @@ rustc_queries! {
     }
 
     /// Return dead-code liveness summary for the crate.
-    query live_symbols_and_ignored_derived_traits(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
+    query live_symbols_and_trivial_usage_sites(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
@@ -2244,6 +2245,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Gets the name of the crate, taking into account crate renames caused by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude. A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
+    query crate_name_with_rename(_: CrateNum) -> Symbol {
+        desc { "fetching what name a crate is accessible under" }
+    }
+
+
     /// Iterates over all named children of the given module,
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
@@ -2363,6 +2373,12 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "looking at the source for a crate" }
+        separate_provide_extern
+    }
+
+    query used_crate_source_flags(_: CrateNum) -> CrateSourceFlags {
+        eval_always
+        desc { "looking at source presence in a crate" }
         separate_provide_extern
     }
 
@@ -2486,10 +2502,6 @@ rustc_queries! {
 
     query codegen_unit(sym: Symbol) -> &'tcx CodegenUnit<'tcx> {
         desc { "getting codegen unit `{sym}`" }
-    }
-
-    query backend_optimization_level(_: ()) -> OptLevel {
-        desc { "optimization level used by backend" }
     }
 
     /// Return the filenames where output artefacts shall be stored.

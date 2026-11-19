@@ -74,6 +74,9 @@ fn sizedness_constraint_for_ty<'tcx>(
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => {
             bug!("unexpected type `{ty:?}` in `sizedness_constraint_for_ty`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -393,6 +396,9 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Error(_) => false,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

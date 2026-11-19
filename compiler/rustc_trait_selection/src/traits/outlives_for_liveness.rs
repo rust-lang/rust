@@ -6,8 +6,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
 use rustc_middle::ty::{
-    self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, CallerBoundsIterator, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::{DUMMY_SP, bug};
 
@@ -554,7 +554,7 @@ where
                 };
                 let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
 
-                for clause in param_env.caller_bounds() {
+                for clause in param_env.caller_bounds().non_trait_clauses().iter() {
                     let Some(outlives) = clause.as_type_outlives_clause() else {
                         continue;
                     };

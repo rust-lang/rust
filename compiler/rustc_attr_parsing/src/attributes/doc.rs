@@ -10,8 +10,9 @@ use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, kw, sym};
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
+use super::prelude::AllowedTargets;
 use super::{AcceptMapping, AttributeParser, template};
+use crate::attributes::doc_comment::DOC_TARGETS;
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
@@ -21,14 +22,14 @@ use crate::diagnostics::{
     DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
     DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse, DocKeywordAttributeNotAnonConst,
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
-    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
-    ExpectedNoArgs, IllFormedAttributeInput, InvalidNotableTraitAttr, MalformedDoc,
-    UnusedDuplicate,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
+    DuplicateNotableTraitColor, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput,
+    InvalidNotableTraitAttr, InvalidNotableTraitColor, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
-use crate::target_checking::Policy::Allow;
+use crate::target_checking::Policy::{Allow, AllowSilent};
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -103,7 +104,42 @@ fn parse_notable_trait(
             } else if let Some(meta_item) = meta_item_list_parser.as_single() {
                 Some(meta_item)
             } else {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+                let color_spans: Option<Vec<_>> = meta_item_list_parser
+                    .mixed()
+                    .map(|item| {
+                        let meta = item.meta_item()?;
+                        meta.path().word_is(sym::color).then(|| meta.path().span())
+                    })
+                    .collect();
+
+                if let Some(color_spans) = color_spans {
+                    let first_span = color_spans[0];
+                    let duplicate_spans = &color_spans[1..];
+
+                    let mut spans = MultiSpan::from_spans(duplicate_spans.to_vec());
+                    spans.push_span_label(first_span, "");
+
+                    for &duplicate_span in duplicate_spans {
+                        spans.push_span_label(duplicate_span, msg!("multiple colors specified"));
+                    }
+
+                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, DuplicateNotableTraitColor, spans);
+                } else {
+                    let spans = meta_item_list_parser
+                        .mixed()
+                        .map(|item| match item.meta_item() {
+                            Some(meta) => meta.path().span(),
+                            None => item.span(),
+                        })
+                        .collect();
+
+                    cx.emit_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        InvalidNotableTraitAttr,
+                        MultiSpan::from_spans(spans),
+                    );
+                }
+
                 return;
             }
         }
@@ -115,44 +151,51 @@ fn parse_notable_trait(
         }
     };
 
-    let notable_trait_color_and_span =
-        if let Some(notable_trait_color_attr) = notable_trait_color_attr {
-            let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
-                // FIXME(164728): every invalid notable trait attribute lint produces exactly
-                // the same warning and we should switch to more specific diagnostics
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-                return;
-            };
-            if !notable_trait_color_attr.path().word_is(sym::color) {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+    let notable_trait_color_and_span = if let Some(notable_trait_color_attr) =
+        notable_trait_color_attr
+    {
+        let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        };
+        if !notable_trait_color_attr.path().word_is(sym::color) {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        }
+        let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
+            cx.emit_lint(
+                INVALID_DOC_ATTRIBUTES,
+                InvalidNotableTraitAttr,
+                notable_trait_color_attr.path().span(),
+            );
+            return;
+        };
+
+        let color_value_span = notable_trait_color.value_span;
+
+        let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        };
+
+        let notable_trait_color = match notable_trait_color.as_str() {
+            "grey" | "gray" => NotableTraitColor::Grey,
+            "red" => NotableTraitColor::Red,
+            "green" => NotableTraitColor::Green,
+            "yellow" => NotableTraitColor::Yellow,
+            "blue" => NotableTraitColor::Blue,
+            "magenta" => NotableTraitColor::Magenta,
+            "cyan" => NotableTraitColor::Cyan,
+            "transparent" => NotableTraitColor::Transparent,
+            _ => {
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitColor, color_value_span);
                 return;
             }
-            let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-                return;
-            };
-            let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-                return;
-            };
-            let notable_trait_color = match notable_trait_color.as_str() {
-                "grey" | "gray" => NotableTraitColor::Grey,
-                "red" => NotableTraitColor::Red,
-                "green" => NotableTraitColor::Green,
-                "yellow" => NotableTraitColor::Yellow,
-                "blue" => NotableTraitColor::Blue,
-                "magenta" => NotableTraitColor::Magenta,
-                "cyan" => NotableTraitColor::Cyan,
-                "transparent" => NotableTraitColor::Transparent,
-                _ => {
-                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-                    return;
-                }
-            };
-            Some((notable_trait_color, notable_trait_color_attr.span()))
-        } else {
-            None
         };
+        Some((notable_trait_color, notable_trait_color_attr.span()))
+    } else {
+        None
+    };
 
     if cx.shared.target != Target::Trait {
         cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocAttrNotTraitLevel { span, attr_name }, span);
@@ -244,7 +287,10 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param),
+                    ]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())
@@ -356,7 +402,7 @@ impl DocParser {
         }
 
         match cx.target {
-            Target::Use | Target::ExternCrate => {}
+            Target::Use | Target::ExternCrate | Target::Param => {} // Param has a custom error
             _ => {
                 let item_span = cx.target_span;
                 cx.emit_lint(
@@ -634,7 +680,10 @@ impl DocParser {
                 let span = path.span();
                 cx.check_target(
                     concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
                 );
                 self.attribute.$ident = Some(span);
             }};
@@ -653,7 +702,10 @@ impl DocParser {
 
                 cx.check_target(
                     s.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
                 );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
@@ -735,14 +787,13 @@ impl DocParser {
                 no_args_and_not_crate_level!(search_unbox)
             }
             Some(sym::rust_logo) => {
-                // FIXME: Only feature gated at the crate level (!!)
-                if cx.target == Target::Crate {
-                    gated!(
-                        rustdoc_internals,
-                        "the `#[doc(rust_logo)]` attribute is used for Rust branding"
-                    );
-                }
-                no_args_and_crate_level!(rust_logo)
+                gated!(
+                    rustdoc_internals,
+                    "the `#[doc(rust_logo)]` attribute is used for Rust branding"
+                );
+
+                no_args!(rust_logo);
+                cx.check_target("", &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
             }
             Some(sym::auto_cfg) => {
                 gated!(doc_cfg);
@@ -881,43 +932,7 @@ impl AttributeParser for DocParser {
             this.accept_single_doc_attr(cx, args);
         },
     )];
-    // FIXME: Currently emitted from 2 different places, generating duplicated warnings.
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(ALL_TARGETS);
-    // const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-    //     Allow(Target::ExternCrate),
-    //     Allow(Target::Use),
-    //     Allow(Target::Static),
-    //     Allow(Target::Const),
-    //     Allow(Target::Fn),
-    //     Allow(Target::Mod),
-    //     Allow(Target::ForeignMod),
-    //     Allow(Target::TyAlias),
-    //     Allow(Target::Enum),
-    //     Allow(Target::Variant),
-    //     Allow(Target::Struct),
-    //     Allow(Target::Field),
-    //     Allow(Target::Union),
-    //     Allow(Target::Trait),
-    //     Allow(Target::TraitAlias),
-    //     Allow(Target::Impl { of_trait: true }),
-    //     Allow(Target::Impl { of_trait: false }),
-    //     Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-    //     Allow(Target::AssocConst(AssocCtxt::Trait)),
-    //     Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
-    //     Allow(Target::Method(MethodKind::Inherent)),
-    //     Allow(Target::Method(MethodKind::Trait { body: true })),
-    //     Allow(Target::Method(MethodKind::Trait { body: false })),
-    //     Allow(Target::Method(MethodKind::TraitImpl)),
-    //     Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
-    //     Allow(Target::AssocTy(AssocCtxt::Trait)),
-    //     Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-    //     Allow(Target::ForeignFn),
-    //     Allow(Target::ForeignStatic),
-    //     Allow(Target::ForeignTy),
-    //     Allow(Target::MacroDef),
-    //     Allow(Target::Crate),
-    //     Error(Target::WherePredicate),
-    // ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = DOC_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {

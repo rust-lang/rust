@@ -43,7 +43,7 @@ pub fn runner() -> Result<(), String> {
 
     // Build and test config_proc_macro
     run_tests_in_dir(&env, "config_proc_macro")?;
-    run_tests_in_dir(&env, "check_diff")?;
+    run_tests_in_dir(&env, "diff_check")?;
 
     Ok(())
 }

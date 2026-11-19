@@ -36,7 +36,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
-use rustc_session::config::{Input, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{Input, Offload, OutFileName, OutputFilenames, OutputType};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
@@ -224,9 +224,14 @@ fn configure_and_expand(
 
         // The rest is error reporting and stats
 
-        sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
-            buffered_lints.append(&mut ecx.buffered_early_lint);
-        });
+        sess.psess.buffered_lints.with_lock(
+            |buffered_lints: &mut Option<Vec<BufferedEarlyLint>>| {
+                buffered_lints
+                    .as_mut()
+                    .expect("Buffered lints are not stolen yet")
+                    .append(&mut ecx.buffered_early_lint);
+            },
+        );
 
         sess.time("check_unused_macros", || {
             ecx.check_unused_macros();
@@ -430,8 +435,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.psess.buffered_lints.with_lock(|buffered_lints| {
+        let buffered_lints = buffered_lints.take().expect("Buffered lints are not stolen yet");
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for early_lint in buffered_lints.drain(..) {
+        for early_lint in buffered_lints {
             lint_buffer.add_early_lint(early_lint);
         }
     });
@@ -895,6 +901,22 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
+pub fn finish_and_emit_metadata<'tcx>(tcx: TyCtxt<'tcx>) -> EncodedMetadata {
+    // Hook for tests.
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && find_attr!(tcx, def_id, RustcDelayedBugFromInsideQuery)
+    {
+        tcx.ensure_ok().trigger_delayed_bug(def_id);
+    }
+
+    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
+        Ok(metadata) => metadata,
+        Err(guar) => guar.raise_fatal(),
+    };
+
+    metadata
+}
+
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
@@ -1159,7 +1181,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
-    sess.time("MIR_borrow_checking", || {
+    sess.time("MIR_checking", || {
         tcx.par_hir_body_owners(|def_id| {
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {
@@ -1294,35 +1316,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
+) -> (Box<dyn Any>, CrateInfo) {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
-
-    // Hook for tests.
-    if let Some((def_id, _)) = tcx.entry_fn(())
-        && find_attr!(tcx, def_id, RustcDelayedBugFromInsideQuery)
-    {
-        tcx.ensure_ok().trigger_delayed_bug(def_id);
-    }
-
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
     if tcx.sess.opts.output_types.should_codegen() {
         rustc_symbol_mangling::test::dump_symbol_names_and_def_paths(tcx);
     }
 
-    // Don't do code generation if there were any errors. Likewise if
-    // there were any delayed bugs, because codegen will likely cause
-    // more ICEs, obscuring the original problem.
-    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-        guar.raise_fatal();
-    }
-
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
-
-    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
-        Ok(metadata) => metadata,
-        Err(guar) => guar.raise_fatal(),
-    };
 
     let is_host_metadata = tcx
         .sess
@@ -1360,7 +1362,7 @@ pub(crate) fn start_codegen<'tcx>(
 
     let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
 
-    (codegen, crate_info, metadata)
+    (codegen, crate_info)
 }
 
 /// Compute and validate the crate name.
@@ -1482,6 +1484,16 @@ pub fn collect_crate_types(
         } else {
             base.sort();
             base.dedup();
+        }
+    }
+
+    // GPU code is never run as a binary; the offload runtime looks up kernels by
+    // name, and only cdylibs export their symbols.
+    if session.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_))) {
+        for crate_type in &mut base {
+            if *crate_type == CrateType::Executable {
+                *crate_type = CrateType::Cdylib;
+            }
         }
     }
 

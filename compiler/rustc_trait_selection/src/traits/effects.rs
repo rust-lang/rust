@@ -8,7 +8,7 @@ use rustc_infer::traits::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_middle::ty::{self, CallerBoundsIterator, Ty, Unnormalized};
 use rustc_span::span_bug;
 use thin_vec::{ThinVec, thin_vec};
 
@@ -131,7 +131,7 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
     let mut candidate = None;
 
-    for clause in obligation.param_env.caller_bounds() {
+    for clause in obligation.param_env.caller_bounds().non_trait_clauses().iter() {
         let bound_clause = clause.kind();
         let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
             continue;
@@ -428,6 +428,9 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
             .instantiate(tcx, args)
             .skip_norm_wip()
             .map_bound(|bound| bound.types.to_vec())),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }?;
 
     Ok(constituent_tys
@@ -527,6 +530,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     Ok(const_conditions

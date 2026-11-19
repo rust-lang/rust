@@ -1,7 +1,6 @@
 //@ proc-macro: env.rs
 //@ run-pass
 //@ rustc-env: THE_CONST=1
-//@ ignore-backends: gcc
 
 #![crate_name = "foo"]
 

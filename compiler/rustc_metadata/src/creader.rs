@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::{DefPathData, Definitions};
@@ -76,6 +76,11 @@ pub struct CStore {
 
     /// Names that were used to load the crates via `extern crate` or paths.
     resolved_externs: UnordMap<Symbol, CrateNum>,
+    /// Given a crate id, get their extern crate import name (given by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude). A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
+    extern_crate_name: UnordMap<CrateNum, Symbol>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -256,6 +261,7 @@ impl CStore {
     /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
     pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
         self.resolved_externs.insert(name, extern_crate);
+        self.extern_crate_name.insert(extern_crate, name);
     }
 
     /// Crate resolved and loaded via the given extern name
@@ -264,6 +270,18 @@ impl CStore {
     /// May be `None` if the crate wasn't used
     pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
         self.resolved_externs.get(&externs_name).copied()
+    }
+
+    /// A crate's extern crate import name.
+    ///
+    /// This name is given by `--extern`, `extern crate foo as bar;` or from the extern prelude. A
+    /// crate might be known by more than one extern name, but we only keep track of one of them.
+    /// This name should *only be used for diagnostics*.
+    // FIXME: find a way of making the provided name always suitable for structured suggestions, as
+    // right now this is will most of the time work, but could conceivably provide an incorrect name
+    // given the right circumstances.
+    pub fn opt_extern_crate_name(&self, c: CrateNum) -> Option<Symbol> {
+        self.extern_crate_name.get(&c).copied()
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -361,42 +379,140 @@ impl CStore {
                 return;
             }
             let extern_crate = data.name();
-            let flag_name = opt_name.clone();
+
+            let emit = |mut diag: rustc_errors::Diag<'_>| {
+                diag.help(format!("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={opt_name}` to silence this {}", diag.level()));
+                diag.emit();
+            };
+
+            if prefix.is_empty() {
+                // A synthetic target modifier, does not correspond to an actual flag.
+                match opt_name.as_str() {
+                    "target-feature" => {
+                        // Compute the features we have locally that don't exist in the other crate,
+                        // and the features the other crate has that are missing locally.
+                        let mut local_features = FxHashSet::from_iter(
+                            flag_local_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        let mut extern_features = FxHashSet::from_iter(
+                            flag_extern_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        let both_features = FxHashSet::from_iter(
+                            local_features.intersection(&extern_features).copied(),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        for feature in both_features {
+                            local_features.remove(feature);
+                            extern_features.remove(feature);
+                        }
+                        let local_features =
+                            UnordSet::from(local_features).into_sorted_stable_ord();
+                        let extern_features =
+                            UnordSet::from(extern_features).into_sorted_stable_ord();
+                        assert!(local_features.len() > 0 || extern_features.len() > 0);
+
+                        let diag = format!(
+                            "mixing target features may cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_warn(diag);
+                        diag.help("some target features modify the ABI so Rust crates compiled with different values for these target features cannot be used together safely");
+                        if local_features.len() > 0 {
+                            let features = local_features.join(", ");
+                            let before =
+                                if local_features.len() == 1 { "feature" } else { "features" };
+                            let after = if local_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in this crate but disabled in `{extern_crate}`"));
+                        }
+                        if extern_features.len() > 0 {
+                            let features = extern_features.join(", ");
+                            let before =
+                                if extern_features.len() == 1 { "feature" } else { "features" };
+                            let after = if extern_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in `{extern_crate}` but disabled in this crate"));
+                        }
+                        emit(diag);
+                    }
+                    "codegen-backend-name" => {
+                        let diag = format!(
+                            "mixing codegen backends while using backend-specific target features may cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_err(diag);
+                        diag.help("this crate has `-Zllvm-target-feature` set, which means different codegen backends could interpret the target features differently, or ignore them entirely");
+                        diag.help("some target features modify the ABI so Rust crates compiled with different target features cannot be used together safely");
+                        emit(diag)
+                    }
+                    _ => panic!("unhandled synthetic target feature {opt_name}"),
+                }
+                return;
+            }
+
             let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
+
+            let diag = format!(
+                "mixing `{flag_name_prefixed}` will cause an ABI mismatch in crate `{local_crate}`"
+            );
+            let mut diag = tcx.dcx().struct_err(diag);
+            diag.help(format!(
+                "the `{flag_name_prefixed}` flag modifies the ABI so Rust crates compiled \
+                with different values of this flag cannot be used together safely"
+            ));
 
             match (flag_local_value, flag_extern_value) {
                 (Some(local_value), Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiers {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        extern_value: extern_value.to_string(),
-                    })
+                    diag.note(format!(
+                        "`{flag_name_prefixed}={local_value}` in this crate is incompatible \
+                        with `{flag_name_prefixed}={extern_value}` in dependency `{extern_crate}`"
+                    ));
+                    diag.help(format!(
+                        "set `{flag_name_prefixed}={extern_value}` in this crate \
+                        or `{flag_name_prefixed}={local_value}` in `{extern_crate}`"
+                    ));
                 }
                 (None, Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersLMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        extern_value: extern_value.to_string(),
-                        has_extern_value: !extern_value.is_empty(),
-                    })
+                    let has_extern_value = !extern_value.is_empty();
+                    diag.note(format!(
+                        "`{flag_name_prefixed}` is unset in this crate which is \
+                        incompatible with {} in dependency `{extern_crate}`",
+                        if has_extern_value {
+                            format!("`{flag_name_prefixed}={extern_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}` being set")
+                        }
+                    ));
+                    diag.help(format!(
+                        "set {} in this crate or unset `{flag_name_prefixed}` in `{extern_crate}`",
+                        if has_extern_value {
+                            format!("`{flag_name_prefixed}={extern_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}`")
+                        }
+                    ));
                 }
                 (Some(local_value), None) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersRMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        has_local_value: !local_value.is_empty(),
-                    })
+                    let has_local_value = !local_value.is_empty();
+                    diag.note(format!(
+                        "{} in this crate is incompatible with \
+                        `{flag_name_prefixed}` being unset in dependency `{extern_crate}`",
+                        if has_local_value {
+                            format!("`{flag_name_prefixed}={local_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}` being set")
+                        }
+                    ));
+                    diag.help(format!(
+                        "unset `{flag_name_prefixed}` in this crate or set {} in `{extern_crate}`",
+                        if has_local_value {
+                            format!("`{flag_name_prefixed}={local_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}`")
+                        }
+                    ));
                 }
                 (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
             };
+
+            emit(diag);
         };
         let mut it1 = mods.iter().map(tmod_extender);
         let mut it2 = dep_mods.iter().map(tmod_extender);
@@ -554,6 +670,7 @@ impl CStore {
             has_alloc_error_handler: false,
             hash_to_cnum: UnordMap::default(),
             resolved_externs: UnordMap::default(),
+            extern_crate_name: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
             has_crate_resolve_with_fail: false,
@@ -763,13 +880,11 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
-                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
-                // unrelated diagnostics, such as `unsupported targets for std library` etc,
-                // these maybe helpful for users to resolve crate loading failure.
-                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
-                    self.has_crate_resolve_with_fail = true;
-                }
+                // Crate maybe injected with `standard_library_imports::inject`, its span is
+                // dummy. We ignore compiler-injected prelude/sysroot loads here so they don't
+                // suppress unrelated diagnostics, such as "unsupported targets for std library"
+                // etc., these may be helpful for users to resolve crate loading failure.
+                self.has_crate_resolve_with_fail = true;
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -1158,6 +1273,7 @@ impl CStore {
                         tcx.dcx().emit_err(diagnostics::ConflictingGlobalAlloc {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
+                            this_crate: other_crate == this_crate,
                         });
                     }
                     None => global_allocator = Some(data.name()),
@@ -1419,7 +1535,14 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
+        match self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern)
+        {
+            Ok(cnum) => Some(cnum),
+            Err(_) => {
+                self.has_crate_resolve_with_fail = true;
+                None
+            }
+        }
     }
 }
 

@@ -196,7 +196,7 @@ pub(crate) struct ExplicitDestructorCall {
     #[label("explicit destructor calls not allowed")]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: ExplicitDestructorCallSugg,
+    pub sugg: Option<ExplicitDestructorCallSugg>,
 }
 
 #[derive(Subdiagnostic)]

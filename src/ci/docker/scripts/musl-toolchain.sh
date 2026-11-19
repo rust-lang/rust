@@ -4,7 +4,7 @@
 #
 # Versions of the toolchain components are configurable in `musl-cross-make/Makefile` and
 # musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
-# Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.2.5.
+# Right now we have: Binutils 2.44, GCC 9.4.0, musl 1.2.6.
 
 # ignore-tidy-file-linelength
 
@@ -45,17 +45,12 @@ export CFLAGS="-fPIC -g1 $CFLAGS"
 
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
-# A version that includes support for building musl 1.2.5
-git checkout 3635262e4524c991552789af6f36211a335a77b3
+# A version that includes musl 1.2.6 and patches for CVE-2026-6042,
+# CVE-2026-40200, and CVE-2026-107891.
+git checkout 5e8042e63de29f8473fc3b0b831a587ba284e1a8
 
-# Patch CVE-2026-6042: https://www.openwall.com/lists/oss-security/2026/04/09/19
-# Patch CVE-2026-40200: https://www.openwall.com/lists/musl/2026/04/10/3
-# These should be removed when musl-cross-make adds them, or we upgrade to musl >= 1.2.7.
-cp /build/musl-cve-2026-6042.diff ./patches/musl-1.2.5/0003-cve-2026-6042.diff
-cp /build/musl-cve-2026-40200.diff ./patches/musl-1.2.5/0004-cve-2026-40200.diff
-
-hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.5 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER
-hide_output make install TARGET=$TARGET MUSL_VER=1.2.5 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER OUTPUT=$OUTPUT
+hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.6 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER
+hide_output make install TARGET=$TARGET MUSL_VER=1.2.6 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER OUTPUT=$OUTPUT
 
 cd -
 

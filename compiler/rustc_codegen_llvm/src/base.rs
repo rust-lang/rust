@@ -34,14 +34,14 @@ use crate::llvm::{self, Value};
 use crate::{ModuleLlvm, attributes};
 
 pub(crate) struct ValueIter<'ll> {
-    cur: Option<&'ll Value>,
-    step: unsafe extern "C" fn(&'ll Value) -> Option<&'ll Value>,
+    cur: Option<Value<'ll>>,
+    step: unsafe extern "C" fn(Value<'ll>) -> Option<Value<'ll>>,
 }
 
 impl<'ll> Iterator for ValueIter<'ll> {
-    type Item = &'ll Value;
+    type Item = Value<'ll>;
 
-    fn next(&mut self) -> Option<&'ll Value> {
+    fn next(&mut self) -> Option<Value<'ll>> {
         let old = self.cur;
         if let Some(old) = old {
             self.cur = unsafe { (self.step)(old) };
@@ -221,7 +221,7 @@ pub(crate) fn compile_codegen_unit(
     (module, cost)
 }
 
-pub(crate) fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
+pub(crate) fn set_link_section<'ll>(llval: Value<'ll>, attrs: &CodegenFnAttrs) {
     let Some(sect) = attrs.link_section else { return };
     let buf = SmallCStr::new(sect.as_str());
     llvm::set_section(llval, &buf);
@@ -248,7 +248,7 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
     }
 }
 
-pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
+pub(crate) fn set_variable_sanitizer_attrs<'ll>(llval: Value<'ll>, attrs: &CodegenFnAttrs) {
     if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS)
         || attrs.sanitizers.disabled.contains(SanitizerSet::KERNELADDRESS)
     {

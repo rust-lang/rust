@@ -3,8 +3,12 @@ mod adt;
 use std::borrow::Cow;
 
 use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_attr_ir::AttrItem;
+use rustc_attr_ir::Attribute::Tool;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_hir::intravisit::HirTyCtxt;
+use rustc_lint_defs::{Reflectiveness, ToolOptions};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, span_bug, sym};
 
@@ -159,6 +163,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Placeholder(_)
                         | ty::Infer(..)
                         | ty::Error(_) => self.project_downcast_named(&field_dest, sym::Other)?.0,
+
+                        // FIXME(scrabsha)
+                        ty::View(..) => unimplemented!(),
                     };
                     self.write_discriminant(variant_index, &field_dest)?
                 }
@@ -263,6 +270,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             ty::Closure(_, args) => ty::Binder::dummy(args),
             ty::CoroutineClosure(_, args) => ty::Binder::dummy(args),
             ty::Coroutine(_, args) => ty::Binder::dummy(args),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // FIXME(type_info): also provide the late bound vars to reflection
@@ -345,5 +355,42 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         }
 
         interp_ok(())
+    }
+
+    pub(crate) fn write_reflect_attributes(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        attrs: &'tcx [rustc_attr_ir::Attribute],
+    ) -> InterpResult<'tcx> {
+        let attrs: Vec<_> = attrs
+            .iter()
+            .filter_map(|attr| {
+                if let Tool {
+                    item: a_itm @ AttrItem { .. },
+                    opts: ToolOptions { reflectiveness: Reflectiveness::Reflective, .. },
+                } = attr
+                {
+                    Some(rustc_hir_pretty::attritem_to_string(
+                        &(&self.tcx() as &dyn HirTyCtxt<'_>),
+                        &a_itm,
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        self.allocate_fill_and_write_slice_ptr(place, attrs.len() as _, |this, i, place| {
+            let attr = &attrs[i as usize];
+            let ptr = this.allocate_bytes_dedup(attr.trim_end().as_bytes())?;
+
+            this.write_immediate(
+                Immediate::ScalarPair(
+                    Scalar::from_pointer(ptr, this),
+                    Scalar::from_target_usize(attr.trim_end().len() as u64, this),
+                ),
+                &place,
+            )
+        })
     }
 }

@@ -33,7 +33,6 @@ pub trait ConstCodegenMethods: BackendTypes {
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;
 
     fn const_str(&self, s: &str) -> (Self::Value, Self::Value);
-    fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
     fn const_vector(&self, elts: &[Self::Value]) -> Self::Value;
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;

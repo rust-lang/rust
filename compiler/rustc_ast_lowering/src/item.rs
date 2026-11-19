@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
@@ -164,7 +164,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             &i.attrs,
             i.span,
-            Target::from_ast_item(i),
             AstTarget::from_ast_item(&i.kind),
             &extra_hir_attributes,
         );
@@ -453,13 +452,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let constness = self.lower_constness(attrs, *constness);
                 let impl_restriction = self.lower_impl_restriction(impl_restriction, hir_id);
                 let ident = self.lower_ident(*ident);
+                // FIXME(move_trait): We likely want to not add an implicit `Move` super trait
+                // at which point we shouldn't allow relaxed bounds here. Even if we do, we should
+                // make sure to only allow `?Move`.
+                let mut dedup = Default::default();
+                let policy = if self.tcx.features().move_trait() {
+                    RelaxedBoundPolicy::allow_all(&mut dedup)
+                } else {
+                    RelaxedBoundPolicy::forbidden(
+                        &mut dedup,
+                        RelaxedBoundForbiddenReason::SuperTrait,
+                    )
+                };
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
+                            policy,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         );
                         let items = this.arena.alloc_from_iter(
@@ -489,7 +500,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitAlias),
+                            RelaxedBoundPolicy::forbidden(
+                                &mut Default::default(),
+                                RelaxedBoundForbiddenReason::TraitAlias,
+                            ),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
@@ -614,13 +628,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
-        let attrs = self.lower_attrs(
-            hir_id,
-            &i.attrs,
-            i.span,
-            Target::from_foreign_item_kind(&i.kind),
-            AstTarget::from_foreign_item_kind(&i.kind),
-        );
+        let attrs =
+            self.lower_attrs(hir_id, &i.attrs, i.span, AstTarget::from_foreign_item_kind(&i.kind));
         let (ident, kind) = match &i.kind {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
@@ -698,7 +707,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.dcx().span_fatal(v.span, "unnamed enum variants are not yet implemented");
         }
         let hir_id = self.lower_node_id(v.id);
-        self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant, AstTarget::Variant(v));
+        self.lower_attrs(hir_id, &v.attrs, v.span, AstTarget::Variant(v));
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
@@ -785,7 +794,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ty =
             self.lower_ty_alloc(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field, AstTarget::Field(f));
+        self.lower_attrs(hir_id, &f.attrs, f.span, AstTarget::Field(f));
         hir::FieldDef {
             span: self.lower_span(f.span),
             hir_id,
@@ -812,8 +821,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             &i.attrs,
             i.span,
-            Target::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
-            AstTarget::from_assoc_item_kind(&i.kind),
+            AstTarget::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
         );
 
         let (ident, generics, kind, has_value) = match &i.kind {
@@ -939,7 +947,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
-                                RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                                RelaxedBoundPolicy::allow_all(&mut Default::default()),
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
@@ -1075,8 +1083,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             &i.attrs,
             i.span,
-            Target::from_assoc_item_kind(&i.kind, AssocCtxt::Impl { of_trait: is_in_trait_impl }),
-            AstTarget::from_assoc_item_kind(&i.kind),
+            AstTarget::from_assoc_item_kind(
+                &i.kind,
+                AssocCtxt::Impl { of_trait: is_in_trait_impl },
+            ),
         );
 
         let (ident, (generics, kind)) = match &i.kind {
@@ -1245,7 +1255,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs, param.span, Target::Param, AstTarget::Param(param));
+        self.lower_attrs(hir_id, &param.attrs, param.span, AstTarget::Param(param));
         hir::Param {
             hir_id,
             pat: self.lower_pat(&param.pat),
@@ -1316,7 +1326,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if find_attr!(attrs, RustcIntrinsic) || this.tcx.is_sdylib_interface_build() {
+                if find_attr!(attrs, RustcIntrinsic { .. }) || this.tcx.is_sdylib_interface_build()
+                {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),
@@ -1798,7 +1809,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.bounds,
                 param.colon_span,
                 generics.span,
-                RelaxedBoundPolicy::Allowed(
+                RelaxedBoundPolicy::allow_all(
                     dedup_map.entry(self.local_def_id(param.id)).or_default(),
                 ),
                 itctx,
@@ -1955,28 +1966,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::WherePredicate<'hir> {
         let hir_id = self.lower_node_id(pred.id);
         let span = self.lower_span(pred.span);
-        self.lower_attrs(
-            hir_id,
-            &pred.attrs,
-            span,
-            Target::WherePredicate,
-            AstTarget::WherePredicate(pred),
-        );
+        self.lower_attrs(hir_id, &pred.attrs, span, AstTarget::WherePredicate(pred));
         let kind = self.arena.alloc(match &pred.kind {
             WherePredicateKind::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params,
                 bounded_ty,
                 bounds,
             }) => {
+                let mut forbidden_dedup_map;
                 let rbp = if bound_generic_params.is_empty()
                     && let Some(res) =
                         self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {
-                    RelaxedBoundPolicy::Allowed(dedup_map.entry(def_id.expect_local()).or_default())
+                    RelaxedBoundPolicy::allow_all(
+                        dedup_map.entry(def_id.expect_local()).or_default(),
+                    )
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
+                    forbidden_dedup_map = Default::default();
+                    RelaxedBoundPolicy::forbidden(
+                        &mut forbidden_dedup_map,
+                        RelaxedBoundForbiddenReason::WhereBound,
+                    )
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(
@@ -2004,7 +2016,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                     bounds: self.lower_param_bounds(
                         bounds,
-                        RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                        RelaxedBoundPolicy::allow_all(&mut Default::default()),
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,
@@ -2015,28 +2027,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_test_binder_body(&mut self, body: &TestBinderBody) -> hir::TestBinderBody<'hir> {
-        let foralls = self.arena.alloc_from_iter(
-            body.foralls.iter().map(|forall| self.lower_test_binder_forall(forall)),
-        );
-        let exists = self.arena.alloc_from_iter(
-            body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
-        );
-        let region_equalities = self.arena.alloc_from_iter(body.region_equalities.iter().map(
-            |TestBinderRegionEquality { lhs, rhs }| {
+        let mut dedup_map = Default::default();
+        let items = self.arena.alloc_from_iter(body.items.iter().map(|item| match item {
+            TestBinderItem::Forall(forall) => {
+                hir::TestBinderItem::Forall(self.lower_test_binder_forall(forall))
+            }
+            TestBinderItem::Exists(exist) => {
+                hir::TestBinderItem::Exists(self.lower_test_binder_exists(exist))
+            }
+            TestBinderItem::Predicate(predicate) => hir::TestBinderItem::Predicate(
+                self.lower_where_predicate(predicate, &[], &mut dedup_map),
+            ),
+            TestBinderItem::Constraint(constraint) => {
+                hir::TestBinderItem::Constraint(self.lower_test_binder_constraint(constraint))
+            }
+            TestBinderItem::RegionEquality(region_equality) => {
+                let TestBinderRegionEquality { lhs, rhs } = region_equality;
                 let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
-                (lhs, rhs)
-            },
-        ));
-        let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
-        let mut dedup_map = Default::default();
-        let predicates = self.arena.alloc_from_iter(
-            body.predicates
-                .iter()
-                .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
-        );
+                hir::TestBinderItem::RegionEquality { lhs, rhs }
+            }
+        }));
         let span = self.lower_span(body.span);
-        hir::TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates }
+        hir::TestBinderBody { items, span }
     }
 
     fn lower_test_binder_forall(

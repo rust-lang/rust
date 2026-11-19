@@ -656,6 +656,29 @@ impl TypeId {
     pub fn function_ptr(self) -> Option<FnPtr> {
         intrinsics::reflection::type_id_function_ptr(self)
     }
+
+    /// Given given a `TypeId`, which represents a structure, enum or union returns a list of attributes.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
+    /// The attributes are in a string representation.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
+    /// # use std::any::TypeId;
+    ///
+    /// #[foo::a(1, false)]
+    /// #[foo::bar=123]
+    /// struct A;
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().reflected_attrs() }, ["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn reflected_attrs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_reflected_attrs(self)
+    }
 }
 
 /// Variant representing type ID. Representing a variant of an enum.
@@ -704,6 +727,32 @@ impl VariantId {
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
         intrinsics::reflection::type_id_variant_non_exhaustive(self.base, self.variant)
+    }
+
+    /// Given given a `VariantId` returns a list of attributes.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
+    /// The attributes are in a string representation.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
+    /// # use std::any::TypeId;
+    ///
+    /// enum A {
+    ///     #[foo::a(1, false)]
+    ///     #[foo::bar=123]
+    ///     VarA,
+    ///     VarB,
+    /// }
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().variant(0).reflected_attrs() }, &["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn reflected_attrs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_variant_reflected_attrs(self.base, self.variant)
     }
 }
 
@@ -787,5 +836,30 @@ impl FieldId {
     #[rustc_comptime]
     pub fn offset(self) -> usize {
         intrinsics::field_representing_type_offset(self.frt_type_id)
+    }
+
+    /// Given given a `FieldId` returns a list of attributes.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
+    /// The attributes are in a string representation.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
+    /// # use std::any::TypeId;
+    ///
+    /// struct A {
+    ///     #[foo::a(1, false)]
+    ///     #[foo::bar=123]
+    ///     first: u8,
+    /// }
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().field(0, 0).reflected_attrs() }, &["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn reflected_attrs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_reflected_attrs(self.frt_type_id)
     }
 }

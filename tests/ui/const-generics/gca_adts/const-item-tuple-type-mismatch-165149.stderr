@@ -1,0 +1,20 @@
+error: the constant `"a"` is not of type `usize`
+  --> $DIR/const-item-tuple-type-mismatch-165149.rs:4:1
+   |
+LL | const INTS: (usize, u8) = ("a", true);
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error: the constant `true` is not of type `u8`
+  --> $DIR/const-item-tuple-type-mismatch-165149.rs:4:1
+   |
+LL | const INTS: (usize, u8) = ("a", true);
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `bool`
+
+error: the constant `true` is not of type `&'static str`
+  --> $DIR/const-item-tuple-type-mismatch-165149.rs:8:1
+   |
+LL | const STRS: (&'static str, &'static str) = ("a", true);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'static str`, found `bool`
+
+error: aborting due to 3 previous errors
+

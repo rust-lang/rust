@@ -36,6 +36,7 @@ where
                     Float::F64 => Some(Reg::f64()),
                     Float::F128 => Some(Reg::f128()),
                     Float::F16B => unreachable!("`f16b` unsupported on mips64"),
+                    Float::X87F80 => unreachable!("`x87_f80` unsupported on mips64"),
                     Float::PpcF128 => unreachable!("`ppcf128` unsupported on mips64"),
                 }
             }
@@ -114,7 +115,7 @@ where
     let mut prefix = ArrayVec::new();
 
     // Detect need for padding
-    let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
+    let align = Ord::clamp(arg.layout.align, dl.i64_align, dl.i128_align);
     let pad_i32 = u8::from(!offset.is_aligned(align));
 
     if !arg.layout.is_aggregate() {
@@ -142,8 +143,9 @@ where
 
         match component {
             Numeric::Float(Float::F16B) => unreachable!("Complex<f16b> is not C-compatible"),
-            Numeric::Float(Float::F16) => unreachable!("not supported on mips64"),
-            Numeric::Float(Float::PpcF128) => unreachable!("not supported on mips64"),
+            Numeric::Float(Float::F16 | Float::X87F80 | Float::PpcF128) => {
+                unreachable!("not supported on mips64")
+            }
             Numeric::Float(Float::F32 | Float::F64) => {
                 // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free.
                 if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {

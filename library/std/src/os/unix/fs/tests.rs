@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // fs API support in Miri is quite spotty
+
 use super::*;
 
 #[test]

@@ -485,14 +485,14 @@ This flag allows you to keep doctest executables around after they're compiled o
 Usually, rustdoc will immediately discard a compiled doctest after it's been tested, but
 with this option, you can keep those binaries around for farther testing.
 
-## `--show-coverage`: calculate the percentage of items with documentation
+## `--coverage`: calculate the percentage of items with documentation
 
  * Tracking issue: [#58154](https://github.com/rust-lang/rust/issues/58154)
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs -Z unstable-options --show-coverage
+$ rustdoc src/lib.rs -Z unstable-options --coverage
 ```
 
 It generates something like this:
@@ -539,7 +539,7 @@ Calculating code examples follows these rules:
 If you use the `-o` option with it, it will generate the file into the given older name. For example:
 
 ```shell
-rustdoc foo.rs --show-coverage -o doc
+rustdoc foo.rs --coverage -o doc
 ```
 
 Will generate a `foo.txt` into the `doc` folder. If the `-o` option isn't passed, it will display
@@ -586,8 +586,8 @@ rustup component add --toolchain nightly rust-docs-json
 Then the json files will be present in the `share/doc/rust/json/` directory
 of the rustup toolchain directory.
 
-It can also be used with `--show-coverage`. Take a look at its
-[documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
+It can also be used with `--coverage`. Take a look at its
+[documentation](#--coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
 ### doctest

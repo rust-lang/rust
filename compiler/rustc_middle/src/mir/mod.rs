@@ -414,37 +414,32 @@ impl<'tcx> Body<'tcx> {
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         if tcx.use_typing_mode_post_typeck_through_borrowck() {
             match self.phase {
-                MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial)
-                    if let Some(def_id) = self.source.def_id().as_local() =>
-                {
+                // `analysis_cleanup_passes` should use `PostBorrowck`, but doing so would
+                // complicate the code, and none of those passes seems to care.
+                MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial) => {
+                    let local_def_id = self
+                        .source
+                        .def_id()
+                        .as_local()
+                        .expect("We only build MIR for local bodies");
                     TypingEnv::new(
                         tcx.param_env(self.source.def_id()),
-                        ty::TypingMode::borrowck(tcx, def_id),
+                        ty::TypingMode::borrowck(tcx, local_def_id),
                     )
                 }
-                MirPhase::Analysis(AnalysisPhase::PostCleanup)
-                    if let Some(def_id) = self.source.def_id().as_local() =>
-                {
-                    TypingEnv::new(
-                        tcx.param_env(self.source.def_id()),
-                        ty::TypingMode::post_borrowck_analysis(tcx, def_id),
-                    )
-                }
-                MirPhase::Built | MirPhase::Analysis(_) => {
-                    // This branch happens for drop glue and fn ptr shims.
-                    // FIXME: why do we do any of this analysis on drop glue etc?
-                    // This should ideally all be skipped.
+                MirPhase::Analysis(AnalysisPhase::PostCleanup) | MirPhase::Runtime(_) => {
                     TypingEnv::post_analysis(tcx, self.source.def_id())
                 }
-                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
             }
         } else {
             match self.phase {
-                MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
+                MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial) => TypingEnv::new(
                     tcx.param_env(self.source.def_id()),
                     ty::TypingMode::non_body_analysis(),
                 ),
-                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+                MirPhase::Analysis(AnalysisPhase::PostCleanup) | MirPhase::Runtime(_) => {
+                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                }
             }
         }
     }
@@ -1346,11 +1341,33 @@ pub struct BasicBlockData<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
+    pub fn new(terminator: Terminator<'tcx>, is_cleanup: bool) -> BasicBlockData<'tcx> {
         BasicBlockData::new_stmts(Vec::new(), terminator, is_cleanup)
     }
 
     pub fn new_stmts(
+        statements: Vec<Statement<'tcx>>,
+        terminator: Terminator<'tcx>,
+        is_cleanup: bool,
+    ) -> BasicBlockData<'tcx> {
+        BasicBlockData {
+            statements,
+            after_last_stmt_debuginfos: StmtDebugInfos::default(),
+            terminator: Some(terminator),
+            is_cleanup,
+        }
+    }
+
+    /// This is being phased out. Use [`BasicBlockData::new`] instead.
+    pub fn maybe_unterminated(
+        terminator: Option<Terminator<'tcx>>,
+        is_cleanup: bool,
+    ) -> BasicBlockData<'tcx> {
+        BasicBlockData::maybe_unterminated_stmts(Vec::new(), terminator, is_cleanup)
+    }
+
+    /// This is being phased out. Use [`BasicBlockData::new_stmts`] instead.
+    pub fn maybe_unterminated_stmts(
         statements: Vec<Statement<'tcx>>,
         terminator: Option<Terminator<'tcx>>,
         is_cleanup: bool,

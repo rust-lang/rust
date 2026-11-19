@@ -30,8 +30,7 @@ use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
-    EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
-    evaluate_root_goal_for_proof_tree_raw_provider, fast_path,
+    EvalCtxt, SolverDelegateEvalExt, evaluate_root_goal_for_proof_tree_raw_provider, fast_path,
 };
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;

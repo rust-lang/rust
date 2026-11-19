@@ -104,7 +104,7 @@ impl Layout {
     /// * `size`, when rounded up to the nearest multiple of `alignment`,
     ///   must not overflow `isize` (i.e., the rounded value must be
     ///   less than or equal to `isize::MAX`).
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "ptr_alignment_type", issue = "165719")]
     #[inline]
     pub const fn from_size_alignment(
         size: usize,
@@ -149,7 +149,7 @@ impl Layout {
     ///
     /// This function is unsafe as it does not verify the preconditions from
     /// [`Layout::from_size_alignment`].
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "ptr_alignment_type", issue = "165719")]
     #[must_use]
     #[inline]
     #[track_caller]
@@ -191,7 +191,7 @@ impl Layout {
     /// The minimum byte alignment for a memory block of this layout.
     ///
     /// The returned alignment is guaranteed to be a power of two.
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "ptr_alignment_type", issue = "165719")]
     #[must_use = "this returns the minimum alignment, without modifying the layout"]
     #[inline]
     pub const fn alignment(&self) -> Alignment {
@@ -316,7 +316,7 @@ impl Layout {
     ///
     /// Returns an error if the combination of `self.size()` and the given
     /// `alignment` violates the conditions listed in [`Layout::from_size_alignment`].
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "ptr_alignment_type", issue = "165719")]
     #[inline]
     pub const fn adjust_alignment_to(&self, alignment: Alignment) -> Result<Self, LayoutError> {
         Layout::from_size_alignment(self.size, Alignment::max(self.align, alignment))
@@ -335,7 +335,7 @@ impl Layout {
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `alignment.as_usize() <= self.align()`.
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "ptr_alignment_type", issue = "165719")]
     #[must_use = "this returns the padding needed, without modifying the `Layout`"]
     #[inline]
     pub const fn padding_needed_for(&self, alignment: Alignment) -> usize {

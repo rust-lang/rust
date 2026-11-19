@@ -33,7 +33,7 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
 use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
-use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, implicit_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -176,12 +176,27 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                        Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
-                            let predicate = self.deeply_resolve_ignoring_regions(goal.predicate);
-                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                        Some(lang_item @ (LangItem::Sized | LangItem::MetaSized)) => {
+                            let sizedness = if lang_item == LangItem::Sized {
+                                ty::SizedTraitKind::Sized
+                            } else {
+                                ty::SizedTraitKind::MetaSized
+                            };
+
+                            // Avoid deep resolution when sizedness is already known.
+                            // Keep the fallback for error tainting and nontrivial goals.
+                            if !goal.predicate.references_error()
+                                && self_ty.has_trivial_sizedness(self.tcx, sizedness)
+                            {
                                 Outcome::TriviallyHolds
                             } else {
-                                Outcome::NoFastPath
+                                let predicate =
+                                    self.deeply_resolve_ignoring_regions(goal.predicate);
+                                if implicit_fast_path(self.tcx, predicate, goal.param_env) {
+                                    Outcome::TriviallyHolds
+                                } else {
+                                    Outcome::NoFastPath
+                                }
                             }
                         }
                         Some(LangItem::Copy | LangItem::Clone) => {
@@ -531,10 +546,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // We do this in the decorator as that avoids the work
                 // if we don't actually emit the lint.
                 let goal = self.deeply_resolve_ignoring_regions(goal);
+                let recursion_limit = if let Some(specified_limit) = tcx.next_solver_overflow_fcw_limit()
+                {
+                    // Double default limit allows us to see the whole chain.
+                    usize::min(specified_limit, tcx.recursion_limit().0 * 2)
+                } else {
+                    usize::min(16, tcx.recursion_limit().0)
+                };
                 let mut visitor = OverflowedGoalChain {
                     span,
                     predicates: vec![],
-                    recursion_limit: usize::min(16, tcx.recursion_limit().0),
+                    recursion_limit,
                 };
 
                 let _ = self.with_disabled_next_solver_overflow_fcw(|| {

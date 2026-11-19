@@ -1,7 +1,7 @@
 //@ run-pass
 //@ aux-build: hygiene.rs
 
-#![feature(view_types, view_type_macro, decl_macro)]
+#![feature(view_types, decl_macro)]
 #![allow(unused)]
 
 extern crate hygiene;
@@ -26,7 +26,7 @@ struct Bar {
 }
 
 impl Bar {
-    fn f(self: hygiene::view_bar!()) {}
+    fn f(self: &hygiene::view_bar!()) {}
 }
 
 fn main() {}

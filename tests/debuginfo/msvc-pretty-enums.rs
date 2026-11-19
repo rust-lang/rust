@@ -232,7 +232,7 @@
 
 //@ cdb-command: dx c_style_i128_d
 //@ cdb-check: c_style_i128_d   : D [Type: enum2$<msvc_pretty_enums::CStyleI128>]
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types)]
 
 use std::num::NonZero;
 
@@ -271,9 +271,7 @@ enum NicheLayoutWithFields3 {
 }
 
 #[repr(transparent)]
-struct Wrapping128(
-    std::pat::pattern_type!(i128 is -2..=1),
-);
+struct Wrapping128(std::pat::pattern_type!(i128 is -2..=1));
 
 enum Wrapping128Niche {
     X(Wrapping128),

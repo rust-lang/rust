@@ -775,6 +775,10 @@ pub(crate) struct UnreachablePatternInner<'tcx> {
     pub(crate) covered_by_many: Option<MultiSpan>,
     #[suggestion("remove the match arm", code = "", applicability = "machine-applicable")]
     pub(crate) suggest_remove: Option<Span>,
+    #[note(
+        "`#[non_exhaustive]` does not affect exhaustiveness checking within the defining crate"
+    )]
+    pub(crate) non_exhaustive_attr: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]

@@ -1,5 +1,5 @@
 error: cannot find attribute `empty_helper` in this scope
-  --> $DIR/derive-helper-shadowing.rs:41:22
+  --> $DIR/derive-helper-shadowing.rs:40:22
    |
 LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL +             use empty_helper;
    |
 
 error: cannot find attribute `empty_helper` in this scope
-  --> $DIR/derive-helper-shadowing.rs:17:11
+  --> $DIR/derive-helper-shadowing.rs:16:11
    |
 LL | macro_rules! gen_helper_use {
 LL |     () => {
@@ -29,26 +29,26 @@ LL +             use empty_helper;
    |
 
 error[E0659]: `empty_helper` is ambiguous
-  --> $DIR/derive-helper-shadowing.rs:22:3
+  --> $DIR/derive-helper-shadowing.rs:21:3
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
    = note: ambiguous because of a name conflict with a derive helper attribute
 note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:25:10
+  --> $DIR/derive-helper-shadowing.rs:24:10
    |
 LL | #[derive(Empty)]
    |          ^^^^^
 note: `empty_helper` could also refer to the attribute macro imported here
-  --> $DIR/derive-helper-shadowing.rs:13:5
+  --> $DIR/derive-helper-shadowing.rs:12:5
    |
 LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
 error: derive helper attribute is used before it is introduced
-  --> $DIR/derive-helper-shadowing.rs:22:3
+  --> $DIR/derive-helper-shadowing.rs:21:3
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^
@@ -65,7 +65,7 @@ error: aborting due to 4 previous errors
 For more information about this error, try `rustc --explain E0659`.
 Future incompatibility report: Future breakage diagnostic:
 error: derive helper attribute is used before it is introduced
-  --> $DIR/derive-helper-shadowing.rs:22:3
+  --> $DIR/derive-helper-shadowing.rs:21:3
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^

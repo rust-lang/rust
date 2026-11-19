@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
+//@ ignore-wasm aligning functions is not currently supported on wasm (#143368)
 //@ ignore-backends: gcc
 
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity

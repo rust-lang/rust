@@ -3,7 +3,6 @@
 // requires an unstable feature.
 //
 //@ needs-target-std
-//@ ignore-backends: gcc
 //
 //@ revisions: stable nightly
 //

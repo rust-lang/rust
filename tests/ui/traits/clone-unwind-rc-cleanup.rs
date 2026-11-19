@@ -2,7 +2,6 @@
 
 //@ run-pass
 //@ needs-unwind
-//@ ignore-backends: gcc
 
 #![allow(unused_variables)]
 #![allow(unused_imports)]

@@ -17,12 +17,12 @@ macro_rules! fatal {
 
 #[macro_export]
 macro_rules! error {
-    ($($arg:tt)*) => {
+    ($($arg:tt)*) => {{
         let status = ::colored::Colorize::red("ERROR: ");
         let status = ::colored::Colorize::bold(status);
         eprint!("{status}");
         eprintln!($($arg)*);
-    };
+    }};
 }
 
 #[macro_export]

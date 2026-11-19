@@ -18,15 +18,15 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations, ScrubbedTraitError};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Intrinsic, Ty,
+    TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -977,7 +977,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     //
                     // Unbound parts of arguments were never required to be Sized
                     // - maybe we should make that a warning.
-                    return;
                 }
                 LocalKind::Temp => {
                     let span = local_decl.source_info.span;
@@ -1847,7 +1846,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
+                    args.terms().map(ty::ClauseKind::WellFormed),
                     locations,
                     ConstraintCategory::Boring,
                 );
@@ -2033,8 +2032,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a
             // constant. (Eventually this should use const-generics, but those are not up for the
             // task yet: https://github.com/rust-lang/rust/issues/85229.)
-            if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
-                self.tcx().intrinsic(def_id).map(|i| i.name)
+            if let Some(Intrinsic::Rustc(
+                name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract),
+            )) = self.tcx().intrinsic(def_id).map(|i| i.name)
             {
                 let idx = match name {
                     sym::simd_shuffle => 2,
@@ -2800,10 +2800,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         let (mut output, region_constraints) =
-            scrape_region_constraints(infcx, root_def_id, "InstantiateOpaqueType", span, |ocx| {
-                ocx.register_obligations(self.obligations.clone());
-                Ok(())
-            })?;
+            scrape_region_constraints::<_, _, ScrubbedTraitError<'tcx>>(
+                infcx,
+                root_def_id,
+                "InstantiateOpaqueType",
+                span,
+                |ocx| {
+                    ocx.register_obligations(self.obligations.clone());
+                    Ok(())
+                },
+            )?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

@@ -1505,18 +1505,14 @@ impl Builder<'_> {
             .unwrap_or(&self.config.rust_rustflags)
             .clone();
 
-        let profile =
-            if matches!(cmd_kind, Kind::Bench | Kind::Miri | Kind::MiriSetup | Kind::MiriTest) {
-                // Use the default profile for bench/miri
-                None
-            } else {
-                match (mode, self.config.rust_optimize.is_release()) {
-                    // Some std configuration exists in its own profile
-                    (Mode::Std, _) => Some("dist"),
-                    (_, true) => Some("release"),
-                    (_, false) => Some("dev"),
-                }
-            };
+        let profile = match (cmd_kind, mode) {
+            // Use the default profile for miri
+            (Kind::Miri | Kind::MiriSetup | Kind::MiriTest, _) => None,
+            // Some std configuration exists in its own profile
+            (_, Mode::Std) => Some("dist"),
+            _ if self.config.rust_optimize.is_release() => Some("release"),
+            _ => Some("dev"),
+        };
 
         Cargo {
             command: cargo,

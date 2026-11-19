@@ -839,7 +839,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         #[cfg(feature = "master")]
-        match self.cx.float_type(a_type) {
+        match self.cx.float_type(a_type_unqualified) {
             Some(abi::Float::F16) => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 let f32_type = self.type_f32();
@@ -872,7 +872,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 );
                 return self.context.new_call(self.location, fmodf128, &[a, b]);
             }
-            Some(float @ (abi::Float::F16B | abi::Float::PpcF128)) => {
+            Some(float @ (abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128)) => {
                 bug!("frem unsupported on {float:?}")
             }
             None => (),
@@ -1013,7 +1013,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn alloca_with_ty(&mut self, ty: TyAndLayout<'tcx>) -> RValue<'gcc> {
-        self.alloca(ty.layout.size, ty.layout.align.abi)
+        self.alloca(ty.layout.size, ty.layout.align)
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
@@ -1204,17 +1204,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo)
     }
 
-    fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
-        self.store_with_flags(val, ptr, align, MemFlags::empty())
-    }
-
     fn store_with_flags(
         &mut self,
         val: RValue<'gcc>,
         ptr: RValue<'gcc>,
         align: Align,
         flags: MemFlags,
-    ) -> RValue<'gcc> {
+    ) {
         let ptr = self.check_store(val, ptr);
         let destination = ptr.dereference(self.location);
         // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
@@ -1231,10 +1227,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let modified_destination = modified_ptr.dereference(self.location);
         self.llbb().add_assignment(self.location, modified_destination, val);
         // FIXME(antoyo): handle `MemFlags::NONTEMPORAL`.
-        // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
         // LLVM backend for details.
-        self.cx.context.new_rvalue_zero(self.type_i32())
     }
 
     fn atomic_store(
@@ -2028,7 +2022,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 abi::Float::F32 => bx.cx().const_u32(bits as u32),
                 abi::Float::F64 => bx.cx().const_u64(bits as u64),
                 abi::Float::F128 => bx.cx().const_u128(bits),
-                abi::Float::F16B | abi::Float::PpcF128 => {
+                abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128 => {
                     bug!("unsupported float width {float_type:?}")
                 }
             };
@@ -2039,7 +2033,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             abi::Float::F32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
             abi::Float::F64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
             abi::Float::F128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
-            abi::Float::F16B | abi::Float::PpcF128 => {
+            abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128 => {
                 bug!("unsupported float width {float_type:?}")
             }
         };

@@ -123,6 +123,9 @@
     - [How to debug](./autodiff/debugging.md)
     - [Autodiff flags](./autodiff/flags.md)
     - [Type Trees](./autodiff/type-trees.md)
+- [TPDE internals](./tpde/internals.md)
+    - [Installation](./tpde/installation.md)
+    - [How to debug](./tpde/debugging.md)
 
 # Source code representation
 
@@ -171,6 +174,7 @@
     - [`EarlyBinder` and instantiating parameters](./ty-module/early-binder.md)
 - [Binders and Higher ranked regions](./ty-module/binders.md)
     - [Instantiating binders](./ty-module/instantiating-binders.md)
+    - [Assumptions on binders test DSL](./ty-module/binder-test-dsl.md)
 - [Early vs Late bound parameters](./early-late-parameters.md)
 - [The `ty` module: representing types](./ty.md)
     - [ADTs and Generic Arguments](./ty-module/generic-arguments.md)

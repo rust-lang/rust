@@ -9,6 +9,9 @@
 // Debugger tests need debuginfo
 //@ compile-flags: -g
 
+// FIXME(#165796): flaky on ARM64 MSVC
+//@ ignore-aarch64-pc-windows-msvc
+
 // Some optimization passes _improve_ compile times [1]. So we want to run some
 // passes even with `-Copt-level=0`. That means that some of the lines below can
 // be optimized away. To make regression testing more robust, we also want to

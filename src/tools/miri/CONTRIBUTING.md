@@ -27,24 +27,18 @@ for a list of Miri maintainers.
 
 ### PR review process
 
-When you get a review, please take care of the requested changes in new commits. Do not amend
-existing commits. Generally avoid force-pushing. The only time you should force push is when there
-is a conflict with the master branch (in that case you should rebase across master, not merge), and
-all the way at the end of the review process when the reviewer tells you that the PR is done and you
-should squash the commits. (All this is to work around the fact that Github is quite bad at
-dealing with force pushes and does not support `git range-diff`.)
-
-The recommended way to squash commits is to use `./miri squash`, which will make everything into a
-single commit. You will be asked for the commit message; please ensure it describes the entire PR.
-You can also use `git rebase` manually if you need more control (e.g. if there should be more than
-one commit at the end), but then please use `--keep-base` to ensure the PR remains based on the same
-upstream commit.
-
 Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
 keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
 `S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
 they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
 next round of review.
+
+When you are making significant changes to a PR, it is often easier to review them as a separate
+commit, rather than as force-pushed changes to existing commits. Wait until the end of the review
+process before squashing the git history. To squash everything into a single commit, you can use
+`./miri squash`. You will be asked for the commit message; please ensure it describes the entire PR.
+You can also use `git rebase` manually if you need more control (e.g. if there should be more than
+one commit at the end).
 
 ### Larger-scale contributions
 

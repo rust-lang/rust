@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind, CfgEntry, StabilityLevel, StrippedCfgItem};
-use rustc_attr_parsing::AttributeParser;
+use rustc_attr_parsing::{AttributeParser, PREDEFINED_TOOLS};
 use rustc_data_structures::sync::RwLock;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
@@ -23,6 +23,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_lint_defs::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
+use rustc_lint_defs::{Reflectiveness, ToolOptions};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
@@ -120,9 +121,6 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-const PREDEFINED_TOOLS: &[Symbol] =
-    &[sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
-
 pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
 
@@ -139,7 +137,9 @@ pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools 
         };
 
     // We implicitly add predefined tools, but it's not an error to register them explicitly.
-    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(|n| {
+        (Ident::with_dummy_span(n), ToolOptions { reflectiveness: Reflectiveness::NonReflective })
+    }));
     registered_tools
 }
 
@@ -165,7 +165,12 @@ pub fn registered_lint_tools_ast(
         };
 
     // We implicitly add predefined tools, but it's not an error to register them explicitly.
-    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(|ident| {
+        (
+            Ident::with_dummy_span(ident),
+            ToolOptions { reflectiveness: Reflectiveness::NonReflective },
+        )
+    }));
     registered_tools
 }
 
