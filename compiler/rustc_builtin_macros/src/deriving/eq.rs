@@ -14,15 +14,12 @@ pub(crate) fn expand_derive_eq(
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let span = cx.with_def_site_ctxt(span);
-
-    let trait_def = TraitDef {
-        span,
-        path: path_std!(cx, span, cmp::Eq),
-        needs_copy_as_bound_if_packed: true,
-        additional_bounds: SmallVec::new(),
-        supports_unions: true,
-        methods: smallvec![MethodDef {
+    // `assert_fields_are_eq` has an empty default implementation
+    let body = assert_fields_eq_body(cx, item);
+    let methods = if body.is_empty() {
+        smallvec![]
+    } else {
+        smallvec![MethodDef {
             name: sym::assert_fields_are_eq,
             generics: cx.empty_generics(span),
             args: thin_vec![cx.param_self_ref(span)],
@@ -34,15 +31,24 @@ pub(crate) fn expand_derive_eq(
                 cx.generated_attr(span, ast::GeneratedAttr::DocHidden),
                 cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
-            body: MethodBody::Directly(assert_fields_eq_body(cx, item)),
-        }],
+            body: MethodBody::Directly(BlockOrExpr::new_stmts(body)),
+        }]
+    };
+
+    let trait_def = TraitDef {
+        span,
+        path: path_std!(cx, span, cmp::Eq),
+        needs_copy_as_bound_if_packed: true,
+        additional_bounds: SmallVec::new(),
+        supports_unions: true,
+        methods,
         is_const,
         ..
     };
     trait_def.expand(cx, item, push);
 }
 
-fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> BlockOrExpr {
+fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> ThinVec<ast::Stmt> {
     let mut stmts = ThinVec::new();
     // We can skip the assertions for all fields that are named in the generics,
     // as we already have a `T: Eq` bound for each of them.
@@ -69,5 +75,5 @@ fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> BlockOrExpr {
         }
     }
 
-    BlockOrExpr::new_stmts(stmts)
+    stmts
 }

@@ -263,7 +263,7 @@ impl<'a> TraitDef<'a> {
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|mut method_def| {
+                    .map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
                         } else {
@@ -286,7 +286,7 @@ impl<'a> TraitDef<'a> {
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|mut method_def| {
+                    .map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
                         } else {
@@ -488,17 +488,7 @@ impl<'a> TraitDef<'a> {
 }
 
 impl<'a> MethodDef<'a> {
-    fn create_method(
-        self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        body: BlockOrExpr,
-    ) -> Option<Box<ast::AssocItem>> {
-        // `assert_fields_are_eq` has an empty default implementation
-        if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
-            return None;
-        }
-
+    fn create_method(self, cx: &ExtCtxt<'_>, span: Span, body: BlockOrExpr) -> Box<ast::AssocItem> {
         let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
@@ -514,7 +504,7 @@ impl<'a> MethodDef<'a> {
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
 
         // Create the method.
-        Some(Box::new(ast::AssocItem {
+        Box::new(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes,
             span,
@@ -526,7 +516,7 @@ impl<'a> MethodDef<'a> {
                 Some(body_block),
             )),
             tokens: None,
-        }))
+        })
     }
 
     /// The normal case uses field access.
