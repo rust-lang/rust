@@ -1,0 +1,3 @@
+# Intentionally malformed TOML here. Don't check them.
+[lsp.diagnostic]
+enabled = false
