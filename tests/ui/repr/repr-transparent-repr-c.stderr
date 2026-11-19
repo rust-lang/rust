@@ -1,5 +1,5 @@
 error[E0690]: transparent struct needs at most one non-trivial field, but has 2
-  --> $DIR/repr-transparent-repr-c.rs:16:1
+  --> $DIR/repr-transparent-repr-c.rs:18:1
    |
 LL | pub struct T5(Sized, ReprC1Zst);
    | ^^^^^^^^^^^^^ -----  --------- this field contains `ReprC1Zst`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets
@@ -8,7 +8,7 @@ LL | pub struct T5(Sized, ReprC1Zst);
    | needs at most one non-trivial field, but has 2
 
 error[E0690]: transparent struct needs at most one non-trivial field, but has 2
-  --> $DIR/repr-transparent-repr-c.rs:20:1
+  --> $DIR/repr-transparent-repr-c.rs:22:1
    |
 LL | pub struct T6(ReprC1Zst, Sized);
    | ^^^^^^^^^^^^^ ---------  ----- this field has non-zero size
@@ -17,7 +17,7 @@ LL | pub struct T6(ReprC1Zst, Sized);
    | needs at most one non-trivial field, but has 2
 
 error[E0690]: transparent struct needs at most one non-trivial field, but has 2
-  --> $DIR/repr-transparent-repr-c.rs:24:1
+  --> $DIR/repr-transparent-repr-c.rs:26:1
    |
 LL | pub struct T7(T1, [Sized; 0]); // still wrong, even when the repr(C) is hidden inside another type
    | ^^^^^^^^^^^^^ --  ---------- this field requires alignment
@@ -25,6 +25,19 @@ LL | pub struct T7(T1, [Sized; 0]); // still wrong, even when the repr(C) is hid
    | |             this field contains `ReprC1Zst`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets
    | needs at most one non-trivial field, but has 2
 
-error: aborting due to 3 previous errors
+warning: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-repr-c.rs:34:1
+   |
+LL | pub struct T10(Sized, [u8; 0]);
+   | ^^^^^^^^^^^^^^ -----  ------- this field contains an array with an element type of `u8`, which has non-zero size
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #166183 <https://github.com/rust-lang/rust/issues/166183>
+   = note: `#[warn(non_zst_repr_transparent_array_element)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0690`.

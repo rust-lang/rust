@@ -83,6 +83,7 @@ pub mod hardwired {
             NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
             NON_CONTIGUOUS_RANGE_ENDPOINTS,
             NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            NON_ZST_REPR_TRANSPARENT_ARRAY_ELEMENT,
             NO_LINK_ATTRIBUTES,
             OUT_OF_SCOPE_MACRO_CALLS,
             OVERLAPPING_RANGE_ENDPOINTS,
@@ -6049,5 +6050,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #164032),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `non_zst_repr_transparent_array_element` lint detects `repr(transparent)` types that
+    /// have multiple non-trivial fields due to some of the fields being arrays with non-ZST element
+    /// types.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(transparent)]
+    /// struct Foo(u64, [u8; 0]);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Only some zero-sized types with an alignment of 1 (1-ZSTs) have a trivial ABI (meaning that
+    /// they do not influence the ABI) - the full list can be found in the
+    /// [abi compatibility documentation]. `#[repr(transparent)]` types must have at most 1 field
+    /// with non-trivial ABI, as they have the same ABI as that non-trivial field. Arrays with
+    /// element types that are non-trivial are also non-trivial, regardless of length. The compiler
+    /// currently accepts as trivial fields some arrays with non-zero-sized element types as trivial
+    /// field types if the resulting array happened to be a 1-ZST, but this means that a
+    /// `#[repr(transparent)]` type can have multiple fields with non-trivial ABI and therefore an
+    /// ambiguous ABI, so this a [future-incompatible] lint to transition this to a hard error in a
+    /// future release.
+    ///
+    /// The fix for this lint is usually to either remove the array field, or replace it with a type
+    /// with trivial ABI like [`PhantomData`].
+    ///
+    /// [abi compatibility documentation]: https://doc.rust-lang.org/nightly/std/primitive.fn.html#abi-compatibility
+    /// [`PhantomData`]: https://doc.rust-lang.org/std/marker/struct.PhantomData.html
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub NON_ZST_REPR_TRANSPARENT_ARRAY_ELEMENT,
+    Warn,
+    "detects `repr(transparent)` types which have more than one type with non-trivial type due to 1-ZST arrays with non-ZST elements",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #166183),
     };
 }

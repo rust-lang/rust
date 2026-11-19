@@ -126,4 +126,12 @@ pub struct T22(NonExhaustive, InternalPrivate);
 pub struct T22Flipped(InternalPrivate, NonExhaustive);
 // Okay, since there's only 1 foreign non-exhaustive type.
 
+#[repr(transparent)]
+pub struct T23(Sized, (NonExhaustive,));
+//~^ ERROR needs at most one non-trivial field
+
+#[repr(transparent)]
+pub struct T24(Sized, InternalIndirection<Private>);
+//~^ ERROR needs at most one non-trivial field
+
 fn main() {}
