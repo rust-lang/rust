@@ -9,7 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::data_structures::{DelayedMap, HashMap};
+use crate::data_structures::{DelayedMap, HashMap, SsoHashMap};
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypingModeEqWrapper, UniverseIndex};
 
@@ -334,7 +334,7 @@ pub struct CanonicalizerState<I: Interner> {
     /// This means in case two type variables have the same sub relations root,
     /// we set the `sub_root` of the second variable to the position of the first.
     /// Otherwise the `sub_root` of each type variable is just its own position.
-    pub sub_root_lookup_table: HashMap<ty::TyVid, usize>,
+    pub sub_root_lookup_table: SsoHashMap<ty::TyVid, usize>,
 
     /// We can simply cache based on the ty itself, because we use
     /// `ty::BoundVarIndexKind::Canonical`.
@@ -366,7 +366,7 @@ impl<I: Interner> CanonicalizerState<I> {
         if sub_root_lookup_table.capacity() <= 128 {
             sub_root_lookup_table.clear();
         } else {
-            *sub_root_lookup_table = HashMap::default();
+            *sub_root_lookup_table = SsoHashMap::default();
         }
         if cache.capacity() <= 128 {
             cache.clear();
