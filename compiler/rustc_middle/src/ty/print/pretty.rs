@@ -1038,9 +1038,40 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::View(def, args, fields) => {
                 write!(self, "view_type!(")?;
                 self.print_def_path(def.did(), args)?;
-                write!(self, ".{{ ")?;
-                self.print_type(fields)?;
-                write!(self, " }})")?;
+                write!(self, ".{{")?;
+                match fields.kind() {
+                    ty::Tuple(fields) => {
+                        let mut first = true;
+                        if !fields.is_empty() {
+                            write!(self, " ")?;
+                        }
+                        for field in fields.iter() {
+                            if first {
+                                first = false;
+                            } else {
+                                write!(self, ", ")?;
+                            }
+
+                            match field.kind() {
+                                ty::Adt(def_, args_)
+                                    if let Some(FieldInfo { variant, name, .. }) =
+                                        def_.field_representing_type_info(self.tcx(), *args_) =>
+                                {
+                                    // sanity check: view types on enums are not a thing.
+                                    debug_assert!(variant.is_none());
+                                    write!(self, "{name}")?;
+                                }
+                                _ => self.print_type(field)?,
+                            }
+                        }
+                        if !fields.is_empty() {
+                            write!(self, " ")?;
+                        }
+                    }
+
+                    _ => self.print_type(fields)?,
+                }
+                write!(self, "}})")?;
             }
         }
 
