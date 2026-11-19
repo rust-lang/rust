@@ -10,6 +10,18 @@ note: destructor declared here
 LL |     fn drop(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0184]: the trait `Reborrow` cannot be implemented for this type; the type has a destructor
+  --> $DIR/reborrow-drop.rs:18:1
+   |
+LL | impl Reborrow for MyMarker<'_> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Reborrow` not allowed on types with destructors
+   |
+note: destructor declared here
+  --> $DIR/reborrow-drop.rs:22:5
+   |
+LL |     fn drop(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0184`.

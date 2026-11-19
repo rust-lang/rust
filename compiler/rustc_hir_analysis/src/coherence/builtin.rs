@@ -500,12 +500,9 @@ pub(crate) fn reborrow_info<'tcx>(
     if lifetimes_count == 0 {
         return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
-    if data_fields.is_empty() {
-        return Ok(());
-    }
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    // We've found some data fields. They must all be either be Copy or Reborrow.
+    // Data fields must all be either Copy or Reborrow.
     for mut field in data_fields {
         field.ty.error_reported()?;
         field.ty = ocx
