@@ -1245,14 +1245,16 @@ fn libm() {
     let pi_f32 = f32_consts::PI;
     let pi_f64 = f64_consts::PI;
     for _ in 0..64 {
-        // sin() should be clamped to [-1, 1] so asin() can never return NaN
-        assert!(!halve_pi_f16.sin().asin().is_nan());
-        assert!(!halve_pi_f32.sin().asin().is_nan());
-        assert!(!halve_pi_f64.sin().asin().is_nan());
-        // cos() should be clamped to [-1, 1] so acos() can never return NaN
-        assert!(!pi_f16.cos().acos().is_nan());
-        assert!(!pi_f32.cos().acos().is_nan());
-        assert!(!pi_f64.cos().acos().is_nan());
+        // sin() should be clamped to [-1, 1] so asin() can never return NaN.
+        // asin() should itself be clamped to [-π/2, π/2].
+        assert!((-halve_pi_f16..=halve_pi_f16).contains(&halve_pi_f16.sin().asin()));
+        assert!((-halve_pi_f32..=halve_pi_f32).contains(&halve_pi_f32.sin().asin()));
+        assert!((-halve_pi_f64..=halve_pi_f64).contains(&halve_pi_f64.sin().asin()));
+        // cos() should be clamped to [-1, 1] so acos() can never return NaN.
+        // acos() should itself be clamped to [0, π].
+        assert!((0.0..=pi_f16).contains(&pi_f16.cos().acos()));
+        assert!((0.0..=pi_f32).contains(&pi_f32.cos().acos()));
+        assert!((0.0..=pi_f64).contains(&pi_f64.cos().acos()));
     }
 
     assert_eq!(0f16.cos(), 1f16);
