@@ -381,7 +381,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
 
-                let drop_impl = self.drop_impl_of_ty(hir_id);
+                let drop_impl = self.drop_impl_of_ty(id);
 
                 hir::ItemKind::Struct(ident, generics, struct_def, drop_impl)
             }
@@ -393,7 +393,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| this.lower_variant_data(hir_id, i, vdata),
                 );
 
-                let drop_impl = self.drop_impl_of_ty(hir_id);
+                let drop_impl = self.drop_impl_of_ty(id);
 
                 hir::ItemKind::Union(ident, generics, vdata, drop_impl)
             }
@@ -2183,36 +2183,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn drop_impl_of_ty(&self, hir_id: HirId) -> DropImpl {
-        let Some(drop) = self.tcx.lang_items().get(LangItem::Drop) else {
-            return DropImpl::HasNoImpl;
-        };
+    fn drop_impl_of_ty(&self, id: NodeId) -> DropImpl {
+        // let impl_constness = self
+        //     .tcx
+        //     .resolutions(())
+        //     .trait_impls
+        //     .get(&drop)
+        //     .map(Vec::as_slice)
+        //     .unwrap_or_default()
+        //     .iter()
+        //     .copied()
+        //     .find_map(|trait_impl_id| {
+        //         let trait_impl_id = self.tcx.local_def_id_to_hir_id(trait_impl_id);
+        //         let impl_ = self.tcx.hir_node(trait_impl_id).expect_item().expect_impl();
 
-        let impl_constness = self
-            .tcx
-            .resolutions(())
-            .trait_impls
-            .get(&drop)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
-            .iter()
-            .copied()
-            .find_map(|trait_impl_id| {
-                let trait_impl_id = self.tcx.local_def_id_to_hir_id(trait_impl_id);
-                let impl_ = self.tcx.hir_node(trait_impl_id).expect_item().expect_impl();
-
-                if let rustc_hir::TyKind::Path(path) = impl_.self_ty.kind
-                    && let rustc_hir::QPath::Resolved(None, path) = path
-                    && path.res.def_id() == hir_id.owner.to_def_id()
-                {
-                    Some(impl_.constness)
-                } else {
-                    None
-                }
-            });
-
-        match impl_constness {
-            Some(constness) => DropImpl::HasImpl(constness),
+        //         if let rustc_hir::TyKind::Path(path) = impl_.self_ty.kind
+        //             && let rustc_hir::QPath::Resolved(None, path) = path
+        //             && path.res.def_id() == hir_id.owner.to_def_id()
+        //         {
+        //             Some(impl_.constness)
+        //         } else {
+        //             None
+        //         }
+        //     });
+        match self.resolver.drop_impls.get(&id) {
+            Some(impl_id) => {
+                let constness =
+                    self.tcx.hir_node_by_def_id(*impl_id).expect_item().expect_impl().constness;
+                DropImpl::HasImpl(constness)
+            }
             None => DropImpl::HasNoImpl,
         }
     }

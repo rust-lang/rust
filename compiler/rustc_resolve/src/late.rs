@@ -27,6 +27,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, Diagnostic, ErrorGuaranteed, IntoDiagArg, MultiSpan,
     Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
+use rustc_expand::base::ResolverExpand;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -43,6 +44,7 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, bug, kw, respa
 use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
+use tracing::instrument::WithSubscriber;
 use tracing::{debug, instrument, trace};
 
 use crate::{
@@ -3775,11 +3777,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                             .entry(trait_id)
                                             .or_default()
                                             .push(item_def_id);
+
                                     }
 
-                                    let item_def_id = item_def_id.to_def_id();
+                                    let item_def_id_ = item_def_id.to_def_id();
                                     let res = Res::SelfTyAlias {
-                                        alias_to: item_def_id,
+                                        alias_to: item_def_id_,
                                         is_trait_impl: trait_id.is_some(),
                                     };
                                     this.with_self_rib(res, |this| {
@@ -3794,7 +3797,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
-                                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                                            if let Some(drop_trait) = this.r.lang_items.drop_trait() && trait_id == Some(drop_trait) {
+                                                this.r.drop_impls.insert(self_type.id, item_def_id);
+                                            }
+
+                                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id_), |this| {
                                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
