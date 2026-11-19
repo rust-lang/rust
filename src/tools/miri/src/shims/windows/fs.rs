@@ -658,9 +658,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            ecx.write_int(0, &io_status_info)?;
+                            // Native testing indicates that `io_status_block` is not written here.
                             let status = e.into_ntstatus();
-                            ecx.write_int(status, &io_status)?;
                             ecx.write_int(status, &dest)
                         }
                 }}
@@ -758,9 +757,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            ecx.write_int(0, &io_status_info)?;
+                            // Native testing indicates that `io_status_block` is not written here.
                             let status = e.into_ntstatus();
-                            ecx.write_int(status, &io_status)?;
                             ecx.write_int(status, &dest)
                         }
                 }}
