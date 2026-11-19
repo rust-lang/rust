@@ -569,7 +569,7 @@ impl SingleAttributeParser for LangParser {
         let allowed_targets: &[_] = &[Allow(lang_item.target())];
         cx.check_target(&format!(" = \"{name}\""), &AllowedTargets::AllowList(allowed_targets));
 
-        Some(AttributeKind::Lang(lang_item))
+        Some(AttributeKind::Lang(lang_item, cx.attr_span))
     }
 }
 
@@ -594,7 +594,7 @@ impl NoArgsAttributeParser for PanicHandlerParser {
     const PATH: &[Symbol] = &[sym::panic_handler];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Lang(LangItem::PanicImpl);
+    const CREATE: fn(Span) -> AttributeKind = |s| AttributeKind::Lang(LangItem::PanicImpl, s);
 }
 
 pub(crate) struct RustcNounwindParser;

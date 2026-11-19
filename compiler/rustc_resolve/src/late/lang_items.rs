@@ -9,7 +9,8 @@
 
 use rustc_ast as ast;
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{GenericRequirement, LangItem, LanguageItems};
+use rustc_attr_ir::{AttributeKind, GenericRequirement, LangItem, LanguageItems};
+use rustc_attr_parsing::AttributeParser;
 use rustc_crate_store::ExternCrate;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::TyCtxt;
@@ -34,50 +35,39 @@ impl<'tcx> LateResolutionVisitor<'_, '_, '_, 'tcx> {
         item_span: Span,
         generics: Option<&ast::Generics>,
     ) {
-        let attrs = attrs.iter().find_map(|attr| {
-            Some(match attr {
-                _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
-                _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
-                _ => return None,
+        if let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::Lang(lang_item, attr_span))) =
+            AttributeParser::parse_limited(self.r.tcx.sess, attrs, &|attr| {
+                attr.has_any_name(&[sym::lang, sym::panic_handler])
             })
-        });
-        if let Some((name, attr_span)) = attrs {
-            match LangItem::from_name(name) {
-                // Known lang item
-                Some(lang_item) => {
-                    if actual_target != lang_item.target() {
-                        // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
-                        // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
-                        if !(lang_item.is_weak()
-                            && actual_target == Target::Fn
-                            && lang_item.target() == Target::ForeignFn
-                            && matches!(lang_item, LangItem::PanicImpl))
-                        {
-                            self.r.tcx
-                            .dcx()
-                            .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
-                            return;
-                        }
-                    }
-                    // Weak lang items are handled separately
-                    if lang_item.is_weak() && actual_target == Target::ForeignFn {
-                        self.r.lang_items.missing.push(lang_item);
-                    } else {
-                        // Weak only lang items are always handled here
-                        self.collect_item_extended(
-                            lang_item,
-                            def_id,
-                            item_span,
-                            attr_span,
-                            generics,
-                            actual_target,
-                        );
-                    }
+        {
+            if actual_target != lang_item.target() {
+                // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
+                // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
+                if !(lang_item.is_weak()
+                    && actual_target == Target::Fn
+                    && lang_item.target() == Target::ForeignFn
+                    && matches!(lang_item, LangItem::PanicImpl))
+                {
+                    self.r.tcx
+                        .dcx()
+                        .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
+                    return;
                 }
-                // Unknown lang item.
-                _ => {
-                    self.r.tcx.dcx().delayed_bug("unknown lang item");
-                }
+            }
+
+            // Weak lang items are handled separately
+            if lang_item.is_weak() && actual_target == Target::ForeignFn {
+                self.r.lang_items.missing.push(lang_item);
+            } else {
+                // Weak only lang items are always handled here
+                self.collect_item_extended(
+                    lang_item,
+                    def_id,
+                    item_span,
+                    attr_span,
+                    generics,
+                    actual_target,
+                );
             }
         }
     }

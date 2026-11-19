@@ -390,7 +390,7 @@ impl NoArgsAttributeParser for TrackCallerParser {
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
-                if let Some(item) = find_attr!(cx.parsed_attrs, Lang(item) => item)
+                if let Some(item) = find_attr!(cx.parsed_attrs, Lang(item, _) => item)
                     && item.is_weak()
                 {
                     cx.emit_err(TrackCallerOnLangItem {
