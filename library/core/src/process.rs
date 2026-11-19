@@ -38,8 +38,6 @@
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(abort_immediate)]
-///
 /// use core::process;
 ///
 /// fn main() {
@@ -55,8 +53,6 @@
 /// run on the example below:
 ///
 /// ```no_run
-/// #![feature(abort_immediate)]
-///
 /// use core::process;
 ///
 /// struct HasDrop;
@@ -74,8 +70,8 @@
 /// }
 /// ```
 ///
-#[unstable(feature = "abort_immediate", issue = "154601")]
-#[rustc_const_unstable(feature = "abort_immediate", issue = "154601")]
+#[stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
 #[cold]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
