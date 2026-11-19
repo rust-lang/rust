@@ -36,8 +36,12 @@ pub mod process;
 pub mod raw;
 pub mod thread;
 
-#[unstable(feature = "codeview_annotation", issue = "163964")]
 #[cfg(windows)]
+#[unstable(feature = "windows_fastfail", issue = "none")]
+pub use core::os::windows::__fastfail;
+#[cfg(windows)]
+#[cfg(windows)]
+#[unstable(feature = "codeview_annotation", issue = "163964")]
 pub use core::os::windows::{CodeViewAnnotationArgs, codeview_annotation};
 
 /// A prelude for conveniently writing platform-specific code.

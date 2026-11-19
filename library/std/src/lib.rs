@@ -315,6 +315,9 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![cfg_attr(windows, feature(core_os_windows))]
+#![cfg_attr(windows, feature(windows_fastfail))]
+#![feature(abort_immediate)]
 #![feature(borrowed_buf_init)]
 #![feature(byte_str)]
 #![feature(byte_str_internals)]
@@ -331,6 +334,7 @@
 #![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_internals)]
+#![feature(core_os)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
 #![feature(duration_constants)]

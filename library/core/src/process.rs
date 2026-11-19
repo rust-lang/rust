@@ -77,11 +77,30 @@
 #[unstable(feature = "abort_immediate", issue = "154601")]
 #[rustc_const_unstable(feature = "abort_immediate", issue = "154601")]
 #[cold]
+#[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
 #[doc(alias = "trap")]
 pub const fn crash() -> ! {
-    crate::intrinsics::abort_immediate()
+    cfg_select! {
+        windows => {
+            #[inline]
+            #[cfg_attr(miri, track_caller)]
+            fn fastfail_fatal_app_exit() -> ! {
+                /// From `winnt.h`
+                const FAST_FAIL_FATAL_APP_EXIT: crate::ffi::c_uint = 7;
+
+                crate::os::windows::__fastfail(FAST_FAIL_FATAL_APP_EXIT)
+            }
+
+            crate::intrinsics::const_eval_select(
+                (),
+                crate::intrinsics::abort_immediate,
+                fastfail_fatal_app_exit,
+            )
+        }
+        _ => crate::intrinsics::abort_immediate(),
+    }
 }
 
 /// Triggers a debugger breakpoint, pausing execution if possible.
