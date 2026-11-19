@@ -1,4 +1,4 @@
-error: unused attribute
+error: duplicate `crate_name` attributes
   --> $DIR/unused-attr-duplicate.rs:14:1
    |
 LL | #![crate_name = "unused_attr_duplicate2"]
@@ -17,7 +17,7 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/unused-attr-duplicate.rs:69:8
+  --> $DIR/unused-attr-duplicate.rs:74:8
    |
 LL | #[repr(C)]
    |        ^
@@ -27,7 +27,7 @@ LL | #[repr(C)]
    = note: for consistency, only specify the representation once
    = note: requested on the command line with `-W repeated-reprs`
 
-error: unused attribute
+error: duplicate `crate_name` attributes
   --> $DIR/unused-attr-duplicate.rs:14:1
    |
 LL | #![crate_name = "unused_attr_duplicate2"]
@@ -41,7 +41,7 @@ LL | #![crate_name = "unused_attr_duplicate"]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: unused attribute
+error: duplicate `recursion_limit` attributes
   --> $DIR/unused-attr-duplicate.rs:21:1
    |
 LL | #![recursion_limit = "256"]
@@ -54,82 +54,82 @@ LL | #![recursion_limit = "128"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:24:1
+error: duplicate `type_length_limit` attributes
+  --> $DIR/unused-attr-duplicate.rs:25:1
    |
 LL | #![type_length_limit = "1"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:23:1
+  --> $DIR/unused-attr-duplicate.rs:24:1
    |
 LL | #![type_length_limit = "1048576"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:27:1
+error: duplicate `no_std` attributes
+  --> $DIR/unused-attr-duplicate.rs:29:1
    |
 LL | #![no_std]
    | ^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:26:1
+  --> $DIR/unused-attr-duplicate.rs:28:1
    |
 LL | #![no_std]
    | ^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:29:1
+error: duplicate `no_implicit_prelude` attributes
+  --> $DIR/unused-attr-duplicate.rs:31:1
    |
 LL | #![no_implicit_prelude]
    | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:28:1
+  --> $DIR/unused-attr-duplicate.rs:30:1
    |
 LL | #![no_implicit_prelude]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:31:1
+error: duplicate `windows_subsystem` attributes
+  --> $DIR/unused-attr-duplicate.rs:33:1
    |
 LL | #![windows_subsystem = "windows"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:30:1
+  --> $DIR/unused-attr-duplicate.rs:32:1
    |
 LL | #![windows_subsystem = "console"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:34:1
+error: duplicate `no_builtins` attributes
+  --> $DIR/unused-attr-duplicate.rs:37:1
    |
 LL | #![no_builtins]
    | ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:33:1
+  --> $DIR/unused-attr-duplicate.rs:36:1
    |
 LL | #![no_builtins]
    | ^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:39:1
+error: duplicate `no_link` attributes
+  --> $DIR/unused-attr-duplicate.rs:42:1
    |
 LL | #[no_link]
    | ^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:36:1
+  --> $DIR/unused-attr-duplicate.rs:39:1
    |
 LL | #[no_link]
    | ^^^^^^^^^^
 
 error: use of deprecated `no_link` attribute
-  --> $DIR/unused-attr-duplicate.rs:36:1
+  --> $DIR/unused-attr-duplicate.rs:39:1
    |
 LL | #[no_link]
    | ^^^^^^^^^^
@@ -138,200 +138,200 @@ LL | #[no_link]
    = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
    = note: `#[deny(no_link_attributes)]` (part of `#[deny(future_incompatible)]`) on by default
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:43:1
+error: duplicate `macro_use` attributes
+  --> $DIR/unused-attr-duplicate.rs:46:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:42:1
+  --> $DIR/unused-attr-duplicate.rs:45:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:46:5
+error: duplicate `macro_export` attributes
+  --> $DIR/unused-attr-duplicate.rs:49:5
    |
 LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:45:5
+  --> $DIR/unused-attr-duplicate.rs:48:5
    |
 LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:53:1
+error: duplicate `path` attributes
+  --> $DIR/unused-attr-duplicate.rs:56:1
    |
 LL | #[path = "bar.rs"]
    | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:52:1
+  --> $DIR/unused-attr-duplicate.rs:55:1
    |
 LL | #[path = "auxiliary/lint_unused_extern_crate.rs"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:59:1
+error: duplicate `ignore` attributes
+  --> $DIR/unused-attr-duplicate.rs:62:1
    |
 LL | #[ignore = "some text"]
    | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:58:1
+  --> $DIR/unused-attr-duplicate.rs:61:1
    |
 LL | #[ignore]
    | ^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:61:1
+error: duplicate `should_panic` attributes
+  --> $DIR/unused-attr-duplicate.rs:65:1
    |
 LL | #[should_panic(expected = "values don't match")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:60:1
+  --> $DIR/unused-attr-duplicate.rs:64:1
    |
 LL | #[should_panic]
    | ^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:66:1
+error: duplicate `must_use` attributes
+  --> $DIR/unused-attr-duplicate.rs:71:1
    |
 LL | #[must_use = "some message"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:65:1
+  --> $DIR/unused-attr-duplicate.rs:70:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:72:1
+error: duplicate `non_exhaustive` attributes
+  --> $DIR/unused-attr-duplicate.rs:77:1
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:71:1
+  --> $DIR/unused-attr-duplicate.rs:76:1
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:78:1
+error: duplicate `automatically_derived` attributes
+  --> $DIR/unused-attr-duplicate.rs:83:1
    |
 LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:77:1
+  --> $DIR/unused-attr-duplicate.rs:82:1
    |
 LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:82:1
+error: duplicate `inline` attributes
+  --> $DIR/unused-attr-duplicate.rs:88:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:81:1
+  --> $DIR/unused-attr-duplicate.rs:87:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:85:1
+error: duplicate `cold` attributes
+  --> $DIR/unused-attr-duplicate.rs:91:1
    |
 LL | #[cold]
    | ^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:84:1
+  --> $DIR/unused-attr-duplicate.rs:90:1
    |
 LL | #[cold]
    | ^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:87:1
+error: duplicate `track_caller` attributes
+  --> $DIR/unused-attr-duplicate.rs:93:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:86:1
+  --> $DIR/unused-attr-duplicate.rs:92:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:101:1
+error: duplicate `export_name` attributes
+  --> $DIR/unused-attr-duplicate.rs:108:1
    |
 LL | #[export_name = "exported_symbol_name2"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:100:1
+  --> $DIR/unused-attr-duplicate.rs:107:1
    |
 LL | #[export_name = "exported_symbol_name"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:106:1
+error: duplicate `no_mangle` attributes
+  --> $DIR/unused-attr-duplicate.rs:114:1
    |
 LL | #[no_mangle]
    | ^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:105:1
+  --> $DIR/unused-attr-duplicate.rs:113:1
    |
 LL | #[no_mangle]
    | ^^^^^^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:110:1
+error: duplicate `used` attributes
+  --> $DIR/unused-attr-duplicate.rs:118:1
    |
 LL | #[used]
    | ^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:109:1
+  --> $DIR/unused-attr-duplicate.rs:117:1
    |
 LL | #[used]
    | ^^^^^^^
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:114:1
+error: duplicate `link_section` attributes
+  --> $DIR/unused-attr-duplicate.rs:122:1
    |
 LL | #[link_section = "__DATA,__mod_init_func"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:113:1
+  --> $DIR/unused-attr-duplicate.rs:121:1
    |
 LL | #[link_section = "__TEXT,__text"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:95:5
+error: duplicate `link_name` attributes
+  --> $DIR/unused-attr-duplicate.rs:101:5
    |
 LL |     #[link_name = "rust_dbg_extern_identity_u32"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:94:5
+  --> $DIR/unused-attr-duplicate.rs:100:5
    |
 LL |     #[link_name = "this_does_not_exist"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -341,7 +341,7 @@ error: aborting due to 26 previous errors; 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 error: use of deprecated `no_link` attribute
-  --> $DIR/unused-attr-duplicate.rs:36:1
+  --> $DIR/unused-attr-duplicate.rs:39:1
    |
 LL | #[no_link]
    | ^^^^^^^^^^

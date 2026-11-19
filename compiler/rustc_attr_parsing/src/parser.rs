@@ -15,9 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{
-    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
-};
+use rustc_ast::{AttrArgs, Expr, ExprKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diag, PResult};
@@ -424,23 +422,7 @@ fn expr_to_lit<'sess>(
                     Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
                 }
             }
-            Err(err) => {
-                let err = create_lit_error(psess, err, token_lit, expr.span);
-                if matches!(
-                    should_emit,
-                    ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
-                ) {
-                    Err(err)
-                } else {
-                    let lit = MetaItemLit {
-                        symbol: token_lit.symbol,
-                        suffix: token_lit.suffix,
-                        kind: LitKind::Err(err.emit_err()),
-                        span: expr.span,
-                    };
-                    Ok(Some(lit))
-                }
-            }
+            Err(err) => Err(create_lit_error(psess, err, token_lit, expr.span)),
         }
     } else {
         if matches!(should_emit, ShouldEmit::Nothing) || matches!(expr.kind, ExprKind::Err(_)) {

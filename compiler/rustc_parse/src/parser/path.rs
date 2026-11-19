@@ -74,8 +74,9 @@ impl<'a> Parser<'a> {
     /// `<T as U>::F::a<S>` (without disambiguator)
     /// `<T as U>::F::a::<S>` (with disambiguator)
     pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (Box<QSelf>, Path)> {
-        let lo = self.prev_token.span;
+        let mut qpath_span = Some(self.prev_token.span);
         let ty = self.parse_ty()?;
+        chain_span(&mut qpath_span, ty.span);
 
         // `path` will contain the prefix of the path up to the `>`,
         // if any (e.g., `U` in the `<T as U>::*` examples
@@ -83,16 +84,18 @@ impl<'a> Parser<'a> {
         // span in the case of something like `<T>::Bar`.
         let (mut path, path_span);
         if self.eat_keyword(exp!(As)) {
-            let path_lo = self.token.span;
+            chain_span(&mut qpath_span, self.prev_token.span);
             path = self.parse_path(PathStyle::Type)?;
-            path_span = path_lo.to(self.prev_token.span);
+            path_span = path.span;
+            chain_span(&mut qpath_span, path_span);
         } else {
-            path_span = self.token.span.to(self.token.span);
+            path_span = self.token.span; // `>`
             path = ast::Path { segments: ThinVec::new(), span: path_span };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
         self.expect(exp!(Gt))?;
+        chain_span(&mut qpath_span, self.prev_token.span);
         if self.unmatched_angle_bracket_count > 0 {
             self.unmatched_angle_bracket_count -= 1;
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
@@ -105,10 +108,16 @@ impl<'a> Parser<'a> {
 
         let qself = Box::new(QSelf { ty, path_span, position: path.segments.len() });
         if !is_import_coupler {
-            self.parse_path_segments(&mut path.segments, style, None)?;
+            chain_span(&mut qpath_span, self.prev_token.span); // `::`
+            self.parse_path_segments_with_path_span(
+                &mut path.segments,
+                style,
+                None,
+                &mut qpath_span,
+            )?;
         }
 
-        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_token.span) }))
+        Ok((qself, Path { segments: path.segments, span: qpath_span.unwrap() }))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.

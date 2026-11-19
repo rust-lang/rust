@@ -1,4 +1,4 @@
-error: unused attribute
+error: duplicate `no_crate_inject` attributes
   --> $DIR/duplicated-attr.rs:4:13
    |
 LL | #![doc(test(no_crate_inject))]

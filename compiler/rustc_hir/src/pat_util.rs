@@ -3,8 +3,7 @@ use std::iter::Enumerate;
 use rustc_hir_id::HirId;
 use rustc_span::{Ident, Span};
 
-use crate::def::{CtorOf, DefKind, Res};
-use crate::def_id::{DefId, DefIdSet};
+use crate::QPath;
 use crate::hir::{self, BindingMode, ByRef, PatKind};
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,
@@ -100,31 +99,20 @@ impl hir::Pat<'_> {
         }
     }
 
-    /// Returns variants that are necessary to exist for the pattern to match.
-    pub fn necessary_variants(&self) -> Vec<DefId> {
-        let mut variants = vec![];
+    /// Call 'f' on every variant which is necessary for the pattern to match
+    pub fn each_necessary_variant(&self, mut f: impl FnMut(&QPath<'_>, HirId)) {
         self.walk(|p| match &p.kind {
             PatKind::Or(_) => false,
-            PatKind::Expr(hir::PatExpr {
-                kind: hir::PatExprKind::Path(hir::QPath::Resolved(_, path)),
-                ..
-            })
-            | PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..)
-            | PatKind::Struct(hir::QPath::Resolved(_, path), ..) => {
-                if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =
-                    path.res
-                {
-                    variants.push(id);
-                }
+            PatKind::Expr(hir::PatExpr { hir_id, kind: hir::PatExprKind::Path(qpath), .. }) => {
+                f(qpath, *hir_id);
+                true
+            }
+            PatKind::TupleStruct(qpath, ..) | PatKind::Struct(qpath, ..) => {
+                f(qpath, p.hir_id);
                 true
             }
             _ => true,
         });
-        // We remove duplicates by inserting into a hash set to avoid re-ordering
-        // the bounds
-        let mut duplicates = DefIdSet::default();
-        variants.retain(|def_id| duplicates.insert(*def_id));
-        variants
     }
 
     /// Checks if the pattern contains any `ref` or `ref mut` bindings, and if

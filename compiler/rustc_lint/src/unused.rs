@@ -943,6 +943,15 @@ impl EarlyLintPass for UnusedParens {
                     // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
                     || cx.builder.features().pin_ergonomics() =>
             {
+                // Avoid linting on patterns like `&(x @ _)`, as without parens `&x @ _`
+                // it creates confusion and seems like `x` is binding by reference, #165636.
+                if let Paren(ref pat) = p.kind
+                    && *pinned == Pinnedness::Not
+                    && let Ident(_, _, Some(..)) = pat.kind
+                {
+                    return;
+                }
+                // Check other cases.
                 self.check_unused_parens_pat(
                     cx,
                     p,
