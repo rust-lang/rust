@@ -204,11 +204,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         // Render notable-traits.js used for all methods in this module.
         let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
         if !types_with_notable_traits.is_empty() || has_notable_trait_badges {
-            write!(
-                buf,
-                r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-                notable_traits_json(types_with_notable_traits.iter(), item, cx),
-            )?;
+            *cx.notable_traits_data.borrow_mut() =
+                notable_traits_json(types_with_notable_traits.iter(), item, cx);
             types_with_notable_traits.clear();
         }
         Ok(())

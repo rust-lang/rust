@@ -9,14 +9,14 @@ impl SomeTrait for Positive {}
 pub struct Negative;
 impl !SomeTrait for Negative {}
 
-//@ has doc_notable_trait_negative/fn.positive.html
-//@ snapshot positive - '//script[@id="notable-traits-data"]'
+//@ has doc_notable_trait_negative/fn.positive.notable-traits-data.js
+//@ snapshot positive -
 pub fn positive() -> Positive {
     todo!()
 }
 
 //@ has doc_notable_trait_negative/fn.negative.html
-//@ count - '//script[@id="notable-traits-data"]' 0
+//@ !has doc_notable_trait_negative/fn.negative.notable-traits-data.js
 pub fn negative() -> Negative {
     &[]
 }

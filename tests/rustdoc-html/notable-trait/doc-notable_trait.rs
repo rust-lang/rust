@@ -10,7 +10,8 @@ impl<T: SomeTrait> SomeTrait for Wrapper<T> {}
 pub trait SomeTrait {
     //@ has doc_notable_trait/trait.SomeTrait.html
     //@ has - '//span[@class="tooltip"]/@data-notable-ty' 'Wrapper<Self>'
-    //@ snapshot wrap-me - '//script[@id="notable-traits-data"]'
+    //@ has doc_notable_trait/trait.SomeTrait.notable-traits-data.js
+    //@ snapshot wrap-me -
     fn wrap_me(self) -> Wrapper<Self> where Self: Sized {
         Wrapper {
             inner: self,
@@ -24,7 +25,8 @@ impl SomeTrait for SomeStruct {}
 impl SomeStruct {
     //@ has doc_notable_trait/struct.SomeStruct.html
     //@ has - '//span[@class="tooltip"]/@data-notable-ty' 'SomeStruct'
-    //@ snapshot some-struct-new - '//script[@id="notable-traits-data"]'
+    //@ has doc_notable_trait/struct.SomeStruct.notable-traits-data.js
+    //@ snapshot some-struct-new -
     pub fn new() -> SomeStruct {
         SomeStruct
     }
@@ -32,7 +34,8 @@ impl SomeStruct {
 
 //@ has doc_notable_trait/fn.bare_fn.html
 //@ has - '//span[@class="tooltip"]/@data-notable-ty' 'SomeStruct'
-//@ snapshot bare-fn - '//script[@id="notable-traits-data"]'
+    //@ has doc_notable_trait/fn.bare_fn.notable-traits-data.js
+//@ snapshot bare-fn -
 pub fn bare_fn() -> SomeStruct {
     SomeStruct
 }

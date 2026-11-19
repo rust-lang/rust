@@ -17,6 +17,7 @@ use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Symbol};
 use serde::ser::SerializeSeq;
 use tracing::info;
 
+use super::ordered_json::{EscapedJson, OrderedJson};
 use super::print_item::{full_path, print_item, print_item_path, print_ty_path};
 use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
 use super::{AllTypes, StylePath};
@@ -66,6 +67,9 @@ pub(crate) struct Context<'tcx> {
     pub(crate) shared: SharedContext<'tcx>,
     /// Collection of all types with notable traits referenced in the current module.
     pub(crate) types_with_notable_traits: RefCell<FxIndexSet<clean::Type>>,
+    /// Notable traits information to be put into the notable trait data JS file used by the
+    /// front-end.
+    pub(crate) notable_traits_data: RefCell<OrderedJson>,
     /// Contains information that needs to be saved and reset after rendering an item which is
     /// not a module.
     pub(crate) info: ContextInfo,
@@ -210,6 +214,17 @@ impl<'tcx> Context<'tcx> {
     /// folder in terms of a relative URL.
     pub(super) fn root_path(&self) -> String {
         "../".repeat(self.current.len())
+    }
+
+    fn write_notable_traits_data(&self, item_name: &str) -> Result<(), Error> {
+        let json = std::mem::take(&mut *self.notable_traits_data.borrow_mut());
+        if json.is_empty() {
+            return Ok(());
+        }
+        let js_dst = self.dst.join(format!("{item_name}.notable-traits-data.js"));
+        let v = format!("window.NOTABLE_TRAITS = JSON.parse('{}');", EscapedJson::from(json));
+        self.shared.fs.write(js_dst, v)?;
+        Ok(())
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
@@ -622,6 +637,7 @@ impl<'tcx> Context<'tcx> {
             deref_id_map: Default::default(),
             shared: scx,
             types_with_notable_traits: RefCell::new(FxIndexSet::default()),
+            notable_traits_data: RefCell::new(Default::default()),
             info: ContextInfo::new(include_sources),
         };
 
@@ -784,6 +800,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(&file_name);
             self.shared.fs.write(joint_dst, buf)?;
+            self.write_notable_traits_data(file_name.strip_suffix(".html").unwrap_or(&file_name))?;
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
             let item_type = item.type_();

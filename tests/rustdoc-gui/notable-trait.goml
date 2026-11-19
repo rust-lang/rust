@@ -39,6 +39,7 @@ define-function: (
         assert-count: ("//*[@class='tooltip popover']", 0)
         click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
         assert-count: ("//*[@class='tooltip popover']", 1)
+        wait-for: ".tooltip.popover .content"
         wait-for-position: (
             "//*[@class='tooltip popover']",
             {"x": |popover_x|}
