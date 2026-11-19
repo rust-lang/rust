@@ -399,20 +399,28 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
             // to avoid capturing the local variable's place.
             let source_phantom_deref_place =
                 source_place.project_deeper(&[PlaceElem::PhantomDeref], self.tcx);
-            if target_args.regions().count() != 1 {
-                bug!(
-                    "ADT containing no '&mut T' or 'T: Reborrow' fields must only have one lifetime to implement Reborrow"
-                );
+            // With no field to reborrow we don't know which of the target's lifetimes
+            // the borrow should be tied to, so borrow the whole source under each of them.
+            let mut target_regions: SmallVec<[RegionVid; 1]> = SmallVec::new();
+            for region in target_args.regions() {
+                let region = region.as_var();
+                if !target_regions.contains(&region) {
+                    target_regions.push(region);
+                }
             }
-            let target_region = target_args.regions().next().unwrap();
-            v.push(BorrowData {
-                kind,
-                region: target_region.as_var(),
-                reserve_location: location,
-                activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: source_phantom_deref_place,
-                assigned_place: target_place,
-            });
+            if target_regions.is_empty() {
+                bug!("Reborrow target type has no lifetime arguments");
+            }
+            for region in target_regions {
+                v.push(BorrowData {
+                    kind,
+                    region,
+                    reserve_location: location,
+                    activation_location: TwoPhaseActivation::NotTwoPhase,
+                    borrowed_place: source_phantom_deref_place,
+                    assigned_place: target_place,
+                });
+            }
         }
     }
 }
