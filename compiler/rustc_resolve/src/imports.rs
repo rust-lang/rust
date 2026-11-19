@@ -1685,9 +1685,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 diagnostic: diagnostic.into(),
             });
         } else if ns == TypeNS {
-            let def_id = decl.res().def_id();
-            let parent = if !def_id.is_crate_root() { self.def_span(def_id) } else { DUMMY_SP };
-            let descr = self.tcx().def_descr(def_id);
+            let res = decl.res();
+            let (parent, descr) = match res.opt_def_id() {
+                Some(def_id) => {
+                    let parent =
+                        if !def_id.is_crate_root() { self.def_span(def_id) } else { DUMMY_SP };
+                    (Some(parent), self.tcx().def_descr(def_id))
+                }
+                None => (None, res.descr()),
+            };
 
             if crate_private_reexport {
                 self.dcx().emit_err(CannotBeReexportedCratePublicNS {

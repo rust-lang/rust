@@ -837,7 +837,7 @@ pub(crate) struct CannotBeReexportedPrivateNS {
     pub(crate) span: Span,
     pub(crate) ident: Ident,
     #[note("consider declaring {$descr} `{$ident}` with `pub`")]
-    pub(crate) parent: Span,
+    pub(crate) parent: Option<Span>,
     pub(crate) descr: &'static str,
 }
 
@@ -849,7 +849,7 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) span: Span,
     pub(crate) ident: Ident,
     #[note("consider declaring {$descr} `{$ident}` with `pub`")]
-    pub(crate) parent: Span,
+    pub(crate) parent: Option<Span>,
     pub(crate) descr: &'static str,
 }
 
