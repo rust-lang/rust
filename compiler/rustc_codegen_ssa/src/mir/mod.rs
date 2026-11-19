@@ -281,10 +281,16 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
+    // `traversal_order` initially contains every block reachable through `mono_successors`. This
+    // is an overestimate of the blocks that are actually reachable in practice.
     let mut traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
 
     // Filter out blocks that won't be codegen'd because of nop_landing_pads optimization.
     // FIXME: We might want to integrate the nop_landing_pads analysis into mono reachability.
+    //
+    // Note: the main loop below would also filter these out via the `CachedLlbb::None` handling.
+    // We filter here in advance because `non_ssa_locals` benefits from a smaller
+    // `traversal_order`.
     {
         let mut reachable = DenseBitSet::new_empty(mir.basic_blocks.len());
         let mut to_visit = vec![mir::START_BLOCK];
@@ -299,7 +305,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator().unwind()
                 && fx.nop_landing_pads.contains(*target)
             {
-                // This edge will not be followed when we actually codegen, so skip generating it here.
+                // This edge will not be followed when we codegen, so skip generating it here.
                 //
                 // It's guaranteed that the cleanup block (`target`) occurs only in
                 // UnwindAction::Cleanup(...) -- i.e., we can't incorrectly filter too much here --
@@ -310,6 +316,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         }
 
+        // At this point `reachable` is a subset of `traversal_order`, and we can filter
+        // `traversal_order` further using `reachable`. After the filtering the two contain
+        // identical basic blocks (`traversal_order` being an ordered list, `reachable` being a
+        // bitset).
         traversal_order.retain(|bb| reachable.contains(*bb));
     }
 
@@ -369,20 +379,63 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
+    // Despite the filtering above, `traversal_order` is still an overestimate of the reachable
+    // blocks, and codegen ignores some edges. An incomplete list of examples:
+    // - For calls that can't unwind, the unwind edge is ignored.
+    // - For drops of types with no drop glue, the unwind edge is ignored.
+    // - For two-target `SwitchInt`s with an unreachable `otherwise`, the `otherwise` block is
+    //   ignored.
+    // - Any blocks that are only reachable via blocks reachable from these ignored edges will also
+    //   be skipped.
+    //
+    // Therefore, if we reach a block that is still `CachedLlbb::None` it has no known predecessors
+    // and we don't need to generate anything for it. However, in very rare cases we can have
+    // irreducible control flow such that we find out a block does have predecessors after we dealt
+    // with it. So we have this outer loop to catch such cases, and iterate until we reach a
+    // fixpoint.
     let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
-    // Codegen the body of each reachable block using our reverse postorder list.
-    for bb in traversal_order {
-        fx.codegen_block(bb);
-        unreached_blocks.remove(bb);
+    loop {
+        let mut did_something = false;
+        for &bb in traversal_order.iter() {
+            match fx.cached_llbbs[bb] {
+                // The block has no predecessors so far: skip.
+                CachedLlbb::None => {}
+
+                // The block has already been codegen'd as part of its predecessor due to the
+                // successor-merging: skip.
+                CachedLlbb::Skip => {}
+
+                // The block has at least one predecessor.
+                CachedLlbb::Some(llbb) => {
+                    if unreached_blocks.contains(bb) {
+                        // We haven't already codegen'd this block.
+                        fx.codegen_block(bb, llbb);
+                        unreached_blocks.remove(bb);
+                        did_something = true;
+                    }
+                }
+            }
+        }
+        if !did_something {
+            break;
+        }
     }
 
-    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
-    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
-    // simplification in SwitchInt lowering sometimes misses cases that
-    // mono_reachable_reverse_postorder manages to figure out.
-    // The solution is to do something like post-mono GVN. But for now we have this hack.
+    // Furthermore, `unreached_blocks` also contains some blocks that are *referenced* but are
+    // *unreachable*. For these we need to generate a block but it can simply contain
+    // `unreachable`.
     for bb in unreached_blocks.iter() {
-        fx.codegen_block_as_unreachable(bb);
+        match fx.cached_llbbs[bb] {
+            CachedLlbb::None | CachedLlbb::Skip => {}
+            CachedLlbb::Some(llbb) => {
+                // FIXME: These unreachable blocks are occasionally targets for a SwitchInt
+                // terminator, but the reimplementation of the mono-reachable simplification in
+                // SwitchInt lowering sometimes misses cases that
+                // mono_reachable_reverse_postorder manages to figure out. The solution is to
+                // do something like post-mono GVN. But for now we have this hack.
+                fx.codegen_block_as_unreachable(llbb);
+            }
+        }
     }
 }
 
