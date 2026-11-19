@@ -11,19 +11,13 @@ help: the nightly-only, unstable trait `StaticAllocator` is not implemented for 
    |
 LL | struct UntrustedAlloc;
    | ^^^^^^^^^^^^^^^^^^^^^
-help: the following other types implement trait `StaticAllocator`
-  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
-   |
-   = note: `&A`
-  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
-   |
-   = note: `&mut A`
-  --> $SRC_DIR/std/src/alloc.rs:LL:COL
-   |
-   = note: `System`
-  --> $SRC_DIR/alloc/src/alloc.rs:LL:COL
-   |
-   = note: `std::alloc::Global`
+   = help: the following other types implement trait `StaticAllocator`:
+             &A
+             &mut A
+             Box<T, A>
+             Pin<P>
+             System
+             std::alloc::Global
 note: required by a bound in `Box::<T, A>::pin_in`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 

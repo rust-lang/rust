@@ -840,6 +840,10 @@ where
 ///
 /// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 /// It may be changed or removed in the future.
+// FIXME: We may want to weaken the `Allocator` bound here to some `PinnedAllocator`
+// supertrait that takes `self: Pin<&Self>` in its methods. This should be non-breaking
+// to do later once we have a way to add supertraits to traits after the fact
+// (e.g. the `auto impl` proposal)
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable_feature_bound(allocator_ext)]
@@ -915,6 +919,19 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
+
+// FIXME: The safety requirements for `PinSafePointer` are not strict enough to
+// ensure correctness of this impl, due to the "all instances of all supertypes"
+// requirement of `StaticAllocator` (though no implementors of `PinSafePointer`
+// currently violate this).
+// The impl is mainly a reservation, because `Pin` is `#[fundamental]`.
+#[unstable(feature = "internal_reserve_pin_static_allocator", issue = "none")]
+#[unstable_feature_bound(internal_reserve_pin_static_allocator, allocator_ext)]
+#[doc(hidden)]
+unsafe impl<P> StaticAllocator for core::pin::Pin<P> where
+    P: core::ops::Deref<Target: StaticAllocator> + core::pin::PinSafePointer
+{
+}
 
 /// Allocator marker trait that is only implemented stably for `Global`.
 ///
