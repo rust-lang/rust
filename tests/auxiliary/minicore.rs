@@ -165,6 +165,15 @@ pub mod arch {
 pub struct PhantomData<T: PointeeSized>;
 impl<T: PointeeSized> Copy for PhantomData<T> {}
 
+trait SizedTypeProperties: Sized {
+    #[lang = "mem_size_const"]
+    const SIZE: usize = mem::size_of::<Self>();
+
+    #[lang = "mem_align_const"]
+    const ALIGN: usize = mem::align_of::<Self>();
+}
+impl<T> SizedTypeProperties for T {}
+
 pub enum Option<T> {
     None,
     Some(T),
@@ -722,4 +731,25 @@ pub mod ffi {
             }
         }
     }
+}
+
+#[lang = "panic_location"]
+struct PanicLocation {
+    file: &'static str,
+    line: u32,
+    column: u32,
+}
+
+#[track_caller]
+#[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
+#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
+fn panic_misaligned_pointer_dereference(_required: usize, _found: usize) -> ! {
+    loop {}
+}
+
+#[track_caller]
+#[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_pointer_dereference() -> ! {
+    loop {}
 }

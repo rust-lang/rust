@@ -833,6 +833,27 @@ struct PanicLocation {
     column: u32,
 }
 
+#[track_caller]
+#[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
+#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
+fn panic_misaligned_pointer_dereference(_required: usize, _found: usize) -> ! {
+    loop {}
+}
+
+#[track_caller]
+#[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_pointer_dereference() -> ! {
+    loop {}
+}
+
+#[track_caller]
+#[lang = "panic_null_reference_constructed"] // needed by codegen for panic on null reference formation
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_reference_constructed() -> ! {
+    loop {}
+}
+
 #[unsafe(no_mangle)]
 #[cfg(not(all(windows, target_env = "gnu")))]
 pub fn get_tls() -> u8 {

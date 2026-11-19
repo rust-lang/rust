@@ -37,7 +37,6 @@ impl<'tcx> LateResolutionVisitor<'_, '_, '_, 'tcx> {
         let attrs = attrs.iter().find_map(|attr| {
             Some(match attr {
                 _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
-                _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
                 _ => return None,
             })
         });
@@ -46,18 +45,10 @@ impl<'tcx> LateResolutionVisitor<'_, '_, '_, 'tcx> {
                 // Known lang item
                 Some(lang_item) => {
                     if actual_target != lang_item.target() {
-                        // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
-                        // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
-                        if !(lang_item.is_weak()
-                            && actual_target == Target::Fn
-                            && lang_item.target() == Target::ForeignFn
-                            && matches!(lang_item, LangItem::PanicImpl))
-                        {
-                            self.r.tcx
+                        self.r.tcx
                             .dcx()
                             .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
-                            return;
-                        }
+                        return;
                     }
                     // Weak lang items are handled separately
                     if lang_item.is_weak() && actual_target == Target::ForeignFn {

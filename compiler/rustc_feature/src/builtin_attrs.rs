@@ -142,7 +142,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::no_std,
     sym::non_exhaustive,
     sym::optimize,
-    sym::panic_handler,
     sym::panic_runtime,
     sym::patchable_function_entry,
     sym::path,

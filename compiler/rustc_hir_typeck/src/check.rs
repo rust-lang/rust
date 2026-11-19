@@ -2,11 +2,9 @@ use std::cell::RefCell;
 
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
-use rustc_lint_defs::builtin::UNSAFE_PANIC_HANDLERS;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
@@ -14,7 +12,6 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument};
 
 use crate::coercion::CoerceMany;
-use crate::diagnostics::UnsafePanicHandlers;
 use crate::gather_locals::GatherLocalsVisitor;
 use crate::{CoroutineTypes, Diverges, FnCtxt};
 
@@ -150,88 +147,11 @@ pub(super) fn check_fn<'a, 'tcx>(
     // we have a recursive call site and do the sadly stabilized fallback to `()`.
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
-    // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::PanicImpl) {
-        check_panic_info_fn(tcx, fn_def_id, fn_sig);
-    }
-
     if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::Start) {
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
     fcx.coroutine_types
-}
-
-fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
-    let span = tcx.def_span(fn_id);
-
-    let DefKind::Fn = tcx.def_kind(fn_id) else {
-        tcx.dcx().span_err(span, "should be a function");
-        return;
-    };
-
-    let generic_counts = tcx.generics_of(fn_id).own_counts();
-    if generic_counts.types != 0 {
-        tcx.dcx().span_err(span, "should have no type parameters");
-    }
-    if generic_counts.consts != 0 {
-        tcx.dcx().span_err(span, "should have no const parameters");
-    }
-
-    if fn_sig.safety().is_unsafe() {
-        let hir_id = tcx.local_def_id_to_hir_id(fn_id);
-        let span = tcx.def_span(fn_id);
-        // If the function is implicitly "unsafe" because it has a `#[target_feature]` attribute,
-        // then we should already have emitted an error. Don't also emit a warning.
-        // See `tests/ui/panic-handler/panic-handler-with-target-feature.rs`
-        if let Some(hir_fn_sig) = tcx.hir_fn_sig_by_hir_id(hir_id)
-            && hir_fn_sig.header.safety == hir::HeaderSafety::SafeTargetFeatures
-        {
-            tcx.dcx().span_delayed_bug(span, "`unsafe_panic_handlers` lint suppressed because there should already be an error for `#[target_feature]`");
-        } else {
-            tcx.emit_node_span_lint(UNSAFE_PANIC_HANDLERS, hir_id, span, UnsafePanicHandlers);
-        }
-    }
-
-    let panic_info_did = tcx.require_lang_item(LangItem::PanicInfo, span);
-
-    // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx
-        .type_of(panic_info_did)
-        .instantiate(
-            tcx,
-            &[ty::GenericArg::from(ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
-            ))],
-        )
-        .skip_norm_wip();
-    let panic_info_ref_ty = Ty::new_imm_ref(
-        tcx,
-        ty::Region::new_bound(
-            tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
-        ),
-        panic_info_ty,
-    );
-
-    let bounds = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
-        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
-    ]);
-    let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig_rust_abi([panic_info_ref_ty], tcx.types.never, fn_sig.safety()),
-        bounds,
-    );
-
-    let _ = check_function_signature(
-        tcx,
-        ObligationCause::new(span, fn_id, ObligationCauseCode::LangFunctionType(sym::panic_impl)),
-        fn_id.into(),
-        expected_sig,
-    );
 }
 
 fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id: LocalDefId) {

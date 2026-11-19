@@ -1,19 +1,13 @@
-error[E0152]: found duplicate lang item `panic_impl`
-  --> $DIR/panic-handler-duplicate.rs:15:1
-   |
-LL | / fn panic2(info: &PanicInfo) -> ! {
-LL | |     loop {}
-LL | | }
-   | |_^
-   |
-note: the lang item is first defined here
+error: multiple implementations of `#[panic_handler]`
   --> $DIR/panic-handler-duplicate.rs:10:1
    |
-LL | / fn panic(info: &PanicInfo) -> ! {
-LL | |     loop {}
-LL | | }
-   | |_^
+LL | fn panic(info: &PanicInfo) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ first implemented here in crate `panic_handler_duplicate`
+...
+LL | fn panic2(info: &PanicInfo) -> ! {
+   | -------------------------------- also implemented here in crate `panic_handler_duplicate`
+   |
+   = help: an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0152`.

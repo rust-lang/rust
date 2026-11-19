@@ -603,7 +603,7 @@ pub(crate) fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
-/// Entry point of panics from the core crate (`panic_impl` lang item).
+/// Entry point of panics from the core crate (`panic_handler` EII).
 #[cfg(not(any(test, doctest)))]
 #[panic_handler]
 pub(crate) fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {

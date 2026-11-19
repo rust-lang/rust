@@ -1,13 +1,27 @@
-error: `#[target_feature]` cannot be applied to a `#[panic_handler]` function
+error: `#[::core::panicking::panic_handler]` is not allowed to have `#[target_feature]`
   --> $DIR/panic-handler-with-target-feature.rs:10:1
    |
-LL |   #[target_feature(enable = "avx2")]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / fn panic(info: &PanicInfo) -> ! {
-LL | |     unimplemented!();
-LL | | }
-   | |_- `#[panic_handler]` function is not allowed to have `#[target_feature]`
+LL | #[panic_handler]
+   | ---------------- `#[::core::panicking::panic_handler]` is not allowed to have `#[target_feature]`
+LL | #[target_feature(enable = "avx2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0806]: function `panic` has a type that is incompatible with the declaration of `#[panic_handler]`
+  --> $DIR/panic-handler-with-target-feature.rs:12:1
+   |
+LL | fn panic(info: &PanicInfo) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |
+note: expected this because of this attribute
+  --> $DIR/panic-handler-with-target-feature.rs:9:1
+   |
+LL | #[panic_handler]
+   | ^^^^^^^^^^^^^^^^
+note: type in declaration
+  --> $SRC_DIR/core/src/panicking.rs:LL:COL
+   = note: expected signature `fn(&PanicInfo<'_>) -> _`
+              found signature `unsafe fn(&PanicInfo<'_>) -> _`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0806`.

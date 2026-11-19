@@ -1371,10 +1371,6 @@ impl ExprParenthesesNeeded {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[panic_handler]` functions can't be `unsafe`")]
-pub(crate) struct UnsafePanicHandlers;
-
-#[derive(Diagnostic)]
 #[diag("comptime functions can only be called at compile time")]
 pub(crate) struct ComptimeFnCalledOutsideConstContext {
     #[primary_span]

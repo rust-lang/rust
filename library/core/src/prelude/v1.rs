@@ -63,7 +63,8 @@ pub use crate::hash::macros::Hash;
 pub use crate::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq,
     debug_assert_ne, file, format_args, include, include_bytes, include_str, line, matches,
-    module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write, writeln,
+    module_path, option_env, panic_handler, stringify, todo, r#try, unimplemented, unreachable,
+    write, writeln,
 };
 
 // These macros need special handling, so that we don't export them *and* the modules of the same

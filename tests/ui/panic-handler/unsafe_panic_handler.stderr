@@ -1,12 +1,19 @@
-warning: `#[panic_handler]` functions can't be `unsafe`
-  --> $DIR/unsafe_panic_handler.rs:8:1
+error[E0806]: function `handle` has a type that is incompatible with the declaration of `#[panic_handler]`
+  --> $DIR/unsafe_panic_handler.rs:7:1
    |
 LL | unsafe fn handle(_: &PanicInfo) -> ! {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #163263 <https://github.com/rust-lang/rust/issues/163263>
-   = note: `#[warn(unsafe_panic_handlers)]` on by default
+note: expected this because of this attribute
+  --> $DIR/unsafe_panic_handler.rs:6:1
+   |
+LL | #[panic_handler]
+   | ^^^^^^^^^^^^^^^^
+note: type in declaration
+  --> $SRC_DIR/core/src/panicking.rs:LL:COL
+   = note: expected signature `fn(&PanicInfo<'_>) -> _`
+              found signature `unsafe fn(&PanicInfo<'_>) -> _`
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0806`.
