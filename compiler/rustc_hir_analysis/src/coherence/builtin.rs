@@ -502,9 +502,13 @@ pub(crate) fn reborrow_info<'tcx>(
     }
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, impl_did);
+    let mut has_reborrowed_field = false;
     // Data fields must all be either Copy or Reborrow.
     for mut field in data_fields {
         field.ty.error_reported()?;
+        // Use the unnormalized field type, like borrowck does.
+        has_reborrowed_field |= tcx.is_reborrowed_field_ty(typing_env, field.ty);
         field.ty = ocx
             .deeply_normalize(
                 &traits::ObligationCause::misc(field.span, impl_did),
@@ -527,6 +531,16 @@ pub(crate) fn reborrow_info<'tcx>(
 
         // Field does not implement Reborrow: it must be Copy.
         assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
+    }
+
+    // Without a reborrowed field, borrowck borrows the whole value under the
+    // type's only lifetime, so there must be exactly one.
+    if !has_reborrowed_field && lifetimes_count != 1 {
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowMultipleLifetimesNoReborrowedField {
+            span,
+            trait_name,
+            lifetimes_count,
+        }));
     }
 
     if let Some(did) = def.destructor(tcx).map(|dtor| dtor.did) {

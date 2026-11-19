@@ -208,6 +208,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a field of type `ty` is reborrowed, rather than copied, when
     /// borrowck reborrows a value of a `Reborrow` type that contains it. `ty` is the
     /// declared field type, so a projection that normalizes to `&mut T` does not count.
+    ///
+    /// Borrowck and the `Reborrow` impl check in coherence both use this, so that
+    /// coherence rejects impls that borrowck cannot handle.
     pub fn is_reborrowed_field_ty(self, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Ref(_, _, mutability) => mutability.is_mut(),

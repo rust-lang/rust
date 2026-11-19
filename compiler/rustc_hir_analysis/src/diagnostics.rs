@@ -1367,6 +1367,21 @@ pub(crate) struct ReborrowNoLifetimes {
 
 #[derive(Diagnostic)]
 #[diag(
+    "implementing `{$trait_name}` on a type with {$lifetimes_count} lifetime arguments requires at least one field to be reborrowed"
+)]
+#[note(
+    "only `&mut T` fields and non-`Copy` `{$trait_name}` types are reborrowed; type parameters and associated types are not"
+)]
+#[help("types with no reborrowed fields must have exactly one lifetime argument")]
+pub(crate) struct ReborrowMultipleLifetimesNoReborrowedField {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+    pub lifetimes_count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(
     "implementing `{$trait_name}` requires corresponding fields to match, \
      be reborrowable with `CoerceShared`, or coerce a mutable reference field \
      to a shared reference field"
