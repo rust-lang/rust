@@ -730,7 +730,7 @@ where
     }
 }
 
-trait ComputeCallConv<'a, Ty, C>
+trait ComputeCallConv<'a, Ty, C>: Sized
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
@@ -760,20 +760,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch {
             Arch::X86 => {
-                let flavor = match self.conv {
-                    CanonAbi::X86(X86Call::Fastcall) => x86::Flavor::Fastcall,
-                    CanonAbi::X86(X86Call::Vectorcall) => x86::Flavor::Vectorcall,
-                    CanonAbi::C | CanonAbi::X86(X86Call::Stdcall) => {
-                        x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
-                    }
-                    _ => x86::Flavor::General { regparam: None },
-                };
-                let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
-                let opts = x86::X86Options { flavor, reg_struct_return };
                 if spec.is_like_msvc {
-                    x86_win32::compute_abi_info(cx, self, opts);
+                    compute_abi::<x86_win32::X86Win32CallConv, _, _>(cx, self)
                 } else {
-                    x86::compute_abi_info(cx, self, opts);
+                    compute_abi::<x86::X86CallConv, _, _>(cx, self)
                 }
             }
             Arch::X86_64 => match self.conv {
