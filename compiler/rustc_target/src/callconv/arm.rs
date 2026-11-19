@@ -114,12 +114,13 @@ where
     arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }
 
-pub(crate) struct ArmCallConv<const C_VARIADIC: bool> {
+pub(crate) struct ArmCallConv {
     abi_kind: ArmAbiKind,
     conv: CanonAbi,
+    c_variadic: bool,
 }
 
-impl<const C_VARIADIC: bool> ArmCallConv<C_VARIADIC> {
+impl ArmCallConv {
     /// Whether we must use the VFP registers for homogeneous aggregates.
     fn is_effectively_vfp(&self, conv: CanonAbi, accept_aapcs16: bool) -> bool {
         // When the user requested aapcs explicitly, honor that.
@@ -135,12 +136,12 @@ impl<const C_VARIADIC: bool> ArmCallConv<C_VARIADIC> {
     }
 }
 
-impl<'a, Ty, C, const C_VARIADIC: bool> ComputeCallConv<'a, Ty, C> for ArmCallConv<C_VARIADIC>
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for ArmCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C, conv: CanonAbi) -> Self {
+    fn new(cx: &C, conv: CanonAbi, c_variadic: bool) -> Self {
         let target = cx.target_spec();
         let abi_kind = if target.os == Os::WatchOs {
             ArmAbiKind::Aapcs16Vfp
@@ -149,7 +150,7 @@ where
         } else {
             ArmAbiKind::Aapcs
         };
-        ArmCallConv { abi_kind, conv }
+        ArmCallConv { abi_kind, conv, c_variadic }
     }
 
     fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
@@ -157,12 +158,12 @@ where
             cx,
             ret,
             self.abi_kind,
-            !C_VARIADIC && self.is_effectively_vfp(self.conv, true),
+            !self.c_variadic && self.is_effectively_vfp(self.conv, true),
         );
     }
 
     fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
-        let is_arg_vfp = !C_VARIADIC && self.is_effectively_vfp(self.conv, false);
+        let is_arg_vfp = !self.c_variadic && self.is_effectively_vfp(self.conv, false);
         classify_arg(cx, arg, self.abi_kind, is_arg_vfp);
     }
 }

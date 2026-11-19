@@ -423,7 +423,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C, _conv: CanonAbi) -> Self {
+    fn new(cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         let xlen = cx.data_layout().pointer_size().bits();
         let flen = match &cx.target_spec().llvm_abiname {
             LlvmAbi::Ilp32f | LlvmAbi::Lp64f => 32,

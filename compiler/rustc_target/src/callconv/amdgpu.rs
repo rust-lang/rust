@@ -66,7 +66,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C, conv: CanonAbi) -> Self {
+    fn new(_cx: &C, conv: CanonAbi, _c_variadic: bool) -> Self {
         Self { conv }
     }
 

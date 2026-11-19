@@ -117,7 +117,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(_cx: &C, _conv: CanonAbi) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         Self { arg_gprs_left: NUM_ARG_GPRS }
     }
 
