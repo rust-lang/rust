@@ -1,7 +1,8 @@
 //@ compile-flags: -Znext-solver
+//@ edition: 2024
 //@ aux-build: unsafe-binder-macros.rs
 
-#![feature(unsafe_binders, builtin_syntax)]
+#![feature(unsafe_binders, forced_keywords, internal_syntax)]
 #![allow(incomplete_features)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
@@ -41,13 +42,13 @@ unsafe fn unsafe_fn_local_macro(b: unsafe<> u8) -> u8 {
 }
 
 unsafe fn unsafe_fn_builtin(b: unsafe<> u8) -> u8 {
-    builtin # unwrap_binder(b)
+    k#unwrap_binder(b)
     //~^ ERROR unsafe binder cast is unsafe and requires unsafe block
 }
 
 macro_rules! local_builtin_unwrap {
     ($e:expr) => {
-        builtin # unwrap_binder($e)
+        k#unwrap_binder($e)
     };
 }
 unsafe fn unsafe_fn_local_builtin_macro(b: unsafe<> u8) -> u8 {

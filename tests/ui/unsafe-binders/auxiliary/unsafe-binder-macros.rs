@@ -1,6 +1,7 @@
 //@ compile-flags: -Znext-solver
+//@ edition: 2024
 
-#![feature(unsafe_binders, builtin_syntax)]
+#![feature(unsafe_binders, forced_keywords, internal_syntax)]
 #![allow(incomplete_features)]
 
 #[macro_export]
@@ -13,6 +14,6 @@ macro_rules! extern_unwrap {
 #[macro_export]
 macro_rules! extern_builtin_unwrap {
     ($e:expr) => {
-        builtin # unwrap_binder($e)
+        k#unwrap_binder($e)
     };
 }
