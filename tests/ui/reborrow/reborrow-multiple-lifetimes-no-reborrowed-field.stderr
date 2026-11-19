@@ -4,7 +4,7 @@ error: implementing `Reborrow` on a type with 2 lifetime arguments requires at l
 LL | impl<'a, 'b> Reborrow for SharedOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only `&mut T` fields and non-`Copy` `Reborrow` types are reborrowed; type parameters and associated types are not
+   = note: only fields that are `&mut T` or a non-`Copy` `Reborrow` type in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
@@ -13,7 +13,7 @@ error: implementing `Reborrow` on a type with 2 lifetime arguments requires at l
 LL | impl<'a, 'b> Reborrow for PhantomOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only `&mut T` fields and non-`Copy` `Reborrow` types are reborrowed; type parameters and associated types are not
+   = note: only fields that are `&mut T` or a non-`Copy` `Reborrow` type in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
@@ -22,7 +22,7 @@ error: implementing `Reborrow` on a type with 2 lifetime arguments requires at l
 LL | impl<'a, 'b, T: Reborrow> Reborrow for ParamOnly<'a, 'b, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only `&mut T` fields and non-`Copy` `Reborrow` types are reborrowed; type parameters and associated types are not
+   = note: only fields that are `&mut T` or a non-`Copy` `Reborrow` type in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
@@ -31,7 +31,7 @@ error: implementing `Reborrow` on a type with 2 lifetime arguments requires at l
 LL | impl<'a, 'b> Reborrow for AssocOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only `&mut T` fields and non-`Copy` `Reborrow` types are reborrowed; type parameters and associated types are not
+   = note: only fields that are `&mut T` or a non-`Copy` `Reborrow` type in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: aborting due to 4 previous errors
