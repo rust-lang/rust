@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
 
-use crate::ty::{self, TyCtxt};
+use crate::ty::{self, Asyncness, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
@@ -41,6 +41,22 @@ impl<'tcx> TyCtxt<'tcx> {
             LangItem::FnMut => Some(ty::ClosureKind::FnMut),
             LangItem::FnOnce => Some(ty::ClosureKind::FnOnce),
             _ => None,
+        }
+    }
+
+    /// Given a [`DefId`] of one of the [`Fn`], [`FnMut`], [`FnOnce`], [`AsyncFn`], [`AsyncFnMut`], or [`AsyncFnOnce`] traits,
+    /// returns a corresponding [`ty::ClosureKind`] and [`Asyncness`].
+    /// For any other [`DefId`] return `None`.
+    pub fn maybe_async_fn_trait_kind_from_def_id(
+        self,
+        id: DefId,
+    ) -> Option<(Asyncness, ty::ClosureKind)> {
+        if let Some(kind) = self.fn_trait_kind_from_def_id(id) {
+            Some((Asyncness::No, kind))
+        } else if let Some(kind) = self.async_fn_trait_kind_from_def_id(id) {
+            Some((Asyncness::Yes, kind))
+        } else {
+            return None;
         }
     }
 
