@@ -1,7 +1,8 @@
 //@ revisions: stock gated
 //@ edition:2024
 //@[gated] run-pass
-#![cfg_attr(gated, feature(min_adt_const_params, type_id_structural_match), allow(incomplete_features))]
+#![cfg_attr(gated, feature(min_adt_const_params, type_id_structural_match))]
+#![cfg_attr(gated, allow(incomplete_features))]
 
 use std::any::TypeId;
 

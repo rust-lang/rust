@@ -26,4 +26,3 @@ fn main() {
     let b: Wrapper<{ arbitrary_const_value!() }> = a;
     //~^ ERROR mismatched types
 }
-
