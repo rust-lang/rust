@@ -313,6 +313,19 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
         }
     }
 
+    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
+        if let Operand::Move(place) = *operand
+            && let Some(repl) = self.replacements.replace_place(self.tcx, place.as_ref())
+        {
+            // Under RFC 3943, a projected move does not free the underlying
+            // local. Preserve this behavior if we are replacing such a move
+            // with an unprojected one.
+            *operand = Operand::Copy(repl);
+        } else {
+            self.super_operand(operand, location);
+        }
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
