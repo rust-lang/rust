@@ -145,7 +145,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fail_block = target_block(TestBranch::Failure);
 
                 let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, value.ty);
-                // assert!(ref_ty.is_imm_ref(), "{ref_ty:?}");
 
                 // If the constant we're testing against has type `T`,
                 // calling `<T as PartialEq>::eq` requires `&T` operands.
@@ -166,7 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
                 );
 
-                // Compare two strings using `<T as std::cmp::PartialEq>::eq`.
+                // Compare two consts using `<T as std::cmp::PartialEq>::eq`.
                 // (Interestingly this means that exhaustiveness analysis relies, for soundness,
                 // on the `PartialEq` impl for `str` to be correct!)
                 self.compare_with_eq(
