@@ -2,7 +2,6 @@
 //@compile-flags: -Zmiri-deterministic-concurrency -Zmiri-disable-stacked-borrows
 
 #![feature(rustc_attrs)]
-#![feature(ptr_alignment_type)]
 
 use std::thread::spawn;
 
@@ -33,7 +32,7 @@ fn main() {
                 //~^ ERROR: Data race detected between (1) non-atomic write on thread `unnamed-1` and (2) deallocation on thread `unnamed-2`
                 ptr.0 as *mut _,
                 std::mem::size_of::<usize>(),
-                std::mem::align_of::<usize>().try_into().unwrap(),
+                std::mem::Alignment::of::<usize>(),
             );
         });
 

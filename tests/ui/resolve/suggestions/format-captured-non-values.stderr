@@ -26,8 +26,9 @@ LL |         let _ = forwarded_args!("{} {value}", 1);
 error[E0425]: cannot find value `Item` in this scope
   --> $DIR/format-captured-non-values.rs:38:27
    |
+LL | trait Report {
 LL |     type Item;
-   |          ---- an associated type by that name is available on `Self` here
+   |          ---- an associated type by that name is available on `Self`
 ...
 LL |         let _ = format!("{Item}");
    |                           ^^^^
@@ -35,21 +36,32 @@ LL |         let _ = format!("{Item}");
 error[E0425]: cannot find value `limit` in this scope
   --> $DIR/format-captured-non-values.rs:48:27
    |
-LL |     fn limit() -> usize { 3 }
-   |     ------------------------- an associated function by that name is available on `Self` here
+LL | impl Report for () {
 ...
+LL |     fn report(&self) {
+LL |         // Label associated items instead of inserting `Self::` inside a capture.
 LL |         let _ = format!("{limit}");
    |                           ^^^^^
+   |
+note: an associated function by that name is available on `Self`
+  --> $DIR/format-captured-non-values.rs:36:5
+   |
+LL | trait Report {
+LL |     type Item;
+LL |     fn limit() -> usize { 3 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find value `fmt` in this scope
   --> $DIR/format-captured-non-values.rs:56:27
    |
+LL | impl std::fmt::Display for Example {
+LL |     fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+LL |         // The associated-item definition may also come from another crate.
 LL |         let _ = format!("{fmt}");
    |                           ^^^
    |
+note: a method by that name is available on `Self`
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-   |
-   = note: a method by that name is available on `Self` here
 
 error[E0423]: cannot find value `Example` in this scope
   --> $DIR/format-captured-non-values.rs:64:23

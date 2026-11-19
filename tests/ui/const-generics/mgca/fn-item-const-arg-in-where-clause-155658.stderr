@@ -1,0 +1,39 @@
+error: function items cannot be used as const args
+  --> $DIR/fn-item-const-arg-in-where-clause-155658.rs:6:9
+   |
+LL |     S<{ main }>:;
+   |         ^^^^
+
+error[E0580]: `main` function has wrong type
+  --> $DIR/fn-item-const-arg-in-where-clause-155658.rs:9:1
+   |
+LL | fn main(_: impl ?Sized) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn()`
+              found signature `fn(impl ?Sized)`
+
+error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
+  --> $DIR/fn-item-const-arg-in-where-clause-155658.rs:9:12
+   |
+LL | fn main(_: impl ?Sized) {}
+   |            ^^^^^^^^^^^
+   |            |
+   |            doesn't have a size known at compile-time
+   |            this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider replacing `?Sized` with `Sized`
+   |
+LL - fn main(_: impl ?Sized) {}
+LL + fn main(_: impl Sized) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn main(_: &impl ?Sized) {}
+   |            +
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0580.
+For more information about an error, try `rustc --explain E0277`.

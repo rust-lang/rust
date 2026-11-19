@@ -5,12 +5,14 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![expect(internal_features, reason = "feature(rustc_attrs) for rustc lints")]
 #![feature(extern_types)]
 #![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
 #![feature(once_cell_try)]
+#![feature(rustc_attrs)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 

@@ -2,7 +2,7 @@
 // in a lint.
 #![allow(deprecated)]
 #![deny(invalid_value)]
-#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, pattern_types)]
 
 use std::mem::{self, MaybeUninit};
 use std::num::NonZero;

@@ -740,13 +740,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// Gives raw, immutable access to the `Allocation` address, without bounds or alignment checks.
-    /// The caller is responsible for calling the access hooks!
-    pub fn get_alloc_bytes_unchecked_raw(&self, id: AllocId) -> InterpResult<'tcx, *const u8> {
-        let alloc = self.get_alloc_raw(id)?;
-        interp_ok(alloc.get_bytes_unchecked_raw())
-    }
-
     /// Bounds-checked *but not align-checked* allocation access.
     pub fn get_ptr_alloc<'a>(
         &'a self,
@@ -836,16 +829,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub!(WriteToReadOnly(id))
         }
         interp_ok((alloc, &mut self.machine))
-    }
-
-    /// Gives raw, mutable access to the `Allocation` address, without bounds or alignment checks.
-    /// The caller is responsible for calling the access hooks!
-    pub fn get_alloc_bytes_unchecked_raw_mut(
-        &mut self,
-        id: AllocId,
-    ) -> InterpResult<'tcx, *mut u8> {
-        let alloc = self.get_alloc_raw_mut(id)?.0;
-        interp_ok(alloc.get_bytes_unchecked_raw_mut())
     }
 
     /// Bounds-checked *but not align-checked* allocation access.

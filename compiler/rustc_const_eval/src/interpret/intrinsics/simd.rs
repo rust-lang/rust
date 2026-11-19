@@ -808,10 +808,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let left = left.to_scalar();
         let right = right.to_scalar();
         interp_ok(match float_ty {
-            FloatTy::F16 => self.float_minmax::<Half>(left, right, op)?,
-            FloatTy::F32 => self.float_minmax::<Single>(left, right, op)?,
-            FloatTy::F64 => self.float_minmax::<Double>(left, right, op)?,
-            FloatTy::F128 => self.float_minmax::<Quad>(left, right, op)?,
+            FloatTy::F16 => self.float_minmax::<Half>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F32 => self.float_minmax::<Single>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F64 => self.float_minmax::<Double>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F128 => self.float_minmax::<Quad>(left.to_float()?, right.to_float()?, op)?,
         })
     }
 
@@ -844,9 +844,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::SimdAlign::Element => {
                 // Take the alignment of the only field, which is an array and therefore has the same
                 // alignment as the element type.
-                vector_layout.field(self, 0).align.abi
+                vector_layout.field(self, 0).align
             }
-            ty::SimdAlign::Vector => vector_layout.align.abi,
+            ty::SimdAlign::Vector => vector_layout.align,
         };
 
         self.check_ptr_align(ptr, align)

@@ -1,0 +1,23 @@
+error[E0658]: tool attribute options are currently unstable
+  --> $DIR/feature-gate-type_info.rs:2:18
+   |
+LL | #![register_tool(aaa(asdf))]
+   |                  ^^^^^^^^^
+   |
+   = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+   = help: add `#![feature(type_info)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: tool attribute options are currently unstable
+  --> $DIR/feature-gate-type_info.rs:4:18
+   |
+LL | #![register_tool(bbb(reflect))]
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+   = help: add `#![feature(type_info)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

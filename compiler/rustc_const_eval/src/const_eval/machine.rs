@@ -4,8 +4,8 @@ use std::{fmt, mem};
 
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
-use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{HasAttrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, Intrinsic, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -486,7 +486,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         if ecx.eval_intrinsic(instance, args, dest, target)? {
             return interp_ok(None);
         }
-        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
+        let intrinsic_name = ecx.tcx.intrinsic(instance.def_id()).unwrap().name;
+
+        let do_fallback = || {
+            // We haven't handled the intrinsic, let's see if we can use a fallback body.
+            if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                throw_unsup_format!(
+                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                );
+            }
+            return interp_ok(Some(ty::Instance {
+                def: ty::InstanceKind::Item(instance.def_id()),
+                args: instance.args,
+            }));
+        };
+
+        // Backend intrinsics are not supported in const eval except with their fallback
+        // bodies.
+        let Intrinsic::Rustc(intrinsic_name) = intrinsic_name else {
+            return do_fallback();
+        };
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
@@ -566,7 +585,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
+                let requirement =
+                    ValidityRequirement::from_rustc_intrinsic(intrinsic_name).unwrap();
 
                 let should_panic = !ecx
                     .tcx
@@ -796,6 +816,28 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
+            sym::type_id_variant_reflected_attrs => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+
+                    ecx.write_reflect_attributes(
+                        dest,
+                        def.variant(variant_idx).def_id.get_attrs(&ecx.tcx),
+                    )?;
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+            }
+
             sym::type_id_variant_non_exhaustive => {
                 let base = ecx.read_type_id(&args[0])?;
 
@@ -891,6 +933,32 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id(field_ty, dest)?;
             }
 
+            sym::type_id_reflected_attrs => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let attrs = match ty.kind() {
+                    ty::Adt(def, args)
+                        if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                            def.field_representing_type_info(ecx.tcx(), *args) =>
+                    {
+                        match base.kind() {
+                            ty::Adt(base_def, _) => {
+                                let field = &base_def.variants()[variant_idx].fields[field_idx];
+                                field.did.get_attrs(&ecx.tcx)
+                            }
+                            ty::Tuple(_) => &[],
+                            _ => {
+                                // only adts and tuples have fields
+                                span_bug!(ecx.cur_span(), "expected adt or tuple type, got {ty}");
+                            }
+                        }
+                    }
+                    ty::Adt(def, _) => def.did().get_attrs(&ecx.tcx),
+                    _ => &[],
+                };
+
+                ecx.write_reflect_attributes(dest, attrs)?;
+            }
+
             sym::type_id_generics => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_id_generics(dest, ty)?;
@@ -914,16 +982,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             }
 
             _ => {
-                // We haven't handled the intrinsic, let's see if we can use a fallback body.
-                if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
-                    throw_unsup_format!(
-                        "intrinsic `{intrinsic_name}` is not supported at compile-time"
-                    );
-                }
-                return interp_ok(Some(ty::Instance {
-                    def: ty::InstanceKind::Item(instance.def_id()),
-                    args: instance.args,
-                }));
+                return do_fallback();
             }
         }
 

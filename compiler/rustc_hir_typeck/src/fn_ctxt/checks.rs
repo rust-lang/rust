@@ -508,8 +508,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We use implementations of VaArgSafe as the source of truth. On some embedded
                 // targets, c_double is f32 and c_int/c_uing are i16/u16, and these types implement
                 // VaArgSafe there. On all other targets, these types do not implement VaArgSafe.
-                //
-                // cfg(bootstrap): change the if let to an unwrap.
                 let arg_ty = self.structurally_resolve_type(arg.span, arg_ty);
                 if let Some(trait_def_id) = tcx.lang_items().va_arg_safe()
                     && self
@@ -3481,7 +3479,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
                 callee_ty.peel_refs(),
                 self.call_ctxt.callee_expr.unwrap().hir_id,
                 TraitsInScope,
-                |mut ctxt| ctxt.probe_for_similar_candidate(),
+                |mut ctxt| ctxt.probe_for_similar_candidate(&[]),
             )
             && assoc.is_method()
         {

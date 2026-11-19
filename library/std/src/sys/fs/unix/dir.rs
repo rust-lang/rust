@@ -28,13 +28,12 @@ use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
 use crate::{fmt, fs, io, mem};
 
-const TRAVERSE_DIRECTORY: i32 =
-    cfg_select! {
-        any(target_os = "freebsd", target_os = "aix") => libc::O_EXEC,
-        any(target_os = "linux", target_os = "android", target_os = "l4re") => libc::O_PATH,
-        target_os = "illumos" => libc::O_SEARCH,
-        _ => libc::O_RDONLY,
-    };
+const TRAVERSE_DIRECTORY: i32 = cfg_select! {
+    any(target_os = "freebsd", target_os = "aix") => libc::O_EXEC,
+    any(target_os = "linux", target_os = "android", target_os = "l4re") => libc::O_PATH,
+    target_os = "illumos" => libc::O_SEARCH,
+    _ => libc::O_RDONLY,
+};
 
 pub struct Dir(pub(super) OwnedFd);
 

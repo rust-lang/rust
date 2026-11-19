@@ -36,7 +36,7 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::Shim(ShimKind::FnPtrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
+        InstanceKind::Shim(ShimKind::FnAddrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
@@ -212,7 +212,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
             let ty::FnDef(def_id, generic_args) = ty.kind() else {
                 continue;
             };
-            let call = if tcx.is_intrinsic(*def_id, sym::const_eval_select) {
+            let call = if tcx.is_rustc_intrinsic(*def_id, sym::const_eval_select) {
                 let func = &call_args[2].node;
                 let ty = func.ty(&body.local_decls, tcx);
                 let ty::FnDef(def_id, generic_args) = ty.kind() else {

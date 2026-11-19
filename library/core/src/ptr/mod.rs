@@ -166,6 +166,20 @@
 //!
 //! [`null()`]: null
 //!
+//! # Thin and wide pointers
+//!
+//! Some pointers can also carry additional metadata alongside the address of the pointee. These are called
+//! **wide pointers** (or **fat pointers**).
+//! Pointers that only store the address of the pointee are instead called **thin pointers**, every
+//! pointer to a sized type is guaranteed to be thin.
+//!
+//! Currently, wide pointers are twice as big as the size of a thin pointer,
+//! however, this could be changed in the future.
+//!
+//! Wide pointers are commonly used when working with [`DSTs`].
+//!
+//! [`DSTs`]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
+//!
 //! # Provenance
 //!
 //! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
@@ -433,11 +447,6 @@ use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::FnPtr;
 use crate::{fmt, hash, intrinsics, ub_checks};
-
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[deprecated(since = "1.96.0", note = "moved from `ptr` to `mem`")]
-/// Deprecated re-export of [mem::Alignment].
-pub type Alignment = mem::Alignment;
 
 mod metadata;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -1116,7 +1125,7 @@ pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
+#[lint::never_returns_null_ptr]
 #[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
     r
@@ -1167,7 +1176,7 @@ pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
+#[lint::never_returns_null_ptr]
 pub const fn from_mut<T: PointeeSized>(r: &mut T) -> *mut T {
     r
 }
@@ -2508,7 +2517,7 @@ pub fn eq<T: PointeeSized>(a: *const T, b: *const T) -> bool {
 }
 
 /// Compares the *addresses* of the two pointers for equality,
-/// ignoring any metadata in fat pointers.
+/// ignoring any metadata in [wide](core::ptr#thin-and-wide-pointers) pointers.
 ///
 /// If the arguments are thin pointers of the same type,
 /// then this is the same as [`eq`].

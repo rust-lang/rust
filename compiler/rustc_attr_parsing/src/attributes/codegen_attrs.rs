@@ -61,6 +61,7 @@ impl NoArgsAttributeParser for ColdParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Cold;
@@ -293,7 +294,7 @@ impl AttributeParser for NakedParser {
                 if other_attr
                     .segments()
                     .next()
-                    .is_some_and(|i| tools.iter().any(|tool| tool.name == i.name))
+                    .is_some_and(|i| tools.iter().any(|(tool, _)| tool.name == i.name))
                 {
                     // effectively skips the error message  being emitted below
                     // if it's a tool attribute
@@ -428,6 +429,7 @@ impl NoArgsAttributeParser for NoMangleParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
         Error(Target::Closure),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;

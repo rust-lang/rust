@@ -1371,13 +1371,31 @@ pub(crate) fn rewrite_literal(
         token::LitKind::Str => rewrite_string_lit(context, span, shape),
         token::LitKind::Integer => rewrite_int_lit(context, token_lit, span, shape),
         token::LitKind::Float => rewrite_float_lit(context, token_lit, span, shape),
-        _ => wrap_str(
-            context.snippet(span).to_owned(),
-            context.config.max_width(),
-            context.config.tab_spaces(),
-            shape,
-        )
-        .max_width_error(shape.width, span),
+        token::LitKind::Bool
+        | token::LitKind::Byte
+        | token::LitKind::ByteStr
+        | token::LitKind::ByteStrRaw(_)
+        | token::LitKind::Char
+        | token::LitKind::CStr
+        | token::LitKind::CStrRaw(_)
+        | token::LitKind::StrRaw(_)
+        | token::LitKind::Err(_) => {
+            // token::LitKind::Bool is true or false
+            // token::LitKind::Byte is b''
+            // token::LitKind::ByteStr is b""
+            // token::LitKind::ByteStrRaw(_) is br"" or br#""#
+            // token::LitKind::Char is ''
+            // token::LitKind::CStr is c""
+            // token::LitKind::CStrRaw(_) is cr"" or cr#""#
+            // token::LitKind::StrRaw(_) is r"" or r#""#
+            wrap_str(
+                context.snippet(span).to_owned(),
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            )
+            .max_width_error(shape.width, span)
+        }
     }
 }
 

@@ -136,7 +136,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
                 }
-                Attribute::Tool(u) | Attribute::DeriveHelper(u) => {
+                Attribute::Tool { item: u, .. } | Attribute::DeriveHelper(u) => {
                     match &*u.path.segments {
                         [name, rest @ ..] => {
                             if BUILTIN_ATTRIBUTE_SET.contains(name) {
@@ -239,7 +239,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::DefaultLibAllocator => (),
             AttributeKind::Deprecated { .. } => (),
             AttributeKind::DoNotRecommend => (),
-            // `#[doc]` is actually a lot more than just doc comments, so is checked below
             AttributeKind::DocComment { .. } => (),
             AttributeKind::EiiDeclaration { .. } => (),
             AttributeKind::ExportName { .. } => (),
@@ -257,13 +256,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
+            AttributeKind::LintAsPtr => (),
+            AttributeKind::LintNeverReturnsNullPtr => (),
+            AttributeKind::LintShouldNotBeCalledOnConstItems => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroExport { .. } => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
             AttributeKind::MoveSizeLimit { .. } => (),
-            AttributeKind::MustNotSupend { .. } => (),
+            AttributeKind::MustNotSuspend { .. } => (),
             AttributeKind::MustUse { .. } => (),
             AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
@@ -300,7 +302,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(..) => (),
             AttributeKind::RustcAllowIncoherentImpl(..) => (),
             AttributeKind::RustcAllowLifetimeDependentSpecialization => (),
-            AttributeKind::RustcAsPtr => (),
             AttributeKind::RustcAutodiff(..) => (),
             AttributeKind::RustcBodyStability { .. } => (),
             AttributeKind::RustcBuiltinMacro { .. } => (),
@@ -345,7 +346,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcIfThisChanged(..) => (),
             AttributeKind::RustcInheritOverflowChecks => (),
             AttributeKind::RustcInsignificantDtor => (),
-            AttributeKind::RustcIntrinsic => (),
+            AttributeKind::RustcIntrinsic { .. } => (),
             AttributeKind::RustcIntrinsicConstStableIndirect => (),
             AttributeKind::RustcLegacyConstGenerics { .. } => (),
             AttributeKind::RustcLintOptDenyFieldAccess { .. } => (),
@@ -356,7 +357,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),
             AttributeKind::RustcMustMatchExhaustively(..) => (),
-            AttributeKind::RustcNeverReturnsNullPtr => (),
             AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),
@@ -377,16 +377,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcReallocator => (),
             AttributeKind::RustcRegions => (),
             AttributeKind::RustcScalableVector { .. } => (),
-            AttributeKind::RustcShouldNotBeCalledOnConstItems => (),
             AttributeKind::RustcShowSpans(_) => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
+            AttributeKind::RustcTestEntrypointMarker => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
-            AttributeKind::RustcTrivialFieldReads => (),
+            AttributeKind::RustcTrivialFieldReads(..) => (),
             AttributeKind::Sanitize { .. } => {}
             AttributeKind::ShouldPanic { .. } => (),
             AttributeKind::Splat(..) => (),

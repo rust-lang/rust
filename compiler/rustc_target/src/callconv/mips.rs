@@ -17,7 +17,7 @@ where
         Numeric::Int(Integer::I128, _) => false,
         Numeric::Float(Float::F32 | Float::F64) => true,
         Numeric::Float(Float::F16 | Float::F128) => false,
-        Numeric::Float(Float::F16B | Float::PpcF128) => bug!("unsupported on mips"),
+        Numeric::Float(Float::F16B | Float::X87F80 | Float::PpcF128) => bug!("unsupported on mips"),
     };
 
     if let Some(component) = ret.layout.complex_number(cx)
@@ -52,7 +52,7 @@ where
         return;
     }
     let dl = cx.data_layout();
-    let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
+    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();

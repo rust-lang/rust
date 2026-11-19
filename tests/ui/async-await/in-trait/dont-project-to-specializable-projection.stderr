@@ -1,12 +1,12 @@
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/dont-project-to-specializable-projection.rs:14:35
+  --> $DIR/dont-project-to-specializable-projection.rs:13:35
    |
 LL | impl<T> MyTrait<T> for MyStruct {
 LL |     default async fn foo(_: T) -> &'static str {
    |                                   ^^^^^^^^^^^^ expected associated type, found future
    |
 note: type in trait
-  --> $DIR/dont-project-to-specializable-projection.rs:10:27
+  --> $DIR/dont-project-to-specializable-projection.rs:9:27
    |
 LL | trait MyTrait<T> {
 LL |     async fn foo(_: T) -> &'static str;
@@ -15,7 +15,7 @@ LL |     async fn foo(_: T) -> &'static str;
               found signature `fn(_) -> impl Future<Output = &'static str>`
 
 error: async associated function in trait cannot be specialized
-  --> $DIR/dont-project-to-specializable-projection.rs:14:5
+  --> $DIR/dont-project-to-specializable-projection.rs:13:5
    |
 LL |     default async fn foo(_: T) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,16 +23,26 @@ LL |     default async fn foo(_: T) -> &'static str {
    = note: specialization behaves in inconsistent and surprising ways with async functions in traits, and for now is disallowed
 
 error[E0599]: no method named `poll` found for struct `Pin<&mut impl Future<Output = ()>>` in the current scope
-  --> $DIR/dont-project-to-specializable-projection.rs:49:28
+  --> $DIR/dont-project-to-specializable-projection.rs:48:28
    |
 LL |         match fut.as_mut().poll(ctx) {
-   |                            ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |                   ------   ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |                   |
+   |                   this method is `std::pin::Pin::<Ptr>::as_mut`
    |
   --> $SRC_DIR/core/src/future/future.rs:LL:COL
    |
    = note: the method is available for `Pin<&mut impl Future<Output = ()>>` here
-   |
+note: this returns `Pin<&mut impl Future<Output = ()>>`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+note: you might have meant to call `std::convert::AsMut::as_mut` instead
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = help: items from traits can only be used if the trait is in scope
+help: consider calling `std::convert::AsMut::as_mut` using the fully-qualified path
+   |
+LL -         match fut.as_mut().poll(ctx) {
+LL +         match <_ as AsMut<_>>::as_mut(&mut fut).poll(ctx) {
+   |
 help: trait `Future` which provides `poll` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::future::Future;

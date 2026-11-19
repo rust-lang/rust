@@ -45,6 +45,7 @@ pub struct AnnotateSnippetEmitter {
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
     theme: OutputTheme,
+    no_graphics: bool,
 }
 
 impl Debug for AnnotateSnippetEmitter {
@@ -60,6 +61,7 @@ impl Debug for AnnotateSnippetEmitter {
             track_diagnostics,
             terminal_url,
             theme,
+            no_graphics,
         } = self;
 
         f.debug_struct("AnnotateSnippetEmitter")
@@ -73,6 +75,7 @@ impl Debug for AnnotateSnippetEmitter {
             .field("track_diagnostics", track_diagnostics)
             .field("terminal_url", terminal_url)
             .field("theme", theme)
+            .field("no_graphics", no_graphics)
             .finish()
     }
 }
@@ -153,6 +156,7 @@ impl AnnotateSnippetEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
             theme: OutputTheme::Ascii,
+            no_graphics: false,
         }
     }
 
@@ -540,9 +544,10 @@ impl AnnotateSnippetEmitter {
             ColorChoice::Never => Renderer::plain(),
         }
         .term_width(width)
-        .anonymized_line_numbers(self.ui_testing)
+        .anonymized_snippet_line_numbers(self.ui_testing)
         .decor_style(decor_style)
         .short_message(self.short_message)
+        .no_graphics(self.no_graphics)
     }
 
     fn pre_style_msgs(&self, msgs: &[(DiagMessage, Style)], args: &DiagArgMap) -> String {
@@ -590,7 +595,11 @@ impl AnnotateSnippetEmitter {
     ) -> Group<'a> {
         let filename = sm.filename_for_diagnostics(file_name).to_string_lossy().to_string();
         let mut line_tracker = vec![];
-        for (i, a) in annotations.into_iter().enumerate() {
+        for (i, a) in annotations
+            .into_iter()
+            .filter(|a| !matches!(a.kind, AnnotationKind::Visible))
+            .enumerate()
+        {
             let lo = sm.lookup_char_pos(a.span.lo());
             let hi = sm.lookup_char_pos(a.span.hi());
             if i == 0 || (a.label.is_some()) {

@@ -1,5 +1,5 @@
-// MIPS assembler uses the label prefix `$anon.` for local anonymous variables
-// other architectures (including ARM and x86-64) use the prefix `.Lanon.`
+// MIPS assembler uses the label prefix `$`.
+// Other architectures (including ARM and x86-64) use the prefix `.L`.
 // Hexagon uses `.string` instead of `.asciz` for null-terminated strings
 //@ only-linux
 //@ assembly-output: emit-asm
@@ -9,13 +9,13 @@
 use std::ffi::CStr;
 
 // CHECK: .section .rodata.str1.{{[12]}},"aMS"
-// CHECK: {{(\.L|\$)}}anon.{{.+}}:
+// CHECK: {{(\.L|\$)}}__unnamed_{{[0-9]+}}:
 // CHECK-NEXT: .{{asciz|string}} "foo"
 #[unsafe(no_mangle)]
 static CSTR: &[u8; 4] = b"foo\0";
 
-// CHECK-NOT: .section
-// CHECK: {{(\.L|\$)}}anon.{{.+}}:
+// CHECK: .section .rodata.str1.{{[12]}},"aMS"
+// CHECK: {{(\.L|\$)}}__unnamed_{{[0-9]+}}:
 // CHECK-NEXT: .{{asciz|string}} "bar"
 #[unsafe(no_mangle)]
 pub fn cstr() -> &'static CStr {
@@ -23,7 +23,7 @@ pub fn cstr() -> &'static CStr {
 }
 
 // CHECK-NOT: .section
-// CHECK: {{(\.L|\$)}}anon.{{.+}}:
+// CHECK: {{(\.L|\$)}}__unnamed_{{[0-9]+}}:
 // CHECK-NEXT: .{{asciz|string}} "baz"
 #[unsafe(no_mangle)]
 pub fn manual_cstr() -> &'static str {

@@ -1,5 +1,5 @@
 error: ABI does not support guaranteed tail calls
-  --> $DIR/rust-call.rs:12:5
+  --> $DIR/rust-call.rs:10:5
    |
 LL |     become a(());
    |     ^^^^^^^^^^^^

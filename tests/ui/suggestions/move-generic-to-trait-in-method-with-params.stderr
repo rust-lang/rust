@@ -7,6 +7,7 @@ LL |     1.bar::<i32>(0);
 note: method defined here, with 0 generic parameters
   --> $DIR/move-generic-to-trait-in-method-with-params.rs:4:8
    |
+LL | trait Foo<T> {
 LL |     fn bar(&self, _: T);
    |        ^^^
 help: consider moving this generic argument to the `Foo` trait, which takes up to 1 argument

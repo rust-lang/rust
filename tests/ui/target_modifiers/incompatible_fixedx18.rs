@@ -8,7 +8,6 @@
 // [error_generated] no extra compile-flags
 //@[allow_mismatch] check-pass
 //@[allow_match] check-pass
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

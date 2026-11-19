@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
@@ -391,6 +390,36 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
         QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias | DefKind::AssocTy, ..)),
         QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_ty_alias(&qpath),
         QPath::TypeRelative(..) => false,
+    }
+}
+
+/// Checks if the given `Ty` is either an `impl Future` or async coroutine.
+pub fn ty_is_future<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    let Some(future_trait) = cx.tcx.lang_items().future_trait() else {
+        return false;
+    };
+
+    match *ty.kind() {
+        rustc_ty::Alias(_, alias) => {
+            if let rustc_ty::AliasTy {
+                kind: rustc_ty::Opaque { def_id },
+                args,
+                ..
+            } = alias
+                && let preds = cx.tcx.explicit_item_self_bounds(def_id)
+                && preds
+                    .iter_instantiated_copied(cx.tcx, args)
+                    .map(rustc_ty::Unnormalized::skip_normalization)
+                    .filter_map(|(p, _)| p.as_trait_clause())
+                    .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
+            {
+                true
+            } else {
+                false
+            }
+        },
+        rustc_ty::Coroutine(def_id, _) | rustc_ty::CoroutineWitness(def_id, _) => cx.tcx.coroutine_is_async(def_id),
+        _ => false,
     }
 }
 
@@ -2035,16 +2064,6 @@ pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .get(base.hir_id)
             .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
     })
-}
-
-pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
-    if is_no_core_crate(cx) {
-        None
-    } else if is_no_std_crate(cx) {
-        Some("core")
-    } else {
-        Some("std")
-    }
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {

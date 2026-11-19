@@ -178,9 +178,9 @@ That's why the `else_if_without_else` example is listed in `early_lint_methods!`
 
 [lint_crate_entry]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_lints/src/lib.rs
 [else_if_without_else]: https://github.com/rust-lang/rust-clippy/blob/4253aa7137cb7378acc96133c787e49a345c2b3c/clippy_lints/src/else_if_without_else.rs
-[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html
-[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
-[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
+[`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/context/struct.LintStore.html
+[early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/passes/trait.EarlyLintPass.html
+[late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/passes/trait.LateLintPass.html
 
 ## Issue and PR triage
 
@@ -289,7 +289,7 @@ what that means, how it applies.
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
 
-<!-- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
+<!-- adapted from https://github.com/servo/servo/blob/main/CONTRIBUTING.md -->
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT]: https://opensource.org/licenses/MIT

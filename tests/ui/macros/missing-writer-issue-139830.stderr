@@ -2,7 +2,7 @@ error[E0599]: cannot write into `String`
   --> $DIR/missing-writer-issue-139830.rs:7:20
    |
 LL |     let _ = write!(buf, "foo");
-   |                    ^^^
+   |             -------^^^-------- method not found in `String`
    |
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |

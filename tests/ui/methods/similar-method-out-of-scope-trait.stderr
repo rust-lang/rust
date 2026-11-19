@@ -1,0 +1,140 @@
+error[E0599]: no method named `writ` found for type parameter `T` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:25:12
+   |
+LL | fn generic<T: writer::Write>(writer: T) {
+   |            - method `writ` not found for this type parameter
+LL |     writer.writ();
+   |            ^^^^
+   |
+help: there is a method `write` with a similar name
+   |
+LL |     writer.write();
+   |                +
+
+error[E0599]: no method named `writ` found for reference `&dyn writer::Write` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:30:12
+   |
+LL |     writer.writ();
+   |            ^^^^
+   |
+help: there is a method `write` with a similar name
+   |
+LL |     writer.write();
+   |                +
+
+error[E0599]: no method named `write_all` found for struct `Writer` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:36:12
+   |
+LL |     pub struct Writer;
+   |     ----------------- method `write_all` not found for this struct
+...
+LL |         fn write_all(&self) {}
+   |            --------- the method is available for `Writer` here
+...
+LL |     writer.write_all();
+   |            ^^^^^^^^^ method not found in `Writer`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Write` which provides `write_all` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::writer::Write;
+   |
+
+error[E0599]: no method named `reed` found for struct `Writer` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:38:12
+   |
+LL |     pub struct Writer;
+   |     ----------------- method `reed` not found for this struct
+...
+LL |     writer.reed();
+   |            ^^^^
+   |
+help: there is a method `read` with a similar name
+   |
+LL -     writer.reed();
+LL +     writer.read();
+   |
+
+error[E0599]: no method named `flus` found for struct `Writer` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:40:12
+   |
+LL |     pub struct Writer;
+   |     ----------------- method `flus` not found for this struct
+...
+LL |     writer.flus();
+   |            ^^^^
+   |
+help: there is a method `flush` with a similar name
+   |
+LL |     writer.flush();
+   |                +
+
+error[E0599]: no method named `method` found for struct `ByValue` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:82:21
+   |
+LL |     pub struct ByValue;
+   |     ------------------ method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `ByValue` here
+...
+LL |     hidden::ByValue.method();
+   |                     ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::Hidden;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::ByValue.method2();
+   |                           +
+
+error[E0599]: no method named `method` found for struct `Ambiguous` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:84:23
+   |
+LL |     pub struct Ambiguous;
+   |     -------------------- method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `Ambiguous` here
+...
+LL |     hidden::Ambiguous.method();
+   |                       ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `HiddenRef` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::HiddenRef;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::Ambiguous.method2();
+   |                             +
+
+error[E0599]: no method named `method` found for struct `Inherent` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:86:22
+   |
+LL |     pub struct Inherent;
+   |     ------------------- method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `Inherent` here
+...
+LL |     hidden::Inherent.method();
+   |                      ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::Hidden;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::Inherent.method2();
+   |                            +
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

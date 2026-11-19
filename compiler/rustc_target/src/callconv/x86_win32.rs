@@ -1,7 +1,10 @@
-use rustc_abi::{Align, Float, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface};
+use rustc_abi::{
+    Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
+};
 
 use crate::callconv::FnAbi;
-use crate::spec::HasTargetSpec;
+use crate::callconv::x86::Flavor;
+use crate::spec::{HasTargetSpec, RustcAbi};
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(
     cx: &C,
@@ -40,6 +43,12 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             } else {
                 fn_abi.ret.make_indirect();
             }
+        } else if cx.target_spec().rustc_abi != Some(RustcAbi::Softfloat)
+            && opts.flavor != Flavor::Vectorcall
+            && let BackendRepr::Scalar(scalar) = fn_abi.ret.layout.backend_repr
+            && matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
+        {
+            super::x86::pass_on_x87_floating_point_stack(cx, &mut fn_abi.ret);
         } else {
             fn_abi.ret.extend_integer_width_to(32);
         }
@@ -71,9 +80,9 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
             //   and structs containing them, provided they lack an explicit alignment attribute.
             assert!(
-                arg.layout.align.abi >= max_repr_align,
+                arg.layout.align >= max_repr_align,
                 "abi alignment {:?} less than requested alignment {max_repr_align:?}",
-                arg.layout.align.abi,
+                arg.layout.align,
             );
             arg.make_indirect();
         } else if arg.layout.is_aggregate() {

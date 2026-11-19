@@ -1,12 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{
-    ExprUseNode, get_expr_use_site, is_expr_temporary_value, is_inside_always_const_context, std_or_core,
-};
+use clippy_utils::{ExprUseNode, get_expr_use_site, is_expr_temporary_value, is_inside_always_const_context};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, Ty, TyKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_middle::ty;
 
 use super::REF_AS_PTR;

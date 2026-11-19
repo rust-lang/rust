@@ -16,7 +16,6 @@ mod utils;
 mod wrong_transmute;
 
 use clippy_config::Conf;
-use clippy_utils::is_in_const_context;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
@@ -528,12 +527,6 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             && let Some(def_id) = path.res.opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::transmute, def_id)
         {
-            // Avoid suggesting non-const operations in const contexts:
-            // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
-            // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
-            // - char conversions (https://github.com/rust-lang/rust/issues/89259)
-            let const_context = is_in_const_context(cx);
-
             let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
                 [] => (cx.typeck_results().expr_ty(arg), false),
                 [.., a] => (a.target, true),
@@ -555,7 +548,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
                 | transmute_ptr_to_ref::check(cx, e, from_field_ty, to_ty, from_field_expr.clone(), path, self.msrv)
                 | missing_transmute_annotations::check(cx, path, arg, from_ty, to_ty, e.hir_id)
-                | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, self.msrv)
                 | transmute_ptr_to_ptr::check(cx, e, from_field_ty, to_ty, from_field_expr, self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
@@ -564,7 +557,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | (eager_transmute::check(cx, e, arg, from_ty, to_ty));
 
             if !linted {
-                transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg, const_context);
+                transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
             }
         }
     }

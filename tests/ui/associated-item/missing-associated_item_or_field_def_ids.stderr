@@ -6,12 +6,6 @@ LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
    |
    = note: an associated function named `Iterator::advance_by` exists in another namespace
 
-error: relaxed bounds are not permitted in trait object types
-  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:29
-   |
-LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0404`.

@@ -30,6 +30,26 @@ use crate::{
     StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
 };
 
+/// This option controls how coroutine saved locals are packed
+/// into the coroutine state data
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(
+        rustc_macros::Encodable_NoContext,
+        rustc_macros::Decodable_NoContext,
+        rustc_macros::StableHash,
+    )
+)]
+pub enum PackCoroutineLayout {
+    /// The classic layout where captures are always promoted to coroutine state prefix
+    #[default]
+    Classic,
+    /// Captures are first saved into the `UNRESUMED` state and promoted
+    /// when they are used across more than one suspension
+    CapturesOnly,
+}
+
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
 #[derive(Clone, Debug, PartialEq)]
 enum SavedLocalEligibility<VariantIdx, FieldIdx> {
@@ -231,7 +251,7 @@ where
             let mut variant = calc.layout_of_univariant(
                 &variant_only_tys.collect::<IndexVec<_, _>>(),
                 &ReprOptions::default(),
-                StructKind::Prefixed(prefix_size, prefix_align.abi),
+                StructKind::Prefixed(prefix_size, prefix_align),
             )?;
 
             let FieldsShape::Arbitrary { offsets, in_memory_order } = variant.fields else {
@@ -287,7 +307,7 @@ where
         })
         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
-    size = size.align_to(align.abi);
+    size = size.align_to(align);
 
     let uninhabited = prefix.uninhabited || variants.iter().all(|v| v.is_uninhabited());
     let abi = BackendRepr::Memory { sized: true };
@@ -312,7 +332,7 @@ where
         size,
         align,
         max_repr_align: None,
-        unadjusted_abi_align: align.abi,
+        unadjusted_abi_align: align,
         repr_c: false,
         randomization_seed: Default::default(),
     })

@@ -14,8 +14,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
-        this.expect_target_feature_for_intrinsic(link_name, "avx2")?;
+        let ecx = self.eval_context_mut();
+        ecx.expect_target_feature_for_intrinsic(link_name, "avx2")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx2.").unwrap();
 
@@ -23,13 +23,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm256_avg_epu8 and _mm256_avg_epu16 functions.
             // Averages packed unsigned 8/16-bit integers in `left` and `right`.
             "pavg.b" | "pavg.w" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pavg(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pavg(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_mulhi_epi16 and _mm256_mulhi_epu16 functions.
             "pmulh.w" | "pmulhu.w" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pmulh(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmulh(ecx, left, right, dest)?;
             }
             // Used to implement `_mm{,_mask}_{i32,i64}gather_{epi32,epi64,pd,ps}` functions
             // Gathers elements from `slice` using `offsets * scale` as indices.
@@ -40,14 +40,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "gather.d.pd.256" | "gather.q.pd" | "gather.q.pd.256" | "gather.d.ps"
             | "gather.d.ps.256" | "gather.q.ps" | "gather.q.ps.256" => {
                 let [src, slice, offsets, mask, scale] =
-                    this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                    ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 assert_eq!(dest.layout, src.layout);
 
-                let (src, _) = this.project_to_simd(src)?;
-                let (offsets, offsets_len) = this.project_to_simd(offsets)?;
-                let (mask, mask_len) = this.project_to_simd(mask)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (src, _) = ecx.project_to_simd(src)?;
+                let (offsets, offsets_len) = ecx.project_to_simd(offsets)?;
+                let (mask, mask_len) = ecx.project_to_simd(mask)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 // There are cases like dest: i32x4, offsets: i64x2
                 // If dest has more elements than offset, extra dest elements are filled with zero.
@@ -56,46 +56,46 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 assert_eq!(dest_len, mask_len);
 
-                let mask_item_size = mask.layout.field(this, 0).size;
+                let mask_item_size = mask.layout.field(ecx, 0).size;
                 let high_bit_offset = mask_item_size.bits().strict_sub(1);
 
-                let scale = this.read_scalar(scale)?.to_i8()?;
+                let scale = ecx.read_scalar(scale)?.to_i8()?;
                 if !matches!(scale, 1 | 2 | 4 | 8) {
                     panic!("invalid gather scale {scale}");
                 }
                 let scale = i64::from(scale);
 
-                let slice = this.read_pointer(slice)?;
+                let slice = ecx.read_pointer(slice)?;
                 for i in 0..actual_len {
-                    let mask = this.project_index(&mask, i)?;
-                    let dest = this.project_index(&dest, i)?;
+                    let mask = ecx.project_index(&mask, i)?;
+                    let dest = ecx.project_index(&dest, i)?;
 
-                    if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-                        let offset = this.project_index(&offsets, i)?;
+                    if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
+                        let offset = ecx.project_index(&offsets, i)?;
                         let offset =
-                            i64::try_from(this.read_scalar(&offset)?.to_int(offset.layout.size)?)
+                            i64::try_from(ecx.read_scalar(&offset)?.to_int(offset.layout.size)?)
                                 .unwrap();
-                        let ptr = slice.wrapping_signed_offset(offset.strict_mul(scale), &this.tcx);
+                        let ptr = slice.wrapping_signed_offset(offset.strict_mul(scale), &ecx.tcx);
                         // Unaligned copy, which is what we want.
-                        this.mem_copy(
+                        ecx.mem_copy(
                             ptr,
                             dest.ptr(),
                             dest.layout.size,
                             /*nonoverlapping*/ true,
                         )?;
                     } else {
-                        this.copy_op(&this.project_index(&src, i)?, &dest)?;
+                        ecx.copy_op(&ecx.project_index(&src, i)?, &dest)?;
                     }
                 }
                 for i in actual_len..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
+                    let dest = ecx.project_index(&dest, i)?;
+                    ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
                 }
             }
             // Used to implement the _mm256_maddubs_epi16 function.
             "pmadd.ub.sw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pmaddbw(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmaddbw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_mpsadbw_epu8 function.
             // Compute the sum of absolute differences of quadruplets of unsigned
@@ -104,8 +104,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // offsets specified in `imm`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mpsadbw_epu8
             "mpsadbw" => {
-                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                mpsadbw(this, left, right, imm, dest)?;
+                let [left, right, imm] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                mpsadbw(ecx, left, right, imm, dest)?;
             }
             // Used to implement the _mm256_mulhrs_epi16 function.
             // Multiplies packed 16-bit signed integer values, truncates the 32-bit
@@ -114,53 +114,53 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 1 and then taking the bits `1..=16`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhrs_epi16
             "pmul.hr.sw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pmulhrsw(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmulhrsw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_packs_epi16 function.
             // Converts two 16-bit integer vectors to a single 8-bit integer
             // vector with signed saturation.
             "packsswb" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                packsswb(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                packsswb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_packs_epi32 function.
             // Converts two 32-bit integer vectors to a single 16-bit integer
             // vector with signed saturation.
             "packssdw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                packssdw(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                packssdw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_packus_epi16 function.
             // Converts two 16-bit signed integer vectors to a single 8-bit
             // unsigned integer vector with saturation.
             "packuswb" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                packuswb(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                packuswb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_packus_epi32 function.
             // Concatenates two 32-bit signed integer vectors and converts
             // the result to a 16-bit unsigned integer vector with saturation.
             "packusdw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                packusdw(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                packusdw(ecx, left, right, dest)?;
             }
             // Used to implement _mm256_permutevar8x32_epi32 and _mm256_permutevar8x32_ps.
             "permd" | "permps" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                permute(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                permute(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_sad_epu8 function.
             "psad.bw" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                psadbw(this, left, right, dest)?
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                psadbw(ecx, left, right, dest)?
             }
             // Used to implement the _mm256_shuffle_epi8 intrinsic.
             // Shuffles bytes from `left` using `right` as pattern.
             // Each 128-bit block is shuffled independently.
             "pshuf.b" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                pshufb(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pshufb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_sign_epi{8,16,32} functions.
             // Negates elements from `left` when the corresponding element in
@@ -168,8 +168,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is written to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b" | "psign.w" | "psign.d" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                psign(this, left, right, dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                psign(ecx, left, right, dest)?;
             }
             // Used to implement the _mm256_{sll,srl,sra}_epi{16,32,64} functions
             // (except _mm256_sra_epi64, which is not available in AVX2).
@@ -181,7 +181,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is copied to remaining bits.
             "psll.w" | "psrl.w" | "psra.w" | "psll.d" | "psrl.d" | "psra.d" | "psll.q"
             | "psrl.q" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "psll.w" | "psll.d" | "psll.q" => ShiftOp::Left,
@@ -190,22 +190,22 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                shift_simd_by_scalar(this, left, right, which, dest)?;
+                shift_simd_by_scalar(ecx, left, right, which, dest)?;
             }
             // Used to implement the _mm256_madd_epi16 function.
             // Multiplies packed signed 16-bit integers in `left` and `right`, producing
             // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
             // intermediate 32-bit integers, and pack the results in `dest`.
             "pmadd.wd" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmaddwd(this, left, right, dest)?;
+                pmaddwd(ecx, left, right, dest)?;
             }
             // Used to implement the _mm{,256}_{sllv,srlv,srav}_epi{32,64} functions
             // (except _mm{,256}_srav_epi64, which are not available in AVX2).
             "psllv.d" | "psllv.d.256" | "psllv.q" | "psllv.q.256" | "psrlv.d" | "psrlv.d.256"
             | "psrlv.q" | "psrlv.q.256" | "psrav.d" | "psrav.d.256" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let which = match unprefixed_name {
                     "psllv.d" | "psllv.d.256" | "psllv.q" | "psllv.q.256" => ShiftOp::Left,
@@ -214,7 +214,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                shift_simd_by_simd(this, left, right, which, dest)?;
+                shift_simd_by_simd(ecx, left, right, which, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

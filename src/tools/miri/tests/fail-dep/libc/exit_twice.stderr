@@ -1,0 +1,24 @@
+error: Undefined Behavior: `exit` called more than once
+  --> tests/fail-dep/libc/exit_twice.rs:LL:CC
+   |
+LL |         libc::exit(0);
+   |         ^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail-dep/libc/exit_twice.rs:LL:CC
+   |
+LL | /     std::thread::spawn(|| unsafe {
+LL | |         // Have main thread exit first, for a consistent error location.
+LL | |         for _ in 0..64 {
+LL | |             std::thread::yield_now();
+...  |
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

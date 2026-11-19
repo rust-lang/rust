@@ -202,17 +202,13 @@ fn emit_covmap_record<'ll>(
     // modern versions of the LLVM coverage mapping format, and are always 0.
     // <https://llvm.org/docs/CoverageMappingFormat.html#llvm-ir-representation>
     // See also `src/llvm-project/clang/lib/CodeGen/CoverageMappingGen.cpp`.
-    let covmap_header = cx.const_struct(
-        &[
-            cx.const_u32(0), // (unused)
-            cx.const_u32(filenames_buffer.len() as u32),
-            cx.const_u32(0), // (unused)
-            cx.const_u32(version.to_u32()),
-        ],
-        /* packed */ false,
-    );
-    let covmap_record = cx
-        .const_struct(&[covmap_header, cx.const_bytes(filenames_buffer)], /* packed */ false);
+    let covmap_header = cx.const_struct(&[
+        cx.const_u32(0), // (unused)
+        cx.const_u32(filenames_buffer.len() as u32),
+        cx.const_u32(0), // (unused)
+        cx.const_u32(version.to_u32()),
+    ]);
+    let covmap_record = cx.const_struct(&[covmap_header, cx.const_bytes(filenames_buffer)]);
 
     let covmap_global =
         llvm::add_global(cx.llmod, cx.val_ty(covmap_record), &llvm_cov::covmap_var_name());

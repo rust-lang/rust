@@ -11,8 +11,8 @@ diff --git a/library/coretests/tests/lib.rs b/library/coretests/tests/lib.rs
 index 79022fe..9223b2f 100644
 --- a/library/coretests/tests/lib.rs
 +++ b/library/coretests/tests/lib.rs
-@@ -165,7 +165,6 @@ mod pin;
- mod pin_macro;
+@@ -215,7 +215,6 @@ mod pin_macro;
+ mod process;
  mod ptr;
  mod result;
 -mod simd;

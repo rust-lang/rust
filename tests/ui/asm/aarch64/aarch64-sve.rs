@@ -2,7 +2,6 @@
 //@ add-minicore
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
-//@ ignore-backends: gcc
 #![crate_type = "rlib"]
 #![feature(no_core)]
 #![no_core]
@@ -19,3 +18,5 @@ fn f(x: f64) {
         asm!("", out("ffr") _);
     }
 }
+
+//@ reference: asm.register-operands.supported-register-classes

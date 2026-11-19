@@ -8,14 +8,14 @@
 //~^ ERROR malformed `warn` attribute input
 //~| NOTE expected a normal string literal, not a byte string literal
 #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
-//~^ ERROR malformed lint attribute
-//~| NOTE bad attribute argument
+//~^ ERROR malformed
+//~| NOTE not the name of a lint
 #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
-//~^ ERROR malformed lint attribute
-//~| NOTE bad attribute argument
+//~^ ERROR malformed
+//~| NOTE not the name of a lint
 #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
-//~^ ERROR malformed lint attribute
-//~| NOTE bad attribute argument
+//~^ ERROR malformed
+//~| NOTE not the name of a lint
 #![warn(ellipsis_inclusive_range_patterns, reason = "born barren", reason = "a freak growth")]
 //~^ ERROR malformed lint attribute
 //~| NOTE reason in lint attribute must come last

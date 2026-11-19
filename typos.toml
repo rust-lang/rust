@@ -9,6 +9,7 @@ extend-exclude = [
     "compiler/rustc_codegen_gcc",
     "library/backtrace",
     "library/compiler-builtins",
+    "library/hashbrown",
     "library/stdarch",
     # generated lorem ipsum texts
     "library/alloctests/benches/str.rs",

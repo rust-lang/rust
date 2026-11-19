@@ -62,7 +62,8 @@ pub extern "C" fn f16b_from_bits(bits: u16) -> f16b {
     f16b::from_bits(bits)
 }
 
-// GENERIC-LABEL: define{{.*}} float @widen_f16b(bfloat
+// Hard-float x86-32 returns `f32` as `x86_fp80` to avoid a LLVM bug.
+// GENERIC-LABEL: define{{.*}} {{float|x86_fp80}} @widen_f16b(bfloat
 // LOONGARCH32-LABEL: define{{.*}} float @widen_f16b(half
 // LOONGARCH64-LABEL: define{{.*}} float @widen_f16b(half
 // RISCV32-LABEL: define{{.*}} float @widen_f16b(half

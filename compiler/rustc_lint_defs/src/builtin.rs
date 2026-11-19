@@ -7,7 +7,7 @@
 //! When removing a lint, make sure to also add a call to `register_removed` in
 //! compiler/rustc_lint/src/lib.rs.
 
-use crate::{declare_lint, declare_lint_pass, fcw};
+use crate::{declare_lint, fcw};
 
 pub mod hardwired {
     use super::*;
@@ -148,6 +148,7 @@ pub mod hardwired {
             UNUSED_ASSOCIATED_TYPE_BOUNDS,
             UNUSED_ATTRIBUTES,
             UNUSED_CRATE_DEPENDENCIES,
+            UNUSED_DOC_COMMENTS,
             UNUSED_EXTERN_CRATES,
             UNUSED_FEATURES,
             UNUSED_IMPORTS,
@@ -3482,8 +3483,6 @@ declare_lint! {
     };
 }
 
-declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
-
 declare_lint! {
     /// The `missing_abi` lint detects cases where the ABI is omitted from
     /// `extern` declarations.
@@ -6027,12 +6026,10 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #[no_link]
     /// extern crate std;
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

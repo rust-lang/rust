@@ -661,7 +661,9 @@ impl<'a, P: Pattern> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
+            // SAFETY: `Searcher` guarantees that:
+            // - `a` and `b` lie on unicode boundaries.
+            // - `a <= b <= haystack().len()` is satisfied.
             Some((a, b)) => unsafe {
                 let elt = haystack.get_unchecked(self.start..a);
                 self.start = b;
@@ -679,9 +681,11 @@ impl<'a, P: Pattern> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.start is either the start of the original string,
+            // SAFETY: `Searcher` guarantees that:
+            // - `b` lies on unicode boundary.
+            // - `self.start` is either the start of the original string,
             // or `b` was assigned to it, so it also lies on unicode boundary.
+            // - `self.start <= b <= haystack().len()` is satisfied.
             Some((_, b)) => unsafe {
                 let elt = haystack.get_unchecked(self.start..b);
                 self.start = b;
@@ -714,7 +718,11 @@ impl<'a, P: Pattern> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
+            // SAFETY: `Searcher` guarantees that:
+            // - `a` and `b` lie on unicode boundaries.
+            // - `self.end` is either the end of the original string,
+            // or `a` was assigned to it, so it also lies on unicode boundary.
+            // - `a <= b <= haystack().len()` is satisfied.
             Some((a, b)) => unsafe {
                 let elt = haystack.get_unchecked(b..self.end);
                 self.end = a;
@@ -751,9 +759,11 @@ impl<'a, P: Pattern> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.end is either the end of the original string,
+            // SAFETY: `Searcher` guarantees that:
+            // - `b` lies on unicode boundary.
+            // - self.end is either the end of the original string,
             // or `b` was assigned to it, so it also lies on unicode boundary.
+            // - `self.end <= b <= haystack.len()` is satisfied.
             Some((_, b)) => unsafe {
                 let elt = haystack.get_unchecked(b..self.end);
                 self.end = b;

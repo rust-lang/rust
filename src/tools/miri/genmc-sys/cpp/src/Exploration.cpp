@@ -241,6 +241,7 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         WriteAttr(),
         nullptr,
         std::nullopt,
+        EventDeps(),
         EventDeps()
     );
     inc_pos(thread_id, load_ret.count);
@@ -320,6 +321,7 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         can_fail_spuriously,
         nullptr,
         std::nullopt,
+        EventDeps(),
         EventDeps()
     );
     inc_pos(thread_id, load_ret.count);

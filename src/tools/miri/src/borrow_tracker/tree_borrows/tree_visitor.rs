@@ -68,27 +68,27 @@ where
 {
     fn should_continue_at(
         &self,
-        this: &mut TreeVisitor<'_, T>,
+        visitor: &mut TreeVisitor<'_, T>,
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> ContinueTraversal {
-        let args = NodeAppArgs { idx, rel_pos, nodes: this.nodes, data: this.data };
+        let args = NodeAppArgs { idx, rel_pos, nodes: visitor.nodes, data: visitor.data };
         (self.f_continue)(&args)
     }
 
     fn propagate_at(
         &mut self,
-        this: &mut TreeVisitor<'_, T>,
+        visitor: &mut TreeVisitor<'_, T>,
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> Result<(), Err> {
-        (self.f_propagate)(NodeAppArgs { idx, rel_pos, nodes: this.nodes, data: this.data })
+        (self.f_propagate)(NodeAppArgs { idx, rel_pos, nodes: visitor.nodes, data: visitor.data })
     }
 
     /// Returns the root of this tree.
     fn go_upwards_from_accessed(
         &mut self,
-        this: &mut TreeVisitor<'_, T>,
+        visitor: &mut TreeVisitor<'_, T>,
         accessed_node: UniIndex,
         visit_children: ChildrenVisitMode,
     ) -> Result<UniIndex, Err> {
@@ -101,9 +101,9 @@ where
         // be handled differently here compared to the further parents
         // of `accessesed_node`.
         {
-            self.propagate_at(this, accessed_node, AccessRelatedness::LocalAccess)?;
+            self.propagate_at(visitor, accessed_node, AccessRelatedness::LocalAccess)?;
             if matches!(visit_children, ChildrenVisitMode::VisitChildrenOfAccessed) {
-                let accessed_node = this.nodes.get(accessed_node).unwrap();
+                let accessed_node = visitor.nodes.get(accessed_node).unwrap();
                 // We `rev()` here because we reverse the entire stack later.
                 for &child in accessed_node.children.iter().rev() {
                     self.stack.push((
@@ -118,9 +118,9 @@ where
         // make sure we only mark the "cousin" subtrees for later visitation,
         // not the subtree that contains the accessed node.
         let mut last_node = accessed_node;
-        while let Some(current) = this.nodes.get(last_node).unwrap().parent {
-            self.propagate_at(this, current, AccessRelatedness::LocalAccess)?;
-            let node = this.nodes.get(current).unwrap();
+        while let Some(current) = visitor.nodes.get(last_node).unwrap().parent {
+            self.propagate_at(visitor, current, AccessRelatedness::LocalAccess)?;
+            let node = visitor.nodes.get(current).unwrap();
             // We `rev()` here because we reverse the entire stack later.
             for &child in node.children.iter().rev() {
                 if last_node == child {
@@ -139,7 +139,7 @@ where
         Ok(last_node)
     }
 
-    fn finish_foreign_accesses(&mut self, this: &mut TreeVisitor<'_, T>) -> Result<(), Err> {
+    fn finish_foreign_accesses(&mut self, visitor: &mut TreeVisitor<'_, T>) -> Result<(), Err> {
         while let Some((idx, rel_pos, step)) = self.stack.last_mut() {
             let idx = *idx;
             let rel_pos = *rel_pos;
@@ -150,10 +150,10 @@ where
                     // Next time we come back will be when all the children are handled.
                     *step = RecursionState::AfterChildren;
                     // Now push the children, except if we are told to skip this subtree.
-                    let handle_children = self.should_continue_at(this, idx, rel_pos);
+                    let handle_children = self.should_continue_at(visitor, idx, rel_pos);
                     match handle_children {
                         ContinueTraversal::Recurse => {
-                            let node = this.nodes.get(idx).unwrap();
+                            let node = visitor.nodes.get(idx).unwrap();
                             for &child in node.children.iter() {
                                 self.stack.push((child, rel_pos, RecursionState::BeforeChildren));
                             }
@@ -168,7 +168,7 @@ where
                 // All the children are handled, let's actually visit this node
                 RecursionState::AfterChildren => {
                     self.stack.pop();
-                    self.propagate_at(this, idx, rel_pos)?;
+                    self.propagate_at(visitor, idx, rel_pos)?;
                 }
             }
         }

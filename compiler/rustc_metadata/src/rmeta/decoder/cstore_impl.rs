@@ -409,6 +409,7 @@ provide! { tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Arc::clone(&cdata.source) }
+    used_crate_source_flags => { cdata.source.flags() }
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }
@@ -620,6 +621,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     .filter(|k| tcx.crate_name(**k) == name && **k != c)
                     .map(|c| *c),
             )
+        },
+        crate_name_with_rename: |tcx, c: CrateNum| {
+            CStore::from_tcx(tcx).opt_extern_crate_name(c).unwrap_or_else(|| tcx.crate_name(c))
         },
         ..providers.queries
     };

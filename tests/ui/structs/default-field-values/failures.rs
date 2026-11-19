@@ -45,8 +45,8 @@ const fn foo() -> i32 {
 
 #[derive(Debug, Default)]
 enum E {
-    #[default]
-    Variant {} //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Variant {}
 }
 
 union U

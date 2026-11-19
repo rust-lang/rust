@@ -27,9 +27,9 @@ impl RegKind {
         match primitive {
             Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
             Primitive::Float(Float::PpcF128) => RegKind::PpcF128,
-            Primitive::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
-                RegKind::Float
-            }
+            Primitive::Float(
+                Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::X87F80 | Float::F128,
+            ) => RegKind::Float,
         }
     }
 }
@@ -60,6 +60,7 @@ impl Reg {
     reg_ctor!(f16, Float, 16);
     reg_ctor!(f32, Float, 32);
     reg_ctor!(f64, Float, 64);
+    reg_ctor!(x87_f80, Float, 80);
     reg_ctor!(f128, Float, 128);
 
     /// A vector of the given size with an unknown (and irrelevant) element type.
@@ -70,12 +71,12 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => match self.size.bits() {
-                1 => dl.i1_align,
-                2..=8 => dl.i8_align,
+                1..=8 => Align::ONE,
                 9..=16 => dl.i16_align,
                 17..=32 => dl.i32_align,
                 33..=64 => dl.i64_align,
@@ -86,6 +87,10 @@ impl Reg {
                 16 => dl.f16_align,
                 32 => dl.f32_align,
                 64 => dl.f64_align,
+                // This alignment is not a multiple of 80 bits, but the alignment
+                // here is only used to align the alloca of a cast, and there the
+                // full alignment of x87_f80 should be used.
+                80 => dl.x87_f80_align,
                 128 => dl.f128_align,
                 _ => panic!("unsupported float: {self:?}"),
             },

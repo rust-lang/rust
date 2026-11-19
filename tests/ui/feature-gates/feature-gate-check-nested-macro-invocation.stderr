@@ -26,7 +26,7 @@ LL | foo!();
    | ------ in this macro invocation
    |
    = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
-   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
+   = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
 
 error: aborting due to 2 previous errors
 

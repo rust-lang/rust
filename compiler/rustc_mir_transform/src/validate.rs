@@ -52,7 +52,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         } else {
             let body_ty = tcx.type_of(def_id).skip_binder();
             let body_abi = match body_ty.kind() {
-                ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
+                ty::FnDef(..) => body_ty.fn_sig_abi(tcx),
                 ty::Closure(..) => ExternAbi::RustCall,
                 ty::CoroutineClosure(..) => ExternAbi::RustCall,
                 ty::Coroutine(..) => ExternAbi::Rust,

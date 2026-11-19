@@ -110,7 +110,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
         if let rustc_abi::BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
             layout.backend_repr()
         {
-            new_activities.push(da[i].clone());
+            new_activities.push(da[i]);
             new_positions.push(i + 1 - del_activities);
         }
     }
@@ -136,9 +136,9 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
 fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     width: u32,
-    args: &mut Vec<&'ll Value>,
+    args: &mut Vec<Value<'ll>>,
     inputs: &[DiffActivity],
-    outer_args: &[&'ll Value],
+    outer_args: &[Value<'ll>],
 ) {
     debug!("matching autodiff arguments");
     // We now handle the issue that Rust level arguments not always match the llvm-ir level
@@ -163,10 +163,10 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     let global_dupnoneedv = cx.declare_global("enzyme_dupnoneedv", cx.type_ptr());
 
     while activity_pos < inputs.len() {
-        let diff_activity = inputs[activity_pos as usize];
+        let diff_activity = inputs[activity_pos];
         // Duplicated arguments received a shadow argument, into which enzyme will write the
         // gradient.
-        let (activity, duplicated): (&Value, bool) = match diff_activity {
+        let (activity, duplicated): (Value<'ll>, bool) = match diff_activity {
             DiffActivity::None => panic!("not a valid input activity"),
             DiffActivity::Const => (global_const, false),
             DiffActivity::Active => (global_out, false),
@@ -284,15 +284,15 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
 // cover some assumptions of enzyme/autodiff, which could lead to UB otherwise.
 pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    fn_to_diff: &'ll Value,
+    fn_to_diff: Value<'ll>,
     outer_name: &str,
-    ret_ty: &'ll Type,
-    fn_args: &[&'ll Value],
+    ret_ty: Type<'ll>,
+    fn_args: &[Value<'ll>],
     attrs: &RustcAutodiff,
     dest_layout: ty::layout::TyAndLayout<'tcx>,
-    dest_place: Option<PlaceValue<&'ll Value>>,
+    dest_place: Option<PlaceValue<Value<'ll>>>,
     fnc_tree: FncTree,
-) -> IntrinsicResult<'tcx, &'ll Value> {
+) -> IntrinsicResult<'tcx, Value<'ll>> {
     let cx: &SimpleCx<'ll> = &bx.scx;
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
@@ -346,7 +346,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         enzyme_ty,
     );
 
-    let num_args = llvm::LLVMCountParams(&fn_to_diff);
+    let num_args = llvm::LLVMCountParams(fn_to_diff);
     let mut args = Vec::with_capacity(num_args as usize + 1);
     args.push(fn_to_diff);
 
@@ -363,7 +363,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     match_args_from_caller_to_enzyme(bx, attrs.width, &mut args, &attrs.input_activity, fn_args);
 
     if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
-        crate::typetree::add_tt(&bx, fn_to_diff, fnc_tree);
+        crate::typetree::add_tt(bx, fn_to_diff, fnc_tree);
     }
 
     let call = bx.call(enzyme_ty, None, None, ad_fn, ReturnSlot::Direct, &args, None, None);

@@ -15,3 +15,5 @@ core::arch::global_asm!(".global my_exit", "my_exit:", "jmp {}", sym exit);
 fn main() {
     my_exit(0);
 }
+
+//@ reference: asm.operand-type.supported-operands-sym

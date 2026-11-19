@@ -1,5 +1,5 @@
 error: the `track_caller` attribute cannot be used on foreign statics
-  --> $DIR/track_caller_static_errors.rs:5:3
+  --> $DIR/track_caller_static_errors.rs:6:3
    |
 LL | #[track_caller]
    |   ^^^^^^^^^^^^

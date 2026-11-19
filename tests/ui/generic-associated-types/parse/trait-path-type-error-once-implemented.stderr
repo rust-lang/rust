@@ -7,6 +7,7 @@ LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/trait-path-type-error-once-implemented.rs:2:10
    |
+LL | trait X {
 LL |     type Y<'a>;
    |          ^ --
 help: add missing lifetime argument
@@ -25,6 +26,7 @@ LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
 note: associated type defined here, with 0 generic parameters
   --> $DIR/trait-path-type-error-once-implemented.rs:2:10
    |
+LL | trait X {
 LL |     type Y<'a>;
    |          ^
 

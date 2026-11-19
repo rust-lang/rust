@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    self, ConstKind, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
@@ -47,7 +47,8 @@ use crate::diagnostics::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::report_dyn_incompatibility;
+use crate::error_reporting::traits::suggestions::ReturnsVisitor;
+use crate::error_reporting::traits::{FindExprBySpan, report_dyn_incompatibility};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -194,6 +195,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // talking about `&mut T: Trait` and instead remain talking about
                             // `T: Trait` instead
                             && leaf_trait_predicate.def_id() != root_pred.def_id()
+                            // The root trait is not CoerceUnsized, because it's not something the user
+                            // will be concerned about since it's the predicate is generated internally in the new solver.
+                            && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::CoerceUnsized)
                             // The root trait is not `Unsize`, as to avoid talking about it in
                             // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
                             && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::Unsize)
@@ -867,21 +871,67 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty } => {
                 let expected_ty_str = self.tcx.short_string(expected_ty, &mut long_ty_file);
                 let ct_str = self.tcx.short_string(ct, &mut long_ty_file);
+                let mut diag_span = span;
+                let mut is_array_len = false;
+                if let ObligationCauseCode::ArrayLen(_, span) = obligation.cause.code() {
+                    let mut finder = FindExprBySpan::new(*span, self.tcx);
+                    match self.infcx.tcx.hir_node_by_def_id(obligation.cause.body_def_id) {
+                        hir::Node::Item(item) => finder.visit_item(item),
+                        hir::Node::ImplItem(item) => finder.visit_impl_item(item),
+                        hir::Node::TraitItem(item) => finder.visit_trait_item(item),
+                        _ => {}
+                    }
+                    if let Some(arr_ty) = finder.ty_result
+                        && let hir::TyKind::Array(_, len) = arr_ty.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    } else if let Some(arr) = finder.result
+                        && let hir::ExprKind::Repeat(_, len) = arr.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    }
+                }
                 let mut diag = self.dcx().struct_span_err(
-                    span,
+                    diag_span,
                     format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
                 );
                 diag.long_ty_path = long_ty_file;
+                if let ConstKind::Param(param_const) = ct.kind() {
+                    for param in self
+                        .tcx
+                        .generics_of(obligation.cause.body_def_id.to_def_id())
+                        .own_params
+                        .iter()
+                    {
+                        if let GenericParamDefKind::Const { .. } = param.kind
+                            && param.index == param_const.index
+                            && param.name == param_const.name
+                        {
+                            let span = self.tcx.def_span(param.def_id);
+                            diag.span_label(span, format!("`{}` defined here", param.name));
+                        }
+                    }
+                }
 
-                self.note_type_err(
-                    &mut diag,
-                    &obligation.cause,
-                    None,
-                    None,
-                    TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
-                    false,
-                    None,
-                );
+                if is_array_len {
+                    let ty = self.tcx.short_string(ct_ty, &mut diag.long_ty_path);
+                    diag.span_label(
+                        diag_span,
+                        format!("array length expected `{expected_ty_str}`, found `{ty}`"),
+                    );
+                } else {
+                    self.note_type_err(
+                        &mut diag,
+                        &obligation.cause,
+                        None,
+                        None,
+                        TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
+                        false,
+                        None,
+                    );
+                }
                 diag
             }
         };
@@ -1944,6 +1994,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             });
 
+            // Account for errors caused on a return type.
+            if let ObligationCauseCode::ReturnType = obligation.cause.code() {
+                let body = self.tcx.hir_body_owned_by(obligation.cause.body_def_id);
+                let mut visitor = ReturnsVisitor::default();
+                visitor.visit_body(&body);
+                if visitor.returns.is_empty()
+                    && let hir::ExprKind::Block(block, _) = body.value.kind
+                {
+                    // We likely have an attempt to unify `<Something as Trait>Assoc == ()`, but we
+                    // have no returned expression.
+                    let span = match block.stmts {
+                        [] => body.value.span,
+                        [.., stmt] => stmt.span,
+                    };
+                    if let Some(clause) = predicate.as_clause()
+                        && let ty::ClauseKind::Projection(projection) = clause.kind().skip_binder()
+                        && let Some(ty) = projection.term.as_type()
+                        && ty == self.tcx.types.unit
+                    {
+                        diag.span_label(span, "`()` returned here");
+                    }
+                } else if let Some(typeck) = &self.typeck_results {
+                    for expr in visitor.returns {
+                        let span = match expr.kind {
+                            hir::ExprKind::Closure(closure) => closure.fn_decl_span,
+                            _ => expr.span,
+                        };
+                        let msg = match typeck.expr_ty_adjusted_opt(expr) {
+                            Some(ty) => {
+                                let ty = self.tcx.short_string(ty, diag.long_ty_path());
+                                format!("`{ty}` returned here")
+                            }
+                            None => "value returned here".to_string(),
+                        };
+                        diag.span_label(span, msg);
+                        self.point_at_chain_in_return_position(
+                            obligation.cause.body_def_id,
+                            expr,
+                            typeck,
+                            obligation.param_env,
+                            &mut diag,
+                        );
+                    }
+                }
+            }
+
             self.note_type_err(
                 &mut diag,
                 &obligation.cause,
@@ -2083,6 +2179,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
 
@@ -2581,11 +2680,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             types.dedup();
             let all_types_equal = types.len() == 1;
 
-            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
-                candidates.len()
-            } else {
-                8
-            };
             if candidates.len() < 5 {
                 let spans: Vec<_> =
                     candidates.iter().map(|&(_, def_id)| self.tcx.def_span(def_id)).collect();
@@ -2629,7 +2723,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut tuple_min_arity = usize::MAX;
                 let mut tuple_max_arity = 0_usize;
                 let mut last_arity = None;
-                let mut all_types_tuples_cont_arity = true;
+                let mut all_tuples_cont_arity = true;
                 candidates.sort_by(|(c1, _), (c2, _)| {
                     if let ty::Tuple(tys1) = c1.self_ty().kind()
                         && let ty::Tuple(tys2) = c2.self_ty().kind()
@@ -2639,24 +2733,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         std::cmp::Ordering::Equal
                     }
                 });
-                let candidate_names: Vec<String> = candidates
+
+                let mut candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
                         if all_traits_equal {
-                            if all_types_tuples_cont_arity
-                                && let ty::Tuple(tys) = c.self_ty().kind()
-                                && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
-                            {
-                                last_arity = Some(tys.len());
-                                if tys.len() > tuple_max_arity {
-                                    tuple_max_arity = tys.len();
-                                }
-                                if tys.len() < tuple_min_arity {
-                                    tuple_min_arity = tys.len();
-                                }
-                            } else {
-                                all_types_tuples_cont_arity = false;
-                            }
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2678,28 +2759,97 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect();
 
-                let details = if all_traits_equal && all_types_tuples_cont_arity {
-                    if tuple_min_arity == 0 {
+                let mut all_tuples_impl_the_same_trait = true;
+                let mut last_tuple_trait_ref = None;
+
+                fn have_same_trait_path(a: &TraitRef<'_>, b: &TraitRef<'_>) -> bool {
+                    a.print_only_trait_path().to_string() == b.print_only_trait_path().to_string()
+                }
+                // `candidates` can contain only tuples or a variety of other types that include tuples.
+                // Find and locates tuples in `candidates` and computes some metrics: checks if they
+                // are continuous by arity, if so compute the min and the max arity of these tuples and
+                // check if they implement all the same trait or not.
+                let (tuples_candidates, tuples_range) = {
+                    let tuples_indexes: Vec<usize> = candidates
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, (c, _))| {
+                            if let ty::Tuple(tys) = c.self_ty().kind() {
+                                if all_tuples_cont_arity
+                                    && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
+                                {
+                                    last_arity = Some(tys.len());
+                                    if tys.len() > tuple_max_arity {
+                                        tuple_max_arity = tys.len();
+                                    }
+                                    if tys.len() < tuple_min_arity {
+                                        tuple_min_arity = tys.len();
+                                    }
+                                    if all_tuples_impl_the_same_trait
+                                        && have_same_trait_path(
+                                            last_tuple_trait_ref.map_or(c, |e: &TraitRef<'_>| e),
+                                            c,
+                                        )
+                                    {
+                                        last_tuple_trait_ref = Some(c);
+                                    } else {
+                                        all_tuples_impl_the_same_trait = false;
+                                    }
+                                } else {
+                                    all_tuples_cont_arity = false;
+                                }
+                                Some(idx)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    let (start, end) = (
+                        tuples_indexes.first().map_or_default(|idx| *idx),
+                        tuples_indexes.last().map_or_default(|idx| *idx + 1),
+                    );
+                    (&candidates[start..end], start..end)
+                };
+
+                // When all the types contained in `candidates` are tuples that are contiguous by arity
+                // and implement the same trait, or when there exists a subset of tuples in `candidates`
+                // that are contiguous by arity and implement the same trait, then the list of tuples can
+                // be factorized from `candidates_names`.
+                if !tuples_candidates.is_empty()
+                    && all_tuples_cont_arity
+                    && (all_traits_equal || all_tuples_impl_the_same_trait)
+                {
+                    let details = if tuple_min_arity == 0 {
                         format!("up to tuples of arity {tuple_max_arity}")
+                    } else if !all_traits_equal {
+                        format!("for tuples of arity {tuple_min_arity} to {tuple_max_arity}")
                     } else {
                         format!(
                             "for tuples of arity {tuple_min_arity} up to and including {tuple_max_arity}"
                         )
-                    }
+                    };
+                    let impl_trait = if all_traits_equal {
+                        String::new()
+                    } else {
+                        let c = tuples_candidates[0].0;
+                        format!(
+                            " implements `{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
+                    };
+                    let simplified_output = [
+                        // (T₁, T₂, …, Tₙ)
+                        format!("\n  `(T\u{2081}, T\u{2082}, …, T\u{2099})` {details}{impl_trait}"),
+                    ];
+                    candidate_names.splice(tuples_range, simplified_output);
+                }
+
+                let end = if candidate_names.len() <= 9 || self.tcx.sess.opts.verbose {
+                    candidate_names.len()
                 } else {
-                    String::new()
+                    8
                 };
-                let (candidate_names, end) = if all_traits_equal && all_types_tuples_cont_arity {
-                    (
-                        vec![
-                            // (T₁, T₂, …, Tₙ)
-                            format!("\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) {details}"),
-                        ],
-                        1,
-                    )
-                } else {
-                    (candidate_names, end)
-                };
+
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",

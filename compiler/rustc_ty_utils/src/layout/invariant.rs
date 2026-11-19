@@ -156,7 +156,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         );
                         assert_eq!(field.size, size, "`Scalar` field with bad size in {inner:#?}",);
                         assert_eq!(
-                            field.align.abi, align,
+                            field.align, align,
                             "`Scalar` field with bad align in {inner:#?}",
                         );
                         assert!(
@@ -238,7 +238,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` first field with bad size in {inner:#?}",
                 );
                 assert_eq!(
-                    field1.align.abi, align1,
+                    field1.align, align1,
                     "`ScalarPair` first field with bad align in {inner:#?}",
                 );
                 assert_matches!(
@@ -260,7 +260,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` second field with bad size in {inner:#?}",
                 );
                 assert_eq!(
-                    field2.align.abi, align2,
+                    field2.align, align2,
                     "`ScalarPair` second field with bad align in {inner:#?}",
                 );
                 assert_matches!(
@@ -270,7 +270,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 );
             }
             BackendRepr::SimdVector { element, count } => {
-                let align = layout.align.abi;
+                let align = layout.align;
                 let size = layout.size;
                 let element_align = element.default_align(cx);
                 let element_size = element.size(cx);

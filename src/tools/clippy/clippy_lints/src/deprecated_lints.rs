@@ -131,6 +131,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::invalid_ref", "invalid_value"),
     #[clippy::version = ""]
     ("clippy::invalid_utf8_in_unchecked", "invalid_from_utf8_unchecked"),
+    #[clippy::version = "1.100.0"]
+    ("clippy::large_stack_frames", "clippy::large_unopt_stack_frames"),
     #[clippy::version = ""]
     ("clippy::let_underscore_drop", "let_underscore_drop"),
     #[clippy::version = ""]

@@ -1150,9 +1150,9 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Creates a new `File` instance that shares the same underlying file handle
-    /// as the existing `File` instance. Reads, writes, and seeks will affect
-    /// both `File` instances simultaneously.
+    /// Creates a new `File` instance with a different OS handle referring to
+    /// the same underlying system resource as the existing `File` instance.
+    /// Reads, writes, and seeks will affect both `File` instances simultaneously.
     ///
     /// # Examples
     ///
@@ -3918,6 +3918,11 @@ impl DirBuilder {
             return Ok(());
         }
 
+        // For certain platforms, a path like "/tmp/foo/.", while the "/tmp" directory exists,
+        // the mkdir function may produce a `NotFound` error on that path instead of succeeding
+        // due to viewing the "foo" and "." as two separate missing components.
+        // See https://github.com/rust-lang/rust/issues/162243
+        let path = path.components().as_path();
         let ancestors = path.ancestors();
         let mut uncreated_dirs = 0;
 

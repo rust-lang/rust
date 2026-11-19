@@ -363,7 +363,7 @@ pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 pub(crate) struct SplitLtoUnitRequiresLto;
 
 #[derive(Diagnostic)]
-#[diag("`-Zvirtual-function-elimination` requires `-Clto`")]
+#[diag("`-Zvirtual-function-elimination` requires `-Clto=fat`")]
 pub(crate) struct UnstableVirtualFunctionElimination;
 
 #[derive(Diagnostic)]
@@ -720,6 +720,10 @@ pub(crate) struct ThinLtoNotSupportedByBackend;
 #[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is only supported on s390x")]
 pub(crate) struct UnsupportedPackedStack;
+
+#[derive(Diagnostic)]
+#[diag("`-Z pack-coroutine-layout=captures-only` is not yet implemented and will be ignored")]
+pub(crate) struct PackCoroutineLayoutNotImplemented;
 
 #[derive(Diagnostic)]
 #[diag("`-Ctarget-cpu=native` is not allowed for target `{$target_triple}`")]

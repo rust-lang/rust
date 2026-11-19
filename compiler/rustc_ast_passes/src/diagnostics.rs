@@ -201,16 +201,6 @@ pub(crate) struct FnParamDocComment {
     pub span: Span,
 }
 
-// FIXME(splat): add splat to the allowed built-in attributes when it is complete/stabilized
-#[derive(Diagnostic)]
-#[diag(
-    "allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters"
-)]
-pub(crate) struct FnParamForbiddenAttr {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
 pub(crate) struct EiiImplAttributeNotSupported<'a> {
@@ -1349,4 +1339,30 @@ pub(crate) struct ShowSpan {
     #[primary_span]
     pub span: Span,
     pub kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("unexpected parentheses surrounding `match` arm pattern")]
+#[note("see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information")]
+pub(crate) struct ParenAroundGuardedPatInMatchArm {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg_removal: RemoveParenFromGuardedPatInMatchArm,
+    #[help(
+        "add `#![feature(guard_patterns)]` to the crate attributes to enable experimental guard patterns"
+    )]
+    pub sugg_feature: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "remove parentheses surrounding the pattern",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct RemoveParenFromGuardedPatInMatchArm {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
 }

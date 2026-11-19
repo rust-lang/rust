@@ -29,8 +29,9 @@ impl Linker {
     pub fn codegen_and_build_linker(
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
+        metadata: EncodedMetadata,
     ) -> Linker {
-        let (ongoing_codegen, crate_info, metadata) = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, crate_info) = passes::start_codegen(codegen_backend, tcx);
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -67,6 +68,11 @@ impl Linker {
             }
         });
 
+        // Backends could raise an error, do not continue if that's the case.
+        if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
+            guar.raise_fatal();
+        }
+
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()
@@ -79,10 +85,6 @@ impl Linker {
                 &[(OutputType::Metadata.extension(), path)],
             );
             work_products.insert(id, product);
-        }
-
-        if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
-            guar.raise_fatal();
         }
 
         let _timer = sess.timer("link");
@@ -115,12 +117,7 @@ impl Linker {
             return;
         }
 
-        if !sess
-            .opts
-            .output_types
-            .keys()
-            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
-        {
+        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             return;
         }
 

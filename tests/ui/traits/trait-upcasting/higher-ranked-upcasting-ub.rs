@@ -22,7 +22,7 @@ fn unsound(x: &dyn for<'a> Subtrait<'a, 'a>) -> &dyn for<'a, 'b> Supertrait<'a, 
     x
     //[current]~^ ERROR mismatched types
     //[current]~| ERROR mismatched types
-    //[next]~^^^ ERROR the trait bound `&dyn for<'a> Subtrait<'a, 'a>: CoerceUnsized<&dyn for<'a, 'b> Supertrait<'a, 'b>>` is not satisfied
+    //[next]~^^^ ERROR the trait bound `dyn for<'a> Subtrait<'a, 'a>: Unsize<dyn for<'a, 'b> Supertrait<'a, 'b>>` is not satisfied
 }
 
 fn transmute<'a, 'b>(x: &'a str) -> &'b str {

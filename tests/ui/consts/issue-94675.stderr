@@ -1,5 +1,5 @@
 error: `IndexMut` is not yet stable as a const trait
-  --> $DIR/issue-94675.rs:11:17
+  --> $DIR/issue-94675.rs:9:17
    |
 LL |         self.bar[0] = baz.len();
    |                 ^^^

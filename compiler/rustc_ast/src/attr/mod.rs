@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::{Ident, Span, Symbol, sym};
-use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
@@ -80,124 +79,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    fn value_span(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args {
-                AttrArgs::Eq { expr, .. } => Some(expr.span),
-                _ => None,
-            },
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.value_span(),
-        }
-    }
-
-    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
-    /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
-            AttrKind::DocComment(..) => Some(self.span),
-            AttrKind::Generated(generated) => generated.is_doc_comment(),
-        }
-    }
-
-    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol> {
-        use SyntheticAttr::*;
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.name(),
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.name(),
-        }
-    }
-
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        use SyntheticAttr::*;
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
-            }
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
-            AttrKind::DocComment(_, _) => None,
-            AttrKind::Generated(generated) => generated.symbol_path(),
-        }
-    }
-
-    fn path_span(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(_, _) => None,
-            AttrKind::Generated(generated) => generated.path_span(),
-        }
-    }
-
-    fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
-                    && normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .zip(name)
-                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
-            }
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.path_matches(name),
-        }
-    }
-
-    fn is_word(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.is_word(),
-        }
-    }
-
-    /// Returns a list of meta items if the attribute is delimited with parenthesis:
-    ///
-    /// ```text
-    /// #[attr(a, b = "c")] // Returns `Some()`.
-    /// #[attr = ""] // Returns `None`.
-    /// #[attr] // Returns `None`.
-    /// ```
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
-        }
-    }
-
-    /// Returns the string value in:
-    ///
-    /// ```text
-    /// #[attribute = "value"]
-    ///               ^^^^^^^
-    /// ```
-    ///
-    /// It returns `None` in any other cases, including doc comments if they
-    /// are not under the form `#[doc = "..."]`.
-    ///
-    /// It also returns `None` for:
-    ///
-    /// ```text
-    /// #[attr("value")]
-    /// ```
-    fn value_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.value_str(),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.value_str(),
-        }
-    }
-
     /// Returns the documentation, its kind if this is a doc comment or a sugared doc comment
     /// and the span of the entire comment (or the entire attribute if raw - see the span in
     /// [`DocFragmentKind`] for the literal span.)
@@ -222,18 +103,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    /// Returns the documentation if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some("doc")`.
-    /// * `#[doc = "doc"]` returns `Some("doc")`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
-            _ => None,
-        }
-    }
-
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
@@ -244,14 +113,6 @@ impl AttributeExt for Attribute {
             }
             _ => None,
         }
-    }
-
-    /// Returns whether this attribute is any of the proc macro attributes.
-    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| self.has_name(*kind))
     }
 }
 
@@ -270,15 +131,6 @@ impl Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
-        }
-    }
-
-    pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_kind(),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(..) => None,
         }
     }
 
@@ -324,6 +176,20 @@ impl Attribute {
                 None
             }
             _ => None,
+        }
+    }
+
+    /// Returns a list of meta items if the attribute is delimited with parenthesis:
+    ///
+    /// ```text
+    /// #[attr(a, b = "c")] // Returns `Some()`.
+    /// #[attr = ""] // Returns `None`.
+    /// #[attr] // Returns `None`.
+    /// ```
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.meta_item_list(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
         }
     }
 }
@@ -396,6 +262,11 @@ impl AttrItem {
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         MetaItemKind::from_attr_args(&self.args)
+    }
+
+    /// Returns whether the attribute is a path, without any arguments.
+    pub fn is_word(&self) -> bool {
+        matches!(self.args, AttrArgs::Empty)
     }
 }
 
@@ -897,64 +768,6 @@ impl MetaItemLit {
 }
 
 pub trait AttributeExt: Debug + 'static {
-    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
-    /// return the name of the attribute; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol>;
-
-    /// Get the meta item list, `#[attr(meta item list)]`
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
-
-    /// Gets the value literal, as string, when using `#[attr = value]`
-    fn value_str(&self) -> Option<Symbol>;
-
-    /// Gets the span of the value literal, as string, when using `#[attr = value]`
-    fn value_span(&self) -> Option<Span>;
-
-    /// Checks whether the path of this attribute matches the name.
-    ///
-    /// Matches one segment of the path to each element in `name`
-    fn path_matches(&self, name: &[Symbol]) -> bool;
-
-    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
-    /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span>;
-
-    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
-    /// symbol.
-    #[inline]
-    fn has_name(&self, name: Symbol) -> bool {
-        self.name().map(|x| x == name).unwrap_or(false)
-    }
-
-    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
-    /// symbols.
-    #[inline]
-    fn has_any_name(&self, names: &[Symbol]) -> bool {
-        names.iter().any(|&name| self.has_name(name))
-    }
-    /// Returns whether the attribute is a path, without any arguments.
-    fn is_word(&self) -> bool;
-
-    fn path(&self) -> SmallVec<[Symbol; 1]> {
-        self.symbol_path().unwrap_or(smallvec![sym::doc])
-    }
-
-    fn path_span(&self) -> Option<Span>;
-
-    /// Returns None for doc comments
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
-
-    /// Returns the documentation if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some("doc")`.
-    /// * `#[doc = "doc"]` returns `Some("doc")`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol>;
-
-    /// Returns whether this attribute is any of the proc macro attributes.
-    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -972,58 +785,116 @@ pub trait AttributeExt: Debug + 'static {
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
 }
 
-// FIXME(fn_delegation): use function delegation instead of manually forwarding
-
 impl Attribute {
-    pub fn name(&self) -> Option<Symbol> {
-        AttributeExt::name(self)
-    }
-
-    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        AttributeExt::meta_item_list(self)
-    }
-
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases, including doc comments if they
+    /// are not under the form `#[doc = "..."]`.
+    ///
+    /// It also returns `None` for:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_str(),
+        }
     }
 
+    /// Gets the span of the value literal, as string, when using `#[attr = value]`
     pub fn value_span(&self) -> Option<Span> {
-        AttributeExt::value_span(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => match &normal.item.args {
+                AttrArgs::Eq { expr, .. } => Some(expr.span),
+                _ => None,
+            },
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_span(),
+        }
     }
 
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                normal.item.path.segments.len() == name.len()
+                    && normal
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .zip(name)
+                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
+            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.path() == name,
+        }
     }
 
-    // on ast attributes we return a bool since that's what most code already expects
+    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
+    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
+    /// a doc comment) will return `false`.
     pub fn is_doc_comment(&self) -> bool {
-        AttributeExt::is_doc_comment(self).is_some()
+        match &self.kind {
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => false,
+            AttrKind::DocComment(..) => true,
+            AttrKind::Generated(generated) => generated.is_doc_comment(),
+        }
     }
 
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    pub fn name(&self) -> Option<Symbol> {
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.name(),
+            AttrKind::Synthetic(_) => None,
+            AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => match generated.path() {
+                [name] => Some(*name),
+                _ => None,
+            },
+        }
+    }
+
+    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
+    /// symbol.
     #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
-        AttributeExt::has_name(self, name)
+        self.name().map(|x| x == name).unwrap_or(false)
     }
 
+    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
+    /// symbols.
     #[inline]
     pub fn has_any_name(&self, names: &[Symbol]) -> bool {
-        AttributeExt::has_any_name(self, names)
+        names.iter().any(|&name| self.has_name(name))
     }
 
-    pub fn is_word(&self) -> bool {
-        AttributeExt::is_word(self)
-    }
-
-    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        AttributeExt::path(self)
-    }
-
+    /// Returns the documentation if this is a doc comment or a sugared doc comment.
+    /// * `///doc` returns `Some("doc")`.
+    /// * `#[doc = "doc"]` returns `Some("doc")`.
+    /// * `#[doc(...)]` returns `None`.
     pub fn doc_str(&self) -> Option<Symbol> {
-        AttributeExt::doc_str(self)
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
+            _ => None,
+        }
     }
 
+    /// Returns whether this attribute is any of the proc macro attributes.
+    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
+        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
+            .iter()
+            .any(|kind| self.has_name(*kind))
     }
 
     pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {

@@ -25,9 +25,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgs, PolyProjectionClause,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
-    elaborate, may_use_unstable_feature,
+    self, CallerBoundsIterator, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgs,
+    PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::bug;
@@ -47,7 +47,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, sizedness_fast_path};
+use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, implicit_fast_path};
 
 mod _match;
 mod candidate_assembly;
@@ -537,7 +537,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if !self.infcx.disable_trait_solver_fast_paths()
-            && sizedness_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
+            && implicit_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
         {
             return Ok(EvaluatedToOk);
         }
@@ -936,7 +936,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert!(!self.typing_mode().is_coherence(), "old solver coherence");
 
         if obligation.is_global()
-            && obligation.param_env.caller_bounds().all(|bound| bound.has_param())
+            && obligation
+                .param_env
+                .caller_bounds()
+                .all_clauses(self.tcx())
+                .iter()
+                .all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
@@ -2075,6 +2080,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bound(..) => {
                 bug!("asked to assemble `Sized` of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2154,6 +2162,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2301,6 +2312,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     })
                 }
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         })
     }
 

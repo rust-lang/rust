@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
-use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::target::AstTarget;
 use rustc_errors::StashKey;
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::DefId;
@@ -318,6 +318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     GenericArgsMode::ParenSugar | GenericArgsMode::Silence => self
                         .lower_parenthesized_parameter_data(
                             data,
+                            segment.span(),
                             itctx,
                             bound_modifier_allowed_features,
                             hir_id,
@@ -347,7 +348,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         };
                         let guar = self
                             .dcx()
-                            .emit_err(GenericTypeWithParentheses { span: data.span, sub });
+                            .emit_err(GenericTypeWithParentheses { span: segment.span(), sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
@@ -509,6 +510,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
+        segment_span: Span,
         itctx: ImplTraitContext,
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
         segment_hir_id: HirId,
@@ -518,18 +520,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // a hidden lifetime parameter. This is needed for backwards
         // compatibility, even in contexts like an impl header where
         // we generally don't permit such things (see #51008).
-        let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
+        let ParenthesizedArgs { span: _, inputs, inputs_span, output } = data;
 
         // FIXME uses the segments HIR id which is not correct, it should
         // be the parameters HIR id instead. This is currently not lowered.
         for input in inputs {
-            self.lower_attrs(
-                segment_hir_id,
-                &input.attrs,
-                input.span,
-                Target::Param,
-                AstTarget::Param(input),
-            );
+            self.lower_attrs(segment_hir_id, &input.attrs, input.span, AstTarget::Param(input));
         }
 
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
@@ -556,7 +552,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             FnRetTy::Ty(ty) => self
                 .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
-            FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
+            FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(segment_span, &[])),
         };
         let args = smallvec![GenericArg::Type(
             self.arena.alloc(self.ty_tup(*inputs_span, inputs)).try_as_ambig_ty().unwrap()

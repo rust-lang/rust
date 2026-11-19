@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, skip_unsupported_miri_tests)))] // Miri has no net support on Windows
+
 use crate::net::tests::{sa4, sa6, tsa};
 use crate::net::*;
 

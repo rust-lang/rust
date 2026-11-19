@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
+use rustc_abi::PackCoroutineLayout;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -440,10 +441,10 @@ pub struct CodegenBackendInit {
     pub global_backend_features: Vec<String>,
 
     /// See `Session::replaced_intrinsics`.
-    pub replaced_intrinsics: Vec<Symbol>,
+    pub replaced_rustc_intrinsics: Vec<Symbol>,
 
     /// See `Session::fallback_intrinsics`.
-    pub fallback_intrinsics: Vec<Symbol>,
+    pub fallback_rustc_intrinsics: Vec<Symbol>,
 
     /// See `Session::thin_lto_supported`.
     pub thin_lto_supported: bool = true,
@@ -534,11 +535,11 @@ pub struct Session {
 
     /// A list of all intrinsics that the current codegen backend definitely replaces with its own
     /// implementations, which means their fallback bodies do not need to be monomorphized.
-    pub replaced_intrinsics: FxHashSet<Symbol>,
+    pub replaced_rustc_intrinsics: FxHashSet<Symbol>,
 
     /// A list of all intrinsics that the current codegen backend definitely does *not* replace
     /// with its own implementations, which means their fallback bodies can be MIR-inlined.
-    pub fallback_intrinsics: FxHashSet<Symbol>,
+    pub fallback_rustc_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
@@ -988,6 +989,11 @@ impl Session {
         self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
     }
 
+    /// What this compilation optimizes for; see [`config::OptimizationObjective`].
+    pub fn optimization_objective(&self) -> config::OptimizationObjective {
+        self.opts.optimize.objective()
+    }
+
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line
@@ -1305,7 +1311,7 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => {
+            HumanReadableErrorType { no_graphics, short, unicode } => {
                 let emitter = AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map)
                     .short_message(short)
@@ -1316,7 +1322,8 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-                    );
+                    )
+                    .no_graphics(no_graphics);
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -1491,8 +1498,8 @@ pub fn build_session(
 
     let CodegenBackendInit {
         global_backend_features,
-        replaced_intrinsics,
-        fallback_intrinsics,
+        replaced_rustc_intrinsics: replaced_intrinsics,
+        fallback_rustc_intrinsics: fallback_intrinsics,
         thin_lto_supported,
     } = codegen_backend_init;
 
@@ -1523,8 +1530,8 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         wasm_proc_macro_filesearch,
-        replaced_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
-        fallback_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
+        replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
+        fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
         thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
@@ -1855,6 +1862,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    match sess.opts.unstable_opts.pack_coroutine_layout {
+        PackCoroutineLayout::Classic => {}
+        PackCoroutineLayout::CapturesOnly => {
+            sess.dcx().emit_warn(diagnostics::PackCoroutineLayoutNotImplemented);
+        }
+    }
+
     if let Some(ref cpu_name) = sess.opts.cg.target_cpu {
         if cpu_name == NATIVE_CPU && sess.target.requires_consistent_cpu {
             sess.dcx().emit_fatal(diagnostics::NativeTargetCpuNotAllowed {
@@ -1958,10 +1972,11 @@ impl EarlyDiagCtxt {
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => Box::new(
+            HumanReadableErrorType { no_graphics, short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .short_message(short),
+                    .short_message(short)
+                    .no_graphics(no_graphics),
             ),
         },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {

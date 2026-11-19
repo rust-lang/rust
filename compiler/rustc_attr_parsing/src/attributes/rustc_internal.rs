@@ -89,22 +89,6 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcNeverReturnsNullPtrParser;
-
-impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
-}
-
 pub(crate) struct RustcPanicsWhenZeroParser;
 
 impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
@@ -436,9 +420,13 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Fn),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcTrivialFieldReads;
 }
 
 pub(crate) struct RustcNoMirInlineParser;
@@ -1125,11 +1113,28 @@ impl SingleAttributeParser for RustcDocPrimitiveParser {
 
 pub(crate) struct RustcIntrinsicParser;
 
-impl NoArgsAttributeParser for RustcIntrinsicParser {
+impl SingleAttributeParser for RustcIntrinsicParser {
     const PATH: &[Symbol] = &[sym::rustc_intrinsic];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &[r#"llvm = "...""#]);
     const STABILITY: AttributeStability = unstable!(intrinsics);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        match args {
+            ArgParser::NoArgs => Some(AttributeKind::RustcIntrinsic { llvm: None }),
+            ArgParser::List(_) => {
+                let item = cx.expect_single_element_list(args, cx.attr_span)?;
+                let nv = cx.expect_name_value(item, item.span(), Some(sym::llvm))?;
+                let name = cx.expect_string_literal(nv.1)?;
+                Some(AttributeKind::RustcIntrinsic { llvm: Some(name) })
+            }
+            ArgParser::NameValue(_) => {
+                let span = cx.attr_span;
+                cx.adcx().expected_list_or_no_args(span);
+                None
+            }
+        }
+    }
 }
 
 pub(crate) struct RustcIntrinsicConstStableIndirectParser;

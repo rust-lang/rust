@@ -1,8 +1,6 @@
 use std::mem;
 use std::ops::ControlFlow;
 
-#[cfg(feature = "nightly")]
-use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
@@ -166,13 +164,6 @@ where
     pub(super) opaque_accesses: AccessedOpaques<I>,
 
     pub(super) inspect: inspect::EvaluationStepBuilder<D>,
-}
-
-#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub enum GenerateProofTree {
-    Yes,
-    No,
 }
 
 pub trait SolverDelegateEvalExt: SolverDelegate {
@@ -768,6 +759,9 @@ where
                             | ty::Closure(..)
                             | ty::CoroutineClosure(..)
                             | ty::Coroutine(..) => LowerAvailableDepth::Yes,
+
+                            // FIXME(scrabsha)
+                            ty::View(..) => unimplemented!(),
                         }
                     } else {
                         LowerAvailableDepth::Yes

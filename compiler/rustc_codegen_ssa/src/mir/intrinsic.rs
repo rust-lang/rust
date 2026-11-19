@@ -1,6 +1,6 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
@@ -25,7 +25,7 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let layout = bx.layout_of(ty);
     let size = layout.size;
-    let align = layout.align.abi;
+    let align = layout.align;
     let size = bx.unchecked_sumul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
     if allow_overlap {
@@ -45,7 +45,7 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let layout = bx.layout_of(ty);
     let size = layout.size;
-    let align = layout.align.abi;
+    let align = layout.align;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
     bx.memset(dst, val, size, align, flags);
@@ -75,8 +75,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let span = source_info.span;
 
-        let name = bx.tcx().item_name(instance.def_id());
+        let name = bx.tcx().intrinsic(instance.def_id()).unwrap().name;
         let fn_args = instance.args;
+
+        let check_value = |op: OperandValue<<Bx as BackendTypes>::Value>| {
+            debug_assert!(
+                op.is_expected_variant_for_type(result_layout),
+                "[{name:?}] Value {op:?} is wrong for type {result_layout:?}",
+            );
+        };
+
+        let Intrinsic::Rustc(name) = name else {
+            // Backend intrinsics go directly to the backend.
+            let result =
+                bx.codegen_intrinsic_call(instance, args, result_layout, result_place, span);
+
+            if let IntrinsicResult::Operand(op) = result {
+                check_value(op);
+            }
+            return result;
+        };
 
         // If we're swapping something that's *not* an `OperandValue::Ref`,
         // then we can do it directly and avoid the alloca.
@@ -94,7 +112,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // into the (unoptimized) direct swapping implementation, so we disable it.
                 || bx.sess().target.arch == Arch::SpirV
             {
-                let align = pointee_layout.align.abi;
+                let align = pointee_layout.align;
                 let x_place = args[0].val.deref(align);
                 let y_place = args[1].val.deref(align);
                 bx.typed_place_swap(x_place, y_place, pointee_layout);
@@ -103,12 +121,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let invalid_monomorphization_int_type = |ty| -> ErrorGuaranteed {
-            bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty })
+            bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                span,
+                name: Intrinsic::Rustc(name),
+                ty,
+            })
         };
         let invalid_monomorphization_int_or_ptr_type = |ty| -> ErrorGuaranteed {
             bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerOrPtrType {
                 span,
-                name,
+                name: Intrinsic::Rustc(name),
                 ty,
             })
         };
@@ -284,10 +306,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.exactudiv(args[0].immediate(), args[1].immediate())
                     }),
                     None => {
-                        let err = bx
-                            .tcx()
-                            .dcx()
-                            .emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
+                        let err =
+                            bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                                span,
+                                name: Intrinsic::Rustc(name),
+                                ty,
+                            });
                         return IntrinsicResult::Err(err);
                     }
                 }
@@ -306,7 +330,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let err =
                             bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
                                 span,
-                                name,
+                                name: Intrinsic::Rustc(name),
                                 ty: args[0].layout.ty,
                             });
                         return IntrinsicResult::Err(err);
@@ -339,7 +363,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 None => {
                     let err = bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
                         span,
-                        name,
+                        name: Intrinsic::Rustc(name),
                         ty: args[0].layout.ty,
                     });
                     return IntrinsicResult::Err(err);
@@ -606,10 +630,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        debug_assert!(
-            op_val.is_expected_variant_for_type(result_layout),
-            "[{name:?}] Value {op_val:?} is wrong for type {result_layout:?}",
-        );
+        check_value(op_val);
 
         IntrinsicResult::Operand(op_val)
     }

@@ -1,4 +1,4 @@
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types)]
 #![crate_name = "pattern_types_implementors"]
 
 use std::pat::pattern_type;

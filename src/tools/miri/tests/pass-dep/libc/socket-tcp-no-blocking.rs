@@ -1,5 +1,5 @@
 //@ignore-target: windows
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 //@run-native
 
 //@revisions: windows_host unix_host
@@ -19,19 +19,17 @@ use libc_utils::*;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
-fn main() {
-    test_fcntl_nonblock_opt();
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "solaris",
-        target_os = "illumos"
-    ))]
-    test_sock_nonblock_opt();
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-    test_ioctl_fionbio_op();
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(20));
+    }
+}
 
+fn main() {
     test_accept_nonblock();
     #[cfg(any(
         target_os = "linux",
@@ -64,78 +62,6 @@ fn main() {
     test_connect_connecting();
 }
 
-/// Test that setting the O_NONBLOCK flag changes the blocking state of a socket.
-fn test_fcntl_nonblock_opt() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-
-    unsafe {
-        // Change socket to be non-blocking.
-        errno_check(libc::fcntl(sockfd, libc::F_SETFL, libc::O_NONBLOCK));
-    }
-
-    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
-    // Ensure that socket is really non-blocking.
-    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
-
-    unsafe {
-        // Change socket back to be blocking.
-        errno_check(libc::fcntl(sockfd, libc::F_SETFL, 0));
-    }
-
-    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
-    // Ensure that socket is really blocking.
-    assert_eq!(flags & libc::O_NONBLOCK, 0);
-}
-
-#[cfg(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "solaris",
-    target_os = "illumos"
-))]
-/// Test creating a non-blocking socket by using the SOCK_NONBLOCK option
-/// for the `socket` syscall.
-fn test_sock_nonblock_opt() {
-    let sockfd = unsafe {
-        errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_NONBLOCK, 0))
-            .unwrap()
-    };
-
-    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
-    // Ensure that socket is really non-blocking.
-    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
-}
-
-#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-/// Test changing the blocking state of a socket using the `ioctl(fd, FIONBIO, ...)`
-/// syscall.
-fn test_ioctl_fionbio_op() {
-    let sockfd =
-        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-
-    unsafe {
-        // Change socket to be non-blocking.
-        let mut value = 1 as libc::c_int;
-        errno_check(libc::ioctl(sockfd, libc::FIONBIO, &mut value));
-    }
-
-    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
-    // Ensure that socket is really non-blocking.
-    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
-
-    unsafe {
-        // Change socket back to be blocking.
-        let mut value = 0 as libc::c_int;
-        errno_check(libc::ioctl(sockfd, libc::FIONBIO, &mut value));
-    }
-
-    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
-    // Ensure that socket is really blocking.
-    assert_eq!(flags & libc::O_NONBLOCK, 0);
-}
-
 /// Test that nonblocking TCP server sockets return [`ErrorKind::WouldBlock`] when trying
 /// to accept when no incoming connection exists. This also tests that nonblocking server sockets
 /// are still able to accept incoming connections should they already exist before the `accept` or
@@ -159,7 +85,7 @@ fn test_accept_nonblock() {
     let server_thread = thread::spawn(move || {
         // Instantly yield to main thread to ensure that the `connect` syscall
         // was called before we call the `accept` on the server.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         net::accept_ipv4(server_sockfd).unwrap();
     });
@@ -227,7 +153,7 @@ fn test_connect_nonblock() {
     });
 
     // Yield to server thread to ensure that it's currently accepting.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
         // The connection could be established immediately. We don't
@@ -256,7 +182,7 @@ fn test_connect_nonblock() {
             }
             Err(err) if err.kind() == ErrorKind::NotConnected => {
                 // The client is still connecting.
-                thread::sleep(Duration::from_millis(10));
+                yield_now();
             }
             Err(err) => panic!("unexpected error whilst ensuring connection: {err}"),
         }
@@ -278,7 +204,7 @@ fn test_send_recv_nonblock() {
         // reads/writes.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         unsafe {
             libc_utils::write_all_generic(
@@ -394,7 +320,7 @@ fn test_send_recv_dontwait() {
         // Similar to above we use blocking operations on the server side.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         unsafe {
             libc_utils::write_all_generic(
@@ -501,7 +427,7 @@ fn test_write_read_nonblock() {
         // Similar to above we use blocking operations on the server side.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
 
@@ -727,7 +653,7 @@ fn test_getpeername_ipv4_nonblock() {
     });
 
     // Yield to server thread to ensure that it's currently accepting.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
         // The connection could be established immediately. We don't
@@ -753,7 +679,7 @@ fn test_getpeername_ipv4_nonblock() {
             }
             Err(err) if err.kind() == ErrorKind::NotConnected => {
                 // Connection is not yet established; wait and retry later.
-                thread::sleep(Duration::from_millis(10))
+                yield_now();
             }
             Err(err) => {
                 panic!("error whilst getting peername: {err}")

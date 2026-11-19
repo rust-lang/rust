@@ -335,7 +335,16 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 }
             }
 
-            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
+            let metadata = passes::finish_and_emit_metadata(tcx);
+
+            // Don't do code generation if there were any errors. Likewise if
+            // there were any delayed bugs, because codegen will likely cause
+            // more ICEs, obscuring the original problem.
+            if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+                guar.raise_fatal();
+            }
+
+            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend, metadata);
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
                 dump_feature_usage_metrics(tcx, metrics_dir);
@@ -1467,7 +1476,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(DiagCtxtHan
     // (e.g. `RUST_BACKTRACE=1`)
     if env::var_os("RUST_BACKTRACE").is_none() {
         // HACK: this check is extremely dumb, but we don't really need it to be smarter since this should only happen in the test suite anyway.
-        let ui_testing = std::env::args().any(|arg| arg == "-Zui-testing");
+        let ui_testing = env::args_os().any(|arg| arg == "-Zui-testing");
         if env!("CFG_RELEASE_CHANNEL") == "dev" && !ui_testing {
             panic::set_backtrace_style(panic::BacktraceStyle::Short);
         } else {

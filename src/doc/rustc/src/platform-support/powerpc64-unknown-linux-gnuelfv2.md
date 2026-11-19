@@ -5,9 +5,13 @@
 Target for 64-bit big endian PowerPC Linux programs using the ELFv2 ABI and
 the GNU C library.
 
+The baseline CPU required is a PowerPC 970, which means AltiVec is required and
+the oldest IBM server CPU supported is therefore POWER6.
+
 ## Target maintainers
 
 [@Gelbpunkt](https://github.com/Gelbpunkt)
+[@amaanq](https://github.com/amaanq)
 
 ## Requirements
 

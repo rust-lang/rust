@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 
 use rustc_ast::{AttrStyle, Safety};
-use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::target::{MethodKind, Target};
 use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    UNUSED_DOC_COMMENTS, USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -28,6 +29,7 @@ pub(crate) enum AllowedTargets<'a> {
     ManuallyChecked,
 }
 
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum AllowedResult {
     Allowed,
     Warn,
@@ -113,12 +115,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, false);
-            return;
-        }
-        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, true);
+        if let AllowedTargets::AllowList(policies) | AllowedTargets::AllowListWarnRest(policies) = allowed_targets
+            // If only crate is `Allow`
+            && policies.iter().filter(|p| matches!(p, Allow(_))).all(|p| *p == Allow(Target::Crate))
+        {
+            Self::check_crate_level(cx, allowed_targets);
             return;
         }
 
@@ -130,6 +131,8 @@ impl<'sess> AttributeParser<'sess> {
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
+        let is_lint_check_attr = [sym::allow, sym::expect, sym::deny, sym::warn, sym::forbid]
+            .contains(&cx.attr_path.segments[0]);
 
         let span = if attribute_args.is_empty() {
             // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
@@ -160,7 +163,9 @@ impl<'sess> AttributeParser<'sess> {
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
-            previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
+            previously_accepted: matches!(result, AllowedResult::Warn)
+                && !is_diagnostic_attr
+                && !is_lint_check_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
@@ -178,6 +183,8 @@ impl<'sess> AttributeParser<'sess> {
                     .contains(&cx.target)
                 {
                     USELESS_DEPRECATED
+                } else if cx.attr_path.segments[0] == sym::doc && attribute_args == "" {
+                    UNUSED_DOC_COMMENTS //FIXME this is strange...
                 } else if is_diagnostic_attr {
                     MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
@@ -220,10 +227,15 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>, warn: bool) {
-        if cx.target == Target::Crate {
-            return;
-        }
+    pub(crate) fn check_crate_level(
+        cx: &mut AcceptContext<'_, 'sess>,
+        allowed_targets: &AllowedTargets<'_>,
+    ) {
+        let warn = match allowed_targets.is_allowed(cx.target) {
+            AllowedResult::Allowed => return,
+            AllowedResult::Warn => true,
+            AllowedResult::Error => false,
+        };
 
         let name = cx.attr_path.to_string();
         let is_used_as_inner = cx.attr_style == AttrStyle::Inner;
@@ -245,7 +257,7 @@ impl<'sess> AttributeParser<'sess> {
             .unwrap_or_default();
 
         if name == "doc" {
-            let diag = crate::diagnostics::AttrCrateLevelOnly;
+            let diag = crate::diagnostics::AttrCrateLevelOnly { attr_span };
             if warn {
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
             } else {
@@ -368,7 +380,9 @@ impl<'sess> AttributeParser<'sess> {
                     Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
-                    Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.span),
+                    Attribute::Tool { item: attr, .. } | Attribute::DeriveHelper(attr) => {
+                        Some(attr.span)
+                    }
                 }
             })
             .collect::<Vec<_>>();
@@ -498,64 +512,3 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
         }
     }
 }
-
-/// This is the list of all targets to which a attribute can be applied
-/// This is used for:
-/// - `rustc_dummy`, which can be applied to all targets
-/// - Attributes that are not parted to the new target system yet can use this list as a placeholder
-pub(crate) const ALL_TARGETS: &[Policy] = {
-    use Policy::Allow;
-    &[
-        Allow(Target::ExternCrate),
-        Allow(Target::Use),
-        Allow(Target::Static),
-        Allow(Target::Const),
-        Allow(Target::Fn),
-        Allow(Target::Closure),
-        Allow(Target::Mod),
-        Allow(Target::ForeignMod),
-        Allow(Target::GlobalAsm),
-        Allow(Target::TyAlias),
-        Allow(Target::Enum),
-        Allow(Target::Variant),
-        Allow(Target::Struct),
-        Allow(Target::Field),
-        Allow(Target::Union),
-        Allow(Target::Trait),
-        Allow(Target::TraitAlias),
-        Allow(Target::Impl { of_trait: false }),
-        Allow(Target::Impl { of_trait: true }),
-        Allow(Target::Expression),
-        Allow(Target::Statement),
-        Allow(Target::Arm),
-        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocConst(AssocCtxt::Trait)),
-        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocTy(AssocCtxt::Trait)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::ForeignTy),
-        Allow(Target::MacroDef),
-        Allow(Target::Param),
-        Allow(Target::PatField),
-        Allow(Target::ExprField),
-        Allow(Target::WherePredicate),
-        Allow(Target::MacroCall),
-        Allow(Target::Crate),
-        Allow(Target::Delegation { mac: false }),
-        Allow(Target::Delegation { mac: true }),
-        Allow(Target::ConstParam),
-        Allow(Target::LifetimeParam),
-        Allow(Target::TypeParam),
-        Allow(Target::Loop),
-        Allow(Target::ForLoop),
-        Allow(Target::While),
-        Allow(Target::Break),
-    ]
-};

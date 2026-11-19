@@ -508,6 +508,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_test_binder_forall(&mut self, forall: &'v TestBinderForall<'v>) -> Self::Result {
         walk_test_binder_forall(self, forall)
     }
+    fn visit_test_binder_item(&mut self, item: &'v TestBinderItem<'v>) -> Self::Result {
+        walk_test_binder_item(self, item)
+    }
     fn visit_test_binder_exists(&mut self, exists: &'v TestBinderExists<'v>) -> Self::Result {
         walk_test_binder_exists(self, exists)
     }
@@ -1600,16 +1603,8 @@ pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
     visitor: &mut V,
     body: &'v TestBinderBody<'v>,
 ) -> V::Result {
-    let TestBinderBody { span: _, foralls, exists, region_equalities, constraints, predicates } =
-        body;
-    walk_list!(visitor, visit_test_binder_forall, *foralls);
-    walk_list!(visitor, visit_test_binder_exists, *exists);
-    for (lhs, rhs) in *region_equalities {
-        try_visit!(visitor.visit_lifetime(lhs));
-        try_visit!(visitor.visit_lifetime(rhs));
-    }
-    try_visit!(visitor.visit_test_binder_constraint(&constraints));
-    walk_list!(visitor, visit_where_predicate, *predicates);
+    let TestBinderBody { span: _, items } = body;
+    walk_list!(visitor, visit_test_binder_item, *items);
     V::Result::output()
 }
 
@@ -1623,6 +1618,31 @@ pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_test_binder_body(body));
     if let Some(assert_on_exit) = &assert_on_exit {
         try_visit!(visitor.visit_test_binder_constraint(assert_on_exit));
+    }
+    V::Result::output()
+}
+
+pub fn walk_test_binder_item<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    item: &'v TestBinderItem<'v>,
+) -> V::Result {
+    match item {
+        TestBinderItem::Forall(forall) => {
+            try_visit!(visitor.visit_test_binder_forall(forall))
+        }
+        TestBinderItem::Exists(exist) => {
+            try_visit!(visitor.visit_test_binder_exists(exist))
+        }
+        TestBinderItem::Predicate(predicate) => {
+            try_visit!(visitor.visit_where_predicate(predicate))
+        }
+        TestBinderItem::Constraint(constraint) => {
+            try_visit!(visitor.visit_test_binder_constraint(constraint))
+        }
+        TestBinderItem::RegionEquality { lhs, rhs } => {
+            try_visit!(visitor.visit_lifetime(lhs));
+            try_visit!(visitor.visit_lifetime(rhs));
+        }
     }
     V::Result::output()
 }

@@ -4,14 +4,13 @@ use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexVec};
 
 use crate::{
-    AbiAlign, BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size,
+    Align, BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size,
     Variants,
 };
 
 /// "Simple" layout constructors that cannot fail.
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
-    pub fn unit<C: HasDataLayout>(cx: &C, sized: bool) -> Self {
-        let dl = cx.data_layout();
+    pub fn unit(sized: bool) -> Self {
         LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
@@ -21,17 +20,16 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized },
             largest_niche: None,
             uninhabited: false,
-            align: AbiAlign::new(dl.i8_align),
+            align: Align::ONE,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: Align::ONE,
             repr_c: false,
             randomization_seed: Hash64::new(0),
         }
     }
 
-    pub fn never_type<C: HasDataLayout>(cx: &C) -> Self {
-        let dl = cx.data_layout();
+    pub fn never_type() -> Self {
         // This is also used for uninhabited enums, so we use `Variants::Empty`.
         LayoutData {
             variants: Variants::Empty,
@@ -39,10 +37,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: Align::ONE,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: Align::ONE,
             repr_c: false,
             randomization_seed: Hash64::ZERO,
         }
@@ -83,7 +81,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             largest_niche,
             uninhabited: false,
             size,
-            align: AbiAlign::new(align),
+            align,
             max_repr_align: None,
             unadjusted_abi_align: align,
             repr_c: false,
@@ -116,7 +114,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::ScalarPair { a, b, b_offset },
             largest_niche,
             uninhabited: false,
-            align: AbiAlign::new(align),
+            align,
             size,
             max_repr_align: None,
             unadjusted_abi_align: align,
@@ -129,8 +127,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     ///
     /// Uninhabited variants get pruned as part of the layout calculation,
     /// so this can be used after the fact to reconstitute a layout.
-    pub fn uninhabited_variant<C: HasDataLayout>(cx: &C, index: VariantIdx, fields: usize) -> Self {
-        let dl = cx.data_layout();
+    pub fn uninhabited_variant(index: VariantIdx, fields: usize) -> Self {
         LayoutData {
             variants: Variants::Single { index },
             fields: match NonZero::new(fields) {
@@ -143,10 +140,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: Align::ONE,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: Align::ONE,
             repr_c: false,
             // Variant layouts never flow back into actual layout computations,
             // so dummy values are fine here.

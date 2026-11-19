@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrPath, CfgEntry, RustcVersion};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
@@ -395,14 +395,13 @@ fn parse_cfg_attr_internal<'a>(
         attribute.span,
         item.span,
         attribute.style,
-        AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
+        AttrPath::from_ast(&item.path, identity),
         Some(item.unsafety),
         AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
         lint_node_id,
-        Target::Crate,
-        rustc_attr_ir::target::AstTarget::None,
+        AstTarget::None(Target::Crate),
         features,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         &meta,

@@ -8,6 +8,6 @@ struct Foo {
 }
 
 type FooBar = view_type!(Foo.{ bar });
-//~^ ERROR use of unstable library feature `view_type_macro`
+//~^ ERROR use of unstable library feature `view_types`
 type FooBaz = view_type!(Foo.{ baz });
-//~^ ERROR use of unstable library feature `view_type_macro`
+//~^ ERROR use of unstable library feature `view_types`

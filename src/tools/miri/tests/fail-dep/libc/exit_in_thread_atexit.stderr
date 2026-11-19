@@ -1,0 +1,23 @@
+error: Undefined Behavior: `exit` called more than once
+  --> tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC
+   |
+LL |     register(|| unsafe { libc::exit(0) })
+   |                          ^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: stack backtrace:
+           0: main::{closure#0}
+               at tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC
+           1: <std::boxed::Box<{closure@tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           2: register::run::<{closure@tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC}>
+               at tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
+  --> tests/fail-dep/libc/exit_in_thread_atexit.rs:LL:CC
+   |
+LL |     register(|| unsafe { libc::exit(0) })
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
