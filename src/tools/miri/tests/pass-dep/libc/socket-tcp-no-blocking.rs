@@ -32,12 +32,14 @@ fn yield_now() {
 fn main() {
     #[cfg(target_os = "linux")]
     {
+        test_accept_nonblock(|fd, addr, len| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, 0 as libc::c_int)
+        });
         test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
             libc::syscall(libc::SYS_accept4, fd, addr, len, flags)
         });
-        test_accept4_syscall_bad_fd();
     }
-    test_accept_nonblock();
+    test_accept_nonblock(|fd, addr, len| unsafe { libc::accept(fd, addr, len).into() });
     #[cfg(any(
         target_os = "linux",
         target_os = "android",
@@ -75,7 +77,12 @@ fn main() {
 /// to accept when no incoming connection exists. This also tests that nonblocking server sockets
 /// are still able to accept incoming connections should they already exist before the `accept` or
 /// `accept4` syscall is called.
-fn test_accept_nonblock() {
+fn test_accept_nonblock(
+    accept: fn(libc::c_int, *mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_long,
+) {
+    let err = net::sockname_ipv4(|storage, len| accept(-1, storage, len)).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+
     let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
@@ -86,7 +93,7 @@ fn test_accept_nonblock() {
     }
 
     // This should fail as we don't have an incoming connection for this address.
-    let err = net::accept_ipv4(server_sockfd).unwrap_err();
+    let err = net::sockname_ipv4(|storage, len| accept(server_sockfd, storage, len)).unwrap_err();
     // Assert that either EAGAIN or EWOULDBLOCK was returned.
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
 
@@ -96,7 +103,7 @@ fn test_accept_nonblock() {
         // was called before we call the `accept` on the server.
         yield_now();
 
-        net::accept_ipv4(server_sockfd).unwrap();
+        net::sockname_ipv4(|storage, len| accept(server_sockfd, storage, len)).unwrap();
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
@@ -150,22 +157,6 @@ fn test_accept4_sock_nonblock_opt(
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
-}
-
-#[cfg(target_os = "linux")]
-fn test_accept4_syscall_bad_fd() {
-    let mut address_len: libc::socklen_t = 0;
-    let err = unsafe {
-        errno_result(libc::syscall(
-            libc::SYS_accept4,
-            -1 as libc::c_int,
-            ptr::null_mut::<libc::sockaddr>(),
-            &mut address_len as *mut libc::socklen_t,
-            libc::SOCK_NONBLOCK,
-        ))
-        .unwrap_err()
-    };
-    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
 }
 
 /// Test that connecting to a server socket works when the client
