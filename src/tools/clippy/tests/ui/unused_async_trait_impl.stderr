@@ -132,5 +132,39 @@ LL |
 LL ~             std::future::ready(1)
    |
 
-error: aborting due to 7 previous errors
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:173:9
+   |
+LL | /         async fn do_something() {
+LL | |
+LL | |             ()
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = ()>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = ()> {
+LL |
+LL ~             std::future::ready(())
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:181:9
+   |
+LL | /         async fn do_something() -> () {
+LL | |
+LL | |             ()
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = ()>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = ()> {
+LL |
+LL ~             std::future::ready(())
+   |
+
+error: aborting due to 9 previous errors
 
