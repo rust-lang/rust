@@ -1,7 +1,7 @@
 use semver::Version;
 
 use crate::debuggers::{LldbVersion, extract_gdb_version, extract_lldb_version};
-use crate::is_test;
+use crate::discovery::is_test;
 
 #[test]
 fn test_extract_gdb_version() {

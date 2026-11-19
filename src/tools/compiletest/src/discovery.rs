@@ -1,28 +1,3 @@
-#![crate_name = "compiletest"]
-#![warn(unreachable_pub)]
-
-#[cfg(test)]
-mod tests;
-
-// Public modules needed by the compiletest binary or by `rustdoc-gui-test`.
-pub mod cli;
-pub mod rustdoc_gui_test;
-
-mod common;
-mod debuggers;
-mod diagnostics;
-mod directives;
-mod edition;
-mod errors;
-mod executor;
-mod json;
-mod output_capture;
-mod panic_hook;
-mod raise_fd_limit;
-mod read2;
-mod runtest;
-mod util;
-
 use core::panic;
 use std::collections::HashSet;
 use std::io::{self, ErrorKind};
@@ -36,13 +11,15 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::debug;
 use walkdir::WalkDir;
 
-use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
     CodegenBackend, Config, Debugger, TestMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
-use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
+use crate::directives::{
+    self, AuxProps, DirectivesCache, EarlyProps, FileDirectives, make_test_description,
+};
 use crate::executor::{CollectedTest, TestVariant};
+use crate::{fatal, runtest, warning};
 
 /// Called by `main` after the config has been parsed.
 pub(crate) fn discover_tests(config: &Arc<Config>) -> Vec<CollectedTest> {
@@ -311,7 +288,7 @@ fn collect_tests_from_dir(
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
-fn is_test(file_name: &str) -> bool {
+pub(crate) fn is_test(file_name: &str) -> bool {
     if !file_name.ends_with(".rs") {
         return false;
     }
@@ -417,7 +394,11 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
 /// The path of the `stamp` file that gets created or updated whenever a
 /// particular test completes successfully.
-fn stamp_file_path(config: &Config, testpaths: &TestPaths, variant: &TestVariant) -> Utf8PathBuf {
+pub(crate) fn stamp_file_path(
+    config: &Config,
+    testpaths: &TestPaths,
+    variant: &TestVariant,
+) -> Utf8PathBuf {
     output_base_dir(config, testpaths, variant).join("stamp")
 }
 

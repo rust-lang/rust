@@ -26,7 +26,7 @@ use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
 use crate::util::{ArgFileCommand, Utf8PathBufExt, add_dylib_path, static_regex};
-use crate::{json, stamp_file_path};
+use crate::{discovery, json};
 
 // Helper modules that implement test running logic for each test suite.
 // tidy-alphabetical-start
@@ -3121,7 +3121,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.variant);
+        let stamp_file_path =
+            discovery::stamp_file_path(&self.config, self.testpaths, self.variant);
         fs::write(&stamp_file_path, compute_stamp_hash(&self.config, self.variant)).unwrap();
     }
 

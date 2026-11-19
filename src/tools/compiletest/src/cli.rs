@@ -12,7 +12,7 @@ use clap::Parser;
 use crate::common::{CodegenBackend, CompareMode, Config, ForcePassMode, TestMode, TestSuite};
 use crate::edition::Edition;
 use crate::{
-    debuggers, directives, discover_tests, executor, help, panic_hook, raise_fd_limit, warning,
+    debuggers, directives, discovery, executor, help, panic_hook, raise_fd_limit, warning,
 };
 
 pub fn main() {
@@ -73,7 +73,7 @@ pub fn main() {
         }
     };
 
-    let tests = discover_tests(&config);
+    let tests = discovery::discover_tests(&config);
 
     // Delegate to the executor to filter and run the big list of test structures
     // created during test discovery. When the executor decides to run a test,
