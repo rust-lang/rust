@@ -45,14 +45,31 @@ fn zst_zero_len<const N: usize>(v: [(); N]) -> [[u8; N]; 0] {
     unsafe { std::mem::transmute::<_, _>(v) }
 }
 
+const L1: usize = 42;
+const L2: usize = L1;
+const L3: usize = 42;
+
+fn len_normalized_alias(v: [u8; L1]) -> [u8; L2] {
+    unsafe { std::mem::transmute::<_, _>(v) }
+}
+
+fn len_normalized_equal(v: [u8; L1]) -> [u8; L3] {
+    unsafe { std::mem::transmute::<_, _>(v) }
+}
+
 fn main() {
     let _ = ident([[0; 8]; 16]);
     let _ = singleton_each([0; 8]);
+
     let _ = element([T(0); 8]);
     let _ = element2([[T(0); 8]; 16]);
     let _ = element3_mixed([[[T(0); 8]; 42]; 16]);
     let _ = element4_swap_lit([[[[T(0); 8]; 3]; 7]; 16]);
+
     let _ = zst([(); 8]);
     let _ = zero_len([[0; 8]; 0]);
     let _ = zst_zero_len([(); 8]);
+
+    let _ = len_normalized_alias([2; L1]);
+    let _ = len_normalized_equal([2; L1]);
 }
