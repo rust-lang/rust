@@ -600,6 +600,7 @@ impl Layout {
     note = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
+/// Old name of [`LayoutError`].
 pub type LayoutErr = LayoutError;
 
 /// The `LayoutError` is returned when the parameters given

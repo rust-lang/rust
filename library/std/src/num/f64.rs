@@ -10,7 +10,6 @@
 //! defined directly on the `f64` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, clippy::legacy_numeric_constants)]
