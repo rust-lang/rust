@@ -19,9 +19,7 @@ pub fn main() {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    unsafe {
-        raise_fd_limit::raise_fd_limit();
-    }
+    unsafe { raise_fd_limit::raise_fd_limit() };
 
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
@@ -35,7 +33,7 @@ pub fn main() {
     // colored checks stdout by default, but for some reason only stderr is a terminal.
     // compiletest *does* print many things to stdout, but it doesn't really matter.
     if std::io::stderr().is_terminal()
-        && matches!(std::env::var("NO_COLOR").as_deref(), Err(_) | Ok("0"))
+        && matches!(env::var("NO_COLOR").as_deref(), Err(_) | Ok("0"))
     {
         colored::control::set_override(true);
     }
@@ -50,29 +48,27 @@ pub fn main() {
         let mut coverage_file_path = config.build_test_suite_root.clone();
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
-            if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path, e)
-            }
+            fs::remove_file(&coverage_file_path)
+                .unwrap_or_else(|e| panic!("Could not delete {coverage_file_path} due to {e}"));
         }
     }
 
-    if let TestMode::DebugInfo = config.mode {
-        // FIXME: this should ideally happen somewhere else..
-        if config.target.contains("android") {
-            println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
+    // FIXME: this should ideally happen somewhere else..
+    if config.mode == TestMode::DebugInfo && config.target.contains("android") {
+        println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
 
-            // android debug-info test uses remote debugger so, we test 1 thread
-            // at once as they're all sharing the same TCP port to communicate
-            // over.
-            //
-            // we should figure out how to lift this restriction! (run them all
-            // on different ports allocated dynamically).
-            //
-            // SAFETY: at this point we are still single-threaded.
-            unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-        }
-    };
+        // android debug-info test uses remote debugger so, we test 1 thread
+        // at once as they're all sharing the same TCP port to communicate
+        // over.
+        //
+        // we should figure out how to lift this restriction! (run them all
+        // on different ports allocated dynamically).
+        //
+        // SAFETY: at this point we are still single-threaded.
+        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
+    }
 
+    // Scan the test directory for tests, and create a test struct for each test/variant.
     let tests = discovery::discover_tests(&config);
 
     // Delegate to the executor to filter and run the big list of test structures
