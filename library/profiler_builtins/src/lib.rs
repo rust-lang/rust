@@ -1,12 +1,11 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(no_core)]
 #![feature(profiler_runtime)]
 #![feature(staged_api)]
 // tidy-alphabetical-end
 
 // Other attributes:
-#![no_core]
+#![no_std]
 #![profiler_runtime]
 #![unstable(
     feature = "profiler_runtime_lib",
