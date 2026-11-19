@@ -1067,11 +1067,11 @@ impl CommandLineStep for StdarchVerify {
 /// On `x86_64`, it requires a very recent version of GCC (e.g. GCC 15+)
 /// as well as the Intel SDE emulator to successfully run the tests.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IntrinsicTest {
+pub struct StdarchIntrinsicTest {
     host: TargetSelection,
 }
 
-impl CommandLineStep for IntrinsicTest {
+impl CommandLineStep for StdarchIntrinsicTest {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1096,7 +1096,7 @@ impl CommandLineStep for IntrinsicTest {
             );
         }
 
-        builder.ensure(IntrinsicTest { host: target });
+        builder.ensure(StdarchIntrinsicTest { host: target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1300,6 +1300,64 @@ impl CommandLineStep for StdarchGenCheck {
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lsx")]);
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lasx")]);
         run_gen("-p", "stdarch-gen-hexagon", &[]);
+    }
+}
+
+/// Runs stdarch's test suite.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Stdarch {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl CommandLineStep for Stdarch {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let build_compiler = builder.compiler(builder.top_stage, run.build_triple());
+        run.builder.ensure(Stdarch { build_compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let build_compiler = self.build_compiler;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
+
+        // Prepare sysroot
+        builder.ensure(Std::new(build_compiler, build_compiler.host));
+
+        // Run `cargo test`.
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            build_compiler,
+            // A mode of `Std` seems natural but does not work:
+            // - it sets a profile of "dist" which doesn't work
+            // - it does not support the proc macros in the test suite, stages get all mixed up
+            // `Rustc` seems to just work. :shrug:
+            Mode::Rustc,
+            self.target,
+            Kind::Test,
+            "library/stdarch/crates/core_arch",
+            SourceType::InTree,
+            &[],
+        );
+
+        // The stdarch test suite needs to know the target.
+        cargo.env("TARGET", self.target.triple);
+
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "stdarch test suite",
+            self.target,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 

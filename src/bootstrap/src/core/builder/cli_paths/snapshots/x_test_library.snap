@@ -18,6 +18,9 @@ expression: test library
     - Set({library/sysroot})
     - Set({library/test})
     - Set({library/unwind})
+[Test] test::Stdarch
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({library/stdarch})
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({library/stdarch/crates/stdarch-verify})

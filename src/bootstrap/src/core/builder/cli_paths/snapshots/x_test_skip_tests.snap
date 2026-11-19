@@ -150,6 +150,9 @@ expression: test --skip=tests
 [Test] test::StdarchGenCheck
     targets: [x86_64-unknown-linux-gnu]
     - Set({stdarch-gen-check})
+[Test] test::StdarchIntrinsicTest
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({intrinsic-test})
 [Test] test::RustdocTheme
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/rustdoc-themes})
@@ -165,6 +168,3 @@ expression: test --skip=tests
 [Test] test::CompilerBuiltins
     targets: [aarch64-unknown-linux-gnu]
     - Set({compiler-builtins})
-[Test] test::IntrinsicTest
-    targets: [x86_64-unknown-linux-gnu]
-    - Set({intrinsic-test})
