@@ -2,7 +2,7 @@ use rustc_span::Symbol;
 
 use super::{
     ShiftOp, packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd,
-    psadbw, pshufb, shift_simd_by_simd,
+    psadbw, pshufb, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -29,6 +29,24 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
                 shift_simd_by_simd(this, left, right, which, dest)?;
+            }
+            // Used by _mm512_{sll,srl,sra}_epi{16, 32, 64} and _mm{256}_sra_epi64.
+            "psll.w.512" | "psrl.w.512" | "psra.w.512" | "psll.d.512" | "psrl.d.512"
+            | "psra.d.512" | "psll.q.512" | "psrl.q.512" | "psra.q.512" | "psra.q.128"
+            | "psra.q.256" => {
+                let target =
+                    if unprefixed_name.ends_with("w.512") { "avx512bw" } else { "avx512f" };
+                this.expect_target_feature_for_intrinsic(link_name, target)?;
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let which = match unprefixed_name.split_at(4).0 {
+                    "psll" => ShiftOp::Left,
+                    "psrl" => ShiftOp::RightLogic,
+                    "psra" => ShiftOp::RightArith,
+                    _ => unreachable!(),
+                };
+
+                shift_simd_by_scalar(this, left, right, which, dest)?;
             }
             // Used by the ternarylogic functions.
             "pternlog.d.128" | "pternlog.d.256" | "pternlog.d.512" | "pternlog.q.128"
