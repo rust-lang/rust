@@ -141,6 +141,9 @@ enum EnvironmentCmd {
     WindowsCi {
         #[clap(flatten)]
         shared: SharedArgs,
+
+        #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
+        optimize_cranelift: bool,
     },
 }
 
@@ -223,7 +226,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             (env, shared.build_args)
         }
-        EnvironmentCmd::WindowsCi { shared } => {
+        EnvironmentCmd::WindowsCi { shared, optimize_cranelift } => {
             let target_triple =
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
 
@@ -241,6 +244,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(true)
+                .optimize_cranelift(optimize_cranelift)
                 .build()?;
 
             (env, shared.build_args)

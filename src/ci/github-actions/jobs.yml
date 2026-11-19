@@ -802,7 +802,7 @@ auto:
         --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py build --host aarch64-pc-windows-msvc --target aarch64-pc-windows-msvc --set rust.debug=true opt-dist && PGO_HOST=aarch64-pc-windows-msvc ./build/aarch64-pc-windows-msvc/stage1-tools-bin/opt-dist windows-ci --optimize-cranelift false -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-aarch64
 

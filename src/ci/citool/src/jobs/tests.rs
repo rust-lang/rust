@@ -70,6 +70,37 @@ optional:
     check_pattern(&db, "*optional*", &["optional-job-1", "optional-dist-x86_64"]);
 }
 
+#[test]
+fn aarch64_msvc_distribution_uses_native_pgo_pipeline() {
+    let db = load_job_db(&utils::read_to_string(Path::new(JOBS_YML_PATH)).unwrap()).unwrap();
+    let job = db.find_auto_job_by_name("dist-aarch64-msvc").unwrap();
+    let script = job.env["SCRIPT"].as_str().unwrap();
+    let (build, dist) = script.split_once(" && ").unwrap();
+    assert!(build.starts_with("python x.py build "));
+    assert!(build.contains("--host aarch64-pc-windows-msvc"));
+    assert!(build.contains("--target aarch64-pc-windows-msvc"));
+    assert!(build.ends_with("opt-dist"));
+    assert!(dist.starts_with(
+        "PGO_HOST=aarch64-pc-windows-msvc ./build/aarch64-pc-windows-msvc/stage1-tools-bin/opt-dist windows-ci --optimize-cranelift false -- "
+    ));
+    assert!(dist.ends_with("python x.py dist bootstrap --include-default-paths"));
+}
+
+#[test]
+fn aarch64_msvc_pgo_preserves_distribution_configuration() {
+    let db = load_job_db(&utils::read_to_string(Path::new(JOBS_YML_PATH)).unwrap()).unwrap();
+    let job = db.find_auto_job_by_name("dist-aarch64-msvc").unwrap();
+    let args = job.env["RUST_CONFIGURE_ARGS"].as_str().unwrap();
+    assert!(args.contains("--target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc"));
+    assert!(args.contains("--enable-full-tools"));
+    assert!(args.contains("--enable-profiler"));
+    assert_eq!(job.env["DIST_REQUIRE_ALL_TOOLS"].as_u64(), Some(1));
+    for setting in ["codegen-units", "rust.lto", "llvm.thin-lto", "linker"] {
+        assert!(!args.contains(setting));
+        assert!(!job.env["SCRIPT"].as_str().unwrap().contains(setting));
+    }
+}
+
 #[track_caller]
 fn check_pattern(db: &JobDatabase, pattern: &str, expected: &[&str]) {
     let jobs = db
