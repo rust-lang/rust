@@ -1,0 +1,8 @@
+error: the `Self` constructor cannot be used as a const argument
+  --> $DIR/self-ctor-const-arg-150749.rs:14:21
+   |
+LL |         let _: [(); Self];
+   |                     ^^^^
+
+error: aborting due to 1 previous error
+
