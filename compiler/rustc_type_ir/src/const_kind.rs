@@ -229,7 +229,7 @@ pub enum ConstEvalErr<I: Interner> {
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
-#[derive_where(Clone, Copy, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -257,6 +257,18 @@ pub enum ValTreeKind<I: Interner> {
     /// Also stores an inner type which transparently contains some representation of the bits of the `TypeId`.
     /// Currently, this is just `(u128,)` but this is not to be relied upon.
     TypeId(I::Ty, I::Consts),
+}
+
+impl<I: Interner> fmt::Debug for ValTreeKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValTreeKind::Leaf(i) => f.debug_tuple("Leaf").field(i).finish(),
+            ValTreeKind::Branch(cts) => f.debug_tuple("Branch").field(cts).finish(),
+            ValTreeKind::TypeId(ty, _) => {
+                f.debug_tuple("TypeId").field(ty).field(&fmt::from_fn(|f| write!(f, "_"))).finish()
+            }
+        }
+    }
 }
 
 impl<I: Interner> ValTreeKind<I> {

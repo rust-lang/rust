@@ -1,7 +1,7 @@
+//@ revisions: stock gated
 //@ edition:2024
-//@run-pass
-#![feature(min_adt_const_params)]
-#![allow(incomplete_features)]
+//@[gated] run-pass
+#![cfg_attr(gated, feature(min_adt_const_params, type_id_structural_match), allow(incomplete_features))]
 
 use std::any::TypeId;
 
@@ -9,6 +9,8 @@ enum Foo {}
 enum Bar {}
 
 fn equate<const A: TypeId, const B: TypeId>() -> bool {
+    //[stock]~^ ERROR `TypeId` is forbidden as the type of a const generic parameter
+    //[stock]~| ERROR `TypeId` is forbidden as the type of a const generic parameter
     A == B
 }
 

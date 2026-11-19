@@ -741,6 +741,9 @@ unsafe impl Sync for TypeId {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl PartialEq for TypeId {
+    // NB: `TypeId: StructuralPartialEq` and like `str`,
+    // the compiler uses this method to compare constants in patterns.
+    // Do not make nontrivial changes to this method without proper consideration of match logic.
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         crate::intrinsics::reflection::type_id_eq(*self, *other)
@@ -874,8 +877,10 @@ impl fmt::Debug for TypeId {
 }
 
 #[unstable(feature = "type_id_structural_match", issue = "10000000")]
+#[unstable_feature_bound(type_id_structural_match)]
 impl StructuralPartialEq for TypeId {}
 #[unstable(feature = "type_id_structural_match", issue = "10000000")]
+#[unstable_feature_bound(type_id_structural_match)]
 impl ConstParamTy_ for TypeId {}
 
 /// Returns the name of a type as a string slice.
