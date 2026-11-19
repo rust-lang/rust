@@ -10,12 +10,19 @@
 fn main() {
     let s = m::S;
     s.abc(); //~ ERROR no method named `abc`
+    s.qwer(); //~ ERROR no method named `qwer`
 }
 
 mod m {
     pub trait Foo {
         fn abc(&self) {}
     }
+    pub trait Bar{
+        fn qwer(&self) {}
+    }
     pub struct S;
-    impl Foo for S{}
+    impl Foo for S {}
+    impl Bar for S {
+        fn qwer(&self) {}
+    }
 }

@@ -30,13 +30,14 @@ LL |         match fut.as_mut().poll(ctx) {
    |                   |
    |                   this method is `std::pin::Pin::<Ptr>::as_mut`
    |
-  --> $SRC_DIR/core/src/future/future.rs:LL:COL
-   |
-   = note: the method is available for `Pin<&mut impl Future<Output = ()>>` here
 note: this returns `Pin<&mut impl Future<Output = ()>>`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 note: you might have meant to call `std::convert::AsMut::as_mut` instead
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+note: the method is available on trait `Future` for `Pin<&mut impl Future<Output = ()>>`
+  --> $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+   = note: the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: consider calling `std::convert::AsMut::as_mut` using the fully-qualified path
    |

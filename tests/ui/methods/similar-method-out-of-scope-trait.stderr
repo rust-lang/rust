@@ -28,12 +28,19 @@ error[E0599]: no method named `write_all` found for struct `Writer` in the curre
 LL |     pub struct Writer;
    |     ----------------- method `write_all` not found for this struct
 ...
-LL |         fn write_all(&self) {}
-   |            --------- the method is available for `Writer` here
-...
 LL |     writer.write_all();
    |            ^^^^^^^^^ method not found in `Writer`
    |
+note: the method is available on trait `Write` for `Writer`
+  --> $DIR/similar-method-out-of-scope-trait.rs:11:5
+   |
+LL |     pub trait Write {
+LL |         fn write(&self) {}
+LL |         fn write_all(&self) {}
+   |            --------- the method is available here
+...
+LL |     impl Write for Writer {}
+   |     ^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Write` which provides `write_all` is implemented but not in scope; perhaps you want to import it
    |
@@ -75,12 +82,18 @@ error[E0599]: no method named `method` found for struct `ByValue` in the current
 LL |     pub struct ByValue;
    |     ------------------ method `method` not found for this struct
 ...
-LL |         fn method(&self) {}
-   |            ------ the method is available for `ByValue` here
-...
 LL |     hidden::ByValue.method();
    |                     ^^^^^^
    |
+note: the method is available on trait `Hidden` for `ByValue`
+  --> $DIR/similar-method-out-of-scope-trait.rs:59:5
+   |
+LL |     pub trait Hidden {
+LL |         fn method(&self) {}
+   |            ------ the method is available here
+...
+LL |     impl Hidden for ByValue {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
@@ -97,12 +110,18 @@ error[E0599]: no method named `method` found for struct `Ambiguous` in the curre
 LL |     pub struct Ambiguous;
    |     -------------------- method `method` not found for this struct
 ...
-LL |         fn method(&self) {}
-   |            ------ the method is available for `Ambiguous` here
-...
 LL |     hidden::Ambiguous.method();
    |                       ^^^^^^
    |
+note: the method is available on trait `HiddenRef` for `Ambiguous`
+  --> $DIR/similar-method-out-of-scope-trait.rs:67:5
+   |
+LL |     pub trait HiddenRef {
+LL |         fn method(&self) {}
+   |            ------ the method is available here
+...
+LL |     impl HiddenRef for Ambiguous {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `HiddenRef` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
@@ -119,12 +138,18 @@ error[E0599]: no method named `method` found for struct `Inherent` in the curren
 LL |     pub struct Inherent;
    |     ------------------- method `method` not found for this struct
 ...
-LL |         fn method(&self) {}
-   |            ------ the method is available for `Inherent` here
-...
 LL |     hidden::Inherent.method();
    |                      ^^^^^^
    |
+note: the method is available on trait `Hidden` for `Inherent`
+  --> $DIR/similar-method-out-of-scope-trait.rs:60:5
+   |
+LL |     pub trait Hidden {
+LL |         fn method(&self) {}
+   |            ------ the method is available here
+...
+LL |     impl Hidden for Inherent {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
