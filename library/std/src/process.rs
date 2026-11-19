@@ -36,7 +36,7 @@
 //! successfully spawned, any error that happens afterwards will be reported through
 //! its [`ExitStatus`].
 //!
-//! # Handling I/O
+//! ## Handling I/O
 //!
 //! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
 //! configured by passing an [`Stdio`] to the corresponding method on
@@ -100,7 +100,7 @@
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
 //!
-//! # Windows argument splitting
+//! ## Windows argument splitting
 //!
 //! On Unix systems arguments are passed to a new process as an array of strings,
 //! but on Windows arguments are passed as a single commandline string and it is
@@ -141,6 +141,42 @@
 //! Also note that running batch scripts in this way may be removed in the
 //! future and so should not be relied upon.
 //!
+//! # Exiting the current process
+//!
+//! Rust provides a few different ways to terminate the currently running program:
+//!
+//! | API                                           | Unix exit code | Windows exit code                                  | Unix signal                                   | Cleans up resources |
+//! |-----------------------------------------------|----------------|----------------------------------------------------|-----------------------------------------------|---------------------|
+//! | Return [`ExitCode`] or a `Result` from `main` | User-provided  | User-provided                                      | None                                          | Yes                 |
+//! | [`panic!`]                                    | 101            | 101                                                | None                                          | Yes                 |
+//! | [`exit`]                                      | User-provided  | User-provided                                      | None                                          | Partial             |
+//! | [`abort`]                                     | None           | `STATUS_STACK_BUFFER_OVERRUN`[^win-status-overrun] | `SIGABRT`                                     | No                  |
+//! | [`crash`]                                     | None           | Unspecified                                        | Unspecified (typically `SIGTRAP` or `SIGILL`) | No                  |
+//!
+//! Use these guidelines to pick which to use:
+//!
+//! * Use `exit` or return `ExitCode` for exiting as part of normal program
+//!   behavior. These exit with no additional message, just the provided code.
+//! * Use `panic!` for unexpected exits, such as bug conditions. This will print a
+//!   message with the code location and give the option of printing a backtrace.
+//! * Prefer versions that clean up resources where possible (return `ExitCode`
+//!   rather than call `exit`), since these flush buffers and run destructors.
+//! * Use `abort` for cases where cleanup must not run.
+//! * Use `crash` only when it is critical to terminate with minimal overhead.
+//!
+//! A few things to note:
+//!
+//! * `panic!` can be caught be default, other options cannot.
+//! * The behavior of `panic!` can be changed via the `-Cpanic` compiler flag.
+//!   Refer to <https://doc.rust-lang.org/rustc/codegen-options/index.html#panic>
+//!   for details.
+//! * Where specified, exact exit codes are subject to change.
+//!
+//! For further details, refer to the documentation for each API.
+//!
+//! [^win-status-overrun]: `STATUS_STACK_BUFFER_OVERRUN` is the exit status used
+//!   by [`__fastfail()`]. It does not mean there is an actual buffer overrun.
+//!
 //! [`spawn`]: Command::spawn
 //! [`output`]: Command::output
 //!
@@ -156,6 +192,7 @@
 //! [`raw_arg`]: crate::os::windows::process::CommandExt::raw_arg
 //!
 //! [`CreateProcessW`]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw
+//! [`__fastfail()`]: https://learn.microsoft.com/en-us/cpp/intrinsics/fastfail?view=msvc-170
 
 #![stable(feature = "process", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -2597,13 +2634,16 @@ pub fn exit(code: i32) -> ! {
 /// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,
 /// [`panic!`] will still call the [panic hook] while `abort` will not.
 ///
-/// If a clean shutdown is needed it is recommended to only call
-/// this function at a known point where there are no more destructors left
-/// to run.
+/// If a clean shutdown is needed it is recommended to only call this function
+/// at a known point where there are no more destructors left to run. If an
+/// abrupt exit is not needed, one of the other forms of exiting discussed at
+/// [Exiting the current process] is likely preferable.
 ///
 /// The process's termination will be similar to that from the C `abort()`
 /// function.  On Unix, the process will terminate with signal `SIGABRT`, which
 /// typically means that the shell prints "Aborted".
+///
+/// [Exiting the current process]: self#exiting-the-current-process
 ///
 /// # Examples
 ///
