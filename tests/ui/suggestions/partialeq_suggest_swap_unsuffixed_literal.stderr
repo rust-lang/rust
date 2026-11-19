@@ -1,0 +1,118 @@
+error[E0277]: can't compare `[{integer}; 3]` with `Vec<{integer}>`
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:24:15
+   |
+LL |     let _ = a == v;
+   |               ^^ no implementation for `[{integer}; 3] == Vec<{integer}>`
+   |
+   = help: the trait `PartialEq<Vec<{integer}>>` is not implemented for `[{integer}; 3]`
+   = note: `Vec<{integer}>` implements `PartialEq<[{integer}; 3]>`
+help: consider dereferencing here
+   |
+LL |     let _ = a == *v;
+   |                  +
+help: consider swapping the equality
+   |
+LL -     let _ = a == v;
+LL +     let _ = v == a;
+   |
+
+error[E0277]: can't compare `[{integer}; 3]` with `Vec<{integer}>`
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:25:15
+   |
+LL |     let _ = a != v;
+   |               ^^ no implementation for `[{integer}; 3] == Vec<{integer}>`
+   |
+   = help: the trait `PartialEq<Vec<{integer}>>` is not implemented for `[{integer}; 3]`
+   = note: `Vec<{integer}>` implements `PartialEq<[{integer}; 3]>`
+help: consider dereferencing here
+   |
+LL |     let _ = a != *v;
+   |                  +
+help: consider swapping the equality
+   |
+LL -     let _ = a != v;
+LL +     let _ = v != a;
+   |
+
+error[E0277]: can't compare `[{integer}; 3]` with `Vec<{integer}>`
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:26:5
+   |
+LL |     assert_eq!(a, v);
+   |     ^^^^^^^^^^^^^^^^ no implementation for `[{integer}; 3] == Vec<{integer}>`
+   |
+   = help: the trait `PartialEq<Vec<{integer}>>` is not implemented for `[{integer}; 3]`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Cow<'_, [U]>>`
+             `&[T]` implements `PartialEq<Vec<U, A>>`
+             `&[T]` implements `PartialEq<[U; N]>`
+             `&[u8; N]` implements `PartialEq<ByteStr>`
+             `&[u8; N]` implements `PartialEq<ByteString>`
+             `&[u8]` implements `PartialEq<ByteStr>`
+             `&[u8]` implements `PartialEq<ByteString>`
+             `&mut [T]` implements `PartialEq<Cow<'_, [U]>>`
+           and 13 others
+   = note: `Vec<{integer}>` implements `PartialEq<[{integer}; 3]>`
+
+error[E0277]: can't compare `{integer}` with `T`
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:27:15
+   |
+LL |     let _ = 4 == T(4);
+   |               ^^ no implementation for `{integer} == T`
+   |
+   = help: the trait `PartialEq<T>` is not implemented for `{integer}`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+   = note: `T` implements `PartialEq<{integer}>`
+help: consider swapping the equality
+   |
+LL -     let _ = 4 == T(4);
+LL +     let _ = T(4) == 4;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:28:24
+   |
+LL |     let _ = Some(1) == W(1);
+   |             -------    ^^^^ expected `Option<{integer}>`, found `W<{integer}>`
+   |             |
+   |             expected because this is `Option<{integer}>`
+   |
+   = note: expected enum `Option<{integer}>`
+            found struct `W<{integer}>`
+   = note: `W<{integer}>` implements `PartialEq<Option<{integer}>>`
+help: consider swapping the equality
+   |
+LL -     let _ = Some(1) == W(1);
+LL +     let _ = W(1) == Some(1);
+   |
+
+error[E0277]: can't compare `{float}` with `T`
+  --> $DIR/partialeq_suggest_swap_unsuffixed_literal.rs:30:17
+   |
+LL |     let _ = 1.5 == T(4);
+   |                 ^^ no implementation for `{float} == T`
+   |
+   = help: the trait `PartialEq<T>` is not implemented for `{float}`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

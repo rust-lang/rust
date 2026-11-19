@@ -6694,19 +6694,36 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(lhs_ty) = typeck_results.expr_ty_opt(lhs)
                     && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs) =>
             {
+                // An unsuffixed literal leaves an inference variable behind (`{integer}`), which
+                // would make the swapped impl only *maybe* apply. Check it against the type the
+                // literal falls back to instead.
+                let (swapped_self_ty, swapped_rhs_ty) =
+                    self.infcx.resolve_numeric_literals_with_default(
+                        self.infcx.deeply_resolve_ignoring_regions((rhs_ty, lhs_ty)),
+                    );
                 if let Some(pred) = predicate.as_trait_clause()
                     && tcx.is_lang_item(pred.def_id(), LangItem::PartialEq)
+                    // An error type satisfies every bound, which says nothing about a swap.
+                    && !(swapped_self_ty, swapped_rhs_ty).references_error()
                     && self
                         .infcx
-                        .type_implements_trait(pred.def_id(), [rhs_ty, lhs_ty], param_env)
+                        .type_implements_trait(
+                            pred.def_id(),
+                            [swapped_self_ty, swapped_rhs_ty],
+                            param_env,
+                        )
                         .must_apply_modulo_regions()
                 {
                     let lhs_span = tcx.hir_span(lhs_hir_id);
                     let sm = tcx.sess.source_map();
-                    if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
+                    err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
+                    // The operands of e.g. `assert_eq!` are compared inside of the macro, where
+                    // there is nothing for the user to swap (#139050), so only the note is given.
+                    if !lhs_span.in_external_macro(sm)
+                        && !rhs_span.in_external_macro(sm)
+                        && let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
                         && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_span)
                     {
-                        err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
                         err.multipart_suggestion(
                             "consider swapping the equality",
                             vec![(lhs_span, rhs_snippet), (rhs_span, lhs_snippet)],
