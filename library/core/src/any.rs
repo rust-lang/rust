@@ -876,10 +876,10 @@ impl fmt::Debug for TypeId {
     }
 }
 
-#[unstable(feature = "type_id_structural_match", issue = "10000000")]
+#[unstable(feature = "type_id_structural_match", issue = "none")]
 #[unstable_feature_bound(type_id_structural_match)]
 impl StructuralPartialEq for TypeId {}
-#[unstable(feature = "type_id_structural_match", issue = "10000000")]
+#[unstable(feature = "type_id_structural_match", issue = "none")]
 #[unstable_feature_bound(type_id_structural_match)]
 impl ConstParamTy_ for TypeId {}
 
