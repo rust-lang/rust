@@ -57,6 +57,13 @@ fn skeleton_string<'tcx>(
                 bug!("{:?} overflow for u128", size)
             }
         }
+        Ok(SizeSkeleton::Array { base, const_lens, .. }) => {
+            let base_bits = u128::from(base.bytes())
+                .checked_mul(8)
+                .unwrap_or_else(|| bug!("{:?} overflow for u128", base));
+            let lens = const_lens.iter().map(|l| format!("({l})")).collect::<Vec<_>>().join(" * ");
+            format!("{base_bits} * {lens} bits")
+        }
         Err(LayoutError::TooGeneric(bad)) => {
             if *bad == ty {
                 "this type does not have a fixed size".to_owned()
@@ -97,10 +104,10 @@ fn check_transmute<'tcx>(
     trace!(?sk_from, ?sk_to);
 
     // Check for same size using the skeletons.
-    if let Ok(sk_from) = sk_from
-        && let Ok(sk_to) = sk_to
+    if let Ok(sk_from) = &sk_from
+        && let Ok(sk_to) = &sk_to
     {
-        if sk_from.same_size(sk_to) {
+        if sk_from.same_size(&sk_to) {
             return Ok(());
         }
 
@@ -109,7 +116,7 @@ fn check_transmute<'tcx>(
         let from = unpack_option_like(tcx, from);
         if let ty::FnDef(..) = from.kind()
             && let SizeSkeleton::Known(size_to, _) = sk_to
-            && size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
+            && *size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
         {
             struct_span_code_err!(tcx.sess.dcx(), span, E0591, "can't transmute zero-sized type")
                 .with_note(format!("source type: {from}"))

@@ -982,7 +982,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             // being applied (and we've got a problem somewhere).
             let compute_size_skeleton =
                 |t| SizeSkeleton::compute(t, tcx, typing_env, DUMMY_SP).ok();
-            if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
+            if !compute_size_skeleton(ty)?.same_size(&compute_size_skeleton(field_ty)?) {
                 bug!("improper_ctypes: Option nonnull optimization not applied?");
             }
 
