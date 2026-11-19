@@ -244,7 +244,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    fn new(_cx: &C, _conv: CanonAbi) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         // mips64 argument passing is also affected by the alignment of aggregates.
         // see mips.rs for how the offset is used
         Self { offset: Size::ZERO }

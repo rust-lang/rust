@@ -212,7 +212,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C, _conv: CanonAbi) -> Self {
+    fn new(cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         let passes_zsts = matches!(cx.target_spec().os, Os::Linux);
 

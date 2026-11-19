@@ -168,7 +168,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C, _conv: CanonAbi) -> Self {
+    fn new(cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         let abi = match cx.target_spec().options.llvm_abiname {
             LlvmAbi::ElfV1 => ELFv1,
             LlvmAbi::ElfV2 => ELFv2,

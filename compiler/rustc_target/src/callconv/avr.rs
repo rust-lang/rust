@@ -59,7 +59,7 @@ impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for AvrCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    fn new(_cx: &C, _conv: CanonAbi) -> Self {
+    fn new(_cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         Self
     }
 

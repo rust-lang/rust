@@ -686,7 +686,7 @@ where
     CC: ComputeCallConv<'a, Ty, C>,
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    let mut cc = CC::new(cx, fn_abi.conv);
+    let mut cc = CC::new(cx, fn_abi.conv, fn_abi.c_variadic);
 
     // Some ABIs pass ZSTs by pointer indirection rather than ignoring them. We follow
     // that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them), but
@@ -729,7 +729,7 @@ trait ComputeCallConv<'a, Ty, C>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    fn new(cx: &C, conv: CanonAbi) -> Self;
+    fn new(cx: &C, conv: CanonAbi, c_variadic: bool) -> Self;
 
     fn passes_zsts(&self) -> bool {
         false
@@ -790,13 +790,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 compute_abi::<aarch64::AArch64CallConv, _, _>(cx, self)
             }
             Arch::AmdGpu => compute_abi::<amdgpu::AmdGpuCallConv, _, _>(cx, self),
-            Arch::Arm => {
-                if self.c_variadic {
-                    compute_abi::<arm::ArmCallConv<true>, _, _>(cx, self)
-                } else {
-                    compute_abi::<arm::ArmCallConv<false>, _, _>(cx, self)
-                }
-            }
+            Arch::Arm => compute_abi::<arm::ArmCallConv, _, _>(cx, self),
             Arch::Avr => compute_abi::<avr::AvrCallConv, _, _>(cx, self),
             Arch::LoongArch32 | Arch::LoongArch64 => {
                 compute_abi::<loongarch::LoongArchCallConv, _, _>(cx, self)

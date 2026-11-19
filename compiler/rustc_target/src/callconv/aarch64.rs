@@ -167,7 +167,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    fn new(cx: &C, _conv: CanonAbi) -> Self {
+    fn new(cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
         let kind = if cx.target_spec().is_like_darwin {
             AbiKind::DarwinPCS
         } else if cx.target_spec().is_like_windows {
