@@ -29,7 +29,7 @@ use std::fmt::Write;
 use std::io::{self, ErrorKind};
 use std::sync::Arc;
 use std::time::SystemTime;
-use std::{env, fs, vec};
+use std::{fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Component, Utf8Path, Utf8PathBuf};
@@ -49,52 +49,8 @@ use crate::executor::{CollectedTest, TestVariant};
 fn run_tests(config: Arc<Config>) {
     debug!(?config, "run_tests");
 
-    panic_hook::install_panic_hook();
-
-    // If we want to collect rustfix coverage information,
-    // we first make sure that the coverage file does not exist.
-    // It will be created later on.
-    if config.rustfix_coverage {
-        let mut coverage_file_path = config.build_test_suite_root.clone();
-        coverage_file_path.push("rustfix_missing_coverage.txt");
-        if coverage_file_path.exists() {
-            if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path, e)
-            }
-        }
-    }
-
-    // sadly osx needs some file descriptor limits raised for running tests in
-    // parallel (especially when we have lots and lots of child processes).
-    // For context, see #8904
-    unsafe {
-        raise_fd_limit::raise_fd_limit();
-    }
-    // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
-    // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
-    //
-    // SAFETY: at this point we're still single-threaded.
-    unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
-
     // Debugging emscripten code doesn't make sense today
     let ignore_tests = config.mode == TestMode::DebugInfo && config.target.contains("emscripten");
-
-    if let TestMode::DebugInfo = config.mode {
-        // FIXME: this should ideally happen somewhere else..
-        if config.target.contains("android") {
-            println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
-
-            // android debug-info test uses remote debugger so, we test 1 thread
-            // at once as they're all sharing the same TCP port to communicate
-            // over.
-            //
-            // we should figure out how to lift this restriction! (run them all
-            // on different ports allocated dynamically).
-            //
-            // SAFETY: at this point we are still single-threaded.
-            unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-        }
-    };
 
     // Discover all of the tests in the test suite directory, and build a `CollectedTest`
     // structure for each test (or each revision of a multi-revision test).
@@ -712,18 +668,5 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
             "{collisions}\n\
             Tests cannot have overlapping names. Make sure they use unique prefixes."
         );
-    }
-}
-
-fn early_config_check(config: &Config) {
-    if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
-        let actioned = if config.bless { "blessed" } else { "checked" };
-        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
-        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
-    }
-
-    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
     }
 }

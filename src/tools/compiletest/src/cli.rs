@@ -1,19 +1,33 @@
 //! Isolates the APIs used by `bin/main.rs`, to help minimize the surface area
 //! of public exports from the compiletest library crate.
 
-use std::env;
 use std::io::IsTerminal;
 use std::sync::{Arc, OnceLock};
+use std::{env, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 
 use crate::common::{CodegenBackend, CompareMode, Config, ForcePassMode, TestMode, TestSuite};
 use crate::edition::Edition;
-use crate::{debuggers, directives, early_config_check, run_tests};
+use crate::{debuggers, directives, help, panic_hook, raise_fd_limit, run_tests, warning};
 
 pub fn main() {
+    // sadly osx needs some file descriptor limits raised for running tests in
+    // parallel (especially when we have lots and lots of child processes).
+    // For context, see #8904
+    unsafe {
+        raise_fd_limit::raise_fd_limit();
+    }
+
+    // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
+    // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
+
     tracing_subscriber::fmt::init();
+    panic_hook::install_panic_hook();
 
     // colored checks stdout by default, but for some reason only stderr is a terminal.
     // compiletest *does* print many things to stdout, but it doesn't really matter.
@@ -24,10 +38,52 @@ pub fn main() {
     }
 
     let config = Arc::new(parse_config(env::args().collect()));
-
     early_config_check(&config);
 
+    // If we want to collect rustfix coverage information,
+    // we first make sure that the coverage file does not exist.
+    // It will be created later on.
+    if config.rustfix_coverage {
+        let mut coverage_file_path = config.build_test_suite_root.clone();
+        coverage_file_path.push("rustfix_missing_coverage.txt");
+        if coverage_file_path.exists() {
+            if let Err(e) = fs::remove_file(&coverage_file_path) {
+                panic!("Could not delete {} due to {}", coverage_file_path, e)
+            }
+        }
+    }
+
+    if let TestMode::DebugInfo = config.mode {
+        // FIXME: this should ideally happen somewhere else..
+        if config.target.contains("android") {
+            println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
+
+            // android debug-info test uses remote debugger so, we test 1 thread
+            // at once as they're all sharing the same TCP port to communicate
+            // over.
+            //
+            // we should figure out how to lift this restriction! (run them all
+            // on different ports allocated dynamically).
+            //
+            // SAFETY: at this point we are still single-threaded.
+            unsafe { env::set_var("RUST_TEST_THREADS", "1") };
+        }
+    };
+
     run_tests(config);
+}
+
+fn early_config_check(config: &Config) {
+    if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
+        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
+    }
+
+    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
+    }
 }
 
 /// Compiletest command-line arguments.
