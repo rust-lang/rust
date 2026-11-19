@@ -7,19 +7,20 @@ pub fn demo_for_i32() {
     generic_impl::<i32>();
 }
 
-// Two important things here:
-// - We replace the "then" block with `unreachable` to avoid linking problems
-// - We neither declare nor define the `big_impl` that said block "calls".
+// The important thing here: we neither declare nor define `big_impl`.
 
+// CHECK-NOT: big_impl
 // CHECK-LABEL: ; skip_mono_inside_if_false::generic_impl
+// CHECK-NOT: big_impl
 // CHECK: start:
 // CHECK-NEXT: br label %[[ELSE_BRANCH:bb[0-9]+]]
+// CHECK-NOT: big_impl
 // CHECK: [[ELSE_BRANCH]]:
 // CHECK-NEXT: call skip_mono_inside_if_false::small_impl
+// CHECK-NOT: big_impl
 // CHECK: bb{{[0-9]+}}:
 // CHECK-NEXT: ret void
-// CHECK: bb{{[0-9+]}}:
-// CHECK-NEXT: unreachable
+// CHECK-NOT: big_impl
 
 fn generic_impl<T>() {
     trait MagicTrait {

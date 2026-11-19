@@ -375,13 +375,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         unreached_blocks.remove(bb);
     }
 
-    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
-    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
-    // simplification in SwitchInt lowering sometimes misses cases that
-    // mono_reachable_reverse_postorder manages to figure out.
-    // The solution is to do something like post-mono GVN. But for now we have this hack.
     for bb in unreached_blocks.iter() {
-        fx.codegen_block_as_unreachable(bb);
+        match fx.cached_llbbs[bb] {
+            CachedLlbb::None | CachedLlbb::Skip => {}
+            CachedLlbb::Some(llbb) => {
+                // FIXME: These unreachable blocks are occasionally targets for a SwitchInt
+                // terminator, but the reimplementation of the mono-reachable simplification in
+                // SwitchInt lowering sometimes misses cases that mono_reachable_reverse_postorder
+                // manages to figure out. The solution is to do something like post-mono GVN. But
+                // for now we have this hack.
+                fx.codegen_block_as_unreachable(llbb);
+            }
+        }
     }
 }
 
