@@ -88,6 +88,10 @@ features = [
     "Win32_System_Time",
 ]
 
+# src/utils/job.rs
+[target.'cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))'.dependencies]
+errno = "0.3.14"
+
 [dev-dependencies]
 expect-test = "1"
 
