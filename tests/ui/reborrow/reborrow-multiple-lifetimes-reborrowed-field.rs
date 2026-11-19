@@ -45,10 +45,20 @@ fn use_single_shared<'a>(x: SingleShared<'a>) -> SingleShared<'a> {
     x
 }
 
+// Each value is used again after the first reborrow ends, which a plain move would reject.
 fn main() {
     let mut a = ();
     let b = ();
-    let _ = use_reborrowed_field(WithReborrowedField { inner: Inner(&mut a), shared: &b });
-    let _ = use_mut_field(WithMutField { mutable: &mut a, shared: &b });
-    let _ = use_single_shared(SingleShared { shared: &b });
+
+    let reborrowed = WithReborrowedField { inner: Inner(&mut a), shared: &b };
+    let _ = use_reborrowed_field(reborrowed);
+    let _ = use_reborrowed_field(reborrowed);
+
+    let mutable = WithMutField { mutable: &mut a, shared: &b };
+    let _ = use_mut_field(mutable);
+    let _ = use_mut_field(mutable);
+
+    let single = SingleShared { shared: &b };
+    let _ = use_single_shared(single);
+    let _ = use_single_shared(single);
 }
