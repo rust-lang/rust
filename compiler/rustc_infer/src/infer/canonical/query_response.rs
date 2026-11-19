@@ -304,7 +304,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     obligations.extend(
-                        self.at(&cause, param_env)
+                        self.at(&cause, &param_env)
                             .eq(DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
@@ -312,7 +312,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
                     obligations.extend(
-                        self.at(&cause, param_env)
+                        self.at(&cause, &param_env)
                             .eq(DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
@@ -526,7 +526,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // variable that got constrained to the opaque type itself. In that case we want to equate
             // the generic args of the opaque with the generic params of its hidden type version.
             obligations.extend(
-                self.at(cause, param_env)
+                self.at(cause, &param_env)
                     .eq(
                         DefineOpaqueTypes::Yes,
                         Ty::new_opaque(self.tcx, ty::IsRigid::No, a.def_id.to_def_id(), a.args),
@@ -585,7 +585,7 @@ impl<'tcx> InferCtxt<'tcx> {
             match (value1.kind(), value2.kind()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     obligations.extend(
-                        self.at(cause, param_env)
+                        self.at(cause, &param_env)
                             .eq(DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
@@ -604,7 +604,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
+                    let ok = self.at(cause, &param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
                     obligations.extend(ok.into_obligations());
                 }
                 _ => {

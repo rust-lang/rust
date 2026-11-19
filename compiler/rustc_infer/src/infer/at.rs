@@ -27,7 +27,7 @@
 
 use relate::lattice::{LatticeOp, LatticeOpKind};
 use rustc_middle::ty::relate::solver_relating::RelateExt as NextSolverRelate;
-use rustc_middle::ty::{Const, ParamEnv, TypingMode};
+use rustc_middle::ty::{Const, IntoParamEnv, ParamEnv, TypingMode};
 use rustc_span::bug;
 
 use super::*;
@@ -46,20 +46,26 @@ pub enum DefineOpaqueTypes {
     No,
 }
 
-#[derive(Clone, Copy)]
-pub struct At<'a, 'tcx> {
+pub struct At<'a, 'tcx, P: IntoParamEnv<'tcx>> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub param_env: &'a P,
+}
+
+impl<'tcx, P: IntoParamEnv<'tcx>> Copy for At<'_, 'tcx, P> {}
+impl<'tcx, P: IntoParamEnv<'tcx>> Clone for At<'_, 'tcx, P> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<'tcx> InferCtxt<'tcx> {
     #[inline]
-    pub fn at<'a>(
+    pub fn at<'a, P: IntoParamEnv<'tcx>>(
         &'a self,
         cause: &'a ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> At<'a, 'tcx> {
+        param_env: &'a P,
+    ) -> At<'a, 'tcx, P> {
         At { infcx: self, cause, param_env }
     }
 
@@ -236,7 +242,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        self.at(cause, param_env).eq_trace(define_opaque_types, trace, expected, actual)
+        self.at(cause, &param_env).eq_trace(define_opaque_types, trace, expected, actual)
     }
 
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
@@ -253,7 +259,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.at(cause, param_env).relate(define_opaque_types, expected, variance, actual)
+        self.at(cause, &param_env).relate(define_opaque_types, expected, variance, actual)
     }
 
     /// Computes the least-upper-bound, or mutual supertype, of two
@@ -274,7 +280,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.at(cause, param_env).lub(expected, actual)
+        self.at(cause, &param_env).lub(expected, actual)
     }
 
     pub fn goals_to_obligations(
@@ -298,7 +304,7 @@ pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
     fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
 }
 
-impl<'a, 'tcx> At<'a, 'tcx> {
+impl<'a, 'tcx, P: IntoParamEnv<'tcx>> At<'a, 'tcx, P> {
     /// Makes `expected == actual`.
     ///
     /// FIXME: To be removed in favor of the [`InferCtxt::eq_raw`] method instead.
@@ -335,7 +341,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         if self.infcx.next_trait_solver {
             NextSolverRelate::relate(
                 self.infcx,
-                self.param_env,
+                self.param_env.into_paramenv(self.infcx.tcx),
                 expected,
                 ty::Invariant,
                 actual,
@@ -346,7 +352,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             let mut op = TypeRelating::new(
                 self.infcx,
                 trace,
-                self.param_env,
+                self.param_env.into_paramenv(self.infcx.tcx),
                 define_opaque_types,
                 ty::Invariant,
             );
@@ -369,7 +375,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         match variance {
             ty::Covariant => self.infcx.sub_raw(
                 self.cause,
-                self.param_env,
+                self.param_env.into_paramenv(self.infcx.tcx),
                 define_opaque_types,
                 expected,
                 actual,
@@ -377,7 +383,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             ty::Invariant => self.eq(define_opaque_types, expected, actual),
             ty::Contravariant => self.infcx.sup_raw(
                 self.cause,
-                self.param_env,
+                self.param_env.into_paramenv(self.infcx.tcx),
                 define_opaque_types,
                 expected,
                 actual,
@@ -406,7 +412,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         let mut op = LatticeOp::new(
             self.infcx,
             ToTrace::to_trace(self.cause, expected, actual),
-            self.param_env,
+            self.param_env.into_paramenv(self.infcx.tcx),
             LatticeOpKind::Lub,
         );
         let value = op.relate(expected, actual)?;
@@ -426,7 +432,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                     Obligation::new(
                         self.infcx.tcx,
                         self.cause.clone(),
-                        goal.param_env,
+                        goal.param_env.into_paramenv(self.infcx.tcx),
                         goal.predicate,
                     )
                 })

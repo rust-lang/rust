@@ -9,8 +9,8 @@ use rustc_infer::traits::{
 use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, AliasTerm, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
+    self, AliasTerm, IntoParamEnv, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
 };
 use rustc_span::span_bug;
 use thin_vec::ThinVec;
@@ -22,7 +22,7 @@ use crate::error_reporting::traits::OverflowCause;
 use crate::solve::NextSolverError;
 
 #[extension(pub trait NormalizeExt<'tcx>)]
-impl<'tcx> At<'_, 'tcx> {
+impl<'tcx, P: IntoParamEnv<'tcx>> At<'_, 'tcx, P> {
     /// Normalize a value using the `AssocTypeNormalizer`.
     ///
     /// This normalization should be used when the type contains inference variables or the
@@ -36,8 +36,13 @@ impl<'tcx> At<'_, 'tcx> {
             InferOk { value, obligations }
         } else {
             let mut selcx = SelectionContext::new(self.infcx);
-            let Normalized { value, obligations } =
-                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
+            let Normalized { value, obligations } = normalize_with_depth(
+                &mut selcx,
+                self.param_env.into_paramenv(self.infcx.tcx),
+                self.cause.clone(),
+                0,
+                value,
+            );
             InferOk { value, obligations }
         }
     }
@@ -505,7 +510,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     self.selcx.infcx,
                     &mut self.universes,
                     ct,
-                    |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
+                    |ct| super::evaluate_const(self.selcx.infcx, ct, &self.param_env),
                 )
             }
         };

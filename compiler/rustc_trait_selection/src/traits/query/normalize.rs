@@ -7,8 +7,9 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, Flags, PredicateProxy, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    self, FallibleTypeFolder, Flags, IntoParamEnv, PredicateProxy, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized,
 };
 use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
@@ -26,7 +27,7 @@ use crate::traits::{
 };
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
-impl<'a, 'tcx> At<'a, 'tcx> {
+impl<'a, 'tcx, P: IntoParamEnv<'tcx> + 'a> At<'a, 'tcx, P> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -77,11 +78,12 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         };
 
         if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, FulfillmentError<'tcx>>(
-                self,
-                Unnormalized::new_wip(value),
-                universes,
-            ) {
+            match crate::solve::deeply_normalize_with_skipped_universes::<
+                _,
+                FulfillmentError<'tcx>,
+                _,
+            >(self, Unnormalized::new_wip(value), universes)
+            {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
                 }
@@ -111,10 +113,12 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             return Ok(Normalized { value, obligations: PredicateObligations::new() });
         }
 
+        let param_env = self.param_env.into_paramenv(self.infcx.tcx);
+
         let mut normalizer = QueryNormalizer {
             infcx: self.infcx,
             cause: self.cause,
-            param_env: self.param_env,
+            param_env,
             obligations: PredicateObligations::new(),
             cache: SsoHashMap::new(),
             anon_depth: 0,
@@ -300,7 +304,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 self.infcx,
                 &mut self.universes,
                 constant,
-                |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
+                |constant| crate::traits::evaluate_const(&self.infcx, constant, &self.param_env),
             ),
             _ => self.try_fold_free_or_assoc(alias_const.into())?.expect_const(),
         };

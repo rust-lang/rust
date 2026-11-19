@@ -9,8 +9,8 @@ use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    self, IntoParamEnv, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
@@ -151,7 +151,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
     let param_env =
-        normalize_param_env_or_error(tcx, hybrid_clauses.collect(), ObligationCause::dummy());
+        normalize_param_env_or_error(tcx, hybrid_clauses.collect(), ObligationCause::dummy())
+            .into_paramenv(tcx);
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);

@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.register_infer_ok_obligations(
-            self.at(&self.cause(span, code), self.param_env).normalize(value),
+            self.at(&self.cause(span, code), &self.param_env).normalize(value),
         )
     }
 
@@ -1501,7 +1501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, Unnormalized::new_wip(self_ty));
-            match self.at(&self.misc(span), self.param_env).eq(
+            match self.at(&self.misc(span), &self.param_env).eq(
                 DefineOpaqueTypes::Yes,
                 impl_ty,
                 self_ty,
@@ -1574,7 +1574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
             // in a reentrant borrow, causing an ICE.
-            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
+            let result = self.at(&self.misc(sp), &self.param_env).structurally_normalize_const(
                 Unnormalized::new_wip(ct),
                 &mut *self.fulfillment_cx.borrow_mut(),
             );
@@ -1586,7 +1586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else if self.tcx.features().generic_const_exprs() {
-            rustc_trait_selection::traits::evaluate_const(&self.infcx, ct, self.param_env)
+            rustc_trait_selection::traits::evaluate_const(&self.infcx, ct, &self.param_env)
         } else {
             ct
         }

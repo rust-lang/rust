@@ -3260,7 +3260,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             let InferOk { value: cleaned_pred, .. } = self
                 .infcx
-                .at(&ObligationCause::dummy(), param_env)
+                .at(&ObligationCause::dummy(), &param_env)
                 .normalize(Unnormalized::new_wip(cleaned_pred));
 
             let obligation =

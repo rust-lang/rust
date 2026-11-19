@@ -274,9 +274,9 @@ fn equate_impl_headers<'tcx>(
     let result =
         match (impl1.trait_ref, impl2.trait_ref) {
             (Some(impl1_ref), Some(impl2_ref)) => infcx
-                .at(&ObligationCause::dummy(), param_env)
+                .at(&ObligationCause::dummy(), &param_env)
                 .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
-            (None, None) => infcx.at(&ObligationCause::dummy(), param_env).eq(
+            (None, None) => infcx.at(&ObligationCause::dummy(), &param_env).eq(
                 DefineOpaqueTypes::Yes,
                 impl1.self_ty,
                 impl2.self_ty,
@@ -474,7 +474,7 @@ fn plug_infer_with_placeholders<'tcx>(
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
                 let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                    self.infcx.at(&ObligationCause::dummy(), &ty::ParamEnv::empty()).eq(
                         // Comparing against a type variable never registers hidden types anyway
                         DefineOpaqueTypes::Yes,
                         ty,
@@ -499,7 +499,7 @@ fn plug_infer_with_placeholders<'tcx>(
             let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
                 let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                    self.infcx.at(&ObligationCause::dummy(), &ty::ParamEnv::empty()).eq(
                         // The types of the constants are the same, so there is no hidden type
                         // registration happening anyway.
                         DefineOpaqueTypes::Yes,
@@ -531,7 +531,7 @@ fn plug_infer_with_placeholders<'tcx>(
                     .shallow_resolve_region_var(self.infcx.tcx, vid);
                 if r.is_var() {
                     let Ok(InferOk { value: (), obligations }) =
-                        self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                        self.infcx.at(&ObligationCause::dummy(), &ty::ParamEnv::empty()).eq(
                             // Lifetimes don't contain opaque types (or any types for that matter).
                             DefineOpaqueTypes::Yes,
                             r,

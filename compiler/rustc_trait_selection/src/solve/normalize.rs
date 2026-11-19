@@ -1,3 +1,5 @@
+use std::cell::LazyCell;
+
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::solve::Goal;
@@ -7,8 +9,8 @@ use rustc_infer::traits::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, Binder, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-    UniverseIndex, Unnormalized,
+    self, Binder, Flags, IntoParamEnv, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, UniverseIndex, Unnormalized,
 };
 use rustc_next_trait_solver::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
@@ -19,7 +21,10 @@ use crate::solve::{Certainty, SolverDelegate};
 use crate::traits::{BoundVarReplacer, ScrubbedTraitError};
 
 /// Normalize a value, deferring ambiguity and errors to fulfillment.
-pub fn normalize<'tcx, T>(at: At<'_, 'tcx>, value: Unnormalized<'tcx, T>) -> Normalized<'tcx, T>
+pub fn normalize<'tcx, T, P: IntoParamEnv<'tcx>>(
+    at: At<'_, 'tcx, P>,
+    value: Unnormalized<'tcx, T>,
+) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
@@ -42,8 +47,8 @@ where
 ///   - has_escaping_bound_vars: return the original alias.
 ///   - otherwise: return the normalized result. It can be (partially) inferred
 ///     even if the evaluation result is ambiguous.
-fn normalize_with_universes<'tcx, T>(
-    at: At<'_, 'tcx>,
+fn normalize_with_universes<'tcx, T, P: IntoParamEnv<'tcx>>(
+    at: At<'_, 'tcx, P>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<Normalized<'tcx, T>, PredicateObligation<'tcx>>
@@ -58,12 +63,14 @@ where
         return Ok(Normalized { value, obligations: Default::default() });
     }
 
+    let param_env = LazyCell::new(|| at.param_env.into_paramenv(infcx.tcx));
+
     let mut stalled_goals = vec![];
     let mut folder = NormalizationFolder::new(infcx, universes, |alias_term| {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
         let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
-        let goal = Goal::new(infcx.tcx, at.param_env, predicate);
+        let goal = Goal::new(infcx.tcx, *param_env, predicate);
         let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
             Ok(result) => result,
             Err(_) => {
@@ -93,20 +100,20 @@ where
     Ok(Normalized { value, obligations })
 }
 
-struct ReplaceAliasWithInfer<'me, 'tcx> {
-    at: At<'me, 'tcx>,
+struct ReplaceAliasWithInfer<'me, 'tcx, P: IntoParamEnv<'tcx>> {
+    at: At<'me, 'tcx, P>,
     obligations: PredicateObligations<'tcx>,
     universes: Vec<Option<UniverseIndex>>,
 }
 
-impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
+impl<'me, 'tcx, P: IntoParamEnv<'tcx> + 'me> ReplaceAliasWithInfer<'me, 'tcx, P> {
     fn term_to_infer(&mut self, alias_term: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
         let infcx = self.at.infcx;
         let infer_term = infcx.next_term_var_of_alias_kind(alias_term, self.at.cause.span);
         let obligation = Obligation::new(
             infcx.tcx,
             self.at.cause.clone(),
-            self.at.param_env,
+            self.at.param_env.into_paramenv(infcx.tcx),
             ty::ProjectionClause { projection_term: alias_term, term: infer_term },
         );
         self.obligations.push(obligation);
@@ -114,7 +121,9 @@ impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
     }
 }
 
-impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
+impl<'me, 'tcx, P: IntoParamEnv<'tcx>> TypeFolder<TyCtxt<'tcx>>
+    for ReplaceAliasWithInfer<'me, 'tcx, P>
+{
     fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
@@ -181,8 +190,8 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
-pub fn deeply_normalize<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+pub fn deeply_normalize<'tcx, T, E, P: IntoParamEnv<'tcx>>(
+    at: At<'_, 'tcx, P>,
     value: Unnormalized<'tcx, T>,
 ) -> Result<T, ThinVec<E>>
 where
@@ -199,8 +208,8 @@ where
 /// Additionally takes a list of universes which represents the binders which have been
 /// entered before passing `value` to the function. This is currently needed for
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
-pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+pub fn deeply_normalize_with_skipped_universes<'tcx, T, E, P: IntoParamEnv<'tcx>>(
+    at: At<'_, 'tcx, P>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<T, ThinVec<E>>
@@ -226,8 +235,13 @@ where
 ///
 /// This returns a set of stalled obligations involving coroutines if the typing mode of
 /// the underlying infcx has any stalled coroutine def ids.
-pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<
+    'tcx,
+    T,
+    E,
+    P: IntoParamEnv<'tcx>,
+>(
+    at: At<'_, 'tcx, P>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), ThinVec<E>>
@@ -271,15 +285,17 @@ pub(crate) fn deeply_normalize_for_diagnostics<'tcx, T: TypeFoldable<TyCtxt<'tcx
     t: T,
 ) -> T {
     t.fold_with(&mut DeeplyNormalizeForDiagnosticsFolder {
-        at: infcx.at(&ObligationCause::dummy(), param_env),
+        at: infcx.at(&ObligationCause::dummy(), &param_env),
     })
 }
 
-struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
-    at: At<'a, 'tcx>,
+struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx, P: IntoParamEnv<'tcx>> {
+    at: At<'a, 'tcx, P>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx> {
+impl<'tcx, P: IntoParamEnv<'tcx>> TypeFolder<TyCtxt<'tcx>>
+    for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx, P>
+{
     fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }

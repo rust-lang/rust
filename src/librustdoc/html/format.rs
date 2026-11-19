@@ -421,7 +421,7 @@ fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ty = tcx.type_of(impl_def_id);
     infcx
-        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
+        .at(&ObligationCause::dummy(), &tcx.param_env(impl_def_id))
         .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
         .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
         .unwrap_or(ty.skip_binder())

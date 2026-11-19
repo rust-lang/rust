@@ -579,7 +579,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     };
 
-                    match infcx.at(&obligation.cause, obligation.param_env).eq(
+                    match infcx.at(&obligation.cause, &obligation.param_env).eq(
                         // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
@@ -729,7 +729,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
-                                    .at(&obligation.cause, obligation.param_env)
+                                    .at(&obligation.cause, &obligation.param_env)
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
                                     .eq(
@@ -747,7 +747,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(new_obligations) = infcx
-                                    .at(&obligation.cause, obligation.param_env)
+                                    .at(&obligation.cause, &obligation.param_env)
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
                                     .eq(DefineOpaqueTypes::Yes, c1, c2)
@@ -768,7 +768,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match super::try_evaluate_const(
                                 self.selcx.infcx,
                                 c,
-                                obligation.param_env,
+                                &obligation.param_env,
                                 |ty| Ok::<_, !>(ty.skip_norm_wip()),
                             ) {
                                 Ok(val) => Ok(val),
@@ -790,7 +790,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
+                            match self.selcx.infcx.at(&obligation.cause, &obligation.param_env).eq(
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
                                 DefineOpaqueTypes::Yes,
