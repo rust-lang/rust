@@ -95,5 +95,5 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
         }
     }
 
-    super::x86::fill_inregs(cx, fn_abi, opts, false);
+    super::x86::fill_inregs(cx, fn_abi, opts);
 }
