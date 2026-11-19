@@ -25,7 +25,6 @@ mod util;
 
 use core::panic;
 use std::collections::HashSet;
-use std::fmt::Write;
 use std::io::{self, ErrorKind};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -46,7 +45,7 @@ use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::executor::{CollectedTest, TestVariant};
 
 /// Called by `main` after the config has been parsed.
-fn run_tests(config: Arc<Config>) {
+pub(crate) fn discover_tests(config: &Arc<Config>) -> Vec<CollectedTest> {
     debug!(?config, "run_tests");
 
     // Debugging emscripten code doesn't make sense today
@@ -61,39 +60,7 @@ fn run_tests(config: Arc<Config>) {
 
     tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
 
-    // Delegate to the executor to filter and run the big list of test structures
-    // created during test discovery. When the executor decides to run a test,
-    // it will return control to the rest of compiletest by calling `runtest::run`.
-    let ok = executor::run_tests(&config, tests);
-
-    // Check the outcome reported by the executor.
-    if !ok {
-        // We want to report that the tests failed, but we also want to give
-        // some indication of just what tests we were running. Especially on
-        // CI, where there can be cross-compiled tests for a lot of
-        // architectures, without this critical information it can be quite
-        // easy to miss which tests failed, and as such fail to reproduce
-        // the failure locally.
-
-        let mut msg = String::from("Some tests failed in compiletest");
-        write!(msg, " suite={}", config.suite).unwrap();
-
-        if let Some(compare_mode) = config.compare_mode.as_ref() {
-            write!(msg, " compare_mode={}", compare_mode).unwrap();
-        }
-
-        if let Some(pass_mode) = config.force_pass_mode.as_ref() {
-            write!(msg, " pass_mode={}", pass_mode).unwrap();
-        }
-
-        write!(msg, " mode={}", config.mode).unwrap();
-        write!(msg, " host={}", config.host).unwrap();
-        write!(msg, " target={}", config.target).unwrap();
-
-        println!("{msg}");
-
-        std::process::exit(1);
-    }
+    tests
 }
 
 /// Read-only context data used during test collection.

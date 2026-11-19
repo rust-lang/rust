@@ -1,6 +1,7 @@
 //! Isolates the APIs used by `bin/main.rs`, to help minimize the surface area
 //! of public exports from the compiletest library crate.
 
+use std::fmt::Write;
 use std::io::IsTerminal;
 use std::sync::{Arc, OnceLock};
 use std::{env, fs};
@@ -10,7 +11,9 @@ use clap::Parser;
 
 use crate::common::{CodegenBackend, CompareMode, Config, ForcePassMode, TestMode, TestSuite};
 use crate::edition::Edition;
-use crate::{debuggers, directives, help, panic_hook, raise_fd_limit, run_tests, warning};
+use crate::{
+    debuggers, directives, discover_tests, executor, help, panic_hook, raise_fd_limit, warning,
+};
 
 pub fn main() {
     // sadly osx needs some file descriptor limits raised for running tests in
@@ -70,7 +73,41 @@ pub fn main() {
         }
     };
 
-    run_tests(config);
+    let tests = discover_tests(&config);
+
+    // Delegate to the executor to filter and run the big list of test structures
+    // created during test discovery. When the executor decides to run a test,
+    // it will return control to the rest of compiletest by calling `runtest::run`.
+    let ok = executor::run_tests(&config, tests);
+
+    // Check the outcome reported by the executor.
+    if !ok {
+        // We want to report that the tests failed, but we also want to give
+        // some indication of just what tests we were running. Especially on
+        // CI, where there can be cross-compiled tests for a lot of
+        // architectures, without this critical information it can be quite
+        // easy to miss which tests failed, and as such fail to reproduce
+        // the failure locally.
+
+        let mut msg = String::from("Some tests failed in compiletest");
+        write!(msg, " suite={}", config.suite).unwrap();
+
+        if let Some(compare_mode) = config.compare_mode.as_ref() {
+            write!(msg, " compare_mode={}", compare_mode).unwrap();
+        }
+
+        if let Some(pass_mode) = config.force_pass_mode.as_ref() {
+            write!(msg, " pass_mode={}", pass_mode).unwrap();
+        }
+
+        write!(msg, " mode={}", config.mode).unwrap();
+        write!(msg, " host={}", config.host).unwrap();
+        write!(msg, " target={}", config.target).unwrap();
+
+        println!("{msg}");
+
+        std::process::exit(1);
+    }
 }
 
 fn early_config_check(config: &Config) {
