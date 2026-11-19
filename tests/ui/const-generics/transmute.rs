@@ -33,6 +33,18 @@ fn element4_swap_lit<const N: usize, const M: usize>(
     unsafe { std::mem::transmute::<_, _>(v) }
 }
 
+fn zst<const N: usize>(v: [(); N]) -> () {
+    unsafe { std::mem::transmute::<_, _>(v) }
+}
+
+fn zero_len<const N: usize>(v: [[u8; N]; 0]) -> () {
+    unsafe { std::mem::transmute::<_, _>(v) }
+}
+
+fn zst_zero_len<const N: usize>(v: [(); N]) -> [[u8; N]; 0] {
+    unsafe { std::mem::transmute::<_, _>(v) }
+}
+
 fn main() {
     let _ = ident([[0; 8]; 16]);
     let _ = singleton_each([0; 8]);
@@ -40,4 +52,7 @@ fn main() {
     let _ = element2([[T(0); 8]; 16]);
     let _ = element3_mixed([[[T(0); 8]; 42]; 16]);
     let _ = element4_swap_lit([[[[T(0); 8]; 3]; 7]; 16]);
+    let _ = zst([(); 8]);
+    let _ = zero_len([[0; 8]; 0]);
+    let _ = zst_zero_len([(); 8]);
 }
