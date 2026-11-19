@@ -1411,6 +1411,7 @@ fn next_doc_expr(it: &mut Peekable<TokenTreeChildren>) -> Option<DocAtom> {
                 return None;
             }
         }
+        Some(NodeOrToken::Node(_)) if name == "notable_trait" => DocAtom::Flag(name),
         Some(NodeOrToken::Node(subtree)) => {
             if name != "alias" {
                 return None;
