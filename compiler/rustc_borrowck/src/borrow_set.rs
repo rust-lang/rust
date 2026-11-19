@@ -303,10 +303,14 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         source_place: mir::Place<'tcx>,
     ) {
         let mut did_reborrow = false;
+        let typing_env = self.body.typing_env(self.tcx);
         for (source_idx, source_field) in source_adt.all_fields().enumerate() {
             let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
+            if !self.tcx.is_reborrowed_field_ty(typing_env, source_field_ty) {
+                continue;
+            }
             match source_field_ty.kind() {
-                ty::Ref(source_region, _, source_mutability) if source_mutability.is_mut() => {
+                ty::Ref(source_region, _, _) => {
                     if source_region.is_static() {
                         bug!(
                             "Cannot implement Reborrow on a type containing a &'static mut T field"
@@ -347,13 +351,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                         assigned_place: target_field_place,
                     });
                 }
-                ty::Adt(source_field_adt, source_field_args)
-                    if source_field_args.get(0).is_some_and(|f| f.as_region().is_some())
-                        && !self.tcx.type_is_copy_modulo_regions(
-                            self.body.typing_env(self.tcx),
-                            self.tcx.erase_and_anonymize_regions(source_field_ty),
-                        ) =>
-                {
+                ty::Adt(source_field_adt, source_field_args) => {
                     let Some((target_idx, target_field)) = target_adt
                         .all_fields()
                         .enumerate()
@@ -391,7 +389,9 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                         source_field_place,
                     );
                 }
-                _ => continue,
+                _ => {
+                    bug!("`is_reborrowed_field_ty` accepted a field that is not `&mut T` or an ADT")
+                }
             }
         }
         if !did_reborrow {

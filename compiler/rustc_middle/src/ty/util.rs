@@ -205,6 +205,23 @@ impl<'tcx> TyCtxt<'tcx> {
         ty.is_trivially_pure_clone_copy() || self.is_use_cloned_raw(typing_env.as_query_input(ty))
     }
 
+    /// Checks whether a field of type `ty` is reborrowed, rather than copied, when
+    /// borrowck reborrows a value of a `Reborrow` type that contains it. `ty` is the
+    /// declared field type, so a projection that normalizes to `&mut T` does not count.
+    pub fn is_reborrowed_field_ty(self, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            ty::Ref(_, _, mutability) => mutability.is_mut(),
+            ty::Adt(_, args) => {
+                args.get(0).is_some_and(|arg| arg.as_region().is_some())
+                    && !self.type_is_copy_modulo_regions(
+                        typing_env,
+                        self.erase_and_anonymize_regions(ty),
+                    )
+            }
+            _ => false,
+        }
+    }
+
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.
