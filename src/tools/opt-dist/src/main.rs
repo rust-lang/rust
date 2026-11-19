@@ -278,7 +278,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(true)
                 .use_bolt(false)
                 .skipped_tests(vec![])
-                .run_tests(false) // tmp
+                .run_tests(true) // tmp
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(true)
                 .download_ci_llvm(true) // tmp: for the first throwaway LLVM, in case the segfault
