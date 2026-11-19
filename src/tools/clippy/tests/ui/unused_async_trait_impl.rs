@@ -158,3 +158,29 @@ mod issue17162 {
         }
     }
 }
+
+mod issue18080 {
+
+    struct ImplicitUnitReturnSig;
+    struct ExplicitUnitReturnSig;
+
+    trait HasAsyncDefaultMethod {
+        async fn do_something();
+    }
+
+    impl HasAsyncDefaultMethod for ImplicitUnitReturnSig {
+        #[allow(clippy::unused_unit)]
+        async fn do_something() {
+            //~^ unused_async_trait_impl
+            ()
+        }
+    }
+
+    impl HasAsyncDefaultMethod for ExplicitUnitReturnSig {
+        #[allow(clippy::unused_unit)]
+        async fn do_something() -> () {
+            //~^ unused_async_trait_impl
+            ()
+        }
+    }
+}
