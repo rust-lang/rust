@@ -415,11 +415,10 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
         fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
     let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
 
-    if let Err(message) = directives::do_early_directives_check(cx.config.mode, &file_directives) {
-        // FIXME(Zalathar): Overhaul compiletest error handling so that we
-        // don't have to resort to ad-hoc panics everywhere.
-        panic!("directives check failed:\n{message}");
+    if let Err(e) = directives::validate_name(cx.config.mode, &file_directives) {
+        e.raise_fatal();
     }
+
     let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
 
     // Normally we create one structure per revision, with two exceptions:

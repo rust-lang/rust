@@ -82,24 +82,22 @@ pub(super) fn parse_and_update_aux(
 
     let ln = directive_line;
 
-    config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
-    config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());
+    config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r);
+    config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r);
     config.push_name_value_directive(ln, AUX_CRATE, &mut aux.crates, parse_aux_crate);
     config.push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, parse_proc_macro);
 
     if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
-        aux.codegen_backend = Some(r.trim().to_owned());
+        aux.codegen_backend = Some(r.to_owned());
     }
 }
 
 fn parse_aux_crate(r: String) -> AuxCrate {
-    let r = r.trim();
-
     // Matches:
     //   name=path
     //   modifiers:name=path
     let caps = static_regex!(r"^(?:(?<modifiers>[^=]*?):)?(?<name>[^=]*)=(?<path>.*)$")
-        .captures(r)
+        .captures(&r)
         .unwrap_or_else(|| {
             panic!("couldn't parse aux-crate value `{r}` (should be e.g. `log=log.rs`)")
         });
@@ -112,13 +110,11 @@ fn parse_aux_crate(r: String) -> AuxCrate {
 }
 
 fn parse_proc_macro(r: String) -> ProcMacro {
-    let r = r.trim();
-
     // Matches:
     //   path
     //   modifiers:path
     let caps = static_regex!(r"^(?:(?<modifiers>[^=]*?):)?(?<path>.*)$")
-        .captures(r)
+        .captures(&r)
         .expect("can never fail");
 
     let modifiers = caps.name("modifiers").map(|m| m.as_str().to_string());

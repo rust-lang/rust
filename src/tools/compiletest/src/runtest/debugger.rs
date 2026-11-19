@@ -4,7 +4,8 @@ use std::io::{BufRead, BufReader};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::directives::{LineNumber, line_directive};
+use crate::directives::LineNumber;
+use crate::directives::line::{DirectivePayload, line_directive};
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -51,13 +52,17 @@ impl DebuggerCommands {
                 continue;
             };
 
-            match (directive_kind, directive.value_after_colon()) {
+            let value = directive.payload.and_then(|payload| match payload {
+                DirectivePayload::Value(value) => Some(value),
+                DirectivePayload::Remark(_) => None,
+            });
+            match (directive_kind, value) {
                 ("-command", Some(command)) => commands.push(command.to_string()),
                 ("-check", Some(pattern)) => check_lines.push((line_number, pattern.to_string())),
                 ("-repr", Some(var_name)) => {
                     // pseudo-command intercepted by `debugger_tester` to run custom variable
                     // inspection logic.
-                    commands.push(format!("repr {}", var_name.trim()));
+                    commands.push(format!("repr {var_name}"));
                     // Artificially output by `debugger_tester` to confirm that the inspection logic
                     // encountered no errors.
                     check_lines.push((line_number, format!("{var_name}: Ok")));
