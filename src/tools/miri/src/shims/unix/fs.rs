@@ -113,6 +113,10 @@ impl UnixFileDescription for FileHandle {
         if !self.writable {
             return finish.call(ecx, Err(LibcError("EBADF")));
         }
+        if self.append {
+            // On "append" files, pwrite cannot be emulated with seeking.
+            throw_unsup_format!("pwrite is not supported on files opened with O_APPEND");
+        }
 
         let file = &mut &self.file;
         // Emulates pwrite using seek + write + seek to restore cursor position.

@@ -128,7 +128,7 @@ fn test_append_seek_read_write() {
         assert_eq!(errno_result(libc::lseek(fd, 1, libc::SEEK_SET)).unwrap(), 1);
         assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), *b"b");
         assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 2);
-
+        // Same for `pread`.
         let mut byte = 0u8;
         assert_eq!(errno_result(libc::pread(fd, (&mut byte as *mut u8).cast(), 1, 0)).unwrap(), 1);
         assert_eq!(byte, b'a');
