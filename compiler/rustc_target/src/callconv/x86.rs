@@ -1,11 +1,13 @@
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
+    AddressSpace, Align, BackendRepr, CanonAbi, Float, HasDataLayout, Primitive, Reg, RegKind,
+    TyAndLayout, X86Call,
 };
 
 use crate::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, PassMode, TyAbiInterface,
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, ComputeCallConv, FnAbi, PassMode,
+    TyAbiInterface,
 };
-use crate::spec::{HasTargetSpec, RustcAbi};
+use crate::spec::{HasTargetSpec, HasX86AbiOpt, RustcAbi};
 
 /// Is this a struct with a single float field?
 fn is_single_fp_element<'a, Ty, C>(mut layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
@@ -73,6 +75,21 @@ where
 pub(crate) struct X86Options {
     pub flavor: Flavor,
     pub reg_struct_return: bool,
+}
+
+impl X86Options {
+    pub(crate) fn new<C: HasTargetSpec + HasX86AbiOpt>(cx: &C, conv: CanonAbi) -> Self {
+        let flavor = match conv {
+            CanonAbi::X86(X86Call::Fastcall) => Flavor::Fastcall,
+            CanonAbi::X86(X86Call::Vectorcall) => Flavor::Vectorcall,
+            CanonAbi::C | CanonAbi::X86(X86Call::Stdcall) => {
+                Flavor::General { regparam: cx.x86_abi_opt().regparm }
+            }
+            _ => Flavor::General { regparam: None },
+        };
+        let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
+        X86Options { flavor, reg_struct_return }
+    }
 }
 
 fn classify_ret<'a, Ty, C>(cx: &C, opts: X86Options, ret: &mut ArgAbi<'a, Ty>)
@@ -205,20 +222,28 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
+pub(crate) struct X86CallConv {
+    opts: X86Options,
+    inregs: X86InRegs,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for X86CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout + HasTargetSpec,
+    C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, opts, &mut fn_abi.ret);
+    fn new(cx: &C, conv: CanonAbi, c_variadic: bool) -> Self {
+        let opts = X86Options::new(cx, conv);
+        X86CallConv { opts, inregs: X86InRegs::new(opts, c_variadic) }
     }
 
-    let mut inregs = X86InRegs::new(opts, fn_abi.c_variadic);
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(cx, self.opts, ret);
+    }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() || !arg.layout.is_sized() {
-            continue;
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
+        if !arg.layout.is_sized() {
+            return;
         }
 
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
@@ -227,7 +252,7 @@ where
             classify_arg(cx, arg);
         }
 
-        inregs.fill_inregs(cx, arg);
+        self.inregs.fill_inregs(cx, arg);
     }
 }
 

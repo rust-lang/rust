@@ -1,21 +1,28 @@
 use rustc_abi::{
-    Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
+    Align, BackendRepr, CanonAbi, Float, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
 };
 
-use crate::callconv::FnAbi;
-use crate::callconv::x86::{Flavor, X86InRegs};
-use crate::spec::{HasTargetSpec, RustcAbi};
+use crate::callconv::x86::{Flavor, X86InRegs, X86Options};
+use crate::callconv::{ArgAbi, ComputeCallConv};
+use crate::spec::{HasTargetSpec, HasX86AbiOpt, RustcAbi};
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(
-    cx: &C,
-    fn_abi: &mut FnAbi<'a, Ty>,
-    opts: super::x86::X86Options,
-) where
+pub(crate) struct X86Win32CallConv {
+    opts: X86Options,
+    inregs: X86InRegs,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for X86Win32CallConv
+where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout + HasTargetSpec,
+    C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
 {
-    if !fn_abi.ret.is_ignore() {
-        if fn_abi.ret.layout.is_aggregate() && fn_abi.ret.layout.is_sized() {
+    fn new(cx: &C, conv: CanonAbi, c_variadic: bool) -> Self {
+        let opts = X86Options::new(cx, conv);
+        X86Win32CallConv { opts, inregs: X86InRegs::new(opts, c_variadic) }
+    }
+
+    fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
+        if ret.layout.is_aggregate() && ret.layout.is_sized() {
             // Returning a structure. Most often, this will use
             // a hidden first argument. On some platforms, though,
             // small structs are returned as integers.
@@ -28,43 +35,41 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             // GCC used to apply the SysV rule here, breaking windows-gnu's ABI, but was fixed:
             // - reported in https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82028
             // - fixed in https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85667
-            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx) {
+            if let Some(Float::F16) = ret.layout.complex_float(cx) {
                 // `_Complex _Float16` is returned as `<2 x half>`.
                 let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
-                fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
-            } else if t.abi_return_struct_as_int || opts.reg_struct_return {
-                match fn_abi.ret.layout.size.bytes() {
-                    1 => fn_abi.ret.cast_to(Reg::i8()),
-                    2 => fn_abi.ret.cast_to(Reg::i16()),
-                    4 => fn_abi.ret.cast_to(Reg::i32()),
-                    8 => fn_abi.ret.cast_to(Reg::i64()),
-                    _ => fn_abi.ret.make_indirect(),
+                ret.cast_to(Reg { kind, size: ret.layout.size });
+            } else if t.abi_return_struct_as_int || self.opts.reg_struct_return {
+                match ret.layout.size.bytes() {
+                    1 => ret.cast_to(Reg::i8()),
+                    2 => ret.cast_to(Reg::i16()),
+                    4 => ret.cast_to(Reg::i32()),
+                    8 => ret.cast_to(Reg::i64()),
+                    _ => ret.make_indirect(),
                 }
             } else {
-                fn_abi.ret.make_indirect();
+                ret.make_indirect();
             }
         } else if cx.target_spec().rustc_abi != Some(RustcAbi::Softfloat)
-            && opts.flavor != Flavor::Vectorcall
-            && let BackendRepr::Scalar(scalar) = fn_abi.ret.layout.backend_repr
+            && self.opts.flavor != Flavor::Vectorcall
+            && let BackendRepr::Scalar(scalar) = ret.layout.backend_repr
             && matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
         {
-            super::x86::pass_on_x87_floating_point_stack(cx, &mut fn_abi.ret);
+            super::x86::pass_on_x87_floating_point_stack(cx, ret);
         } else {
-            fn_abi.ret.extend_integer_width_to(32);
+            ret.extend_integer_width_to(32);
         }
     }
 
-    let mut inregs = X86InRegs::new(opts, fn_abi.c_variadic);
-
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() || !arg.layout.is_sized() {
-            continue;
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
+        if !arg.layout.is_sized() {
+            return;
         }
 
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             arg.make_indirect();
-            inregs.fill_inregs(cx, arg);
-            continue;
+            self.inregs.fill_inregs(cx, arg);
+            return;
         }
 
         // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
@@ -97,6 +102,6 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             arg.extend_integer_width_to(32);
         }
 
-        inregs.fill_inregs(cx, arg);
+        self.inregs.fill_inregs(cx, arg);
     }
 }
