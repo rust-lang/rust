@@ -1445,6 +1445,72 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
+    fn mkdirat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        path_op: &OpTy<'tcx>,
+        mode_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let dirfd = ecx.read_scalar(dirfd_op)?.to_i32()?;
+        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
+
+        let mode = if matches!(&ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
+            u32::from(ecx.read_scalar(mode_op)?.to_u16()?)
+        } else {
+            ecx.read_scalar(mode_op)?.to_u32()?
+        };
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`mkdirat`", reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        let dir = if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
+            None
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+            };
+            Some(dir)
+        };
+
+        let result = match dir {
+            Some(dir) => {
+                // `Dir::create_dir` does not take a mode; std always uses 0o777 internally.
+                // So we can only support that mode here.
+                if mode != 0o777 {
+                    throw_unsup_format!(
+                        "`mkdirat` relative to a directory file descriptor with mode {mode:#o} is not supported \
+                        (only 0o777 is supported)"
+                    );
+                }
+                dir.dir.create_dir(&path)
+            }
+            None => {
+                #[cfg_attr(not(unix), allow(unused_mut))]
+                let mut builder = DirBuilder::new();
+
+                // If the host supports it, forward on the mode of the directory
+                // (i.e. permission bits and the sticky bit)
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::DirBuilderExt;
+                    builder.mode(mode);
+                }
+
+                builder.create(path)
+            }
+        };
+        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result.map(|()| 0))?))
+    }
+
     fn rmdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
