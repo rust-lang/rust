@@ -7,7 +7,7 @@
 
 #![feature(reborrow)]
 
-use std::marker::Reborrow;
+use std::marker::{PhantomData, Reborrow};
 
 struct Inner<'a>(&'a mut ());
 
@@ -32,6 +32,23 @@ struct SingleShared<'a> {
 }
 
 impl<'a> Reborrow for SingleShared<'a> {}
+
+// `NoCopyInner` has no `Copy` impl, so `inner` is reborrowed in every body, even
+// one with a `T: Copy` bound.
+struct NoCopyInner<'a, T>(&'a mut (), PhantomData<T>);
+
+impl<'a, T> Reborrow for NoCopyInner<'a, T> {}
+
+struct WithNoCopyField<'a, 'b, T> {
+    inner: NoCopyInner<'a, T>,
+    shared: &'b (),
+}
+
+impl<'a, 'b, T> Reborrow for WithNoCopyField<'a, 'b, T> {}
+
+fn use_no_copy_field<'a, 'b, T: Copy>(x: WithNoCopyField<'a, 'b, T>) -> WithNoCopyField<'a, 'b, T> {
+    x
+}
 
 fn use_reborrowed_field<'a, 'b>(x: WithReborrowedField<'a, 'b>) -> WithReborrowedField<'a, 'b> {
     x

@@ -1,0 +1,13 @@
+error[E0499]: cannot borrow `g` as mutable more than once at a time
+  --> $DIR/reborrow-multiple-lifetimes-generic-mut-field-aliasing.rs:25:17
+   |
+LL |     let y = get(g);
+   |                 - first mutable borrow occurs here
+LL |     let z = get(g);
+   |                 ^ second mutable borrow occurs here
+LL |     *y = 2;
+   |     ------ first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.
