@@ -38,7 +38,7 @@ fn main() {
     }
 }
 
-#[target_feature(enable = "avx512f")]
+#[target_feature(enable = "avx512bw")]
 unsafe fn test_avx512_shifts() {
     let a = transmute([1u64, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
     let counts = transmute([0u64, 1, 63, 64, 65, 256, 1 << 32, u64::MAX]);
@@ -49,6 +49,115 @@ unsafe fn test_avx512_shifts() {
     assert_eq!(
         transmute::<_, [u64; 8]>(_mm512_srlv_epi64(a, counts)),
         [1, u64::MAX >> 1, 1, 0, 0, 0, 0, 0],
+    );
+
+    // Test large (greater than u32::MAX) shift values for 64-bit arithmetic shifts.
+    // Only the lowest 64bits of this matter: this is a shift by (2^48).
+    let shift = _mm_set_epi64x(0, 1 << 48);
+    let values = _mm_set_epi64x(-100, 100);
+    assert_eq!(transmute::<_, [i64; 2]>(_mm_sra_epi64(values, shift)), [0i64, -1]);
+
+    // Only the lowest 64 bits of this matter: this is a shift by 4.
+    let shift = _mm_set_epi64x(0, 4);
+
+    // Test _mm_sra_epi64.
+    let values = _mm_set_epi64x(-32, -16);
+    assert_eq!(transmute::<_, [i64; 2]>(_mm_sra_epi64(values, shift)), [-1i64, -2]);
+
+    // Test _mm256_sra_epi64.
+    let values = _mm256_setr_epi64x(-16, -32, -64, -128);
+    assert_eq!(transmute::<_, [i64; 4]>(_mm256_sra_epi64(values, shift)), [-1i64, -2, -4, -8]);
+
+    // Test _mm512_{sll, srl, sra}_epi64.
+    let values = _mm512_setr_epi64(1, 2, 4, 8, 16, 32, 64, 128);
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_sll_epi64(values, shift)),
+        [16u64, 32, 64, 128, 256, 512, 1024, 2048],
+    );
+    let values = _mm512_setr_epi64(1, 2, 4, 8, 16, 32, 64, 128);
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_srl_epi64(values, shift)),
+        [0u64, 0, 0, 0, 1, 2, 4, 8],
+    );
+    let values = _mm512_setr_epi64(-1, -2, -4, -8, -16, -32, -64, -128);
+    assert_eq!(
+        transmute::<_, [i64; 8]>(_mm512_sra_epi64(values, shift)),
+        [-1i64, -1, -1, -1, -1, -2, -4, -8],
+    );
+
+    // Only the lowest 64 bits of this matter: this is a shift by 2.
+    let shift = _mm_set_epi64x(0, 2);
+
+    // Test _mm512_{sll, srl, sra}_epi32
+    #[rustfmt::skip]
+    let values = _mm512_setr_epi32(
+        0, 1, 2, 3, 4, 5, 6, 7,
+        8, 9, 10, 11, 12, 13, 14, 15,
+    );
+    assert_eq!(
+        transmute::<_, [u32; 16]>(_mm512_sll_epi32(values, shift)),
+        [0u32, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60],
+    );
+    #[rustfmt::skip]
+    let values = _mm512_setr_epi32(
+        0, 1, 2, 3, 4, 5, 6, 7,
+        8, 9, 10, 11, 12, 13, 14, 15,
+    );
+    assert_eq!(
+        transmute::<_, [u32; 16]>(_mm512_srl_epi32(values, shift)),
+        [0u32, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+    );
+    #[rustfmt::skip]
+    let values = _mm512_setr_epi32(
+        0, 1, 2, 3, 4, 5, 6, 7,
+        -1, -2, -4, -8, -16, -32, -64, -128,
+    );
+    assert_eq!(
+        transmute::<_, [i32; 16]>(_mm512_sra_epi32(values, shift)),
+        [0i32, 0, 0, 0, 1, 1, 1, 1, -1, -1, -1, -2, -4, -8, -16, -32],
+    );
+
+    // Test _mm512_{sll, srl, sra}_epi16
+    #[rustfmt::skip]
+    let values = _mm512_set_epi16(
+        31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+        15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    );
+    #[rustfmt::skip]
+    assert_eq!(
+        transmute::<_, [u16; 32]>(_mm512_sll_epi16(values, shift)),
+        [
+            0u16, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60,
+            64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124,
+        ],
+    );
+    #[rustfmt::skip]
+    let values = _mm512_set_epi16(
+        31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+        15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    );
+    #[rustfmt::skip]
+    assert_eq!(
+        transmute::<_, [u16; 32]>(_mm512_srl_epi16(values, shift)),
+        [
+            0u16, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+            4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+        ],
+    );
+    #[rustfmt::skip]
+    let values = _mm512_set_epi16(
+        -1, -16384, -8192, -4096, -2048, -1024, -512, -256,
+        15, 14, 13, 12, 11, 10, 9, 8,
+        -128, -64, -32, -16, -8, -4, -2, -1,
+        7, 6, 5, 4, 3, 2, 1, 0,
+    );
+    #[rustfmt::skip]
+    assert_eq!(
+        transmute::<_, [i16; 32]>(_mm512_sra_epi16(values, shift)),
+        [
+            0i16, 0, 0, 0, 1, 1, 1, 1, -1, -1, -1, -2, -4, -8, -16, -32,
+            2i16, 2, 2, 2, 3, 3, 3, 3, -64, -128, -256, -512, -1024, -2048, -4096, -1,
+        ],
     );
 }
 
