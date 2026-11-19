@@ -304,10 +304,13 @@ where
         // `_hypot` is the Windows name for this.
         ("_hypot" | "hypot", [x, y]) if !x.is_nan() && y.is_zero() => x.abs(),
 
+        // atan2 has many cases, but NaNs are excluded from all of them. It's easiest
+        // to handle that upfront.
+        ("atan2", [x, y]) if x.is_nan() || y.is_nan() => return None,
+
         // atan2(±0,−0) = ±π.
         // atan2(±0, y) = ±π for y < 0.
-        // Must check for non NaN because `y.is_negative()` also applies to NaN.
-        ("atan2", [x, y]) if (x.is_zero() && (y.is_negative() && !y.is_nan())) => pi.copy_sign(*x),
+        ("atan2", [x, y]) if (x.is_zero() && y.is_negative()) => pi.copy_sign(*x),
 
         // atan2(±x,−∞) = ±π for finite x > 0.
         ("atan2", [x, y]) if (!x.is_zero() && !x.is_infinite()) && y.is_neg_infinity() =>
@@ -325,8 +328,7 @@ where
         ("atan2", [x, y]) if x.is_infinite() && y.is_pos_infinity() => pi_over_4.copy_sign(*x),
 
         // atan2(±∞, y) returns ±π/2 for finite y.
-        ("atan2", [x, y]) if x.is_infinite() && (!y.is_infinite() && !y.is_nan()) =>
-            pi_over_2.copy_sign(*x),
+        ("atan2", [x, y]) if x.is_infinite() && !y.is_infinite() => pi_over_2.copy_sign(*x),
 
         // (-1)^(±INF) = 1
         ("pow", [base, exp]) if *base == -one && exp.is_infinite() => one,

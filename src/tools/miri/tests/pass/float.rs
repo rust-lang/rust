@@ -1303,6 +1303,7 @@ fn libm() {
             // Associated items cannot be brought into scope with a `use`, hence the `const`s.
             const INFINITY: $float_type = <$float_type>::INFINITY;
             const NEG_INFINITY: $float_type = <$float_type>::NEG_INFINITY;
+            const NAN: $float_type = <$float_type>::NAN;
 
             // atan2(±0,−0) = ±π.
             assert_eq!($float_type::atan2(0.0, -0.0), PI, "atan2(0,−0) = π");
@@ -1335,6 +1336,10 @@ fn libm() {
             // atan2(±∞, +∞) = ±π/4
             assert_eq!($float_type::atan2(INFINITY, INFINITY), FRAC_PI_4, "atan2(+∞, +∞) = π/4");
             assert_eq!($float_type::atan2(NEG_INFINITY, INFINITY), -FRAC_PI_4, "atan2(-∞, +∞) = -π/4");
+
+            // We should never mask a NaN though, which we used to get wrong.
+            assert!($float_type::atan2(NAN, NEG_INFINITY).is_nan());
+            assert!($float_type::atan2(NAN, 0.0).is_nan());
         }}
     }
     fixed_atan2_cases!(f16);
