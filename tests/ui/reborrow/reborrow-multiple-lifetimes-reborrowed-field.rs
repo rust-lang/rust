@@ -5,7 +5,7 @@
 //! reborrowed field. See
 //! `reborrow-multiple-lifetimes-no-reborrowed-field.rs` for the rejected cases.
 
-#![feature(reborrow)]
+#![feature(negative_impls, reborrow)]
 
 use std::marker::{PhantomData, Reborrow};
 
@@ -47,6 +47,23 @@ struct WithNoCopyField<'a, 'b, T> {
 impl<'a, 'b, T> Reborrow for WithNoCopyField<'a, 'b, T> {}
 
 fn use_no_copy_field<'a, 'b, T: Copy>(x: WithNoCopyField<'a, 'b, T>) -> WithNoCopyField<'a, 'b, T> {
+    x
+}
+
+// A negative `Copy` impl does not count as a `Copy` impl, so `inner` still counts.
+struct NotCopyMarker<'a>(PhantomData<&'a mut ()>);
+
+impl<'a> Reborrow for NotCopyMarker<'a> {}
+impl<'a> !Copy for NotCopyMarker<'a> {}
+
+struct WithNotCopyMarker<'a, 'b> {
+    inner: NotCopyMarker<'a>,
+    shared: &'b (),
+}
+
+impl<'a, 'b> Reborrow for WithNotCopyMarker<'a, 'b> {}
+
+fn use_not_copy_marker<'a, 'b>(x: WithNotCopyMarker<'a, 'b>) -> WithNotCopyMarker<'a, 'b> {
     x
 }
 

@@ -565,10 +565,15 @@ fn field_is_always_reborrowed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span)
     match ty.kind() {
         ty::Ref(_, _, mutability) => mutability.is_mut(),
         ty::Adt(_, args) if args.get(0).is_some_and(|arg| arg.as_region().is_some()) => {
+            // A negative impl like `impl !Copy for Foo` rules out `Copy` instead.
             let mut has_copy_impl = false;
-            tcx.for_each_relevant_impl(tcx.require_lang_item(LangItem::Copy, span), ty, |_| {
-                has_copy_impl = true;
-            });
+            tcx.for_each_relevant_impl(
+                tcx.require_lang_item(LangItem::Copy, span),
+                ty,
+                |impl_did| {
+                    has_copy_impl |= tcx.impl_polarity(impl_did) != ty::ImplPolarity::Negative;
+                },
+            );
             !has_copy_impl
         }
         _ => false,
