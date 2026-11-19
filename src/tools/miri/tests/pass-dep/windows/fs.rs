@@ -114,7 +114,25 @@ unsafe fn test_create_normal_file() {
         panic!("Failed to close file")
     };
 
-    // Creating the file again should fail due to CREATE_NEW.
+    // Try again, this time without asking for any file access.
+    // That should still work.
+    fs::remove_file(&temp).unwrap(); // let's create the file again
+    let handle = CreateFileW(
+        raw_path.as_ptr(),
+        /* desired_access */ 0,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ptr::null_mut(),
+        CREATE_NEW,
+        FILE_FLAG_OPEN_REPARSE_POINT, // std also sets this
+        ptr::null_mut(),
+    );
+    assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
+    assert_eq!(GetLastError(), 0);
+    if CloseHandle(handle) == 0 {
+        panic!("Failed to close file")
+    };
+
+    // Creating the file when it already exists should fail due to CREATE_NEW.
     let handle = CreateFileW(
         raw_path.as_ptr(),
         GENERIC_READ | GENERIC_WRITE,
@@ -154,7 +172,7 @@ unsafe fn test_create_always_twice() {
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
-        GENERIC_READ | GENERIC_WRITE,
+        /* desired_access */ GENERIC_READ, // should work even without write access
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         ptr::null_mut(),
         CREATE_ALWAYS,

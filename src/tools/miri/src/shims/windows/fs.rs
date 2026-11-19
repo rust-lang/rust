@@ -226,7 +226,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut options = fs::OpenOptions::new();
             options.read(desired_read);
             options.write(desired_write);
-            let mut append = false;
             match creation_disposition {
                 CreateAlways | OpenAlways => {
                     // These two create the file if it is missing, but also succeed if it
@@ -237,6 +236,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // file to not exist, we use `create_new` to fail if it does exist.
                     if !exists_already {
                         options.create_new(true);
+                        // Per `create_new` documentation:
+                        // The file must be opened with write or append access in order to create a new file.
+                        // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
+                        // So we open it for writing anyway, to make creating the file work. Write
+                        // accesses will still be rejected because `writable` is not set on the
+                        // `FileHandle`.
+                        options.write(true);
                     }
                     if creation_disposition == CreateAlways {
                         options.truncate(true);
@@ -244,13 +250,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 CreateNew => {
                     options.create_new(true);
-                    // Per `create_new` documentation:
-                    // The file must be opened with write or append access in order to create a new file.
-                    // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
-                    if !desired_write {
-                        options.append(true);
-                        append = true;
-                    }
+                    // See above for why we need to also request write access.
+                    options.write(true);
                 }
                 OpenExisting => {
                     if !desired_read && !desired_write {
@@ -317,7 +318,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         file,
                         writable: desired_write,
                         readable: desired_read,
-                        append,
+                        append: false,
                     }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };
