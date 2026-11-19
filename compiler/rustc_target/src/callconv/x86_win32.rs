@@ -3,7 +3,7 @@ use rustc_abi::{
 };
 
 use crate::callconv::FnAbi;
-use crate::callconv::x86::Flavor;
+use crate::callconv::x86::{Flavor, X86InRegs};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(
@@ -54,6 +54,8 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
         }
     }
 
+    let mut inregs = X86InRegs::new(opts, fn_abi.c_variadic);
+
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() || !arg.layout.is_sized() {
             continue;
@@ -61,6 +63,7 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
 
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             arg.make_indirect();
+            inregs.fill_inregs(cx, arg);
             continue;
         }
 
@@ -93,7 +96,7 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
         } else {
             arg.extend_integer_width_to(32);
         }
-    }
 
-    super::x86::fill_inregs(cx, fn_abi, opts);
+        inregs.fill_inregs(cx, arg);
+    }
 }

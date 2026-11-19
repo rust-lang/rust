@@ -214,6 +214,8 @@ where
         classify_ret(cx, opts, &mut fn_abi.ret);
     }
 
+    let mut inregs = X86InRegs::new(opts, fn_abi.c_variadic);
+
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() || !arg.layout.is_sized() {
             continue;
@@ -221,52 +223,58 @@ where
 
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             arg.make_indirect();
-            continue;
+        } else {
+            classify_arg(cx, arg);
         }
 
-        classify_arg(cx, arg);
+        inregs.fill_inregs(cx, arg);
     }
-
-    fill_inregs(cx, fn_abi, opts);
 }
 
-pub(crate) fn fill_inregs<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-{
-    // Mark arguments as InReg like clang does it,
-    // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
+/// Mark arguments as InReg like clang does it,
+/// so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
+///
+/// Clang reference: lib/CodeGen/TargetInfo.cpp
+/// See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()
+///
+/// IsSoftFloatABI is only set to true on ARM platforms,
+/// which in turn can't be x86?
+pub(crate) struct X86InRegs {
+    free_regs: u64,
+}
 
-    // Clang reference: lib/CodeGen/TargetInfo.cpp
-    // See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()
+impl X86InRegs {
+    pub(crate) fn new(opts: X86Options, c_variadic: bool) -> Self {
+        // The number of registers available for argument passing.
+        //
+        // An `extern "fastcall"` and `extern "vectorcall"` function always have 2 registers available.
+        // Otherwise the `regparam` count (in the range 0..=3) determines the number of available
+        // registers. If unspecified, no registers are used for argument passing.
+        //
+        // Functions that take a variable number of arguments continue to be passed all of their
+        // arguments on the stack.
+        let free_regs = match opts.flavor {
+            _ if c_variadic => 0,
+            Flavor::Fastcall | Flavor::Vectorcall => 2,
+            Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
+        };
 
-    // IsSoftFloatABI is only set to true on ARM platforms,
-    // which in turn can't be x86?
-
-    // The number of registers available for argument passing.
-    //
-    // An `extern "fastcall"` and `extern "vectorcall"` function always have 2 registers available.
-    // Otherwise the `regparam` count (in the range 0..=3) determines the number of available
-    // registers. If unspecified, no registers are used for argument passing.
-    //
-    // Functions that take a variable number of arguments continue to be passed all of their
-    // arguments on the stack.
-    let mut free_regs = match opts.flavor {
-        _ if fn_abi.c_variadic => 0,
-        Flavor::Fastcall | Flavor::Vectorcall => 2,
-        Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
-    };
-
-    if free_regs == 0 {
-        return;
+        X86InRegs { free_regs }
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    pub(crate) fn fill_inregs<'a, Ty, C>(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if self.free_regs == 0 {
+            return;
+        }
+
         let attrs = match arg.mode {
             PassMode::Ignore | PassMode::Indirect { attrs: _, address_space: _, mode: _ } => {
-                continue;
+                return;
             }
-            PassMode::Cast { .. } if arg.layout.is_x87_f80(cx) => continue,
+            PassMode::Cast { .. } if arg.layout.is_x87_f80(cx) => return,
             PassMode::Direct(ref mut attrs) => attrs,
             PassMode::Pair(..)
             | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ }
@@ -279,27 +287,28 @@ where
         let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
         assert_eq!(unit.size, arg.layout.size);
         if matches!(unit.kind, RegKind::Float | RegKind::Vector { .. }) {
-            continue;
+            return;
         }
 
         let size_in_regs = arg.layout.size.bits().div_ceil(32);
 
         if size_in_regs == 0 {
-            continue;
+            return;
         }
 
-        if size_in_regs > free_regs {
-            break;
+        if size_in_regs > self.free_regs {
+            self.free_regs = 0;
+            return;
         }
 
-        free_regs -= size_in_regs;
+        self.free_regs -= size_in_regs;
 
         if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
             attrs.set(ArgAttribute::InReg);
         }
 
-        if free_regs == 0 {
-            break;
+        if self.free_regs == 0 {
+            return;
         }
     }
 }
