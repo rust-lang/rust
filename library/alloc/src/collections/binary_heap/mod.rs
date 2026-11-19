@@ -140,7 +140,6 @@
 //! }
 //! ```
 
-#![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::alloc::Allocator;
@@ -1797,6 +1796,7 @@ unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     }
 }
 
+/// Iterator which retrieves elements in heap order.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 #[derive(Clone, Debug)]

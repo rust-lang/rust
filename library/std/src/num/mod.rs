@@ -4,7 +4,6 @@
 //! work. See the individual documentation for each piece for more information.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![allow(missing_docs)]
 
 #[unstable(feature = "complex_numbers", issue = "154023")]
 pub use core::num::Complex;
