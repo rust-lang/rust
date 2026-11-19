@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 // regression test for #141758
 //@ run-rustfix
 //@ check-pass

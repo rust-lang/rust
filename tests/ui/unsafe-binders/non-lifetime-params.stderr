@@ -1,0 +1,14 @@
+error: only lifetime parameters can be used in this context
+  --> $DIR/non-lifetime-params.rs:9:24
+   |
+LL | type WithType = unsafe<T> ();
+   |                        ^
+
+error: only lifetime parameters can be used in this context
+  --> $DIR/non-lifetime-params.rs:10:31
+   |
+LL | type WithConst = unsafe<const N: usize> [u8; N];
+   |                               ^
+
+error: aborting due to 2 previous errors
+

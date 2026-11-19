@@ -1,0 +1,14 @@
+error: def-path(<unsafe<'a> &'a Local as t::Tr>::m)
+  --> $DIR/impl-def-path.rs:19:5
+   |
+LL |     #[rustc_dump_def_path]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(<&Local as t::Tr>::m)
+  --> $DIR/impl-def-path.rs:24:5
+   |
+LL |     #[rustc_dump_def_path]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

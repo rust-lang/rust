@@ -1,0 +1,28 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime
+  --> $DIR/impl-trait.rs:12:37
+   |
+LL | fn in_binder_return() -> unsafe<'a> impl Sized {
+   |                                     ^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/impl-trait.rs:12:33
+   |
+LL | fn in_binder_return() -> unsafe<'a> impl Sized {
+   |                                 ^^
+
+error[E0277]: the trait bound `impl Sized: Copy` is not satisfied in `impl Sized`
+  --> $DIR/impl-trait.rs:19:21
+   |
+LL | fn in_binder_arg(_: unsafe<'a> impl Sized) {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^ within `impl Sized`, the trait `Copy` is not implemented for `impl Sized`
+   |
+   = note: required because it appears within the type `impl Sized`
+help: consider restricting opaque type `impl Sized` with trait `Copy`
+   |
+LL | fn in_binder_arg(_: unsafe<'a> impl Sized + std::marker::Copy) {}
+   |                                           +++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0657.
+For more information about an error, try `rustc --explain E0277`.

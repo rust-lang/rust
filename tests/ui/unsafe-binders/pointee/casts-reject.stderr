@@ -1,0 +1,35 @@
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const unsafe<> ManuallyDrop<[u8]>`
+  --> $DIR/casts-reject.rs:13:5
+   |
+LL |     p as _
+   |     ^^^^^^
+
+error[E0606]: casting `*const ManuallyDrop<[u8]>` as `*const unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>` is invalid
+  --> $DIR/casts-reject.rs:16:5
+   |
+LL |     p as _
+   |     ^^^^^^
+   |
+   = note: the pointers have different metadata
+
+error[E0606]: casting `*const ManuallyDrop<(dyn Debug + 'static)>` as `*const unsafe<'a> ManuallyDrop<(dyn std::fmt::Display + 'a)>` is invalid
+  --> $DIR/casts-reject.rs:19:5
+   |
+LL |     p as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error[E0804]: cannot add auto trait `Send` to dyn bound via pointer cast
+  --> $DIR/casts-reject.rs:22:5
+   |
+LL |     p as _
+   |     ^^^^^^ unsupported cast
+   |
+   = note: this could allow UB elsewhere
+   = help: use `transmute` if you're sure this is sound
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0606, E0607, E0804.
+For more information about an error, try `rustc --explain E0606`.
