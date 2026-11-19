@@ -237,6 +237,12 @@ fn install_sigaltstack() -> Handler {
 /// Must only be called with a pointer returned by `make_handler`, and only
 /// once per `Handler`.
 pub unsafe fn drop_handler(data: *mut libc::c_void) {
+    if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Relaxed) {
+        debug_assert!(data.is_null());
+        // Skip the thread-info-store access below.
+        return;
+    }
+
     if !data.is_null() {
         let sigstack_size = sigstack_size();
         let page_size = PAGE_SIZE.load(Ordering::Relaxed);
@@ -268,6 +274,9 @@ pub unsafe fn drop_handler(data: *mut libc::c_void) {
         unsafe { munmap(data.sub(page_size), sigstack_size + page_size) };
     }
 
+    // `make_handler` inserts the current thread's info into the store even if
+    // there is already a signal stack in place, so this cannot be conditional
+    // on `data`.
     delete_current_info();
 }
 
