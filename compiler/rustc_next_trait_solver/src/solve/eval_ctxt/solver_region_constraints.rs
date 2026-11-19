@@ -168,9 +168,9 @@ where
         use Component::*;
         use LeafRegionConstraint::*;
         match c {
-            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, NoSpan)),
+            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r), NoSpan),
             Placeholder(p) => {
-                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, NoSpan))
+                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r), NoSpan)
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
             UnresolvedInferenceVariable(_) => {
@@ -194,11 +194,11 @@ where
 
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| And::new([RegionOutlives(bound, r, NoSpan)]));
+                .map(|bound| And::new([(RegionOutlives(bound, r), NoSpan)]));
         let item_bound_outlives = Or::new(item_bounds);
 
         let where_clause_outlives =
-            Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r)), NoSpan));
+            Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r))), NoSpan);
 
         let mut components = Default::default();
         rustc_type_ir::outlives::compute_alias_components_recursive(
