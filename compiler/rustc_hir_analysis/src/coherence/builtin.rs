@@ -563,6 +563,14 @@ pub(crate) fn reborrow_info<'tcx>(
 /// `&mut T` is never `Copy`. A struct is only counted if it has no `Copy` impl at
 /// all, because a conditional `Copy` impl can hold in a body with more bounds than
 /// the `Reborrow` impl has, and then borrowck copies the field instead.
+///
+/// FIXME: a body can still assume the field is `Copy` with a where clause like
+/// `where Inner<'a, T>: Copy` even when `Inner` has no `Copy` impl. Borrowck then
+/// copies the field, finds no reborrowed field and hits the single-lifetime `bug!`
+/// in `gather_reborrows`. Any check borrowck does with the body's bounds can be
+/// fooled by a where clause, so the real fix is probably for the fallback in
+/// borrowck to handle more than one lifetime. Repro:
+/// `tests/crashes/reborrow/reborrow-field-assumed-copy-by-body.rs`.
 fn field_is_always_reborrowed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
     match ty.kind() {
         ty::Ref(_, _, mutability) => mutability.is_mut(),
