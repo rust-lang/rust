@@ -1,5 +1,5 @@
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:15:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:16:1
    |
 LL | impl<'a, 'b> Reborrow for SharedOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | impl<'a, 'b> Reborrow for SharedOnly<'a, 'b> {}
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:27:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:28:1
    |
 LL | impl<'a, 'b> Reborrow for PhantomOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | impl<'a, 'b> Reborrow for PhantomOnly<'a, 'b> {}
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:36:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:37:1
    |
 LL | impl<'a, 'b, T: Reborrow> Reborrow for ParamOnly<'a, 'b, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | impl<'a, 'b, T: Reborrow> Reborrow for ParamOnly<'a, 'b, T> {}
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:54:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:55:1
    |
 LL | impl<'a, 'b> Reborrow for AssocOnly<'a, 'b> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | impl<'a, 'b> Reborrow for AssocOnly<'a, 'b> {}
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:69:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:70:1
    |
 LL | impl<'a, 'b, T: Reborrow> Reborrow for MaybeCopyOnly<'a, 'b, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | impl<'a, 'b, T: Reborrow> Reborrow for MaybeCopyOnly<'a, 'b, T> {}
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
-  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:98:1
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:99:1
    |
 LL | impl<'a, 'b, T: Copy> Reborrow for CopyUnderImplBound<'a, 'b, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,5 +52,14 @@ LL | impl<'a, 'b, T: Copy> Reborrow for CopyUnderImplBound<'a, 'b, T> {}
    = note: only fields that are `&mut T` or a `Reborrow` type with no `Copy` impl in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
-error: aborting due to 6 previous errors
+error: implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
+  --> $DIR/reborrow-multiple-lifetimes-no-reborrowed-field.rs:110:1
+   |
+LL | impl<'a, 'b> Reborrow for CopyByWhereClause<'a, 'b> where NotReborrow<'a, 'b>: Copy {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only fields that are `&mut T` or a `Reborrow` type with no `Copy` impl in the implemented type count; a type parameter or associated type field does not count
+   = help: types with no reborrowed fields must have exactly one lifetime argument
+
+error: aborting due to 7 previous errors
 

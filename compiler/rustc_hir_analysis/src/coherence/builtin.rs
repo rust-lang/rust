@@ -507,7 +507,7 @@ pub(crate) fn reborrow_info<'tcx>(
     for mut field in data_fields {
         field.ty.error_reported()?;
         // Use the unnormalized field type, like borrowck does.
-        has_reborrowed_field |= field_is_always_reborrowed(tcx, field.ty, field.span);
+        let always_reborrowed = field_is_always_reborrowed(tcx, field.ty, field.span);
         field.ty = ocx
             .deeply_normalize(
                 &traits::ObligationCause::misc(field.span, impl_did),
@@ -524,7 +524,9 @@ pub(crate) fn reborrow_info<'tcx>(
             field.ty,
             field.span,
         ) {
-            // Field implements Reborrow, check remaining fields.
+            // Field implements Reborrow, check remaining fields. A field that only
+            // passes as Copy, e.g. through a where clause on the impl, gets copied.
+            has_reborrowed_field |= always_reborrowed;
             continue;
         }
 

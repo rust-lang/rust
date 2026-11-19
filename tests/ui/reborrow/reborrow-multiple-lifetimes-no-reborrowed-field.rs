@@ -4,7 +4,8 @@
 //! impl is borrowed as a whole under its single lifetime, so it must not have more
 //! than one.
 
-#![feature(reborrow)]
+#![feature(reborrow, trivial_bounds)]
+#![allow(trivial_bounds)]
 
 use std::marker::{PhantomData, Reborrow};
 
@@ -96,6 +97,17 @@ struct CopyUnderImplBound<'a, 'b, T> {
 }
 
 impl<'a, 'b, T: Copy> Reborrow for CopyUnderImplBound<'a, 'b, T> {}
+//~^ ERROR implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
+
+// `NotReborrow` has no `Copy` impl, but it is only accepted through the impl's
+// where clause making it `Copy`, so it is copied and does not count.
+struct NotReborrow<'x, 'y>(&'x (), &'y ());
+
+struct CopyByWhereClause<'a, 'b> {
+    inner: NotReborrow<'a, 'b>,
+}
+
+impl<'a, 'b> Reborrow for CopyByWhereClause<'a, 'b> where NotReborrow<'a, 'b>: Copy {}
 //~^ ERROR implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
 
 fn main() {}
