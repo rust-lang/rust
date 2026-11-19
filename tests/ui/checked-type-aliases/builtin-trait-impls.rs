@@ -1,6 +1,5 @@
 //! Built-in impls for checked alias types
-//! Regression test for <https://github.com/rust-lang/rust/issues/157755> and
-//!     <https://github.com/rust-lang/rust/issues/159264>
+//! Regression test for <https://github.com/rust-lang/rust/issues/157755>
 
 //@ check-pass
 //@ edition: 2024
