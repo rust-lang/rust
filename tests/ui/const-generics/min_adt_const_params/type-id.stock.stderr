@@ -1,5 +1,5 @@
 error: `TypeId` is forbidden as the type of a const generic parameter
-  --> $DIR/type-id.rs:11:20
+  --> $DIR/type-id.rs:12:20
    |
 LL | fn equate<const A: TypeId, const B: TypeId>() -> bool {
    |                    ^^^^^^
@@ -11,7 +11,7 @@ LL + #![feature(min_adt_const_params)]
    |
 
 error: `TypeId` is forbidden as the type of a const generic parameter
-  --> $DIR/type-id.rs:11:37
+  --> $DIR/type-id.rs:12:37
    |
 LL | fn equate<const A: TypeId, const B: TypeId>() -> bool {
    |                                     ^^^^^^
