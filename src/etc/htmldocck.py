@@ -332,6 +332,15 @@ def get_tree_count(tree, path):
 
 
 def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
+    if not normalize_to_text:
+        check_snapshot_text(
+            snapshot_name, ET.tostring(actual_tree).decode("utf-8"), normalize_to_text
+        )
+    else:
+        check_snapshot_text(snapshot_name, flatten(actual_tree), normalize_to_text)
+
+
+def check_snapshot_text(snapshot_name, actual_str, normalize_to_text):
     assert rust_test_path.endswith(".rs")
     snapshot_path = "{}.{}.{}".format(rust_test_path[:-3], snapshot_name, "html")
     try:
@@ -342,11 +351,6 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
             expected_str = None
         else:
             raise FailedCheck("No saved snapshot value")  # noqa: B904 FIXME: py2
-
-    if not normalize_to_text:
-        actual_str = ET.tostring(actual_tree).decode("utf-8")
-    else:
-        actual_str = flatten(actual_tree)
 
     # Conditions:
     #  1. Is --bless
@@ -556,7 +560,15 @@ def check_command(c, cache):
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
         elif c.cmd == "snapshot":  # snapshot test
-            if len(c.args) == 3:  # snapshot <snapshot-name> <html-path> <xpath>
+            if len(c.args) == 2:  # snapshot <snapshot-name> <file-path>
+                [snapshot_name, file_path] = c.args
+                try:
+                    check_snapshot_text(snapshot_name, cache.get_file(file_path), True)
+                    ret = True
+                except FailedCheck as err:
+                    cerr = str(err)
+                    ret = False
+            elif len(c.args) == 3:  # snapshot <snapshot-name> <file-path> <xpath>
                 [snapshot_name, html_path, pattern] = c.args
                 tree = cache.get_tree(html_path)
                 xpath = normalize_xpath(pattern)
