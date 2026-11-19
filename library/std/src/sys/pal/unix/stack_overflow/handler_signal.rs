@@ -126,7 +126,7 @@ pub unsafe fn init() {
             if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                 // haven't set up our sigaltstack yet
                 NEED_ALTSTACK.store(true, Ordering::Release);
-                let handler = make_handler(true);
+                let handler = install_sigaltstack();
                 MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                 mem::forget(handler);
 
@@ -145,6 +145,18 @@ pub unsafe fn init() {
             unsafe { sigaction(signal, &action, ptr::null_mut()) };
         }
     }
+}
+
+pub fn make_handler() -> Handler {
+    if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
+        return Handler::null();
+    }
+
+    if let Some(guard_page_range) = current_guard() {
+        set_current_info(guard_page_range);
+    }
+
+    install_sigaltstack()
 }
 
 fn get_stack() -> libc::stack_t {
@@ -189,17 +201,7 @@ fn get_stack() -> libc::stack_t {
     libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
 }
 
-pub fn make_handler(main_thread: bool) -> Handler {
-    if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
-        return Handler::null();
-    }
-
-    if !main_thread {
-        if let Some(guard_page_range) = current_guard() {
-            set_current_info(guard_page_range);
-        }
-    }
-
+fn install_sigaltstack() -> Handler {
     // Load the current alternate signal stack to see if we need to install
     // our own.
     //

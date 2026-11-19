@@ -1,6 +1,6 @@
 pub unsafe fn init() {}
 
-pub fn make_handler(_main_thread: bool) -> super::Handler {
+pub fn make_handler() -> super::Handler {
     super::Handler::null()
 }
 
