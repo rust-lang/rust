@@ -4,7 +4,7 @@ error: implementing `Reborrow` on a type with 2 lifetime arguments requires at l
 LL | #[derive(Reborrow)]
    |          ^^^^^^^^
    |
-   = note: only fields that are `&mut T` or a non-`Copy` `Reborrow` type in the implemented type count; a type parameter or associated type field does not count
+   = note: only fields that are `&mut T` or a `Reborrow` type with no `Copy` impl in the implemented type count; a type parameter or associated type field does not count
    = help: types with no reborrowed fields must have exactly one lifetime argument
 
 error[E0277]: the trait bound `NotCopy: Copy` is not satisfied

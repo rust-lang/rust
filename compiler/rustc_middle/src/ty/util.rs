@@ -209,19 +209,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// borrowck reborrows a value of a `Reborrow` type that contains it. `ty` is the
     /// declared field type, so a projection that normalizes to `&mut T` does not count.
     ///
-    /// Borrowck and the `Reborrow` impl check in coherence both use this, so that
-    /// coherence rejects impls that borrowck cannot handle.
-    ///
-    /// FIXME: the `Copy` check depends on `typing_env`. Coherence uses the impl's
-    /// env, borrowck uses the env of the body. A body with an extra `T: Copy` bound
-    /// makes a field like `Wrap<'a, T>` `Copy`, so borrowck finds no reborrowed field
-    /// in a type that coherence accepted, and hits the single lifetime `bug!` in
-    /// `gather_reborrows`. Checking the field declaration instead is not an option,
-    /// because borrowck must reborrow a generic field that is `&mut T` at the use site
-    /// (see `tests/ui/reborrow/reborrow-generic-mut-field-aliasing.rs`). A possible fix
-    /// is for borrowck to treat a field as reborrowed if it is reborrowed under the
-    /// impl's env (the coherence answer) or under the use-site type. Repro:
-    /// `tests/crashes/reborrow/reborrow-copy-field-depends-on-body-bounds.rs`.
+    /// The answer depends on `typing_env`, since a field can be `Copy` in one body
+    /// and not in another. The `Reborrow` impl check in coherence only counts fields
+    /// that this returns `true` for in every body, see `field_is_always_reborrowed`.
     pub fn is_reborrowed_field_ty(self, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Ref(_, _, mutability) => mutability.is_mut(),

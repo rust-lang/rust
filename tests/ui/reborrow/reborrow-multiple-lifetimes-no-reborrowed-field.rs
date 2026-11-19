@@ -1,7 +1,8 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/165653>.
 //!
-//! A `Reborrow` type with no `&mut T` or non-`Copy` `Reborrow` field is borrowed
-//! as a whole under its single lifetime, so it must not have more than one.
+//! A `Reborrow` type with no `&mut T` field and no `Reborrow` field without a `Copy`
+//! impl is borrowed as a whole under its single lifetime, so it must not have more
+//! than one.
 
 #![feature(reborrow)]
 
@@ -51,6 +52,50 @@ struct AssocOnly<'a, 'b> {
 }
 
 impl<'a, 'b> Reborrow for AssocOnly<'a, 'b> {}
+//~^ ERROR implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
+
+// `Wrap<'a, T>` is `Copy` when `T: Copy`, so a body with that bound copies `w` instead
+// of reborrowing it. It must not count as a reborrowed field.
+#[derive(Clone, Copy)]
+struct Wrap<'a, T>(PhantomData<&'a ()>, T);
+
+impl<'a, T: Reborrow> Reborrow for Wrap<'a, T> {}
+
+struct MaybeCopyOnly<'a, 'b, T> {
+    w: Wrap<'a, T>,
+    shared: &'b (),
+}
+
+impl<'a, 'b, T: Reborrow> Reborrow for MaybeCopyOnly<'a, 'b, T> {}
+//~^ ERROR implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
+
+pub fn copy_bound<'a, 'b, T: Reborrow + Copy>(
+    x: MaybeCopyOnly<'a, 'b, T>,
+) -> MaybeCopyOnly<'a, 'b, T> {
+    x
+}
+
+// The same type used with a concrete `Copy` + `Reborrow` type for `T`.
+#[derive(Clone, Copy)]
+struct CopyMarker<'a>(PhantomData<&'a ()>);
+
+impl<'a> Reborrow for CopyMarker<'a> {}
+
+pub fn concrete_copy<'a, 'b, 'c>(
+    x: MaybeCopyOnly<'a, 'b, CopyMarker<'c>>,
+) -> MaybeCopyOnly<'a, 'b, CopyMarker<'c>> {
+    x
+}
+
+// `Pair<'a, 'b, T>` is only `Copy` because of the impl's `T: Copy` bound.
+#[derive(Clone, Copy)]
+struct Pair<'x, 'y, T>(PhantomData<(&'x (), &'y ())>, T);
+
+struct CopyUnderImplBound<'a, 'b, T> {
+    pair: Pair<'a, 'b, T>,
+}
+
+impl<'a, 'b, T: Copy> Reborrow for CopyUnderImplBound<'a, 'b, T> {}
 //~^ ERROR implementing `Reborrow` on a type with 2 lifetime arguments requires at least one field to be reborrowed
 
 fn main() {}

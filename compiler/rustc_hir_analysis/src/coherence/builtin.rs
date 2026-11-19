@@ -502,13 +502,12 @@ pub(crate) fn reborrow_info<'tcx>(
     }
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, impl_did);
     let mut has_reborrowed_field = false;
     // Data fields must all be either Copy or Reborrow.
     for mut field in data_fields {
         field.ty.error_reported()?;
         // Use the unnormalized field type, like borrowck does.
-        has_reborrowed_field |= tcx.is_reborrowed_field_ty(typing_env, field.ty);
+        has_reborrowed_field |= field_is_always_reborrowed(tcx, field.ty, field.span);
         field.ty = ocx
             .deeply_normalize(
                 &traits::ObligationCause::misc(field.span, impl_did),
@@ -553,6 +552,27 @@ pub(crate) fn reborrow_info<'tcx>(
     }
 
     Ok(())
+}
+
+/// Whether borrowck reborrows a field of type `ty` in every body that uses the
+/// `Reborrow` impl, i.e. `TyCtxt::is_reborrowed_field_ty` returns `true` for every
+/// instantiation of `ty` and every `TypingEnv`.
+///
+/// `&mut T` is never `Copy`. A struct is only counted if it has no `Copy` impl at
+/// all, because a conditional `Copy` impl can hold in a body with more bounds than
+/// the `Reborrow` impl has, and then borrowck copies the field instead.
+fn field_is_always_reborrowed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
+    match ty.kind() {
+        ty::Ref(_, _, mutability) => mutability.is_mut(),
+        ty::Adt(_, args) if args.get(0).is_some_and(|arg| arg.as_region().is_some()) => {
+            let mut has_copy_impl = false;
+            tcx.for_each_relevant_impl(tcx.require_lang_item(LangItem::Copy, span), ty, |_| {
+                has_copy_impl = true;
+            });
+            !has_copy_impl
+        }
+        _ => false,
+    }
 }
 
 fn trait_impl_lifetime_params_count(tcx: TyCtxt<'_>, did: LocalDefId) -> usize {

@@ -1370,7 +1370,7 @@ pub(crate) struct ReborrowNoLifetimes {
     "implementing `{$trait_name}` on a type with {$lifetimes_count} lifetime arguments requires at least one field to be reborrowed"
 )]
 #[note(
-    "only fields that are `&mut T` or a non-`Copy` `{$trait_name}` type in the implemented type count; a type parameter or associated type field does not count"
+    "only fields that are `&mut T` or a `{$trait_name}` type with no `Copy` impl in the implemented type count; a type parameter or associated type field does not count"
 )]
 #[help("types with no reborrowed fields must have exactly one lifetime argument")]
 pub(crate) struct ReborrowMultipleLifetimesNoReborrowedField {
