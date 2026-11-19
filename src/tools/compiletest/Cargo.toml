@@ -5,6 +5,7 @@ edition = "2024"
 
 [lib]
 doctest = false
+path = "src/discovery.rs"
 
 [[bin]]
 name = "compiletest"
