@@ -16,6 +16,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
+use rustc_index::IndexVec;
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -72,10 +73,10 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 /// Determine if a work from the worklist is coming from a `#[allow]`
 /// or a `#[expect]` of `dead_code`
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 enum ComesFromAllowExpect {
-    Yes,
-    No,
+    Yes = 1,
+    No = 2,
 }
 
 /// Carries both the propagated `allow/expect` context and the current item's
@@ -117,13 +118,6 @@ struct WorkItem {
 enum ImplItemCheckResult {
     Live(ComesFromAllowExpect),
     Dead { require: LocalDefId },
-}
-
-#[derive(Eq, Hash, PartialEq, Debug)]
-struct ScannedItem {
-    id: LocalDefId,
-    propagated: ComesFromAllowExpect,
-    trivial_usage_site: Option<LocalDefId>,
 }
 
 #[derive(Default, Clone)]
@@ -173,7 +167,8 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<WorkItem>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: FxHashSet<ScannedItem>,
+    scanned: IndexVec<LocalDefId, Option<ComesFromAllowExpect>>,
+    scanned_by_trivial_site: FxHashMap<(LocalDefId, LocalDefId), Option<ComesFromAllowExpect>>,
     live_symbols: LiveSymbols,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd_or_scalable: bool,
@@ -473,11 +468,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
             }
 
-            if self.should_skip_scanning_id(
-                id,
-                propagated,
-                self.trivial_usage_sites.last().copied(),
-            ) {
+            if self.check_and_mark_scanned(id, propagated, self.trivial_usage_sites.last().copied())
+            {
                 continue;
             }
 
@@ -493,36 +485,34 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         ControlFlow::Continue(())
     }
 
-    fn should_skip_scanning_id(
+    /// Given an item and the current allow/expect state and
+    /// trivial usage site, check whether we have already
+    /// scanned this item.
+    fn check_and_mark_scanned(
         &mut self,
         id: LocalDefId,
         propagated: ComesFromAllowExpect,
         trivial_usage_site: Option<LocalDefId>,
     ) -> bool {
-        // If the item was previously scanned from a normal live seed,
-        // we don't need to scan it again.
-        if self.scanned.contains(&ScannedItem {
-            id,
-            propagated: ComesFromAllowExpect::No,
-            trivial_usage_site: None,
-        }) {
+        // If the item was previously scanned from a live seed,
+        // we don't need to scan it again. Note that we do this check here
+        // explicitly for performance, since this is a common case.
+        if self.scanned[id] == Some(ComesFromAllowExpect::No) {
             return true;
         }
-        // If the item was scanned from the same allow/expect context and the same
-        // trivial usage site, we don't need to scan it again
-        if !self.scanned.insert(ScannedItem { id, propagated, trivial_usage_site }) {
+
+        let recorded = match trivial_usage_site {
+            Some(site) => self.scanned_by_trivial_site.entry((site, id)).or_default(),
+            None => &mut self.scanned[id],
+        };
+
+        // This is written as `map_or` to circumvent
+        // https://github.com/rust-lang/rust/issues/49892 for perf
+        if recorded.map_or(0, |previous| previous as u8) >= propagated as u8 {
             return true;
         }
-        // If the item is not coming from an `#[allow]` or `#[expect]`,
-        // we also mark it as scanned with `ComesFromAllowExpect::Yes`
-        // to avoid re-scanning it in the future.
-        if propagated == ComesFromAllowExpect::No {
-            self.scanned.insert(ScannedItem {
-                id,
-                propagated: ComesFromAllowExpect::Yes,
-                trivial_usage_site,
-            });
-        }
+
+        *recorded = Some(propagated);
         false
     }
 
@@ -1166,11 +1156,14 @@ fn live_symbols_and_trivial_usage_sites(
     (): (),
 ) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
     let SeedWorklists { worklist, deferred_seeds, unsolved_items } = create_and_seed_worklist(tcx);
+    // Pre-allocate one entry for each `LocalDefId`.
+    let scanned = IndexVec::from_elem_n(None, tcx.definitions().num_definitions());
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
         maybe_typeck_results: None,
-        scanned: Default::default(),
+        scanned,
+        scanned_by_trivial_site: FxHashMap::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd_or_scalable: false,
