@@ -4,7 +4,6 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
@@ -19,18 +18,11 @@ pub struct Elaborator<I: Interner, O> {
     stack: Vec<O>,
     visited: HashSet<ty::Binder<I, ty::PredicateKind<I>>>,
     mode: Filter,
-    elaborate_sized: ElaborateSized,
 }
 
 enum Filter {
     All,
     OnlySelf,
-}
-
-#[derive(Eq, PartialEq)]
-enum ElaborateSized {
-    Yes,
-    No,
 }
 
 /// Describes how to elaborate an obligation into a sub-obligation.
@@ -87,13 +79,8 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
     cx: I,
     obligations: impl IntoIterator<Item = O>,
 ) -> Elaborator<I, O> {
-    let mut elaborator = Elaborator {
-        cx,
-        stack: Vec::new(),
-        visited: HashSet::default(),
-        mode: Filter::All,
-        elaborate_sized: ElaborateSized::No,
-    };
+    let mut elaborator =
+        Elaborator { cx, stack: Vec::new(), visited: HashSet::default(), mode: Filter::All };
     elaborator.extend_deduped(obligations);
     elaborator
 }
@@ -119,13 +106,6 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         self
     }
 
-    /// Start elaborating `Sized` - reqd during coherence checking, normally skipped to improve
-    /// compiler performance.
-    pub fn elaborate_sized(mut self) -> Self {
-        self.elaborate_sized = ElaborateSized::Yes;
-        self
-    }
-
     fn elaborate(&mut self, elaboratable: &O) {
         let cx = self.cx;
 
@@ -133,19 +113,6 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         let Some(clause) = elaboratable.predicate().as_clause() else {
             return;
         };
-
-        // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
-        // parameter environments, as an optimisation, sizedness supertraits aren't
-        // elaborated, so check if a `Sized` obligation is being elaborated to a
-        // `MetaSized` obligation and emit it. Candidate assembly and confirmation
-        // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
-        // is present.
-        if self.elaborate_sized == ElaborateSized::No
-            && let Some(did) = clause.as_trait_clause().map(|c| c.def_id())
-            && self.cx.is_trait_lang_item(did, SolverTraitLangItem::Sized)
-        {
-            return;
-        }
 
         let bound_clause = clause.kind();
         match bound_clause.skip_binder() {
@@ -245,6 +212,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             ty::ClauseKind::UnstableFeature(_) => {
                 // Nothing to elaborate
             }
+            ty::ClauseKind::CompressedTrait(_) => unreachable!(),
         }
     }
 }

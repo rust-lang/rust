@@ -175,6 +175,7 @@ fn clean_param_env<'tcx>(
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
     let item_clauses: FxIndexSet<_> =
         tcx.param_env(item_def_id).caller_bounds().all_clauses(tcx).iter().collect();
+    let sized_trait = tcx.lang_items().sized_trait();
     let where_predicates = cx.with_exact_param_env(param_env, |cx| {
         param_env
             .caller_bounds()
@@ -183,9 +184,10 @@ fn clean_param_env<'tcx>(
             // FIXME: ...which hopefully allows us to simplify this:
             .filter(|clause| {
                 !item_clauses.contains(clause)
-                    || clause.as_trait_clause().is_some_and(|clause| {
-                        tcx.lang_items().sized_trait() == Some(clause.def_id())
-                    })
+                    || matches!(
+                        clause.skip_binder(),
+                        ty::ClauseKind::Trait(pred) if Some(pred.def_id()) == sized_trait
+                    )
             })
             .map(|clause| {
                 fold_regions(tcx, clause, |r, _| match r.kind() {

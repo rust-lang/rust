@@ -924,6 +924,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Err(_) => Ok(EvaluatedToErr),
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
         }
     }
 
@@ -934,7 +935,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug_assert!(!self.typing_mode().is_coherence(), "old solver coherence");
-
         if obligation.is_global()
             && obligation
                 .param_env

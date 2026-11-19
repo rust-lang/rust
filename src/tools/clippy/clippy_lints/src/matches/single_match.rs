@@ -134,7 +134,7 @@ fn report_single_pattern(
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
         && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
-        && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
+        && let Some(pe_trait_id) = cx.tcx.lang_items().partial_eq_trait()
         && (ty.is_integral()
             || ty.is_char()
             || ty.is_str()

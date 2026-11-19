@@ -285,11 +285,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-            if self.infcx.param_env.caller_bounds().all_clauses(self.infcx.tcx).iter().any(|c| {
-                c.as_trait_clause().is_some_and(|pred| {
-                    pred.skip_binder().self_ty() == ty && self.infcx.tcx.is_fn_trait(pred.def_id())
-                })
-            }) {
+            if self.infcx.param_env.caller_bounds().trait_clauses(self.infcx.tcx).iter().any(
+                |clause| {
+                    clause.skip_binder().self_ty() == ty
+                        && self.infcx.tcx.is_fn_trait(clause.def_id())
+                },
+            ) {
                 // Suppress the next suggestion since we don't want to put more bounds onto
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.

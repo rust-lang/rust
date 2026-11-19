@@ -29,7 +29,7 @@ impl EqImpl {
 }
 
 fn symmetric_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: Ty<'tcx>) -> Option<EqImpl> {
-    cx.tcx.lang_items().eq_trait().map(|def_id| EqImpl {
+    cx.tcx.lang_items().partial_eq_trait().map(|def_id| EqImpl {
         ty_eq_other: implements_trait(cx, ty, def_id, &[other.into()]),
         other_eq_ty: implements_trait(cx, other, def_id, &[ty.into()]),
     })

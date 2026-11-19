@@ -458,6 +458,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
             | PredicateKind::ConstEquate(_, _)
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::Ambiguous => true,
+            PredicateKind::Clause(ClauseKind::CompressedTrait(_)) => unreachable!(),
         }
     }
 }

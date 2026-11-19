@@ -116,6 +116,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                     push_outlives_components(tcx, ty_a, &mut components);
                     outlives_bounds.extend(implied_bounds_from_components(tcx, r_b, components))
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(..)) => unreachable!(),
             }
         }
     }

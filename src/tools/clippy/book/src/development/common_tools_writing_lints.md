@@ -141,7 +141,7 @@ impl LateLintPass<'_> for MyStructLint {
         }
 
         // 3. If the trait requires additional generic arguments
-        let trait_id = cx.tcx.lang_items().eq_trait();
+        let trait_id = cx.tcx.lang_items().partial_eq_trait();
         if trait_id.is_some_and(|id| implements_trait(cx, ty, id, &[ty])) {
             // `ty` implements `PartialEq<Self>`
         }

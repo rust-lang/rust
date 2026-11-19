@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     adt_hir_id: HirId,
     hash_is_automatically_derived: bool,
 ) {
-    if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait()
+    if let Some(peq_trait_def_id) = cx.tcx.lang_items().partial_eq_trait()
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::Hash, def_id)
     {

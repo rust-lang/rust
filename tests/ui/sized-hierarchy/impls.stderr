@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:235:42
+  --> $DIR/impls.rs:234:42
    |
 LL |     struct StructAllFieldsMetaSized { x: [u8], y: [u8] }
    |                                          ^^^^ doesn't have a size known at compile-time
@@ -17,7 +17,7 @@ LL |     struct StructAllFieldsMetaSized { x: Box<[u8]>, y: [u8] }
    |                                          ++++    +
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:243:40
+  --> $DIR/impls.rs:242:40
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
    |                                        ^^^ doesn't have a size known at compile-time
@@ -35,7 +35,7 @@ LL |     struct StructAllFieldsUnsized { x: Box<Foo>, y: Foo }
    |                                        ++++   +
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:279:44
+  --> $DIR/impls.rs:278:44
    |
 LL |     enum EnumAllFieldsMetaSized { Qux { x: [u8], y: [u8] } }
    |                                            ^^^^ doesn't have a size known at compile-time
@@ -53,7 +53,7 @@ LL |     enum EnumAllFieldsMetaSized { Qux { x: Box<[u8]>, y: [u8] } }
    |                                            ++++    +
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:286:42
+  --> $DIR/impls.rs:285:42
    |
 LL |     enum EnumAllFieldsUnsized { Qux { x: Foo, y: Foo } }
    |                                          ^^^ doesn't have a size known at compile-time
@@ -71,7 +71,7 @@ LL |     enum EnumAllFieldsUnsized { Qux { x: Box<Foo>, y: Foo } }
    |                                          ++++   +
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:293:52
+  --> $DIR/impls.rs:292:52
    |
 LL |     enum EnumLastFieldMetaSized { Qux { x: u32, y: [u8] } }
    |                                                    ^^^^ doesn't have a size known at compile-time
@@ -89,7 +89,7 @@ LL |     enum EnumLastFieldMetaSized { Qux { x: u32, y: Box<[u8]> } }
    |                                                    ++++    +
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:300:50
+  --> $DIR/impls.rs:299:50
    |
 LL |     enum EnumLastFieldUnsized { Qux { x: u32, y: Foo } }
    |                                                  ^^^ doesn't have a size known at compile-time
@@ -216,22 +216,8 @@ LL |     needs_metasized::<(Foo, Foo)>();
    = help: the trait `Sized` is not implemented for `main::Foo`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error[E0277]: the size for values of type `main::Foo` cannot be known
-  --> $DIR/impls.rs:203:23
-   |
-LL |     needs_metasized::<(Foo, Foo)>();
-   |                       ^^^^^^^^^^ doesn't have a known size
-   |
-   = help: within `(main::Foo, main::Foo)`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
-   = note: required because it appears within the type `(main::Foo, main::Foo)`
-note: required by a bound in `needs_metasized`
-  --> $DIR/impls.rs:16:23
-   |
-LL | fn needs_metasized<T: MetaSized>() { }
-   |                       ^^^^^^^^^ required by this bound in `needs_metasized`
-
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:206:26
+  --> $DIR/impls.rs:205:26
    |
 LL |     needs_pointeesized::<(Foo, Foo)>();
    |                          ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -240,7 +226,7 @@ LL |     needs_pointeesized::<(Foo, Foo)>();
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:210:19
+  --> $DIR/impls.rs:209:19
    |
 LL |     needs_sized::<(u32, [u8])>();
    |                   ^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -254,7 +240,7 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:216:19
+  --> $DIR/impls.rs:215:19
    |
 LL |     needs_sized::<(u32, Foo)>();
    |                   ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -268,7 +254,7 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known
-  --> $DIR/impls.rs:218:23
+  --> $DIR/impls.rs:217:23
    |
 LL |     needs_metasized::<(u32, Foo)>();
    |                       ^^^^^^^^^^ doesn't have a known size
@@ -282,14 +268,14 @@ LL | fn needs_metasized<T: MetaSized>() { }
    |                       ^^^^^^^^^ required by this bound in `needs_metasized`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:237:19
+  --> $DIR/impls.rs:236:19
    |
 LL |     needs_sized::<StructAllFieldsMetaSized>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `StructAllFieldsMetaSized`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `StructAllFieldsMetaSized`
-  --> $DIR/impls.rs:235:39
+  --> $DIR/impls.rs:234:39
    |
 LL |     struct StructAllFieldsMetaSized { x: [u8], y: [u8] }
    |                                       ^^^^^^^  ^^^^^^^ required by this field
@@ -302,14 +288,14 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:245:19
+  --> $DIR/impls.rs:244:19
    |
 LL |     needs_sized::<StructAllFieldsUnsized>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `StructAllFieldsUnsized`, the trait `Sized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructAllFieldsUnsized`
-  --> $DIR/impls.rs:243:37
+  --> $DIR/impls.rs:242:37
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
    |                                     ^^^^^^  ^^^^^^ required by this field
@@ -322,14 +308,14 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known
-  --> $DIR/impls.rs:247:23
+  --> $DIR/impls.rs:246:23
    |
 LL |     needs_metasized::<StructAllFieldsUnsized>();
    |                       ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
    = help: within `StructAllFieldsUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructAllFieldsUnsized`
-  --> $DIR/impls.rs:243:37
+  --> $DIR/impls.rs:242:37
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
    |                                     ^^^^^^  ^^^^^^ required by this field
@@ -342,14 +328,14 @@ LL | fn needs_metasized<T: MetaSized>() { }
    |                       ^^^^^^^^^ required by this bound in `needs_metasized`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:253:19
+  --> $DIR/impls.rs:252:19
    |
 LL |     needs_sized::<StructLastFieldMetaSized>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `StructLastFieldMetaSized`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `StructLastFieldMetaSized`
-  --> $DIR/impls.rs:252:47
+  --> $DIR/impls.rs:251:47
    |
 LL |     struct StructLastFieldMetaSized { x: u32, y: [u8] }
    |                                               ^^^^^^^ required by this field
@@ -360,14 +346,14 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/impls.rs:260:19
+  --> $DIR/impls.rs:259:19
    |
 LL |     needs_sized::<StructLastFieldUnsized>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `StructLastFieldUnsized`, the trait `Sized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructLastFieldUnsized`
-  --> $DIR/impls.rs:259:45
+  --> $DIR/impls.rs:258:45
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
    |                                             ^^^^^^ required by this field
@@ -378,14 +364,14 @@ LL | fn needs_sized<T: Sized>() { }
    |                   ^^^^^ required by this bound in `needs_sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known
-  --> $DIR/impls.rs:262:23
+  --> $DIR/impls.rs:261:23
    |
 LL |     needs_metasized::<StructLastFieldUnsized>();
    |                       ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
    = help: within `StructLastFieldUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructLastFieldUnsized`
-  --> $DIR/impls.rs:259:45
+  --> $DIR/impls.rs:258:45
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
    |                                             ^^^^^^ required by this field
@@ -395,6 +381,6 @@ note: required by a bound in `needs_metasized`
 LL | fn needs_metasized<T: MetaSized>() { }
    |                       ^^^^^^^^^ required by this bound in `needs_metasized`
 
-error: aborting due to 27 previous errors
+error: aborting due to 26 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
