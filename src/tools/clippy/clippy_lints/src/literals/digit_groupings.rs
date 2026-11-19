@@ -102,14 +102,16 @@ fn get_group_size<'a>(
 
     let first = groups.next().expect("At least one group");
 
-    if (radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal)
+    if (radix == Radix::Octal || radix == Radix::Hexadecimal)
         && let Some(second_size) = groups.next()
         && (!groups.all(|i| i == second_size) || first > second_size)
     {
         return Err(WarningType::UnusualByteGroupings);
     }
 
-    if let Some(second) = groups.next() {
+    if radix == Radix::Decimal
+        && let Some(second) = groups.next()
+    {
         if !groups.all(|x| x == second) || first > second {
             Err(WarningType::InconsistentDigitGrouping)
         } else if second > 4 {
@@ -117,7 +119,7 @@ fn get_group_size<'a>(
         } else {
             Ok(Some(second))
         }
-    } else if first > 5 && lint_unreadable {
+    } else if first > 5 && lint_unreadable && (radix != Radix::Binary || groups.next().is_none()) {
         Err(WarningType::UnreadableLiteral)
     } else {
         Ok(None)
