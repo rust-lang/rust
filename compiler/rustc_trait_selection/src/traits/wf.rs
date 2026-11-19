@@ -1230,7 +1230,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 val.destructure_adt_const() =>
                         {
                             let variant_def = adt_def.variant(variant);
-                            let cause = self.cause(ObligationCauseCode::WellFormed(WellFormedLoc::None));
+                            let cause =
+                                self.cause(ObligationCauseCode::WellFormed(WellFormedLoc::None));
                             self.out.extend(variant_def.fields.iter().zip(fields).map(
                                 |(field_def, &field_val)| {
                                     let field_ty = tcx

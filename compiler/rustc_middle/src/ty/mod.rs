@@ -2474,5 +2474,5 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum DestructuredAdtConst<'tcx> {
     Aggregate { variant: VariantIdx, fields: &'tcx [ty::Const<'tcx>] },
-    TypeId { ty: Ty<'tcx> },
+    TypeId { ty: Ty<'tcx>, value: ty::Const<'tcx> },
 }

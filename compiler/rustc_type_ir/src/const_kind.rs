@@ -229,7 +229,7 @@ pub enum ConstEvalErr<I: Interner> {
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
-#[derive_where(Clone, Copy, Debug, Hash, Eq, PartialEq; I: Interner)]
+#[derive_where(Clone, Copy, Debug, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -250,7 +250,13 @@ pub enum ValTreeKind<I: Interner> {
     /// ZST types are represented as an empty slice.
     Branch(I::Consts),
 
-    TypeId(I::Ty),
+    /// `core::any::TypeId` values.
+    ///
+    /// Stores the actual `I::Ty` so that valtree-to-const can annotate values with the appropriate provenance.
+    ///
+    /// Also stores an inner type which transparently contains some representation of the bits of the `TypeId`.
+    /// Currently, this is just `(u128,)` but this is not to be relied upon.
+    TypeId(I::Ty, I::Consts),
 }
 
 impl<I: Interner> ValTreeKind<I> {

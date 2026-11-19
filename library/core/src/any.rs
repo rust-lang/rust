@@ -87,11 +87,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::intrinsics::reflection::{type_id, type_id_vtable};
-use crate::intrinsics;
 use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
-use crate::{fmt, hash, ptr};
+use crate::{fmt, hash, intrinsics, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait

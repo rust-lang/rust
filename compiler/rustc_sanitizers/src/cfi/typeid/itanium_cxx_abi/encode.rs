@@ -232,8 +232,9 @@ fn encode_const_value<'tcx>(
                     s.push_str(&encode_const(tcx, *field, field_cv.ty, dict, options));
                 }
             }
-            ty::DestructuredAdtConst::TypeId { ty } => {
-                s.push_str(&encode_ty(tcx, ty, dict, options))
+            ty::DestructuredAdtConst::TypeId { ty: _, value } => {
+                let ty = value.to_value().ty;
+                s.push_str(&encode_const(tcx, value, ty, dict, options))
             }
         },
 

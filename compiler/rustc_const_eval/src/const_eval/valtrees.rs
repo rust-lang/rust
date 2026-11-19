@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_attr_ir::LangItem;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
@@ -437,7 +437,7 @@ fn valtree_into_mplace<'tcx>(
             ecx.write_immediate(imm, place).unwrap();
         }
         ty::Adt(def, _) if ecx.tcx.is_lang_item(def.did(), LangItem::TypeId) => {
-            let ty::ValTreeKind::TypeId(ty) = **valtree else {
+            let ty::ValTreeKind::TypeId(ty, _) = **valtree else {
                 bug!("expected a TypeId valtree");
             };
 

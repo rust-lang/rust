@@ -63,7 +63,11 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn from_type_id(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.intern_valtree(ty::ValTreeKind::TypeId(ty))
+        let hash = tcx.type_id_hash(ty).as_u128();
+        let valtree = ty::ValTree::from_scalar_int(tcx, hash.into());
+        let value = ty::Const::new_value(tcx, valtree, tcx.types.u128);
+        let branches = tcx.mk_const_list_from_iter(Some(value).into_iter());
+        tcx.intern_valtree(ty::ValTreeKind::TypeId(ty, branches))
     }
 }
 
@@ -217,7 +221,10 @@ impl<'tcx> Value<'tcx> {
                 bug!("destructure_adt_const: expected branch or type id `{:?}`", self.ty)
             }
             ValTreeKind::Branch(branch) => &**branch,
-            ValTreeKind::TypeId(ty) => return ty::DestructuredAdtConst::TypeId { ty },
+            ValTreeKind::TypeId(ty, consts) => {
+                assert_eq!(consts.len(), 1);
+                return ty::DestructuredAdtConst::TypeId { ty, value: consts[0] };
+            }
         };
 
         let (variant, fields) = match self.ty.kind() {

@@ -891,8 +891,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
             ty::Adt(def, args) => {
                 match cv.destructure_adt_const() {
-                    ty::DestructuredAdtConst::TypeId { ty } => {
-                        ty.print(self)?;
+                    ty::DestructuredAdtConst::TypeId { ty: _, value } => {
+                        self.print_const(value)?;
                     }
                     ty::DestructuredAdtConst::Aggregate { variant, fields } => {
                         let fields = fields.iter().copied();
