@@ -262,7 +262,7 @@ impl AttributeKind {
             Inline(..) => false,
             InstructionSet(..) => false,
             InstrumentFn(..) => false,
-            Lang(item) => item.link_name().is_some(),
+            Lang(item, _) => item.link_name().is_some(),
             Link(..) => false,
             LinkName { .. } => false,
             LinkOrdinal { .. } => false,

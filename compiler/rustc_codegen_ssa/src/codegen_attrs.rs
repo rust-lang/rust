@@ -563,7 +563,7 @@ fn handle_lang_items(
     attrs: &[Attribute],
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) {
-    let lang_item = find_attr!(attrs, Lang(lang) => lang);
+    let lang_item = find_attr!(attrs, Lang(lang, _) => lang);
 
     // Weak lang items have the same semantics as "std internal" symbols in the
     // sense that they're preserved through all our LTO passes and only
