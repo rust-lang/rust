@@ -278,7 +278,6 @@
 -         StorageDead(_9);
 -         goto -> bb17;
 +     bb16 (cleanup): {
-+         StorageDead(_17);
 +         StorageDead(_16);
 +         goto -> bb18;
       }
@@ -297,7 +296,6 @@
 -     bb18: {
 -         coroutine_drop;
 +     bb18 (cleanup): {
-+         StorageDead(_15);
 +         StorageDead(_13);
 +         StorageDead(_12);
 +         StorageDead(_11);
@@ -317,7 +315,6 @@
       }
   
       bb21 (cleanup): {
--         StorageDead(_17);
 -         StorageDead(_16);
 -         goto -> bb23;
 +         StorageDead(_7);
@@ -331,7 +328,6 @@
       }
   
       bb23 (cleanup): {
--         StorageDead(_15);
 -         StorageDead(_13);
 -         StorageDead(_12);
 -         StorageDead(_11);

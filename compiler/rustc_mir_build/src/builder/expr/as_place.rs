@@ -445,8 +445,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
-                let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                let place_builder = unpack!(
+                    block = this.deref_operand_as_place(block, arg, mutability, fake_borrow_temps)
+                );
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
@@ -595,6 +596,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
+        }
+    }
+
+    /// Lower the operand of a dereference into a place.
+    ///
+    /// This is the same as [`Builder::expr_as_place`], except that if the
+    /// operand is a pointer that has to be put into a temporary, then that
+    /// temporary is known to only ever be accessed through this dereference.
+    fn deref_operand_as_place(
+        &mut self,
+        mut block: BasicBlock,
+        expr_id: ExprId,
+        mutability: Mutability,
+        fake_borrow_temps: Option<&mut Vec<Local>>,
+    ) -> BlockAnd<PlaceBuilder<'tcx>> {
+        let expr = &self.thir[expr_id];
+        match expr.kind {
+            ExprKind::Scope { region_scope, hir_id, value } => {
+                let source_info = self.source_info(expr.span);
+                self.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
+                    this.deref_operand_as_place(block, value, mutability, fake_borrow_temps)
+                })
+            }
+            // Non-place expressions are put into a temporary by `expr_as_place`.
+            _ if Category::of(&expr.kind) != Some(Category::Place)
+                && matches!(expr.ty.kind(), ty::Ref(..) | ty::RawPtr(..)) =>
+            {
+                let temp_lifetime = self.region_scope_tree.temporary_scope(expr.temp_scope_id);
+                let temp = unpack!(
+                    block = self.as_dereferenced_temp(block, temp_lifetime, expr_id, mutability)
+                );
+                block.and(PlaceBuilder::from(temp))
+            }
+            _ => self.expr_as_place(block, expr_id, mutability, fake_borrow_temps),
         }
     }
 
