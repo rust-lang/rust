@@ -1,11 +1,11 @@
 error: duplicate `no_crate_inject` attributes
-  --> $DIR/duplicated-attr.rs:4:13
+  --> $DIR/duplicated-attr.rs:3:13
    |
 LL | #![doc(test(no_crate_inject))]
    |             ^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attr.rs:3:13
+  --> $DIR/duplicated-attr.rs:2:13
    |
 LL | #![doc(test(no_crate_inject))]
    |             ^^^^^^^^^^^^^^^

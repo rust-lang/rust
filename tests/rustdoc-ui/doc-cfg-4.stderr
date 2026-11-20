@@ -1,11 +1,11 @@
 error: `#![doc(auto_cfg(any(...)))]` only accepts identifiers or `values(...)`
-  --> $DIR/doc-cfg-4.rs:6:40
+  --> $DIR/doc-cfg-4.rs:5:40
    |
 LL | #![doc(auto_cfg(hide(target_os, values(any("linux")))))]
    |                                        ^^^^^^^^^^^^
 
 error: `#![doc(auto_cfg(none(...)))]` only accepts identifiers or `values(...)`
-  --> $DIR/doc-cfg-4.rs:7:40
+  --> $DIR/doc-cfg-4.rs:6:40
    |
 LL | #![doc(auto_cfg(hide(target_os, values(none("linux")))))]
    |                                        ^^^^^^^^^^^^^

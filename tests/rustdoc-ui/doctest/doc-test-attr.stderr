@@ -1,17 +1,17 @@
 error: `#[doc(test(...)]` takes a list of attributes
-  --> $DIR/doc-test-attr.rs:4:8
+  --> $DIR/doc-test-attr.rs:3:8
    |
 LL | #![doc(test)]
    |        ^^^^
 
 error: `#[doc(test(...)]` takes a list of attributes
-  --> $DIR/doc-test-attr.rs:6:13
+  --> $DIR/doc-test-attr.rs:5:13
    |
 LL | #![doc(test = "hello")]
    |             ^^^^^^^^^
 
 error: unknown `doc(test)` attribute `a`
-  --> $DIR/doc-test-attr.rs:8:13
+  --> $DIR/doc-test-attr.rs:7:13
    |
 LL | #![doc(test(a))]
    |             ^

@@ -1,5 +1,5 @@
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/doc-attr.rs:4:3
+  --> $DIR/doc-attr.rs:3:3
    |
 LL | #[doc(123)]
    |   ^^^^---^
@@ -7,7 +7,7 @@ LL | #[doc(123)]
    |       expected this to be of the form `... = "..."`
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/doc-attr.rs:6:3
+  --> $DIR/doc-attr.rs:5:3
    |
 LL | #[doc("hello", "bar")]
    |   ^^^^-------^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[doc("hello", "bar")]
    |       expected this to be of the form `... = "..."`
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/doc-attr.rs:6:3
+  --> $DIR/doc-attr.rs:5:3
    |
 LL | #[doc("hello", "bar")]
    |   ^^^^^^^^^^^^^-----^

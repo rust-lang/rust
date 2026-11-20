@@ -1,5 +1,5 @@
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:3
+  --> $DIR/doc-cfg.rs:3:3
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
    |   ^^^^^^^--^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #[doc(cfg(false), cfg(foo, bar))]
    |           +++++
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:3
+  --> $DIR/doc-cfg.rs:3:3
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
    |   ^^^^^^^^^^^^^^----------^
@@ -31,7 +31,7 @@ LL + #[doc(cfg(), cfg(any(foo, bar)))]
    |
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:7:3
+  --> $DIR/doc-cfg.rs:6:3
    |
 LL | #[doc(cfg())]
    |   ^^^^^^^--^
@@ -44,7 +44,7 @@ LL | #[doc(cfg(false))]
    |           +++++
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:8:3
+  --> $DIR/doc-cfg.rs:7:3
    |
 LL | #[doc(cfg(foo, bar))]
    |   ^^^^^^^----------^
@@ -63,7 +63,7 @@ LL + #[doc(cfg(any(foo, bar)))]
    |
 
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:9:3
+  --> $DIR/doc-cfg.rs:8:3
    |
 LL | #[doc(auto_cfg(hide(foo::bar)))]
    |   ^^^^^^^^^^^^^^^^^^--------^^^

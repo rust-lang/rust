@@ -1,11 +1,11 @@
 error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
-  --> $DIR/doc_cfg_hide.rs:3:17
+  --> $DIR/doc_cfg_hide.rs:2:17
    |
 LL | #![doc(auto_cfg(hide = "test"))]
    |                 ^^^^^^^^^^^^^
 
 error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
-  --> $DIR/doc_cfg_hide.rs:4:17
+  --> $DIR/doc_cfg_hide.rs:3:17
    |
 LL | #![doc(auto_cfg(hide))]
    |                 ^^^^

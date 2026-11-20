@@ -4,7 +4,7 @@ warning: the `passes` flag no longer functions
    = help: you may want to use --document-private-items
 
 error: unknown `doc` attribute `no_default_passes`
-  --> $DIR/deprecated-attrs.rs:5:8
+  --> $DIR/deprecated-attrs.rs:4:8
    |
 LL | #![doc(no_default_passes)]
    |        ^^^^^^^^^^^^^^^^^ no longer functions
@@ -13,7 +13,7 @@ LL | #![doc(no_default_passes)]
    = note: `doc(no_default_passes)` is now a no-op
 
 error: unknown `doc` attribute `passes`
-  --> $DIR/deprecated-attrs.rs:10:8
+  --> $DIR/deprecated-attrs.rs:9:8
    |
 LL | #![doc(passes = "collapse-docs unindent-comments")]
    |        ^^^^^^ no longer functions
@@ -22,7 +22,7 @@ LL | #![doc(passes = "collapse-docs unindent-comments")]
    = note: `doc(passes)` is now a no-op
 
 error: unknown `doc` attribute `plugins`
-  --> $DIR/deprecated-attrs.rs:15:8
+  --> $DIR/deprecated-attrs.rs:14:8
    |
 LL | #![doc(plugins = "xxx")]
    |        ^^^^^^^ no longer functions

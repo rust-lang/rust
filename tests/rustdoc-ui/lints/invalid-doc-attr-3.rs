@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 
 #![doc(test(no_crate_inject = 1))]
 //~^ ERROR

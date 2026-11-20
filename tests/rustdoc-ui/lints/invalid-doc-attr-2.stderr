@@ -1,5 +1,5 @@
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-2.rs:3:4
+  --> $DIR/invalid-doc-attr-2.rs:2:4
    |
 LL | #![doc("other attribute")]
    |    ^^^^-----------------^
@@ -7,7 +7,7 @@ LL | #![doc("other attribute")]
    |        expected this to be of the form `... = "..."`
 
 error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
-  --> $DIR/invalid-doc-attr-2.rs:5:4
+  --> $DIR/invalid-doc-attr-2.rs:4:4
    |
 LL | #![doc]
    |    ^^^

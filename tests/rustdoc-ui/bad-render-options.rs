@@ -1,5 +1,4 @@
 // regression test for https://github.com/rust-lang/rust/issues/149187
-#![deny(invalid_doc_attributes)]
 
 #![doc(html_favicon_url)]
 //~^ ERROR

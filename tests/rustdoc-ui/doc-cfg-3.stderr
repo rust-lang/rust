@@ -1,11 +1,11 @@
 error: `any()` was used when other values were provided
-  --> $DIR/doc-cfg-3.rs:6:40
+  --> $DIR/doc-cfg-3.rs:5:40
    |
 LL | #![doc(auto_cfg(hide(target_os, values(any(), "linux"))))]
    |                                        ^^^^^  ------- value declared here
 
 error: `any()` was used when other values were provided
-  --> $DIR/doc-cfg-3.rs:7:49
+  --> $DIR/doc-cfg-3.rs:6:49
    |
 LL | #![doc(auto_cfg(hide(target_os, values("linux", any()))))]
    |                                        -------  ^^^^^

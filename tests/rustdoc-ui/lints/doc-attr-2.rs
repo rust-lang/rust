@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 #![doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute `as_ptr`
 

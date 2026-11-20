@@ -1,5 +1,5 @@
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:3:4
+  --> $DIR/invalid-doc-attr-3.rs:2:4
    |
 LL | #![doc(test(no_crate_inject = 1))]
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^---^^
@@ -7,7 +7,7 @@ LL | #![doc(test(no_crate_inject = 1))]
    |                             didn't expect any arguments here
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:5:4
+  --> $DIR/invalid-doc-attr-3.rs:4:4
    |
 LL | #![doc(test(attr = 1))]
    |    ^^^^^^^^^^^^^^---^^
@@ -15,7 +15,7 @@ LL | #![doc(test(attr = 1))]
    |                  expected this to be a list
 
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:8:3
+  --> $DIR/invalid-doc-attr-3.rs:7:3
    |
 LL | #[doc(hidden = true)]
    |   ^^^^^^^^^^^------^
@@ -23,7 +23,7 @@ LL | #[doc(hidden = true)]
    |              didn't expect any arguments here
 
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:10:3
+  --> $DIR/invalid-doc-attr-3.rs:9:3
    |
 LL | #[doc(hidden("or you will be fired"))]
    |   ^^^^^^^^^^------------------------^
@@ -31,7 +31,7 @@ LL | #[doc(hidden("or you will be fired"))]
    |             didn't expect any arguments here
 
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:12:3
+  --> $DIR/invalid-doc-attr-3.rs:11:3
    |
 LL | #[doc(hidden = "handled transparently by codegen")]
    |   ^^^^^^^^^^^------------------------------------^
@@ -39,7 +39,7 @@ LL | #[doc(hidden = "handled transparently by codegen")]
    |              didn't expect any arguments here
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:14:3
+  --> $DIR/invalid-doc-attr-3.rs:13:3
    |
 LL | #[doc = 1]
    |   ^^^^^^-
