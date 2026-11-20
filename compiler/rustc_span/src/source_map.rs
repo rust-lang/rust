@@ -187,6 +187,33 @@ impl std::fmt::Debug for SourceMapFiles {
     }
 }
 
+impl SourceMapFiles {
+    #[inline]
+    fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
+        self.source_files.partition_point(|x| x.start_pos <= pos) - 1
+    }
+
+    #[inline]
+    fn lookup_source_file(&self, pos: BytePos) -> Arc<SourceFile> {
+        let idx = self.lookup_source_file_idx(pos);
+        Arc::clone(&self.source_files[idx])
+    }
+
+    #[inline]
+    fn lookup_char_pos(&self, pos: BytePos) -> Loc {
+        let sf = self.lookup_source_file(pos);
+        let (line, col, col_display) = sf.lookup_file_pos_with_col_display(pos);
+        Loc { file: sf, line, col, col_display }
+    }
+
+    #[inline]
+    fn lookup_byte_offset(&self, pos: BytePos) -> SourceFileAndBytePos {
+        let sf = self.lookup_source_file(pos);
+        let offset = pos - sf.start_pos;
+        SourceFileAndBytePos { sf, pos: offset }
+    }
+}
+
 /// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
 pub struct SourceMapInputs {
     pub file_loader: Box<dyn FileLoader + Send + Sync>,
@@ -442,15 +469,12 @@ impl SourceMap {
 
     /// Return the SourceFile that contains the given `BytePos`
     pub fn lookup_source_file(&self, pos: BytePos) -> Arc<SourceFile> {
-        let idx = self.lookup_source_file_idx(pos);
-        Arc::clone(&(*self.files.borrow().source_files)[idx])
+        self.files.borrow().lookup_source_file(pos)
     }
 
     /// Looks up source information about a `BytePos`.
     pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
-        let sf = self.lookup_source_file(pos);
-        let (line, col, col_display) = sf.lookup_file_pos_with_col_display(pos);
-        Loc { file: sf, line, col, col_display }
+        self.files.borrow().lookup_char_pos(pos)
     }
 
     /// If the corresponding `SourceFile` is empty, does not return a line number.
@@ -501,12 +525,13 @@ impl SourceMap {
         &self,
         sp: Span,
     ) -> (Option<Arc<SourceFile>>, usize, usize, usize, usize) {
-        if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
+        let files = self.files.borrow();
+        if files.source_files.is_empty() || sp.is_dummy() {
             return (None, 0, 0, 0, 0);
         }
 
-        let lo = self.lookup_char_pos(sp.lo());
-        let hi = self.lookup_char_pos(sp.hi());
+        let lo = files.lookup_char_pos(sp.lo());
+        let hi = files.lookup_char_pos(sp.hi());
         (Some(lo.file), lo.line, lo.col.to_usize() + 1, hi.line, hi.col.to_usize() + 1)
     }
 
@@ -526,12 +551,13 @@ impl SourceMap {
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
-        let lo = self.lookup_source_file_idx(sp.lo());
-        let hi = self.lookup_source_file_idx(sp.hi());
+        let files = self.files.borrow();
+        let lo = files.lookup_source_file_idx(sp.lo());
+        let hi = files.lookup_source_file_idx(sp.hi());
         if lo != hi {
             return true;
         }
-        let f = Arc::clone(&(*self.files.borrow().source_files)[lo]);
+        let f = Arc::clone(&files.source_files[lo]);
         let lo = f.relative_position(sp.lo());
         let hi = f.relative_position(sp.hi());
         f.lookup_line(lo) != f.lookup_line(hi)
@@ -539,9 +565,10 @@ impl SourceMap {
 
     #[instrument(skip(self), level = "trace")]
     pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {
-        let lo = self.lookup_char_pos(sp.lo());
+        let files = self.files.borrow();
+        let lo = files.lookup_char_pos(sp.lo());
         trace!(?lo);
-        let hi = self.lookup_char_pos(sp.hi());
+        let hi = files.lookup_char_pos(sp.hi());
         trace!(?hi);
         if lo.file.start_pos != hi.file.start_pos {
             return Err(SpanLinesError::DistinctSources(Box::new(DistinctSources {
@@ -605,8 +632,10 @@ impl SourceMap {
     where
         F: FnMut(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {
-        let local_begin = self.lookup_byte_offset(sp.lo());
-        let local_end = self.lookup_byte_offset(sp.hi());
+        let (local_begin, local_end) = {
+            let files = self.files.borrow();
+            (files.lookup_byte_offset(sp.lo()), files.lookup_byte_offset(sp.hi()))
+        };
 
         if local_begin.sf.start_pos != local_end.sf.start_pos {
             Err(SpanSnippetError::DistinctSources(Box::new(DistinctSources {
@@ -1040,17 +1069,14 @@ impl SourceMap {
 
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
-        let idx = self.lookup_source_file_idx(bpos);
-        let sf = Arc::clone(&(*self.files.borrow().source_files)[idx]);
-        let offset = bpos - sf.start_pos;
-        SourceFileAndBytePos { sf, pos: offset }
+        self.files.borrow().lookup_byte_offset(bpos)
     }
 
     /// Returns the index of the [`SourceFile`] (in `self.files`) that contains `pos`.
     /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
     /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        self.files.borrow().source_files.partition_point(|x| x.start_pos <= pos) - 1
+        self.files.borrow().lookup_source_file_idx(pos)
     }
 
     pub fn count_lines(&self) -> usize {
@@ -1085,8 +1111,9 @@ impl SourceMap {
     }
 
     pub fn is_imported(&self, sp: Span) -> bool {
-        let source_file_index = self.lookup_source_file_idx(sp.lo());
-        let source_file = &self.files()[source_file_index];
+        let files = self.files.borrow();
+        let source_file_index = files.lookup_source_file_idx(sp.lo());
+        let source_file = &files.source_files[source_file_index];
         source_file.is_imported()
     }
 

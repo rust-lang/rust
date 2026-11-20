@@ -18,9 +18,7 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
-use rustc_span::{
-    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
-};
+use rustc_span::{BytePos, Pos, SourceFile, SourceFileHash, Span, StableSourceFileId, Symbol};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
@@ -32,7 +30,7 @@ use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
@@ -58,6 +56,7 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
+    file_cache: RefCell<Option<Arc<SourceFile>>>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
@@ -111,6 +110,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
+            file_cache: RefCell::new(None),
         }
     }
 
@@ -167,7 +167,6 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         // Omit the linkage_name if it is the same as subprogram name.
         let linkage_name = if &name == linkage_name { "" } else { linkage_name };
 
-        // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
         let scope_line = loc.line;
 
         let mut flags = DIFlags::FlagPrototyped;
@@ -409,8 +408,17 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let (line, col) = if span.is_dummy() {
             (0, 0)
         } else {
-            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
-            (line, col)
+            let pos = span.lo();
+            let dbg_cx = debug_context(self.cx);
+            if let Some(file) = &*dbg_cx.file_cache.borrow()
+                && file.contains(pos)
+            {
+                self.lookup_line_and_col(file, pos)
+            } else {
+                let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
+                *dbg_cx.file_cache.borrow_mut() = Some(file);
+                (line, col)
+            }
         };
 
         unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
@@ -666,9 +674,6 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 /// A source code location used to generate debug information.
-// FIXME(eddyb) rename this to better indicate it's a duplicate of
-// `rustc_span::Loc` rather than `DILocation`, perhaps by making
-// `lookup_char_pos` return the right information instead.
 struct DebugLoc {
     /// Information about the original source file.
     file: Arc<SourceFile>,
@@ -680,30 +685,32 @@ struct DebugLoc {
 
 impl<'ll> CodegenCx<'ll, '_> {
     /// Looks up debug source information about a `BytePos`.
-    // FIXME(eddyb) rename this to better indicate it's a duplicate of
-    // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
-    // `lookup_char_pos` return the right information instead.
     fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
-        let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
-            Ok(SourceFileAndLine { sf: file, line }) => {
+        let file = self.sess().source_map().lookup_source_file(pos);
+        let (line, col) = self.lookup_line_and_col(&file, pos);
+        DebugLoc { file, line, col }
+    }
+
+    fn lookup_line_and_col(&self, file: &SourceFile, pos: BytePos) -> (u32, u32) {
+        let rel_pos = file.relative_position(pos);
+        match file.lookup_line(rel_pos) {
+            Some(line) => {
                 let line_pos = file.lines()[line];
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
-                let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
+                let col = (rel_pos - line_pos).to_u32() + 1;
 
-                (file, line, col)
+                // For MSVC, omit the column number.
+                // Otherwise, emit it. This mimics clang behaviour.
+                // See discussion in https://github.com/rust-lang/rust/issues/42921
+                if self.sess().target.is_like_msvc {
+                    (line, UNKNOWN_COLUMN_NUMBER)
+                } else {
+                    (line, col)
+                }
             }
-            Err(file) => (file, UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
-        };
-
-        // For MSVC, omit the column number.
-        // Otherwise, emit it. This mimics clang behaviour.
-        // See discussion in https://github.com/rust-lang/rust/issues/42921
-        if self.sess().target.is_like_msvc {
-            DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
-        } else {
-            DebugLoc { file, line, col }
+            None => (UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
         }
     }
 
