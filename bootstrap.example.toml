@@ -1180,6 +1180,11 @@
 # section and move this field there (or equivalent for the target being built).
 #wasi-root = <none> (path)
 
+# This path points to the directory holding QTEE's self-contained linker inputs,
+# which are shipped out of tree. Required as they specify QTEE's runtime / startup
+# procedures, along with a common lib available to all QTEE TA's.
+#qtee-libdir = <none> (path)
+
 # Used in testing for configuring where the QEMU images are located, you
 # probably don't want to use this.
 #qemu-rootfs = <none> (path)

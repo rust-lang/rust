@@ -62,15 +62,19 @@ primarily:
 
 The directory containing these objects can optionally be set when building the Rust toolchain
 for the target itself. For example setting the directory containing these objects from the prebuilts
-directory of the QTEE SDK, via the `qtee-dist-path` target option in `bootstrap.toml`:
+directory of the QTEE SDK, via the `qtee-libdir` target option in `bootstrap.toml`:
 
 ```toml
 [target.aarch64-unknown-qtee]
-qtee-dist-path = "/path/to/qteesdk/prebuilts/x86-64/"
+qtee-libdir = "/absolute/path/to/qteesdk/containing/{applib.lib, libcmnlib.so, common_applib.o}"
+```
+
+Alternatively, `$QTEE_SDK_PATH` environment variable can be
+set which contains the path to these artifacts. Note an absolute path must be supplied.
 
 Building the `aarch64-unknown-qtee` compiler and standard library does not require these objects
 at all - they are only consumed when self-contained linking copies them into the target's lib
-directory for an actual TA binary. If `qtee-dist-path` is unset this copy step is skipped
+directory for an actual TA binary. If `qtee-libdir` is unset this copy step is skipped
 and the toolchain will still build. However, compiling a TA will then fail at the linker stage.
 
 To build executables and on-target tests:
