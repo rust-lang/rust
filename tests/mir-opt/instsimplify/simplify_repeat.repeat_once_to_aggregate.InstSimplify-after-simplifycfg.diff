@@ -15,13 +15,11 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
--         _2 = [move _3; 1];
-+         _2 = [move _3];
+          _2 = [move _3];
           StorageDead(_3);
           StorageLive(_4);
           _4 = copy _1;
--         _0 = [move _4; 1];
-+         _0 = [move _4];
+          _0 = [move _4];
           StorageDead(_4);
           StorageDead(_2);
           return;

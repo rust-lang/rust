@@ -995,7 +995,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match rvalue {
             Rvalue::Aggregate(ak, ops) => self.check_aggregate_rvalue(rvalue, ak, ops, location),
 
-            Rvalue::Repeat(operand, len) => {
+            Rvalue::Repeat(operand, _) => {
                 let array_ty = rvalue.ty(self.body.local_decls(), tcx);
                 self.prove_clause(
                     ty::ClauseKind::WellFormed(array_ty.into()),
@@ -1003,31 +1003,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 );
 
-                // If the length cannot be evaluated we must assume that the length can be larger
-                // than 1.
-                // If the length is larger than 1, the repeat expression will need to copy the
-                // element, so we require the `Copy` trait.
-                if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
-                    match operand {
-                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
-                            // These are always okay: direct use of a const, or a value that can
-                            // evidently be copied.
-                        }
-                        Operand::Move(place) => {
-                            // Make sure that repeated elements implement `Copy`.
-                            let ty = place.ty(self.body, tcx).ty;
-                            let trait_ref = ty::TraitRef::new(
-                                tcx,
-                                tcx.require_lang_item(LangItem::Copy, span),
-                                [ty],
-                            );
+                match operand {
+                    Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
+                        // These are always okay: direct use of a const, or a value that can
+                        // evidently be copied.
+                    }
+                    Operand::Move(place) => {
+                        // Make sure that repeated elements implement `Copy`.
+                        let ty = place.ty(self.body, tcx).ty;
+                        let trait_ref = ty::TraitRef::new(
+                            tcx,
+                            tcx.require_lang_item(LangItem::Copy, span),
+                            [ty],
+                        );
 
-                            self.prove_trait_ref(
-                                trait_ref,
-                                Locations::Single(location),
-                                ConstraintCategory::CopyBound,
-                            );
-                        }
+                        self.prove_trait_ref(
+                            trait_ref,
+                            Locations::Single(location),
+                            ConstraintCategory::CopyBound,
+                        );
                     }
                 }
             }

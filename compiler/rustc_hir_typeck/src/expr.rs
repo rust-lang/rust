@@ -28,10 +28,10 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, AdtKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Ident, Span, Spanned, Symbol, bug, kw, span_bug, sym};
+use rustc_span::{Ident, Span, Spanned, Symbol, kw, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -1703,8 +1703,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
 
-        let old_diverges = self.diverges.get();
-
         let (element_ty, t) = match uty {
             Some(uty) => {
                 self.check_expr_coercible_to_type(element, uty, None);
@@ -1716,39 +1714,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (element_ty, ty)
             }
         };
-
-        // FIXME: remove this workaround for an unsoundness (#165323) once it's no longer needed.
-        //
-        // MIR building lowers `[CONST; 0]` to `[]`, making `CONST` not evaluated.
-        //
-        // This is a problem, because it means if `CONST` is `const { panic!() }`, the side effect
-        // of panic / failing compilation never happens. In such cases we need to ignore divergence
-        // from the `CONST`, as otherwise we can end up executing code that was assumed unreachable.
-        let count_is_zero = match count.kind() {
-            // This is the exact check that mir building does
-            ConstKind::Value(v) => v.try_to_target_usize(tcx) == Some(0),
-
-            // An infer const can get inferred to 0.
-            //
-            // We could check the expectation here to do ad-hoc inference, but that feels quite
-            // error prone and annoying.
-            ConstKind::Infer(_) => true,
-
-            // While const generic params can be substituted with 0, mir building specifically
-            // checks for value 0 before monomorphization, so they (alongside aliases, etc) cannot
-            // trigger the bug.
-            ConstKind::Param(_)
-            | ConstKind::Placeholder(_)
-            | ConstKind::Alias(..)
-            | ConstKind::Error(_)
-            | ConstKind::Expr(_) => false,
-
-            ConstKind::Bound(..) => bug!(),
-        };
-
-        if count_is_zero && element.is_constant_for_zero_repeat() {
-            self.diverges.set(old_diverges);
-        }
 
         if let Err(guar) = element_ty.error_reported() {
             return Ty::new_error(tcx, guar);
