@@ -56,7 +56,7 @@ fn check() -> &'static u8 {
     let long = Rc::new(RefCell::new(&42u8 as &'static u8));
     let value = 43u8;
     let short = Rc::new(RefCell::new(&value));
-    //[nll_current,nll_next]~^ ERROR `value` does not live long enough
+    //~^ ERROR `value` does not live long enough
 
     make(((), Equal(&&(), &&())), long.clone()).swap(make(((), Equal(&&(), &&())), short));
 

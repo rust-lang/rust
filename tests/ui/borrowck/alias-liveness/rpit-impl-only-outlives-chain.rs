@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Znext-solver=globally -Zpolonius=off
 //@ [polonius] compile-flags: -Znext-solver=globally -Zpolonius=next
-//@ [polonius] known-bug: unknown
-//@ [polonius] check-pass
 
 // An impl that proves a given where clause may provide extra outlives
 // relationships that mean a lifetime can end up in the hidden type, so we are
@@ -19,6 +17,11 @@ use std::rc::Rc;
 
 trait Swap: Sized {
     fn swap(self, other: Self);
+}
+impl<T> Swap for &mut T {
+    fn swap(self, other: Self) {
+        std::mem::swap(self, other);
+    }
 }
 impl<T> Swap for Rc<RefCell<T>> {
     fn swap(self, other: Self) {
@@ -45,11 +48,12 @@ where
     <() as Shorten<'m, 'b>>::shorten(x)
 }
 
+// Still unsound under polonius
 fn dangle() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide(long.clone()).swap((|a| a)(hide(short)));
     let res: &'static [i32; 3] = *long.borrow();
     res
@@ -68,11 +72,56 @@ fn dangle_type() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide_type(long.clone()).swap((|a| a)(hide_type(short)));
     let res: &'static [i32; 3] = *long.borrow();
     res
 }
+
+// We don't need to treat `'c` or `'d` as live because need can outlive '`a`,
+// and so cannot be in the hidden type.
+fn hide_unrelated<'a, 'c, 'd>(x: &'c mut i32, _: &'d mut i32) -> impl Sized + 'a + use<'a, 'c, 'd>
+where
+    (): Shorten<'c, 'd>,
+{
+    // This would error
+    //<() as Shorten<'c, 'd>>::shorten(x)
+}
+
+fn unrelated_clause() {
+    let mut c = 0;
+    let mut d = 0;
+    let hidden = hide_unrelated(&mut c, &mut d);
+    c = 1;
+    d = 1;
+    drop(hidden);
+}
+
+
+// Although `'c` and `'d` don't occur in a clause together with `'a`, we know
+// that `'d: 'a`, so `'d` must be live and it's possible that `'c: 'd` so it must
+// be live as well.
+fn hide_unrelated_with_outlives<'a, 'c, 'd: 'a>(
+    x: &'c mut i32,
+    _: &'d mut i32,
+) -> impl Sized + 'a + use<'a, 'c, 'd>
+where
+    (): Shorten<'c, 'd>,
+{
+    <() as Shorten<'c, 'd>>::shorten(x)
+}
+
+fn unrelated_clause_with_outlives() {
+    let mut c = 0;
+    let mut d = 0;
+    let hidden = hide_unrelated_with_outlives(&mut c, &mut d);
+    c = 1;
+    //~^ ERROR cannot assign to `c` because it is borrowed
+    d = 1;
+    //~^ ERROR cannot assign to `d` because it is borrowed
+    drop(hidden);
+}
+
 
 // Similar to the `dangle` case, but shows a couple other cases where we must
 // treat `'a` as live if `'m` is live.
@@ -118,11 +167,12 @@ mod projection {
         G::make(x)
     }
 
+    // Still unsound under polonius
     fn dangle() -> &'static [i32; 3] {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide::<()>(long.clone()).swap((|a| a)(hide::<()>(short)));
         let res: &'static [i32; 3] = *long.borrow();
         res
@@ -132,17 +182,18 @@ mod projection {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide_implied::<()>(long.clone(), None).swap((|a| a)(hide_implied::<()>(short, None)));
         let res: &'static [i32; 3] = *long.borrow();
         res
     }
 
+    // Still unsound under polonius
     fn dangle_declared() -> &'static [i32; 3] {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide_declared::<()>(long.clone()).swap((|a| a)(hide_declared::<()>(short)));
         let res: &'static [i32; 3] = *long.borrow();
         res
@@ -158,5 +209,6 @@ mod projection {
 fn main() {
     println!("{:?}", dangle());
     println!("{:?}", dangle_type());
+    unrelated_clause();
     projection::check();
 }

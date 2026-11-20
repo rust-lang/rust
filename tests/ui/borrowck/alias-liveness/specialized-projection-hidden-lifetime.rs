@@ -1,6 +1,4 @@
 //@ edition: 2024
-//@ known-bug: unknown
-//@ check-pass
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Znext-solver=globally -Zassumptions-on-binders -Zpolonius=off
@@ -46,6 +44,7 @@ fn generic<T: for<'a, 'b, 'c> Tr<'a, 'b, 'c>>() {
     {
         let v = vec![42];
         escaped = run::<T>(&v[0]);
+        //~^ ERROR `v` does not live long enough
     }
     let reused = vec![7];
     println!("escaped = {escaped:?}, reused = {reused:?}");

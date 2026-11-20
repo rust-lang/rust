@@ -1,0 +1,17 @@
+error[E0597]: `v` does not live long enough
+  --> $DIR/projection-higher-ranked-bounds.rs:29:41
+   |
+LL |         let v: Vec<u8> = vec![42];
+   |             - binding `v` declared here
+LL |         escaped = run::<'_, '_, '_, T>(&v[0]);
+   |                                         ^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `v` dropped here while still borrowed
+LL |     let reused: Vec<u8> = vec![7];
+LL |     show(escaped, &reused);
+   |          ------- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
