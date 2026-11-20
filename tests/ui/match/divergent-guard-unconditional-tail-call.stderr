@@ -1,0 +1,11 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional-tail-call.rs:10:23
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(&y) if { x = None; become main() } => {}
+   |                       ^^^^^^^^ cannot assign
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0510`.
