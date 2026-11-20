@@ -317,75 +317,75 @@ LL | fn issue13795(value: Issue13795) {
    |               ^^^^^
 
 error: `x` is shadowed by itself in `x`
-  --> tests/ui/shadow.rs:180:28
+  --> tests/ui/shadow.rs:181:9
    |
-LL | fn plain_same(x: u8) { let x = x; }
-   |                            ^
+LL |     let x = x;
+   |         ^
    |
 note: previous binding is here
   --> tests/ui/shadow.rs:180:15
    |
-LL | fn plain_same(x: u8) { let x = x; }
+LL | fn plain_same(x: u8) {
    |               ^
 
 error: `x` is shadowed by itself in `x`
-  --> tests/ui/shadow.rs:182:34
+  --> tests/ui/shadow.rs:185:9
    |
-LL | fn tuple_same((x,): (u8,)) { let x = x; }
-   |                                  ^
+LL |     let x = x;
+   |         ^
    |
 note: previous binding is here
-  --> tests/ui/shadow.rs:182:16
+  --> tests/ui/shadow.rs:184:16
    |
-LL | fn tuple_same((x,): (u8,)) { let x = x; }
+LL | fn tuple_same((x,): (u8,)) {
    |                ^
 
 error: `x` is shadowed
-  --> tests/ui/shadow.rs:185:29
+  --> tests/ui/shadow.rs:190:9
    |
-LL | fn plain_reuse(x: u8) { let x = x + 1; }
-   |                             ^
+LL |     let x = x + 1;
+   |         ^
    |
 note: previous binding is here
-  --> tests/ui/shadow.rs:185:16
+  --> tests/ui/shadow.rs:189:16
    |
-LL | fn plain_reuse(x: u8) { let x = x + 1; }
+LL | fn plain_reuse(x: u8) {
    |                ^
 
 error: `x` is shadowed
-  --> tests/ui/shadow.rs:187:35
+  --> tests/ui/shadow.rs:194:9
    |
-LL | fn tuple_reuse((x,): (u8,)) { let x = x + 1; }
-   |                                   ^
+LL |     let x = x + 1;
+   |         ^
    |
 note: previous binding is here
-  --> tests/ui/shadow.rs:187:17
+  --> tests/ui/shadow.rs:193:17
    |
-LL | fn tuple_reuse((x,): (u8,)) { let x = x + 1; }
+LL | fn tuple_reuse((x,): (u8,)) {
    |                 ^
 
 error: `x` shadows a previous, unrelated binding
-  --> tests/ui/shadow.rs:190:33
+  --> tests/ui/shadow.rs:199:9
    |
-LL | fn plain_unrelated(x: u8) { let x = 1u8; }
-   |                                 ^
+LL |     let x = 1u8;
+   |         ^
    |
 note: previous binding is here
-  --> tests/ui/shadow.rs:190:20
+  --> tests/ui/shadow.rs:198:20
    |
-LL | fn plain_unrelated(x: u8) { let x = 1u8; }
+LL | fn plain_unrelated(x: u8) {
    |                    ^
 
 error: `x` shadows a previous, unrelated binding
-  --> tests/ui/shadow.rs:192:39
+  --> tests/ui/shadow.rs:203:9
    |
-LL | fn tuple_unrelated((x,): (u8,)) { let x = 1u8; }
-   |                                       ^
+LL |     let x = 1u8;
+   |         ^
    |
 note: previous binding is here
-  --> tests/ui/shadow.rs:192:21
+  --> tests/ui/shadow.rs:202:21
    |
-LL | fn tuple_unrelated((x,): (u8,)) { let x = 1u8; }
+LL | fn tuple_unrelated((x,): (u8,)) {
    |                     ^
 
 error: aborting due to 32 previous errors
