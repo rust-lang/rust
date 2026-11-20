@@ -63,6 +63,25 @@ pub fn custom_element_array_match(x: [Element; 4]) -> bool {
     matches!(x, EXPECTED)
 }
 
+// Arrays of bytewise-comparable elements are not themselves treated as
+// bytewise-comparable, so only the inner arrays are compared in one go.
+// EMIT_MIR aggregate_array_eq.nested_array_match.built.after.mir
+pub fn nested_array_match(x: [[u8; 4]; 4]) -> bool {
+    // CHECK-LABEL: fn nested_array_match(
+    // CHECK-NOT: raw_eq::<{{\[\[}}u8; 4]; 4]>
+    // CHECK: = &_1[0 of 4];
+    // CHECK: raw_eq::<[u8; 4]>(
+    // CHECK: = &_1[1 of 4];
+    // CHECK: raw_eq::<[u8; 4]>(
+    // CHECK: = &_1[2 of 4];
+    // CHECK: raw_eq::<[u8; 4]>(
+    // CHECK: = &_1[3 of 4];
+    // CHECK: raw_eq::<[u8; 4]>(
+    // CHECK-NOT: raw_eq::<{{\[\[}}u8; 4]; 4]>
+    const EXPECTED: [[u8; 4]; 4] = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]];
+    matches!(x, EXPECTED)
+}
+
 // Slice patterns of the same length share a single length check.
 // EMIT_MIR aggregate_array_eq.slice_match.built.after.mir
 pub fn slice_match(x: &[u8]) -> u32 {

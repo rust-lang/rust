@@ -85,13 +85,14 @@ const fn const_try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
 }
 
 fn main() {
-    assert!(array_match([1, 2, 3, 4]));
-    assert!(!array_match([1, 2, 3, 5]));
-    assert!(!array_match([0, 0, 0, 0]));
-    assert!(!array_match([4, 3, 2, 1]));
-
-    assert!(handwritten_array_match([1, 2, 3, 4]));
-    assert!(!handwritten_array_match([1, 2, 3, 5]));
+    // In this loop and the `try_from_matched` one below, the const fn variants
+    // are called at runtime.
+    for check in [array_match, handwritten_array_match, const_array_match] {
+        assert!(check([1, 2, 3, 4]));
+        assert!(!check([1, 2, 3, 5]));
+        assert!(!check([0, 0, 0, 0]));
+        assert!(!check([4, 3, 2, 1]));
+    }
 
     assert!(slice_match(b"ABCD"));
     assert!(!slice_match(b"ABCE"));
@@ -124,25 +125,14 @@ fn main() {
     assert!(!nested_array_match([[0; 4]; 4]));
     assert!(!nested_array_match([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]));
 
-    assert_eq!(try_from_matched(*b"ABCD"), Ok(MyEnum::A));
-    assert_eq!(try_from_matched(*b"EFGH"), Ok(MyEnum::B));
-    assert_eq!(try_from_matched(*b"IJKL"), Ok(MyEnum::C));
-    assert_eq!(try_from_matched(*b"MNOP"), Ok(MyEnum::D));
-    assert_eq!(try_from_matched(*b"ZZZZ"), Err(()));
-    assert_eq!(try_from_matched(*b"ABCE"), Err(()));
-
-    // Const fn variants called at runtime.
-    assert!(const_array_match([1, 2, 3, 4]));
-    assert!(!const_array_match([1, 2, 3, 5]));
-    assert!(!const_array_match([0, 0, 0, 0]));
-    assert!(!const_array_match([4, 3, 2, 1]));
-
-    assert_eq!(const_try_from_matched(*b"ABCD"), Ok(MyEnum::A));
-    assert_eq!(const_try_from_matched(*b"EFGH"), Ok(MyEnum::B));
-    assert_eq!(const_try_from_matched(*b"IJKL"), Ok(MyEnum::C));
-    assert_eq!(const_try_from_matched(*b"MNOP"), Ok(MyEnum::D));
-    assert_eq!(const_try_from_matched(*b"ZZZZ"), Err(()));
-    assert_eq!(const_try_from_matched(*b"ABCE"), Err(()));
+    for check in [try_from_matched, const_try_from_matched] {
+        assert_eq!(check(*b"ABCD"), Ok(MyEnum::A));
+        assert_eq!(check(*b"EFGH"), Ok(MyEnum::B));
+        assert_eq!(check(*b"IJKL"), Ok(MyEnum::C));
+        assert_eq!(check(*b"MNOP"), Ok(MyEnum::D));
+        assert_eq!(check(*b"ZZZZ"), Err(()));
+        assert_eq!(check(*b"ABCE"), Err(()));
+    }
 
     // Const fn variants evaluated at compile time.
     const MATCH_TRUE: bool = const_array_match([1, 2, 3, 4]);

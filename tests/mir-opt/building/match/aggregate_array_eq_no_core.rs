@@ -16,7 +16,7 @@ use minicore::*;
 // Constant patterns require `PartialEq` and `StructuralPartialEq`, which
 // minicore does not provide. Only the MIR is checked, so the impls do not need
 // meaningful bodies.
-#[lang = "eq"]
+#[lang = "partial_eq"]
 pub trait PartialEq<Rhs = Self> {
     fn eq(&self, other: &Rhs) -> bool;
 }

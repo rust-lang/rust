@@ -568,8 +568,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         len: usize,
     ) {
         let tcx = self.tcx;
-        let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_slice(tcx, element_ty));
-        let expected_value_ref_place = self.temp(ref_ty, source_info.span);
+        let expected_value_ref_place =
+            self.temp(expected_value_operand.ty(&self.local_decls, tcx), source_info.span);
         self.cfg.push_assign(
             block,
             source_info,
