@@ -347,8 +347,32 @@ fn insert_direct_enum_check<'tcx>(
     source_info: SourceInfo,
     new_block: BasicBlock,
 ) {
+    // Local for masked out bits of the discriminant type.
+    let discr_masked =
+        local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
+
     // Insert a new target block that is branched to in case of an invalid discriminant.
-    let invalid_discr_block_data = BasicBlockData::maybe_unterminated(None, false);
+    let invalid_discr_block_data = BasicBlockData::new(
+        Terminator {
+            source_info,
+            kind: TerminatorKind::Assert {
+                cond: Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
+                })),
+                expected: true,
+                target: new_block,
+                msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr_masked))),
+                // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
+                // We never want to insert an unwind into unsafe code, because unwinding could
+                // make a failing UB check turn into much worse UB when we start unwinding.
+                unwind: UnwindAction::Unreachable,
+            },
+        },
+        false,
+    );
+
     let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
     let block_data = &mut basic_blocks[current_block];
     let discr_place = insert_discr_cast_to_u128(
@@ -364,8 +388,6 @@ fn insert_direct_enum_check<'tcx>(
 
     // Mask out the bits of the discriminant type.
     let mask = discr.size.unsigned_int_max();
-    let discr_masked =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
     let rvalue = Rvalue::BinaryOp(
         BinOp::BitAnd,
         Box::new((
@@ -392,25 +414,6 @@ fn insert_direct_enum_check<'tcx>(
                     .map(|discr_val| (discr.size.truncate(discr_val), new_block)),
                 invalid_discr_block,
             ),
-        },
-    });
-
-    // Abort in case of an invalid enum discriminant.
-    basic_blocks[invalid_discr_block].terminator = Some(Terminator {
-        source_info,
-        kind: TerminatorKind::Assert {
-            cond: Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
-            })),
-            expected: true,
-            target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr_masked))),
-            // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
-            // We never want to insert an unwind into unsafe code, because unwinding could
-            // make a failing UB check turn into much worse UB when we start unwinding.
-            unwind: UnwindAction::Unreachable,
         },
     });
 }
