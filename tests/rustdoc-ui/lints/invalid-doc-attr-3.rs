@@ -4,7 +4,6 @@
 //~^ ERROR
 #![doc(test(attr = 1))]
 //~^ ERROR
-//~| WARN
 
 #[doc(hidden = true)]
 //~^ ERROR

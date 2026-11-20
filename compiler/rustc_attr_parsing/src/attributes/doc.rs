@@ -25,7 +25,7 @@ use crate::diagnostics::{
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
     DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
     DuplicateNotableTraitColor, IllFormedAttributeInput, InvalidNotableTraitAttr,
-    InvalidNotableTraitColor, MalformedDoc,
+    InvalidNotableTraitColor,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -283,14 +283,10 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.as_list() else {
-                    // FIXME(164728): remove this method once merged and uncomment the line
-                    // below instead. cx.expected_list(cx.attr_span, args);
                     let span = cx.attr_span;
-                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
+                    cx.adcx().expected_list(span, args);
                     return;
                 };
-                // FIXME(164728): remove this method once merged and uncomment the line
-                // below instead. cx.expected_list(cx.attr_span, args);
                 for attr in list.mixed() {
                     // Arguments of `attr` are checked via the span, so can be safely ignored
                     attr.ignore_args();
@@ -802,10 +798,7 @@ impl DocParser {
                             self.parse_single_test_doc_attr_item(cx, mip);
                         }
                         MetaItemOrLitParser::Lit(lit) => {
-                            // FIXME: remove this method once merged and uncomment the line
-                            // below instead.
-                            // cx.unexpected_literal(lit.span);
-                            cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, lit.span);
+                            cx.adcx().expected_not_literal(lit.span);
                         }
                     }
                 }
