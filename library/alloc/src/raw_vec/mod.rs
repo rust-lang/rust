@@ -25,6 +25,7 @@ mod tests;
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 const fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }

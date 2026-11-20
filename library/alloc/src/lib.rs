@@ -89,6 +89,10 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(windows, feature(core_os))]
+#![cfg_attr(windows, feature(core_os_windows))]
+#![cfg_attr(windows, feature(windows_fastfail))]
+#![feature(abort_immediate)]
 #![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]

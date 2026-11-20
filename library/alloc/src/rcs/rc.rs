@@ -3436,6 +3436,23 @@ pub(crate) fn is_dangling<T: ?Sized>(ptr: *const T) -> bool {
     (ptr.cast::<()>()).addr() == usize::MAX
 }
 
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[cold]
+#[inline]
+pub(super) fn crash_for_invalid_refcount() -> ! {
+    cfg_select! {
+        windows => {
+            // `core::process::crash()` crashes with `FAST_FAIL_FATAL_APP_EXIT`,
+            // but in this case we can use a more specific error code
+
+            /// From `winnt.h`
+            const FAST_FAIL_INVALID_REFERENCE_COUNT: core::ffi::c_uint = 14;
+            core::os::windows::__fastfail(FAST_FAIL_INVALID_REFERENCE_COUNT)
+        }
+        _ => core::process::crash(),
+    }
+}
+
 /// Helper type to allow accessing the reference counts without
 /// making any assertions about the data field.
 struct WeakInner<'a> {
@@ -3951,7 +3968,7 @@ trait RcInnerPtr {
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
         if intrinsics::unlikely(strong == 0) {
-            intrinsics::abort_immediate();
+            crash_for_invalid_refcount()
         }
     }
 
@@ -3984,7 +4001,7 @@ trait RcInnerPtr {
         // Checking for overflow after the store instead of before
         // allows for slightly better code generation.
         if intrinsics::unlikely(weak == 0) {
-            intrinsics::abort_immediate();
+            crash_for_invalid_refcount()
         }
     }
 

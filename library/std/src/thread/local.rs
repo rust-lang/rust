@@ -386,6 +386,7 @@ impl Error for AccessError {}
 
 // This ensures the panicking code is outlined from `with` for `LocalKey`.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[cold]
 fn panic_access_error(err: AccessError) -> ! {

@@ -1,4 +1,4 @@
-use core::{intrinsics, mem, ptr};
+use core::{mem, process, ptr};
 
 /// This replaces the value behind the `v` unique reference by calling the
 /// relevant function.
@@ -19,7 +19,7 @@ pub(super) fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
     struct PanicGuard;
     impl Drop for PanicGuard {
         fn drop(&mut self) {
-            intrinsics::abort_immediate()
+            process::crash()
         }
     }
     let guard = PanicGuard;

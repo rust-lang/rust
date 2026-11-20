@@ -3,13 +3,14 @@
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::mem;
 use crate::mem::ManuallyDrop;
+use crate::slice::sort::shared;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::unstable::heapsort;
-use crate::{cfg_select, intrinsics, ptr};
+use crate::{cfg_select, intrinsics, process, ptr};
 
 /// Sorts `v` recursively.
 ///
@@ -102,7 +103,7 @@ where
     }
 
     if pivot >= len {
-        intrinsics::abort_immediate();
+        shared::crash_for_invalid_arg()
     }
 
     // SAFETY: We checked that `pivot` is in-bounds.
@@ -124,7 +125,7 @@ where
     let num_lt = (const { inst_partition::<T, F>() })(v_without_pivot, pivot, is_less);
 
     if num_lt >= len {
-        intrinsics::abort_immediate();
+        process::crash()
     }
 
     // SAFETY: We checked that `num_lt` is in-bounds.

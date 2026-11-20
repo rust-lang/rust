@@ -20,7 +20,7 @@ use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::sync::atomic::{self, Atomic};
-use core::{borrow, fmt, hint, intrinsics};
+use core::{borrow, fmt, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -29,7 +29,7 @@ use crate::alloc::{
 };
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::rc::is_dangling;
+use crate::rc::{crash_for_invalid_refcount, is_dangling};
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -2541,7 +2541,7 @@ impl<T: ?Sized, A: AllocatorClone> Clone for Arc<T, A> {
         // Otherwise, the counter could be brought to an almost-overflow using a compare-exchange loop,
         // and then overflow using a few `fetch_add`s.
         if old_size > MAX_REFCOUNT {
-            intrinsics::abort_immediate();
+            crash_for_invalid_refcount()
         }
 
         // SAFETY: Pointer is valid & allocator corresponds to the one used to allocate it.
@@ -3595,7 +3595,7 @@ impl<T: ?Sized, A: AllocatorClone> Clone for Weak<T, A> {
 
             // See comments in Arc::clone() for why we do this (for mem::forget).
             if old_size > MAX_REFCOUNT {
-                intrinsics::abort_immediate();
+                crash_for_invalid_refcount()
             }
         }
 
@@ -5073,7 +5073,7 @@ impl<T: ?Sized, A: AllocatorClone> UniqueArc<T, A> {
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
-            intrinsics::abort_immediate();
+            crash_for_invalid_refcount()
         }
 
         Weak { ptr: this.ptr, alloc: this.alloc.clone() }

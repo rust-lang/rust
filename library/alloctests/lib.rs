@@ -13,6 +13,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![feature(abort_immediate)]
 #![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(char_internals)]
@@ -26,7 +27,6 @@
 #![feature(const_result_trait_fn)]
 #![feature(const_try)]
 #![feature(copied_into_inner)]
-#![feature(core_intrinsics)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
