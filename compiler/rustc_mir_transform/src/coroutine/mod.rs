@@ -760,12 +760,17 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
 }
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
+    let block = make_poll_ready_block(tcx, body);
+    body.basic_blocks_mut().push(block)
+}
+
+fn make_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlockData<'tcx> {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+    BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
         Terminator { source_info, kind: TerminatorKind::Return },
         false,
-    ))
+    )
 }
 
 fn insert_panic_block<'tcx>(
