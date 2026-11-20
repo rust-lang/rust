@@ -64,7 +64,7 @@ declare_lint! {
     /// can't say that the clashing declaration is incorrect.
     pub CLASHING_EXTERN_DECLARATIONS,
     Warn,
-    "detects when an extern fn has been declared with the same name but different types"
+    "detects when an extern fn has been declared with the same name but different types",
 }
 
 struct ClashingExternDeclarations {

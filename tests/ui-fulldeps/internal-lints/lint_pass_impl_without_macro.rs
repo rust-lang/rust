@@ -12,7 +12,7 @@ use rustc_lint::{Lint, LintPass, LintVec, declare_lint, declare_lint_pass, impl_
 declare_lint! {
     pub TEST_LINT,
     Allow,
-    "test"
+    "test",
 }
 
 struct Foo;

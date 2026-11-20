@@ -34,7 +34,7 @@ declare_lint! {
     /// This lint prevents such incorrect usage of these functions.
     ENUM_INTRINSICS_NON_ENUMS,
     Deny,
-    "detects calls to `core::mem::discriminant` and `core::mem::variant_count` with non-enum types"
+    "detects calls to `core::mem::discriminant` and `core::mem::variant_count` with non-enum types",
 }
 
 declare_lint_pass!(EnumIntrinsicsNonEnums => [ENUM_INTRINSICS_NON_ENUMS]);

@@ -41,7 +41,7 @@ declare_lint! {
     /// ```
     pub UNIT_BINDINGS,
     Allow,
-    "binding is useless because it has the unit `()` type"
+    "binding is useless because it has the unit `()` type",
 }
 
 declare_lint_pass!(UnitBindings => [UNIT_BINDINGS]);

@@ -1,5 +1,9 @@
+//@ aux-build:external_unsafe_macro.rs
+
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unused_unsafe)]
+
+extern crate external_unsafe_macro;
 
 unsafe fn unsf() {}
 const PTR: *const () = std::ptr::null();
@@ -10,9 +14,10 @@ unsafe fn deny_level() {
     //~^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe block
     *PTR;
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
+    external_unsafe_macro::deref_ptr!(PTR);
+    //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
     //~^ ERROR use of mutable static is unsafe and requires unsafe block
-
     unsafe {}
     //~^ ERROR unnecessary `unsafe` block
 }
@@ -25,6 +30,8 @@ unsafe fn warning_level() {
     //~^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe block
     *PTR;
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
+    external_unsafe_macro::deref_ptr!(PTR);
+    //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
     //~^ ERROR use of mutable static is unsafe and requires unsafe block
     unsafe {}
@@ -36,6 +43,7 @@ unsafe fn explicit_block() {
     unsafe {
         unsf();
         *PTR;
+        external_unsafe_macro::deref_ptr!(PTR);
         VOID = ();
     }
 }
@@ -50,6 +58,7 @@ unsafe fn allow_level() {
     // lint allowed -> no error
     unsf();
     *PTR;
+    external_unsafe_macro::deref_ptr!(PTR);
     VOID = ();
 
     unsafe { unsf() }
@@ -61,6 +70,7 @@ unsafe fn nested_allow_level() {
         // lint allowed -> no error
         unsf();
         *PTR;
+        external_unsafe_macro::deref_ptr!(PTR);
         VOID = ();
 
         unsafe { unsf() }

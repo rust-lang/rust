@@ -258,6 +258,14 @@ impl IntoDiagArg for Level {
     }
 }
 
+/// Whether a lint is reported even inside an expansion of an external macro.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InExternalMacro {
+    DontReport,
+    Report,
+    ReportAndSuggest,
+}
+
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
 pub struct Lint {
@@ -291,8 +299,8 @@ pub struct Lint {
     /// `default_level`.
     pub edition_lint_opts: Option<(Edition, Level)> = None,
 
-    /// `true` if this lint is reported even inside expansions of external macros.
-    pub report_in_external_macro: bool = false,
+    /// Whether this lint is reported even inside expansions of external macros.
+    pub in_external_macro: InExternalMacro = InExternalMacro::DontReport,
 
     pub future_incompatible: Option<FutureIncompatibleInfo> = None,
 
@@ -694,20 +702,16 @@ pub type RegisteredTools = FxIndexMap<Ident, ToolOptions>;
 /// commands to avoid rebuilding the compiler.
 #[macro_export]
 macro_rules! declare_lint {
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
-        $crate::declare_lint!(
-            $(#[$attr])* $vis $NAME, $Level, $desc,
-        );
-    );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@eval_always = $eval_always:literal)?
-     $(@feature_gate = $gate:ident;)?
+     $(@eval_always = $eval_always:literal,)?
+     $(@feature_gate = $gate:ident,)?
      $(@future_incompatible = FutureIncompatibleInfo {
         reason: $reason:expr,
         $($field:ident : $val:expr),* $(,)*
-     }; )?
-     $(@edition $lint_edition:ident => $edition_level:ident;)?
-     $(@msrv = $msrv:literal;)?
+     },)?
+     $(@edition $lint_edition:ident => $edition_level:ident,)?
+     $(@msrv = $msrv:literal,)?
+     $(@in_external_macro = $external:ident,)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -715,6 +719,7 @@ macro_rules! declare_lint {
             default_level: $crate::$Level,
             desc: $desc,
             $($v: true,)*
+            $(in_external_macro: $crate::InExternalMacro::$external,)?
             $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
@@ -734,7 +739,7 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr
-        $(, @report_in_external_macro = $external:literal)?
+        $(, @in_external_macro = $external:ident)?
         $(, @eval_always = $eval_always: literal)?
         $(, @feature_gate = $gate:ident;)?
     ) => (
@@ -743,7 +748,7 @@ macro_rules! declare_tool_lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::$Level,
             desc: $desc,
-            $(report_in_external_macro: $external,)?
+            $(in_external_macro: $crate::InExternalMacro::$external,)?
             is_externally_loaded: true,
             $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(eval_always: $eval_always,)?

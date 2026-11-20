@@ -38,7 +38,7 @@ declare_lint! {
     /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
     pub INVALID_RUNTIME_SYMBOL_DEFINITIONS,
     Deny,
-    "invalid definition of a symbol used by the standard library"
+    "invalid definition of a symbol used by the standard library",
 }
 
 declare_lint! {
@@ -69,7 +69,7 @@ declare_lint! {
     /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
     pub SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
     Warn,
-    "suspicious definition of a symbol used by the standard library"
+    "suspicious definition of a symbol used by the standard library",
 }
 
 declare_lint_pass!(RuntimeSymbols => [INVALID_RUNTIME_SYMBOL_DEFINITIONS, SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS]);
