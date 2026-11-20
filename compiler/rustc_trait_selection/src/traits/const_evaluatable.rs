@@ -68,7 +68,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
             ty::ConstKind::Alias(_, _) => {
-                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, &param_env, |ty| {
                     Ok::<_, !>(ty.skip_norm_wip())
                 }) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
@@ -90,7 +90,7 @@ pub fn is_const_evaluatable<'tcx>(
         // This is a sanity check to make sure that non-generics consts are checked to
         // be evaluatable in case they aren't cchecked elsewhere. This will NOT error
         // if the const uses generics, as desired.
-        crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
+        crate::traits::evaluate_const(infcx, unexpanded_ct, &param_env);
         Ok(())
     } else {
         let alias_const = match unexpanded_ct.kind() {
@@ -101,7 +101,7 @@ pub fn is_const_evaluatable<'tcx>(
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         };
 
-        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, &param_env, |ty| {
             Ok::<_, !>(ty.skip_norm_wip())
         }) {
             // If we're evaluating a generic foreign constant, under a nightly compiler while

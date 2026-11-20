@@ -245,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .register(opaque_type_key, ProvisionalHiddenType { ty: hidden_ty, span });
                 if let Some(prev) = prev {
                     goals.extend(
-                        self.at(&ObligationCause::dummy_with_span(span), param_env)
+                        self.at(&ObligationCause::dummy_with_span(span), &param_env)
                             .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
                             .obligations
                             .into_iter()
@@ -275,7 +275,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 });
 
                 goals.extend(
-                    self.at(&ObligationCause::dummy_with_span(span), param_env)
+                    self.at(&ObligationCause::dummy_with_span(span), &param_env)
                         .eq(DefineOpaqueTypes::Yes, hidden_ty, actual)?
                         .obligations
                         .into_iter()

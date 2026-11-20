@@ -12,9 +12,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
-    Upcast, elaborate,
+    self, EarlyBinder, GenericArgs, IntoParamEnv, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast, elaborate,
 };
 use rustc_span::{DUMMY_SP, Span, kw, sym};
 use smallvec::SmallVec;
@@ -734,7 +734,7 @@ fn receiver_is_dispatchable<'tcx>(
         //    are not constructing a param-env for "inside" of the body of the defaulted
         //    method, so we don't really care about projecting to a specific RPIT type,
         //    and because RPITITs are not dyn compatible (yet).
-        let mut clauses: Vec<_> = tcx
+        let mut clauses: ty::ParamEnvClauses<'_> = tcx
             .clauses_of(method.def_id)
             .instantiate_identity(tcx)
             .clauses
@@ -829,7 +829,7 @@ fn receiver_is_dispatchable<'tcx>(
         let predicate =
             ty::TraitRef::new(tcx, dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]);
 
-        Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
+        Obligation::new(tcx, ObligationCause::dummy(), param_env.into_paramenv(tcx), predicate)
     };
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());

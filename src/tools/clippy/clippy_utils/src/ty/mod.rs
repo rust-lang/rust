@@ -1424,7 +1424,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         let cause = ObligationCause::dummy();
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         match infcx
-            .at(&cause, param_env)
+            .at(&cause, &param_env)
             .query_normalize(Ty::new_alias(tcx, ty::IsRigid::No, ty))
         {
             Ok(ty) => Some(ty.value),
@@ -1443,7 +1443,7 @@ pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv
     let cause = ObligationCause::dummy();
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     infcx
-        .at(&cause, param_env)
+        .at(&cause, &param_env)
         .query_normalize(ty)
         .map_or(ty, |ty| ty.value)
 }

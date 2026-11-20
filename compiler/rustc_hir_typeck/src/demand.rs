@@ -218,7 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.at(cause, self.param_env)
+        self.at(cause, &self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let _ = self
-                        .at(&ObligationCause::dummy(), self.param_env)
+                        .at(&ObligationCause::dummy(), &self.param_env)
                         .eq(DefineOpaqueTypes::Yes, *input_arg, arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
@@ -497,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .ok()
                     .and_then(|method| {
                         let _ = self
-                            .at(&ObligationCause::dummy(), self.param_env)
+                            .at(&ObligationCause::dummy(), &self.param_env)
                             .eq(DefineOpaqueTypes::Yes, ideal_rcvr_ty, expected_ty)
                             .ok()?;
                         Some(method)

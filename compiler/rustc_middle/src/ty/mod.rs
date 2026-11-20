@@ -1016,15 +1016,36 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     }
 }
 
+pub trait IntoParamEnv<'tcx>: Debug {
+    fn into_paramenv(&self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx>;
+}
+
+pub type ParamEnvClauses<'tcx> = Vec<ty::Clause<'tcx>>;
+
+impl<'tcx> IntoParamEnv<'tcx> for ParamEnvClauses<'tcx> {
+    fn into_paramenv(&self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        ParamEnv::new(tcx, self.iter().copied())
+    }
+}
+
 /// Efficiently builds a [`ParamEnv`], compressing trait clauses as it is being built,
 /// and interning only once at the end.
-pub struct ParamenvBuilder<'tcx> {
+pub struct ParamEnvBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     compressed_clauses: Vec<CompressedTraitClause<TyCtxt<'tcx>>>,
     uncompressed_clauses: Vec<Clause<'tcx>>,
 }
 
-impl<'tcx> ParamenvBuilder<'tcx> {
+impl Debug for ParamEnvBuilder<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ParamEnvBuilder")
+            .field("compressed_clauses", &self.compressed_clauses)
+            .field("uncompressed_clauses", &self.uncompressed_clauses)
+            .finish()
+    }
+}
+
+impl<'tcx> ParamEnvBuilder<'tcx> {
     /// Construct a `ClauseCompressor` from an existing [`ParamEnv`] without decompressing its
     /// contents. This is useful when adding clauses to an existing environment without
     /// decompressing and re-interning compressed clauses.
@@ -1070,11 +1091,11 @@ impl<'tcx> ParamenvBuilder<'tcx> {
         }
     }
 
-    fn mk_clauses(self) -> Clauses<'tcx> {
+    fn mk_clauses(&self) -> Clauses<'tcx> {
         let mut res =
             Vec::with_capacity(self.uncompressed_clauses.len() + self.compressed_clauses.len());
 
-        res.extend(self.compressed_clauses.into_iter().map(|compressed| -> Clause<'tcx> {
+        res.extend(self.compressed_clauses.iter().map(|compressed| -> Clause<'tcx> {
             assert_ne!(compressed.compressed_trait_refs.bits(), 0);
             // NOTE: in theory, if there's only one bit set, we could opt not to compress,
             // since then we also don't need to decompress. The flip side is, that that
@@ -1082,15 +1103,21 @@ impl<'tcx> ParamenvBuilder<'tcx> {
             // arbitrary other clause. Especially if we know in advance that the trait for which
             // this question is asked is only ever compressed, and we don't have to look through
             // other clauses.
-            ClauseKind::CompressedTrait(compressed).upcast(self.tcx)
+            ClauseKind::CompressedTrait(*compressed).upcast(self.tcx)
         }));
-        res.extend(self.uncompressed_clauses);
+        res.extend(self.uncompressed_clauses.iter().copied());
 
         self.tcx.mk_clauses(&res)
     }
 
-    pub fn build(self) -> ParamEnv<'tcx> {
+    pub fn build(&self) -> ParamEnv<'tcx> {
         ParamEnv { caller_bounds: self.mk_clauses() }
+    }
+}
+
+impl<'tcx> IntoParamEnv<'tcx> for ParamEnvBuilder<'tcx> {
+    fn into_paramenv(&self, _tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        self.build()
     }
 }
 
@@ -1108,6 +1135,12 @@ pub struct ParamEnv<'tcx> {
     ///
     /// Use the `caller_bounds()` method to access.
     caller_bounds: Clauses<'tcx>,
+}
+
+impl<'tcx> IntoParamEnv<'tcx> for ParamEnv<'tcx> {
+    fn into_paramenv(&self, _tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        *self
+    }
 }
 
 // Empty ParamEnv's are super common (like, 100x more common than nonempty pnes),
@@ -1137,16 +1170,16 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn builder(tcx: TyCtxt<'tcx>) -> ParamenvBuilder<'tcx> {
-        ParamenvBuilder::new(tcx)
+    pub fn builder(tcx: TyCtxt<'tcx>) -> ParamEnvBuilder<'tcx> {
+        ParamEnvBuilder::new(tcx)
     }
 
     /// Turn an existing `ParamEnv` into a builder to add bounds to it efficiently.
     ///
     /// There's also [`extend`](Self::extend) for a single addition.
     #[inline]
-    pub fn into_builder(self, tcx: TyCtxt<'tcx>) -> ParamenvBuilder<'tcx> {
-        ParamenvBuilder::from_param_env(tcx, self)
+    pub fn into_builder(self, tcx: TyCtxt<'tcx>) -> ParamEnvBuilder<'tcx> {
+        ParamEnvBuilder::from_param_env(tcx, self)
     }
 
     /// Add clauses to an existing `ParamEnv`, without decompressing existing trait bounds.
