@@ -4,8 +4,7 @@ error[E0391]: cycle detected when checking if `FOO` is a trivial const
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
    |
-   = note: ...which requires building MIR for `FOO`...
-   = note: ...which again requires checking if `FOO` is a trivial const, completing the cycle
+   = note: ...which immediately requires checking if `FOO` is a trivial const again
    = note: cycle used when simplifying constant for the type system `FOO`
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
