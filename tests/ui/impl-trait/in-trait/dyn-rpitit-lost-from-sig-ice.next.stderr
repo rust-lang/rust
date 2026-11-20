@@ -1,0 +1,9 @@
+error[E0220]: associated type `Out` not found for `Foo`
+  --> $DIR/dyn-rpitit-lost-from-sig-ice.rs:10:31
+   |
+LL |     fn foo(&self) -> &dyn Foo<Out = impl Sized>;
+   |                               ^^^ associated type `Out` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.
