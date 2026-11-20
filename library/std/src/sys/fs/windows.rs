@@ -782,7 +782,7 @@ impl File {
             LastAccessTime: 0,
             LastWriteTime: 0,
             ChangeTime: 0,
-            FileAttributes: perm.attrs,
+            FileAttributes: if perm.attrs == 0 { c::FILE_ATTRIBUTE_NORMAL } else { perm.attrs },
         };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
