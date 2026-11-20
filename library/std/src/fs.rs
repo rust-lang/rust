@@ -488,7 +488,7 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///
 /// This function currently corresponds to the `utimensat` function with `AT_SYMLINK_NOFOLLOW` on
 /// Unix platforms, the `setattrlist` function with `FSOPT_NOFOLLOW` on Apple platforms, and the
-/// `SetFileTime` function on Windows.
+/// `SetFileTime` function with `FILE_FLAG_OPEN_REPARSE_POINT` on Windows.
 ///
 /// # Errors
 ///
@@ -3074,7 +3074,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `lstat` function on Unix
-/// and the `GetFileInformationByHandle` function on Windows.
+/// and the `GetFileInformationByHandle` function with `FILE_FLAG_OPEN_REPARSE_POINT` on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
