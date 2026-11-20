@@ -1,0 +1,8 @@
+error: `ADD1` is from a crate with `gca_const_items`, which requires `-Znext-solver=globally` in this crate too
+  --> $DIR/auxiliary/gca-const-items-upstream-166244.rs:7:1
+   |
+LL | pub const ADD1<const N: usize>: usize = N + 1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

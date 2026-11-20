@@ -23,7 +23,7 @@ use super::{
     PredicateObligation, ProjectionCacheEntry, ProjectionCacheKey, Selection, SelectionContext,
     SelectionError, specialization_graph, translate_args, util,
 };
-use crate::diagnostics::InherentProjectionNormalizationOverflow;
+use crate::diagnostics::{GcaConstRequiresNextSolver, InherentProjectionNormalizationOverflow};
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
@@ -506,17 +506,23 @@ fn push_const_arg_has_type_obligation<'tcx>(
 }
 
 /// The old solver does not support references to non-type-consts.
-/// Emit a delayed bug if there is a type system reference to a non type const, as this should have
-/// already errored elsewhere.
+/// Report those from `gca_const_items` dependencies; any other should have errored already.
 pub fn const_of_item_or_delayed_bug<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
     tcx.const_of_item(def_id).unwrap_or_else(|| {
-        let e = tcx.dcx().span_delayed_bug(
-            tcx.def_span(def_id),
-            "encountered regular consts in the old solver's const normalization",
-        );
+        let span = tcx.def_span(def_id);
+        let e = if !tcx.features().gca_const_items()
+            && tcx.lang_feature_enabled_in(def_id.krate, sym::gca_const_items)
+        {
+            tcx.dcx().emit_err(GcaConstRequiresNextSolver { span, name: tcx.def_path_str(def_id) })
+        } else {
+            tcx.dcx().span_delayed_bug(
+                span,
+                "encountered regular consts in the old solver's const normalization",
+            )
+        };
         ty::EarlyBinder::bind(tcx, ty::Const::new_error(tcx, e))
     })
 }
