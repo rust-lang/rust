@@ -1,5 +1,5 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `S`
-  --> $DIR/raw-ident.rs:15:5
+  --> $DIR/raw-ident.rs:20:5
    |
 LL |     make_bad_struct!(S);
    |     ^^^^^^^^^^^^^^^^^^^ expected one of 8 possible tokens

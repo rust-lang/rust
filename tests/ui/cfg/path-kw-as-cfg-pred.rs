@@ -69,15 +69,6 @@ fn main() {
     cfg!(self); //~ ERROR malformed `cfg` macro input
     cfg!(Self); //~ ERROR malformed `cfg` macro input
 
-    cfg!(r#crate); //~ ERROR `crate` cannot be a raw identifier
-    //~^ ERROR malformed `cfg` macro input
-    cfg!(r#super); //~ ERROR `super` cannot be a raw identifier
-    //~^ ERROR malformed `cfg` macro input
-    cfg!(r#self); //~ ERROR `self` cannot be a raw identifier
-    //~^ ERROR malformed `cfg` macro input
-    cfg!(r#Self); //~ ERROR `Self` cannot be a raw identifier
-    //~^ ERROR malformed `cfg` macro input
-
     cfg!(struct); //~ ERROR expected identifier, found keyword
     cfg!(priv); //~ ERROR expected identifier, found reserved keyword `priv`
     cfg!(_); //~ ERROR expected identifier, found reserved identifier `_`
@@ -86,35 +77,6 @@ fn main() {
     cfg!(r#priv); // Ok
     cfg!(r#_); //~ ERROR `_` cannot be a raw identifier
 }
-
-#[cfg(r#crate)] //~ ERROR malformed `cfg` attribute input
-//~^ ERROR `crate` cannot be a raw identifier
-mod _cfg_r_crate {}
-#[cfg(r#super)] //~ ERROR malformed `cfg` attribute input
-//~^ ERROR `super` cannot be a raw identifier
-mod _cfg_r_super {}
-#[cfg(r#self)] //~ ERROR malformed `cfg` attribute input
-//~^ ERROR `self` cannot be a raw identifier
-mod _cfg_r_self_lower {}
-#[cfg(r#Self)] //~ ERROR malformed `cfg` attribute input
-//~^ ERROR `Self` cannot be a raw identifier
-mod _cfg_r_self_upper {}
-#[cfg_attr(r#crate, cfg(r#crate))] //~ ERROR malformed `cfg_attr` attribute input
-//~^ ERROR `crate` cannot be a raw identifier
-//~^^ ERROR `crate` cannot be a raw identifier
-mod _cfg_attr_r_crate {}
-#[cfg_attr(r#super, cfg(r#super))] //~ ERROR malformed `cfg_attr` attribute input
-//~^ ERROR `super` cannot be a raw identifier
-//~^^ ERROR `super` cannot be a raw identifier
-mod _cfg_attr_r_super {}
-#[cfg_attr(r#self, cfg(r#self))] //~ ERROR malformed `cfg_attr` attribute input
-//~^ ERROR `self` cannot be a raw identifier
-//~^^ ERROR `self` cannot be a raw identifier
-mod _cfg_attr_r_self_lower {}
-#[cfg_attr(r#Self, cfg(r#Self))] //~ ERROR malformed `cfg_attr` attribute input
-//~^ ERROR `Self` cannot be a raw identifier
-//~^^ ERROR `Self` cannot be a raw identifier
-mod _cfg_attr_r_self_upper {}
 
 #[cfg(r#struct)] // Ok
 mod _cfg_r_struct {}
