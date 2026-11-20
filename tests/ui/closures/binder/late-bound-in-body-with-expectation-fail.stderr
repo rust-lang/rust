@@ -1,0 +1,37 @@
+error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
+  --> $DIR/late-bound-in-body-with-expectation-fail.rs:35:5
+   |
+LL |     two_args(for<'a> |_: &'a u8| -> () {});
+   |     ^^^^^^^^^-------------------------^^^^
+   |     |        |
+   |     |        takes 1 argument
+   |     expected closure that takes 2 arguments
+
+error: lifetime may not live long enough
+  --> $DIR/late-bound-in-body-with-expectation-fail.rs:14:16
+   |
+LL |     takes_static(for<'a> |x: &'a u8| -> () {
+   |                      -- lifetime `'a` defined here
+LL |         let _: &'static u8 = x;
+   |                ^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/late-bound-in-body-with-expectation-fail.rs:21:16
+   |
+LL |     callback(for<'a> |y: &'a mut i32| -> () {
+   |                  -- lifetime `'a` defined here
+LL |         let _: &'static mut i32 = y;
+   |                ^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/late-bound-in-body-with-expectation-fail.rs:28:16
+   |
+LL | fn outer_lifetime<'x>(r: &'x i32) {
+   |                   -- lifetime `'x` defined here
+LL |     callback_no_args(for<'a> || -> () {
+LL |         let _: &'a i32 = r;
+   |                ^^^^^^^ type annotation requires that `'x` must outlive `'static`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0593`.

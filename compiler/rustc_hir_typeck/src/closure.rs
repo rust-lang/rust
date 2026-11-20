@@ -67,8 +67,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => (None, None),
         };
 
-        let ClosureSignatures { bound_sig, mut liberated_sig } =
-            self.sig_of_closure(expr_def_id, closure.fn_decl, closure.kind, expected_sig);
+        let ClosureSignatures { bound_sig, mut liberated_sig } = self.sig_of_closure(
+            expr_def_id,
+            closure.fn_decl,
+            closure.kind,
+            closure.binder,
+            expected_sig,
+        );
 
         debug!(?bound_sig, ?liberated_sig);
 
@@ -613,10 +618,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
+        binder: hir::ClosureBinder,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
         if let Some(e) = expected_sig {
-            self.sig_of_closure_with_expectation(expr_def_id, decl, closure_kind, e)
+            self.sig_of_closure_with_expectation(expr_def_id, decl, closure_kind, binder, e)
         } else {
             self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind)
         }
@@ -680,6 +686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - `expr_def_id`: the `LocalDefId` of the closure expression
     /// - `decl`: the HIR declaration of the closure
     /// - `body`: the body of the closure
+    /// - `binder`: the closure's explicit `for<...>` binder, if any
     /// - `expected_sig`: the expected signature (if any). Note that
     ///   this is missing a binder: that is, there may be late-bound
     ///   regions with depth 1, which are bound then by the closure.
@@ -689,6 +696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
+        binder: hir::ClosureBinder,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         // Watch out for some surprises and just ignore the
@@ -707,6 +715,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 decl,
                 expected_sig,
             );
+        } else if let hir::ClosureBinder::For { .. } = binder {
+            // An explicit `for<...>` binder makes the closure higher-ranked over exactly its
+            // own lifetimes. The expected signature would replace them with anonymous ones,
+            // leaving lifetimes named in the body unknown to borrowck.
+            return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         }
 
         // Create a `PolyFnSig`. Note the oddity that late bound
