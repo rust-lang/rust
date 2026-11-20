@@ -290,7 +290,7 @@ impl<'a> BitOr<bool> for &'a bool {
     }
 }
 
-#[lang = "eq"]
+#[lang = "partial_eq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool;

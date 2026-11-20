@@ -21,7 +21,7 @@
 //! necessary lang items for the compiler. All panics are funneled through this
 //! one function. The actual symbol is declared through the `#[panic_handler]` attribute.
 
-#![allow(dead_code, missing_docs)]
+#![allow(dead_code)]
 #![unstable(
     feature = "panic_internals",
     reason = "internal details of the implementation of the `panic!` and related macros",
@@ -182,6 +182,7 @@ macro_rules! panic_const {
 // slightly different forms. It's not clear if there's a good way to deduplicate without adding
 // special cases to the compiler (e.g., a const generic function wouldn't have a single definition
 // shared across crates, which is exactly what we want here).
+#[allow(missing_docs)]
 pub mod panic_const {
     use super::*;
     panic_const! {
@@ -233,9 +234,10 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::from_str(expr), /* force_no_backtrace */ true);
 }
 
+/// Needed by `non-fmt-panics` lint.
 #[inline]
 #[track_caller]
-#[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
+#[rustc_diagnostic_item = "unreachable_display"]
 pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
 }
@@ -250,9 +252,10 @@ pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
 }
 
+/// Needed for const-evaluated panics.
 #[inline]
 #[track_caller]
-#[lang = "panic_display"] // needed for const-evaluated panics
+#[lang = "panic_display"]
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
@@ -457,7 +460,7 @@ fn assert_failed_inner(
     }
 }
 
-// panic!() without args expands to this, to generate slightly less code
+/// `panic!()` without args expands to this, to generate slightly less code.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
@@ -465,7 +468,7 @@ pub const fn panic_default_msg() -> ! {
     panic("explicit panic")
 }
 
-// unreachable!() without args expands to this, to generate slightly less code
+/// `unreachable!()` without args expands to this, to generate slightly less code.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
@@ -473,7 +476,7 @@ pub const fn unreachable_default_msg() -> ! {
     panic("internal error: entered unreachable code")
 }
 
-// unimplemented!() without args expands to this, to generate slightly less code
+/// `unimplemented!()` without args expands to this, to generate slightly less code.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
@@ -481,7 +484,7 @@ pub const fn unimplemented_default_msg() -> ! {
     panic("not implemented")
 }
 
-// todo!() without args expands to this, to generate slightly less code
+/// `todo!()` without args expands to this, to generate slightly less code.
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]

@@ -25,3 +25,5 @@ pub fn thumb() {
         asm!("", out("r11") _);
     }
 }
+
+//@ reference: asm.register-names.not-for-io

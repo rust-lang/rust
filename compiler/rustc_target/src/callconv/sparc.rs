@@ -78,7 +78,7 @@ where
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
-            if arg.layout.is_zst() {
+            if arg.layout.is_zst() && arg.layout.is_repr_c() {
                 arg.make_indirect_from_ignore();
             }
             continue;

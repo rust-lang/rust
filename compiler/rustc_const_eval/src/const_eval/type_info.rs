@@ -7,6 +7,7 @@ use rustc_attr_ir::AttrItem;
 use rustc_attr_ir::Attribute::Tool;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::intravisit::HirTyCtxt;
+use rustc_lint_defs::{Reflectiveness, ToolOptions};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, span_bug, sym};
@@ -364,8 +365,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         let attrs: Vec<_> = attrs
             .iter()
             .filter_map(|attr| {
-                if let Tool(a_itm @ AttrItem { .. }) = attr
-                    && a_itm.path.segments.first() == Some(&sym::reflection_placeholder)
+                if let Tool {
+                    item: a_itm @ AttrItem { .. },
+                    opts: ToolOptions { reflectiveness: Reflectiveness::Reflective, .. },
+                } = attr
                 {
                     Some(rustc_hir_pretty::attritem_to_string(
                         &(&self.tcx() as &dyn HirTyCtxt<'_>),

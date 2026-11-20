@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     codegen_handle_fn_abi_err,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty, TyCtxt};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
@@ -213,6 +213,11 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
             // LLVM 24 updated the amdgpu layout: http://github.com/llvm/llvm-project/pull/209746 Add BARRIER address space
             target_data_layout = target_data_layout
                 .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
+        }
+        if sess.target.arch == Arch::PowerPC64 && sess.target.os == Os::FreeBsd {
+            // LLVM 24 updated the powerpc64 FreeBSD layout to use 16-byte stack and vector
+            // alignment: https://github.com/llvm/llvm-project/pull/232336
+            target_data_layout = target_data_layout.replace("-S128-v256:256:256-v512:512:512", "");
         }
     }
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -1100,8 +1105,8 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
-        matches!(name, sym::black_box)
+    fn intrinsic_call_expects_place_always(&self, name: Intrinsic) -> bool {
+        matches!(name, Intrinsic::Rustc(sym::black_box))
     }
 }
 

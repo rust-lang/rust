@@ -128,7 +128,7 @@ error: 'since' must be a Rust version number, such as "1.31.0"
 LL | #[stable(feature = "e", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/stability-attribute-sanity.rs:62:1
    |
 LL | #[deprecated(since = "5.5.5", note = "text")]

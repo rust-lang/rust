@@ -569,16 +569,6 @@ pub(crate) struct MacroArgsBadDelimSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused doc comment")]
-#[help(
-    "to document an item produced by a macro, the macro must produce the documentation as part of its expansion"
-)]
-pub(crate) struct MacroCallUnusedDocComment {
-    #[label("rustdoc does not generate documentation for macro invocations")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro"
 )]

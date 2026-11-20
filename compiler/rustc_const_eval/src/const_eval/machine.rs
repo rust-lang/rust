@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, Intrinsic, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -486,7 +486,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         if ecx.eval_intrinsic(instance, args, dest, target)? {
             return interp_ok(None);
         }
-        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
+        let intrinsic_name = ecx.tcx.intrinsic(instance.def_id()).unwrap().name;
+
+        let do_fallback = || {
+            // We haven't handled the intrinsic, let's see if we can use a fallback body.
+            if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                throw_unsup_format!(
+                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                );
+            }
+            return interp_ok(Some(ty::Instance {
+                def: ty::InstanceKind::Item(instance.def_id()),
+                args: instance.args,
+            }));
+        };
+
+        // Backend intrinsics are not supported in const eval except with their fallback
+        // bodies.
+        let Intrinsic::Rustc(intrinsic_name) = intrinsic_name else {
+            return do_fallback();
+        };
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
@@ -566,7 +585,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
+                let requirement =
+                    ValidityRequirement::from_rustc_intrinsic(intrinsic_name).unwrap();
 
                 let should_panic = !ecx
                     .tcx
@@ -962,16 +982,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             }
 
             _ => {
-                // We haven't handled the intrinsic, let's see if we can use a fallback body.
-                if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
-                    throw_unsup_format!(
-                        "intrinsic `{intrinsic_name}` is not supported at compile-time"
-                    );
-                }
-                return interp_ok(Some(ty::Instance {
-                    def: ty::InstanceKind::Item(instance.def_id()),
-                    args: instance.args,
-                }));
+                return do_fallback();
             }
         }
 

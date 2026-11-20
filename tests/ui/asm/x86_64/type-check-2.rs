@@ -74,3 +74,8 @@ fn test2() {
 }
 
 fn main() {}
+
+//@ reference: asm.operand-type.supported-operands-in
+//@ reference: asm.operand-type.supported-operands-inout
+//@ reference: asm.operand-type.supported-operands-out
+//@ reference: asm.register-operands.allowed-types

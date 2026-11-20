@@ -149,6 +149,5 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(RegionKind<'_>, 20);
-    static_assert_size!(ty::WithCachedTypeInfo<RegionKind<'_>>, 28);
     // tidy-alphabetical-end
 }

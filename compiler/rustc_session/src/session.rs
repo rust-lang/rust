@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
+use rustc_abi::PackCoroutineLayout;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -440,10 +441,10 @@ pub struct CodegenBackendInit {
     pub global_backend_features: Vec<String>,
 
     /// See `Session::replaced_intrinsics`.
-    pub replaced_intrinsics: Vec<Symbol>,
+    pub replaced_rustc_intrinsics: Vec<Symbol>,
 
     /// See `Session::fallback_intrinsics`.
-    pub fallback_intrinsics: Vec<Symbol>,
+    pub fallback_rustc_intrinsics: Vec<Symbol>,
 
     /// See `Session::thin_lto_supported`.
     pub thin_lto_supported: bool = true,
@@ -534,11 +535,11 @@ pub struct Session {
 
     /// A list of all intrinsics that the current codegen backend definitely replaces with its own
     /// implementations, which means their fallback bodies do not need to be monomorphized.
-    pub replaced_intrinsics: FxHashSet<Symbol>,
+    pub replaced_rustc_intrinsics: FxHashSet<Symbol>,
 
     /// A list of all intrinsics that the current codegen backend definitely does *not* replace
     /// with its own implementations, which means their fallback bodies can be MIR-inlined.
-    pub fallback_intrinsics: FxHashSet<Symbol>,
+    pub fallback_rustc_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
@@ -1497,8 +1498,8 @@ pub fn build_session(
 
     let CodegenBackendInit {
         global_backend_features,
-        replaced_intrinsics,
-        fallback_intrinsics,
+        replaced_rustc_intrinsics: replaced_intrinsics,
+        fallback_rustc_intrinsics: fallback_intrinsics,
         thin_lto_supported,
     } = codegen_backend_init;
 
@@ -1529,8 +1530,8 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         wasm_proc_macro_filesearch,
-        replaced_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
-        fallback_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
+        replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
+        fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
         thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
@@ -1858,6 +1859,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.packed_stack {
         if sess.target.arch != Arch::S390x {
             sess.dcx().emit_err(diagnostics::UnsupportedPackedStack);
+        }
+    }
+
+    match sess.opts.unstable_opts.pack_coroutine_layout {
+        PackCoroutineLayout::Classic => {}
+        PackCoroutineLayout::CapturesOnly => {
+            sess.dcx().emit_warn(diagnostics::PackCoroutineLayoutNotImplemented);
         }
     }
 

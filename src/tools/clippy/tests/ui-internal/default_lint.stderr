@@ -6,7 +6,7 @@ LL | |
 LL | |     pub clippy::TEST_LINT_DEFAULT,
 LL | |     Warn,
 LL | |     "default lint description",
-LL | |     report_in_external_macro: true
+LL | |     @report_in_external_macro = true
 LL | | }
    | |_^
    |
@@ -15,7 +15,7 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::default_lint)]
    |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

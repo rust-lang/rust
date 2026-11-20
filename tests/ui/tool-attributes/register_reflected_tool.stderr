@@ -1,0 +1,99 @@
+error: unrecognized tool option `reflect::c`
+  --> $DIR/register_reflected_tool.rs:12:22
+   |
+LL | #![register_tool(ccc(reflect::c))]
+   |                      ^^^^^^^^^^
+
+error: unrecognized tool option `mrow`
+  --> $DIR/register_reflected_tool.rs:13:22
+   |
+LL | #![register_tool(ddd(mrow))]
+   |                      ^^^^
+
+error[E0805]: malformed `register_tool` attribute input
+  --> $DIR/register_reflected_tool.rs:14:4
+   |
+LL | #![register_tool(eee(reflect, reflect))]
+   |    ^^^^^^^^^^^^^^^^^------------------^
+   |                     |
+   |                     expected a single argument here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(eee(reflect, reflect))]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
+   |
+
+error[E0805]: malformed `register_tool` attribute input
+  --> $DIR/register_reflected_tool.rs:15:4
+   |
+LL | #![register_tool(fff(mrow, reflect))]
+   |    ^^^^^^^^^^^^^^^^^---------------^
+   |                     |
+   |                     expected a single argument here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(fff(mrow, reflect))]
+LL + #![register_tool(tool1, tool2(reflect), ...)]
+   |
+
+error: the tool attribute `clippy` is predefined and cannot be marked as being available for reflection
+  --> $DIR/register_reflected_tool.rs:25:18
+   |
+LL | #![register_tool(clippy(reflect), rustfmt(reflect))]
+   |                  ^^^^^^^^^^^^^^^
+
+error: the tool attribute `rustfmt` is predefined and cannot be marked as being available for reflection
+  --> $DIR/register_reflected_tool.rs:25:35
+   |
+LL | #![register_tool(clippy(reflect), rustfmt(reflect))]
+   |                                   ^^^^^^^^^^^^^^^^
+
+error: the tool attribute `diagnostic` is predefined and cannot be marked as being available for reflection
+  --> $DIR/register_reflected_tool.rs:28:18
+   |
+LL | #![register_tool(diagnostic(reflect), miri(reflect), rust_analyzer(reflect))]
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error: the tool attribute `miri` is predefined and cannot be marked as being available for reflection
+  --> $DIR/register_reflected_tool.rs:28:39
+   |
+LL | #![register_tool(diagnostic(reflect), miri(reflect), rust_analyzer(reflect))]
+   |                                       ^^^^^^^^^^^^^
+
+error: the tool attribute `rust_analyzer` is predefined and cannot be marked as being available for reflection
+  --> $DIR/register_reflected_tool.rs:28:54
+   |
+LL | #![register_tool(diagnostic(reflect), miri(reflect), rust_analyzer(reflect))]
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+error: duplicate tool `ggg` registered
+  --> $DIR/register_reflected_tool.rs:18:18
+   |
+LL | #![register_tool(ggg)]
+   |                  --- already registered here
+LL | #![register_tool(ggg(reflect))]
+   |                  ^^^
+   |
+   = note: `#[deny(duplicate_tools)]` on by default
+
+error: duplicate tool `hhh` registered
+  --> $DIR/register_reflected_tool.rs:21:18
+   |
+LL | #![register_tool(hhh(reflect))]
+   |                  --- already registered here
+LL | #![register_tool(hhh)]
+   |                  ^^^
+
+warning: unknown diagnostic attribute
+  --> $DIR/register_reflected_tool.rs:42:15
+   |
+LL | #[diagnostic::a]
+   |               ^
+   |
+   = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+error: aborting due to 11 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0805`.

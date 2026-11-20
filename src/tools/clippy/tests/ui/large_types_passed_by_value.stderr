@@ -49,5 +49,17 @@ error: this argument (N byte) is passed by value, but might be more efficient if
 LL | fn foo(x: LargeAndCopy) {
    |           ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
 
-error: aborting due to 8 previous errors
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> tests/ui/large_types_passed_by_value.rs:78:17
+   |
+LL |     fn named(x: Big);
+   |                 ^^^ help: consider passing by reference instead: `&Big`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> tests/ui/large_types_passed_by_value.rs:80:19
+   |
+LL |     fn unnamed(_: Big);
+   |                   ^^^ help: consider passing by reference instead: `&Big`
+
+error: aborting due to 10 previous errors
 

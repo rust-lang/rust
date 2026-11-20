@@ -20,10 +20,9 @@ mod simd;
 use cranelift_codegen::ir::{
     AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
 };
-use rustc_middle::ty;
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::layout::{HasTypingEnv as _, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
+use rustc_middle::ty::{self, GenericArgs, Intrinsic, IntrinsicDef};
 use rustc_span::{Spanned, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 
@@ -284,8 +283,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         return Err(Instance::new_raw(instance.def_id(), instance.args));
     }
 
-    let intrinsic = fx.tcx.item_name(instance.def_id());
+    let intrinsic = fx.tcx.intrinsic(instance.def_id()).unwrap();
     let instance_args = instance.args;
+
+    let Intrinsic::Rustc(intrinsic) = intrinsic.name else {
+        // Backend intrinsics use their fallback bodies for now.
+        return intrinsic_fallback(instance, intrinsic, source_info);
+    };
 
     if intrinsic.as_str().starts_with("simd_") {
         self::simd::codegen_simd_intrinsic_call(
@@ -591,7 +595,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let ty = generic_args.type_at(0);
 
-            let requirement = ValidityRequirement::from_intrinsic(intrinsic);
+            let requirement = ValidityRequirement::from_rustc_intrinsic(intrinsic);
 
             if let Some(requirement) = requirement {
                 let do_panic = !fx
@@ -1450,18 +1454,26 @@ fn codegen_regular_intrinsic_call<'tcx>(
         // by converting the `InstanceKind::Intrinsic` to an `InstanceKind::Item`.
         _ => {
             let intrinsic = fx.tcx.intrinsic(instance.def_id()).unwrap();
-            if intrinsic.must_be_overridden {
-                span_bug!(
-                    source_info.span,
-                    "intrinsic {} must be overridden by codegen_cranelift, but isn't",
-                    intrinsic.name,
-                );
-            }
-            return Err(Instance::new_raw(instance.def_id(), instance.args));
+            return intrinsic_fallback(instance, intrinsic, source_info);
         }
     }
 
     let ret_block = fx.get_block(destination.unwrap());
     fx.bcx.ins().jump(ret_block, &[]);
     Ok(())
+}
+
+fn intrinsic_fallback<'tcx>(
+    instance: Instance<'tcx>,
+    intrinsic: IntrinsicDef,
+    source_info: mir::SourceInfo,
+) -> Result<(), Instance<'tcx>> {
+    if intrinsic.must_be_overridden {
+        span_bug!(
+            source_info.span,
+            "intrinsic {} must be overridden by codegen_cranelift, but isn't",
+            intrinsic.name,
+        );
+    }
+    return Err(Instance::new_raw(instance.def_id(), instance.args));
 }

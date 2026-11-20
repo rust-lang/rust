@@ -1048,6 +1048,7 @@ impl Display for Arguments<'_> {
     message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{:?}")]
+#[lang = "debug"]
 #[rustc_diagnostic_item = "Debug"]
 pub trait Debug: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]

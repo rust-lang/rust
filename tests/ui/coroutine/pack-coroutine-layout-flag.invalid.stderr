@@ -1,0 +1,2 @@
+error: incorrect value `invalid` for unstable option `pack-coroutine-layout` - either `classic` or `captures-only` was expected
+

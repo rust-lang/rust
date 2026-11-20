@@ -959,7 +959,7 @@ fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -
             true
         }
         Attribute::Parsed(p) => p.encode_cross_crate() == EncodeCrossCrate::Yes,
-        Attribute::Tool(_) | Attribute::DeriveHelper(_) => true,
+        Attribute::Tool { .. } | Attribute::DeriveHelper(_) => true,
     }
 }
 

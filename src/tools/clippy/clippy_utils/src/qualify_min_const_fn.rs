@@ -41,11 +41,12 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
             .caller_bounds()
             .all_clauses(cx.tcx)
             .iter()
-            .any(|bound| {
-                bound.as_trait_clause().is_some_and(|clause| {
+            .any(|bound| match bound.skip_binder() {
+                ty::ClauseKind::Trait(clause) => {
                     let did = clause.def_id();
                     did != sized_did && did != meta_sized_did
-                })
+                },
+                _ => false,
             })
     {
         return Err((
@@ -405,7 +406,7 @@ fn check_terminator<'tcx>(
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
                 // transmutes in const fn before we add more hacks to this.
-                if cx.tcx.is_intrinsic(fn_def_id, sym::transmute) {
+                if cx.tcx.is_rustc_intrinsic(fn_def_id, sym::transmute) {
                     return Err((
                         span,
                         "can only call `transmute` from const items, not `const fn`".into(),

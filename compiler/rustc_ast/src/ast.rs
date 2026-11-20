@@ -354,7 +354,7 @@ impl From<ParenthesizedArgs> for Box<GenericArgs> {
 pub struct ParenthesizedArgs {
     /// ```text
     /// Foo(A, B) -> C
-    /// ^^^^^^^^^^^^^^
+    ///    ^^^^^^^^^^^
     /// ```
     pub span: Span,
 
@@ -3556,17 +3556,6 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn is_word(&self) -> bool {
-        match self {
-            GeneratedAttr::AutomaticallyDerived => true,
-            GeneratedAttr::RustcConstUnstableDerived => false,
-            GeneratedAttr::Inline => true,
-            GeneratedAttr::DocHidden => false,
-            GeneratedAttr::CoverageOff => false,
-            GeneratedAttr::RustcTestMarker(_) => false,
-            GeneratedAttr::RustcTrivialFieldReads => false,
-        }
-    }
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
             GeneratedAttr::AutomaticallyDerived => None,

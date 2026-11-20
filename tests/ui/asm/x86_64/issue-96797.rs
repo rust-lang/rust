@@ -31,3 +31,6 @@ fn main() {
     }
     unsafe { call_foobar() };
 }
+
+//@ reference: asm.directives.supported-directives
+//@ reference: asm.operand-type.supported-operands-sym

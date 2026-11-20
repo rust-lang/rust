@@ -922,7 +922,7 @@ impl<'tcx> TyCtxt<'tcx> {
         name: &[Symbol],
     ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
         self.hir_attrs(id).iter().filter_map(|attr| {
-            if let rustc_attr_ir::Attribute::Tool(t) = attr
+            if let rustc_attr_ir::Attribute::Tool { item: t, .. } = attr
                 && *t.path.segments == *name
             {
                 Some(&**t)
