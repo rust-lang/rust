@@ -47,7 +47,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
 
                 for check in finder.into_found_enums() {
                     debug!("Inserting enum check");
-                    let new_block = split_block(basic_blocks, location);
+                    let new_block = split_block(basic_blocks, location, source_info);
 
                     match check {
                         EnumCheckType::Direct { op_size, .. }
@@ -60,10 +60,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                                 source_info.span,
                                 "cannot build enum discriminant from zero-sized type",
                             );
-                            basic_blocks[block].terminator = Some(Terminator {
-                                source_info,
-                                kind: TerminatorKind::goto(new_block),
-                            });
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
                             insert_direct_enum_check(
@@ -240,17 +236,21 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
 fn split_block(
     basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
     location: Location,
+    source_info: SourceInfo,
 ) -> BasicBlock {
-    let block_data = &mut basic_blocks[location.block];
+    basic_blocks.push_with(|new_block_idx, basic_blocks| {
+        let block_data = &mut basic_blocks[location.block];
 
-    // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData::maybe_unterminated_stmts(
-        block_data.statements.split_off(location.statement_index),
-        block_data.terminator.take(),
-        block_data.is_cleanup,
-    );
+        // Drain every statement after this one
+        let remaining_stmts = block_data.statements.split_off(location.statement_index);
 
-    basic_blocks.push(new_block)
+        // replace the old terminator with a goto to the new block
+        let new_terminator = Terminator { source_info, kind: TerminatorKind::goto(new_block_idx) };
+        let old_terminator = std::mem::replace(block_data.terminator_mut(), new_terminator);
+
+        // move the old terminator to the new basic block
+        BasicBlockData::new_stmts(remaining_stmts, old_terminator, block_data.is_cleanup)
+    })
 }
 
 /// Inserts the cast of an operand (any type) to a u128 value that holds the discriminant value.
@@ -404,7 +404,7 @@ fn insert_direct_enum_check<'tcx>(
         .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr_masked, rvalue)))));
 
     // Branch based on the discriminant value.
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::SwitchInt {
             discr: Operand::Copy(discr_masked),
@@ -415,7 +415,7 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
-    });
+    };
 }
 
 fn insert_uninhabited_enum_check<'tcx>(
@@ -442,7 +442,7 @@ fn insert_uninhabited_enum_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -460,7 +460,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }
 
 fn insert_niche_check<'tcx>(
@@ -525,7 +525,7 @@ fn insert_niche_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -537,5 +537,5 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }
