@@ -68,16 +68,6 @@ fn check_attr_not_crate_level(
     true
 }
 
-// FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
-// cx.expected_string_literal(span, _actual_literal);
-fn expected_string_literal(
-    cx: &mut AcceptContext<'_, '_>,
-    span: Span,
-    _actual_literal: Option<&MetaItemLit>,
-) {
-    cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
-}
-
 fn parse_notable_trait(
     cx: &mut AcceptContext<'_, '_>,
     path: &OwnedPathParser,
@@ -209,7 +199,7 @@ fn parse_keyword_and_attribute(
     };
 
     let Some(value) = nv.value_as_str() else {
-        expected_string_literal(cx, nv.value_span, Some(nv.value_as_lit()));
+        cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
         return;
     };
 
@@ -693,7 +683,7 @@ impl DocParser {
                 };
 
                 let Some(s) = nv.value_as_str() else {
-                    expected_string_literal(cx, nv.value_span, Some(nv.value_as_lit()));
+                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                     return;
                 };
 
@@ -881,7 +871,7 @@ impl DocParser {
             }
             ArgParser::NameValue(nv) => {
                 if nv.value_as_str().is_none() {
-                    expected_string_literal(cx, nv.value_span, Some(nv.value_as_lit()));
+                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                 } else {
                     unreachable!(
                         "Should have been handled at the same time as sugar-syntaxed doc comments"

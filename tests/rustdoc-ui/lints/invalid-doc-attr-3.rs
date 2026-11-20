@@ -14,5 +14,4 @@
 //~^ ERROR
 #[doc = 1]
 //~^ ERROR
-//~| WARN
 pub struct X;
