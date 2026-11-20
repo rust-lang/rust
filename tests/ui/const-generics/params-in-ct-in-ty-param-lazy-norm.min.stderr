@@ -1,11 +1,11 @@
 error: generic parameters with a default must be trailing
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:10:12
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:7:12
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |            ^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:6:44
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:4:44
    |
 LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    |                                            ^ cannot perform const operation using `T`
@@ -15,7 +15,7 @@ LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error[E0128]: generic parameter defaults cannot reference parameters before they are declared
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:10:21
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:7:21
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |                     ^ cannot reference `N` before it is declared

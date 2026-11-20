@@ -1937,17 +1937,26 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RejectImplicitForwardReferencesToParam<'
         if !ct.has_param() {
             return ct;
         }
-        if let ty::ConstKind::Param(param) = ct.kind()
-            && param.index >= self.index
-        {
-            let guar =
-                self.icx.dcx().emit_err(crate::diagnostics::ImplicitForwardReferenceToParam {
-                    span: self.span,
-                    subject: self.subject,
-                    param: param.name,
-                });
-            return ty::Const::new_error(self.cx(), guar);
+        match ct.kind() {
+            // HACK(generic_const_exprs): Never look into GCE anon consts since they inherit all
+            // generic params from the parent (unless they're in a const param default) and so we
+            // would always mistrigger. Of course, that also means not detecting real forward
+            // references but that's been an issue long before PR #161998 (see #106994 or #105238).
+            // Given that GCE will soon be removed in favor *GCA, it's fine to keep ignoring this.
+            ty::ConstKind::Alias(
+                _,
+                ty::AliasConst { kind: ty::AliasConstKind::Anon { .. }, .. },
+            ) => ct,
+            ty::ConstKind::Param(param) if param.index >= self.index => {
+                let guar =
+                    self.icx.dcx().emit_err(crate::diagnostics::ImplicitForwardReferenceToParam {
+                        span: self.span,
+                        subject: self.subject,
+                        param: param.name,
+                    });
+                return ty::Const::new_error(self.cx(), guar);
+            }
+            _ => ct.super_fold_with(self),
         }
-        ct.super_fold_with(self)
     }
 }
