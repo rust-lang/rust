@@ -1,0 +1,14 @@
+error: `no_common_outliving_arg<'_, '_, Captured<'_>>::{opaque#0}<'_, '_>` does not live long enough
+  --> $DIR/rpit-two-lifetimes-liveness.rs:31:25
+   |
+LL |     println!("escaped = {escaped:?}");
+   |                         ^^^^^^^^^^^
+
+error: `bounds_are_not_contents::{opaque#0}<'_, '_>` does not live long enough
+  --> $DIR/rpit-two-lifetimes-liveness.rs:39:25
+   |
+LL |     println!("escaped = {escaped:?}");
+   |                         ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

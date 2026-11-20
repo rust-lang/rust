@@ -1,0 +1,36 @@
+error: lifetime may not live long enough
+  --> $DIR/specialized-projection-unmentioned-type-arg.rs:39:5
+   |
+LL | fn hide<'a, 'b, P>(p: P) -> impl Debug + 'a + 'b {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |
+LL |     <P as Select<'a, 'b>>::make(p)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/specialized-projection-unmentioned-type-arg.rs:39:5
+   |
+LL | fn hide<'a, 'b, P>(p: P) -> impl Debug + 'a + 'b {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |
+LL |     <P as Select<'a, 'b>>::make(p)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: one or more lifetime errors were found in this item
+  --> $DIR/specialized-projection-unmentioned-type-arg.rs:37:4
+   |
+LL | fn hide<'a, 'b, P>(p: P) -> impl Debug + 'a + 'b {
+   |    ^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
+
+error: aborting due to 3 previous errors
+

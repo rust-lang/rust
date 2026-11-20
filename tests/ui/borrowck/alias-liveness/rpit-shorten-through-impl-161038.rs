@@ -76,7 +76,36 @@ fn through_impl_header() {
     println!("{wrong}");
 }
 
+trait OutlivesProjection<'a, 'b> {
+    type Output: Produce<'a> + 'b;
+    fn shorten(x: &'a Payload) -> Self::Output;
+}
+impl<'a: 'b, 'b> OutlivesProjection<'a, 'b> for () {
+    type Output = &'a Payload;
+    fn shorten(x: &'a Payload) -> Self::Output {
+        x
+    }
+}
+
+fn make_producer_projection<'a, 'b>(payload: &'a Payload) -> impl Produce<'a> + 'b + use<'a, 'b>
+where
+    (): OutlivesProjection<'a, 'b>,
+{
+    <() as OutlivesProjection<'a, 'b>>::shorten(payload)
+}
+
+fn through_concrete_projection() {
+    let wrong: &Payload;
+    {
+        let x: Box<Payload> = Box::new(Box::new(1));
+        let r: &Payload = &*x; //[nll]~ ERROR `*x` does not live long enough
+        wrong = make_producer_projection(r).produce();
+    }
+    println!("{wrong}");
+}
+
 fn main() {
     through_alias_param();
     through_impl_header();
+    through_concrete_projection();
 }

@@ -24,6 +24,19 @@ LL |     }
 LL |     println!("{wrong}");
    |                ----- borrow later used here
 
-error: aborting due to 2 previous errors
+error[E0597]: `*x` does not live long enough
+  --> $DIR/rpit-shorten-through-impl-161038.rs:101:27
+   |
+LL |         let x: Box<Payload> = Box::new(Box::new(1));
+   |             - binding `x` declared here
+LL |         let r: &Payload = &*x;
+   |                           ^^^ borrowed value does not live long enough
+LL |         wrong = make_producer_projection(r).produce();
+LL |     }
+   |     - `*x` dropped here while still borrowed
+LL |     println!("{wrong}");
+   |                ----- borrow later used here
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0597`.

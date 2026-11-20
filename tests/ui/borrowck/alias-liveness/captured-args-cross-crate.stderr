@@ -1,0 +1,93 @@
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/captured-args-cross-crate.rs:13:10
+   |
+LL |     let s = String::new();
+   |         - binding `s` declared here
+LL |     let val = captured_args::late(&s);
+   |                                   -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(val);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let val = captured_args::late(&s.clone());
+   |                                     ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/captured-args-cross-crate.rs:21:10
+   |
+LL |     let s = String::new();
+   |         - binding `s` declared here
+LL |     let val = captured_args::early(&s);
+   |                                    -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(val);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let val = captured_args::early(&s.clone());
+   |                                      ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/captured-args-cross-crate.rs:29:10
+   |
+LL |     let s = String::new();
+   |         - binding `s` declared here
+LL |     let val = captured_args::type_param(&s);
+   |                                         -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(val);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let val = captured_args::type_param(&s.clone());
+   |                                           ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/captured-args-cross-crate.rs:37:10
+   |
+LL |     let s = String::new();
+   |         - binding `s` declared here
+LL |     let val = T::late(&s);
+   |                       -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(val);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let val = T::late(&s.clone());
+   |                         ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/captured-args-cross-crate.rs:45:10
+   |
+LL |     let s = String::new();
+   |         - binding `s` declared here
+LL |     let val = T::early(&s);
+   |                        -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(val);
+   |          --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let val = T::early(&s.clone());
+   |                          ++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

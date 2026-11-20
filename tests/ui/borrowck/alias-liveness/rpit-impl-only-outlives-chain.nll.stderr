@@ -1,0 +1,123 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-impl-only-outlives-chain.rs:51:38
+   |
+LL |     let x = [1, 2, 3];
+   |         - binding `x` declared here
+LL |     let short = Rc::new(RefCell::new(&x));
+   |                                      ^^ borrowed value does not live long enough
+LL |
+LL |     hide(long.clone()).swap((|a| a)(hide(short)));
+   |                                  - returning this value requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/rpit-impl-only-outlives-chain.rs:53:37
+   |
+LL |     hide(long.clone()).swap((|a| a)(hide(short)));
+   |                                     ^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn hide<'a: 'm, 'm, 'b>(x: Rc<RefCell<&'a [i32; 3]>>) -> impl Swap + 'b + use<'b>
+   |                                                                         +++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-impl-only-outlives-chain.rs:70:38
+   |
+LL |     let x = [1, 2, 3];
+   |         - binding `x` declared here
+LL |     let short = Rc::new(RefCell::new(&x));
+   |                                      ^^ borrowed value does not live long enough
+LL |
+LL |     hide_type(long.clone()).swap((|a| a)(hide_type(short)));
+   |                                       - returning this value requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/rpit-impl-only-outlives-chain.rs:72:42
+   |
+LL |     hide_type(long.clone()).swap((|a| a)(hide_type(short)));
+   |                                          ^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn hide_type<'m, 'b, T: Swap + 'm>(x: T) -> impl Swap + 'b + use<'b, T>
+   |                                                            ++++++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-impl-only-outlives-chain.rs:124:42
+   |
+LL |         let x = [1, 2, 3];
+   |             - binding `x` declared here
+LL |         let short = Rc::new(RefCell::new(&x));
+   |                                          ^^ borrowed value does not live long enough
+LL |
+LL |         hide::<()>(long.clone()).swap((|a| a)(hide::<()>(short)));
+   |                                            - returning this value requires that `x` is borrowed for `'static`
+...
+LL |     }
+   |     - `x` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/rpit-impl-only-outlives-chain.rs:126:47
+   |
+LL |         hide::<()>(long.clone()).swap((|a| a)(hide::<()>(short)));
+   |                                               ^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL |     fn hide<'a, 'm, 'b, G: Family>(x: Rc<RefCell<&'a [i32; 3]>>) -> impl Swap + 'b + use<'b, G>
+   |                                                                                    ++++++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-impl-only-outlives-chain.rs:134:42
+   |
+LL |         let x = [1, 2, 3];
+   |             - binding `x` declared here
+LL |         let short = Rc::new(RefCell::new(&x));
+   |                                          ^^ borrowed value does not live long enough
+LL |
+LL |         hide_implied::<()>(long.clone(), None).swap((|a| a)(hide_implied::<()>(short, None)));
+   |                                                          - returning this value requires that `x` is borrowed for `'static`
+...
+LL |     }
+   |     - `x` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/rpit-impl-only-outlives-chain.rs:136:61
+   |
+LL |         hide_implied::<()>(long.clone(), None).swap((|a| a)(hide_implied::<()>(short, None)));
+   |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL |     ) -> impl Swap + 'b + use<'b, G>
+   |                         ++++++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-impl-only-outlives-chain.rs:144:42
+   |
+LL |         let x = [1, 2, 3];
+   |             - binding `x` declared here
+LL |         let short = Rc::new(RefCell::new(&x));
+   |                                          ^^ borrowed value does not live long enough
+LL |
+LL |         hide_declared::<()>(long.clone()).swap((|a| a)(hide_declared::<()>(short)));
+   |                                                     - returning this value requires that `x` is borrowed for `'static`
+...
+LL |     }
+   |     - `x` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/rpit-impl-only-outlives-chain.rs:146:56
+   |
+LL |         hide_declared::<()>(long.clone()).swap((|a| a)(hide_declared::<()>(short)));
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL |     ) -> impl Swap + 'b + use<'b, G>
+   |                         ++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
