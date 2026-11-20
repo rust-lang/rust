@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Znext-solver=globally -Zpolonius=off
 //@ [polonius] compile-flags: -Znext-solver=globally -Zpolonius=next
-//@ [polonius] known-bug: unknown
-//@ [polonius] check-pass
 
 // An impl that proves a given where clause may provide extra outlives
 // relationships that mean a lifetime can end up in the hidden type, so we are
@@ -45,11 +43,12 @@ where
     <() as Shorten<'m, 'b>>::shorten(x)
 }
 
+// Still unsound under polonius
 fn dangle() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide(long.clone()).swap((|a| a)(hide(short)));
     let res: &'static [i32; 3] = *long.borrow();
     res
@@ -68,7 +67,7 @@ fn dangle_type() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide_type(long.clone()).swap((|a| a)(hide_type(short)));
     let res: &'static [i32; 3] = *long.borrow();
     res
@@ -118,11 +117,12 @@ mod projection {
         G::make(x)
     }
 
+    // Still unsound under polonius
     fn dangle() -> &'static [i32; 3] {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide::<()>(long.clone()).swap((|a| a)(hide::<()>(short)));
         let res: &'static [i32; 3] = *long.borrow();
         res
@@ -132,17 +132,18 @@ mod projection {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide_implied::<()>(long.clone(), None).swap((|a| a)(hide_implied::<()>(short, None)));
         let res: &'static [i32; 3] = *long.borrow();
         res
     }
 
+    // Still unsound under polonius
     fn dangle_declared() -> &'static [i32; 3] {
         let long = Rc::new(RefCell::new(&[4, 5, 6]));
         let x = [1, 2, 3];
         let short = Rc::new(RefCell::new(&x));
-        //[nll]~^ ERROR `x` does not live long enough
+        //~^ ERROR `x` does not live long enough
         hide_declared::<()>(long.clone()).swap((|a| a)(hide_declared::<()>(short)));
         let res: &'static [i32; 3] = *long.borrow();
         res

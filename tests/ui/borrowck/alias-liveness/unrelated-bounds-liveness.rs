@@ -1,10 +1,10 @@
-//@ check-pass
-//@ known-bug: #163886
 //@ edition: 2024
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=off
+//@ [polonius] compile-flags: -Zpolonius=next
 
-// This test shows that aliases can end up in the hidden type of an impl Trait,
-// and that we currently don't properly consider generics live that *should* be.
-// This affects both NLL and Polonius Alpha.
+// This test shows that aliases can end up in the hidden type of an impl Trait.
 
 #![forbid(unsafe_code)]
 
@@ -37,6 +37,7 @@ fn base() {
     {
         let v: Vec<u8> = vec![42];
         escaped = make(&v[0]);
+        //~^ ERROR `v` does not live long enough
     }
     let reused: Vec<u8> = vec![7];
     show(escaped, &reused);
@@ -66,6 +67,7 @@ mod item_bounds {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -126,6 +128,7 @@ mod lifetime_arg {
         {
             let v: Vec<u8> = vec![42];
             escaped = trait_arg::make((), &v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -136,6 +139,7 @@ mod lifetime_arg {
         {
             let v: Vec<u8> = vec![42];
             escaped = gat_arg::make((), &v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -164,6 +168,7 @@ mod nested {
         {
             let v: Vec<u8> = vec![42];
             escaped = outer(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -193,6 +198,7 @@ mod rpitit {
         {
             let v: Vec<u8> = vec![42];
             escaped = <() as Make>::make(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -214,6 +220,7 @@ mod three_bounds {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -276,6 +283,7 @@ mod one_lifetime {
         {
             let v: Vec<u8> = vec![42];
             escaped = make((&keep[0], &v[0]));
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -313,8 +321,9 @@ mod dead_gat_arg {
     pub fn run() {
         let escaped;
         {
-            let local = 0;
-            escaped = outer::<()>(<()>::make(&0, &local), &local);
+            let v = 0;
+            escaped = outer::<()>(<()>::make(&0, &v), &v);
+            //~^ ERROR `v` does not live long enough
         }
         let reused = vec![7];
         show(escaped, &reused);
@@ -341,6 +350,7 @@ mod implied_bounds {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0], PhantomData, PhantomData);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);

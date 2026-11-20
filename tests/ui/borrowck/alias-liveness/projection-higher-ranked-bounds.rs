@@ -1,5 +1,3 @@
-//@ check-pass
-//@ known-bug: unknown
 //@ edition: 2024
 
 // We need to treat args as live if an impl *could* supply the bounds that allow
@@ -29,6 +27,7 @@ fn test<T: for<'a, 'b, 'c> Tr<'a, 'b, 'c>>() {
     {
         let v: Vec<u8> = vec![42];
         escaped = run::<'_, '_, '_, T>(&v[0]);
+        //~^ ERROR `v` does not live long enough
     }
     let reused: Vec<u8> = vec![7];
     show(escaped, &reused);

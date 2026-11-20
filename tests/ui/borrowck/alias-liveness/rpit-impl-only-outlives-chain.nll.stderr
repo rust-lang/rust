@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/rpit-impl-only-outlives-chain.rs:51:38
+  --> $DIR/rpit-impl-only-outlives-chain.rs:50:38
    |
 LL |     let x = [1, 2, 3];
    |         - binding `x` declared here
@@ -13,7 +13,7 @@ LL | }
    | - `x` dropped here while still borrowed
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
-  --> $DIR/rpit-impl-only-outlives-chain.rs:53:37
+  --> $DIR/rpit-impl-only-outlives-chain.rs:52:37
    |
 LL |     hide(long.clone()).swap((|a| a)(hide(short)));
    |                                     ^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | fn hide<'a: 'm, 'm, 'b>(x: Rc<RefCell<&'a [i32; 3]>>) -> impl Swap + 'b + u
    |                                                                         +++++++++
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/rpit-impl-only-outlives-chain.rs:70:38
+  --> $DIR/rpit-impl-only-outlives-chain.rs:69:38
    |
 LL |     let x = [1, 2, 3];
    |         - binding `x` declared here
@@ -37,7 +37,7 @@ LL | }
    | - `x` dropped here while still borrowed
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
-  --> $DIR/rpit-impl-only-outlives-chain.rs:72:42
+  --> $DIR/rpit-impl-only-outlives-chain.rs:71:42
    |
 LL |     hide_type(long.clone()).swap((|a| a)(hide_type(short)));
    |                                          ^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     ) -> impl Swap + 'b + use<'b, G>
    |                         ++++++++++++
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/rpit-impl-only-outlives-chain.rs:144:42
+  --> $DIR/rpit-impl-only-outlives-chain.rs:145:42
    |
 LL |         let x = [1, 2, 3];
    |             - binding `x` declared here
@@ -109,7 +109,7 @@ LL |     }
    |     - `x` dropped here while still borrowed
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
-  --> $DIR/rpit-impl-only-outlives-chain.rs:146:56
+  --> $DIR/rpit-impl-only-outlives-chain.rs:147:56
    |
 LL |         hide_declared::<()>(long.clone()).swap((|a| a)(hide_declared::<()>(short)));
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
