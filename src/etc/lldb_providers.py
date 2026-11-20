@@ -1,13 +1,24 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from enum import Flag, auto
-from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Dict,
+    Final,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+)
 from weakref import WeakValueDictionary
 
 from lldb import (
     SBData,
     SBError,
+    SBTarget,
     SBValue,
     eBasicTypeChar32,
     eBasicTypeDouble,
@@ -26,7 +37,7 @@ from lldb import (
 from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
-    from lldb import SBProcess, SBTarget, SBType, SBTypeStaticField
+    from lldb import SBProcess, SBType
 
 # from lldb.formatters import Logger
 
@@ -737,6 +748,223 @@ class MSVCStrSyntheticProvider:
         return self.type_name
 
 
+class EnumLayout:
+    exact_variants: Dict[int, Tuple[int, str]]
+    """
+    A dict of `discriminant: (variant_index, variant_name)`
+    """
+
+    # I'm like 95% sure there can only ever be 1 range variant, but the niche enum generation is a
+    # bit obtuse so just to be safe, we'll store them as if there can be more than one
+    range_variants: Sequence[Tuple[int, str, Optional[range]]]
+    """
+    A sequence of `(variant_index, variant_name, discriminant)` tuples. `discriminant` comes in 2
+    varieties:
+        1. `range` - discr must be within range, note that `start` can be greater than `end`, in
+        which case a discr match is `discr <= end or discr >= start`
+
+        2. `None` - is matched when no other variant matches
+    """
+
+    __slots__ = ("exact_variants", "range_variants")
+
+    def __init__(self, ty: SBType, target: SBTarget):
+        self.exact_variants = {}
+        self.range_variants = []
+        if ty.GetName().startswith("enum2$<"):
+            self.variants_from_msvc(ty, target)
+
+    def get_variant_idx_and_name(self, tag: int) -> Optional[Tuple[int, str]]:
+        if (result := self.exact_variants.get(tag)) is not None:
+            return result
+
+        for variant in self.range_variants:
+            discr = variant[2]
+            if discr is None:  # for non-msvc targets
+                return variant[:-1]
+
+            # Discriminants are implemented via `WrappingRange` in Rust, which is an
+            # *inclusive range* (e.g. 0..=n). If `start` is greater than `end`, the range
+            # wraps.
+            if discr.start <= discr.stop:
+                if discr.start <= tag <= discr.stop:
+                    return variant[:-1]
+            elif tag >= discr.start or tag <= discr.stop:
+                return variant[:-1]
+
+        return None
+
+    def variants_from_msvc(self, ty: SBType, target: SBTarget):
+        field_count: int = ty.GetNumberOfFields()
+
+        # single variant enums output the `tag` field as a static instead of a field
+        # See: compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
+        # `build_single_variant_union_fields`
+        if field_count == 1:
+            # `GetConstantValue` doesn't work here because this tag value isn't `const` qualified.
+            # There's only one variant though, so no trouble pulling the name from the enum type.
+            name = ty.GetStaticFieldWithName("tag").GetType().GetEnumMembers()[0].name
+            self.range_variants = ((0, name, None),)
+            return
+
+        # at time of writing (Nov 2026), `tag` is ALWAYS the last field.
+        # for 128 bit enums, the final field is an anonymous struct w/ no field name:
+        # ```
+        # (lldb) script lldb.frame.var("big_discr").GetType().GetFieldAtIndex(2)
+        # +0: (struct  {
+        #     unsigned long long tag128_lo;
+        #     unsigned long long tag128_hi;
+        # }) (null)
+        # ```
+        # We can use the absence of a name on that field to check
+        # if we need to process 128-bit discrs
+        is_128bit = ty.GetFieldAtIndex(ty.GetNumberOfFields() - 1).GetName() is None
+        range_variants = []
+
+        for i in range(ty.GetNumberOfFields() - 1):
+            field = ty.GetFieldAtIndex(i)
+            variant = field.GetType()
+
+            if is_128bit:
+                discr = EnumLayout.msvc_discr_128(variant, target)
+            else:
+                discr = EnumLayout.msvc_discr(variant, target)
+
+            name = (
+                variant.GetStaticFieldWithName("NAME")
+                .GetConstantValue(target)
+                .GetValue()
+            )
+
+            if isinstance(discr, int):
+                self.exact_variants[discr] = (i, name)
+            else:
+                range_variants.append((i, name, discr))
+
+        self.range_variants = tuple(range_variants)
+
+    @staticmethod
+    def msvc_discr(ty: SBType, target: SBTarget) -> int | range:
+        if (discr := ty.GetStaticFieldWithName("DISCR_EXACT")).IsValid():
+            return discr.GetConstantValue(target).GetValueAsUnsigned()
+
+        start = (
+            ty.GetStaticFieldWithName("DISCR_BEGIN")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+        end = (
+            ty.GetStaticFieldWithName("DISCR_END")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+
+        return range(start, end)
+
+    @staticmethod
+    def msvc_discr_128(ty: SBType, target: SBTarget) -> int | range:
+        if (lo := ty.GetStaticFieldWithName("DISCR128_EXACT_LO")).IsValid():
+            hi = ty.GetStaticFieldWithName("DISCR128_EXACT_HI")
+
+            return (
+                hi.GetConstantValue(target).GetValueAsUnsigned() << 64
+            ) | lo.GetConstantValue(target).GetValueAsUnsigned()
+
+        start_hi = (
+            ty.GetStaticFieldWithName("DISCR128_BEGIN_HI")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+        start_lo = (
+            ty.GetStaticFieldWithName("DISCR128_BEGIN_LO")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+
+        end_hi = (
+            ty.GetStaticFieldWithName("DISCR128_END_HI")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+        end_lo = (
+            ty.GetStaticFieldWithName("DISCR128_END_LO")
+            .GetConstantValue(target)
+            .GetValueAsUnsigned()
+        )
+
+        start = (start_hi << 64) | start_lo
+        end = (end_hi << 64) | end_lo
+
+        return range(start, end)
+
+
+class EnumLayoutCache:
+    # Caching without 1. offering outdated info and 2. becoming a memory leak is somewhat difficult.
+    # I'm going to describe a bunch of different options and their tradeoffs so that nobody wastes
+    # their time investigating them again, so bear with me.
+    #
+    # The major issues are:
+    #   * What can we use as a top-level key?
+    #   * If the user recompiles and relaunches the application without closing LLDB, how can we
+    # ensure that the outdated entries are removed?
+    #
+    # While the second point isn't a super common usecase of LLDB, we don't want to throw it under
+    # the bus.
+    #
+    # SBType
+    # Using SBType as the key is difficult. SBType does not have a `GetID()`. `id(ty)` also doesn't
+    # work because LLDB creates a new python object each time a type is asked for, even if it's the
+    # same underlying type. `SBType` isn't hashable either. One option is to use `str(type)`, since
+    # that dumps the full type layout, though it does result in strings that can be pretty long. The
+    # nice part is that it would retain layouts of types that don't change on each recompile. The
+    # worrying part is that the to-string impl of `SBType` isn't exactly guaranteed, so it could
+    # change to e.g. just the type name at some point down the line and break things out from under
+    # us.
+    #
+    # SBModule
+    # Since the enum debuginfo is "artificial", `.GetModule` often returns an
+    # invalid module, so we aren't always able to use that UUID.
+    #
+    # SBTarget
+    # `SBTarget.GetID` exists, but I don't think a recompiled target counts as a "new" target w.r.t.
+    # this ID.
+    #
+    # SBProcess
+    # `SBProcess.GetUniqueID` is pretty reliable. This isn't the OS process ID, it's a unique int
+    # within LLDB itself. Since it's just an int, it's fast to use as a key, but also ends up
+    # not using info that doesn't change from launch-to-launch.
+    #
+    # So, all things considered, the safest option is probably `SBProcess.GetUniqueID` on the top
+    # level, and then by type name internally.
+
+    # We have to be somewhat careful to ensure that running multiple processes at once doesn't cause
+    # constant cache thrashing. Again, not super common, but something to be careful of. 8 was
+    # chosen somewhat arbitrarily, so this can be changed if it causes issues.
+    MAX_CACHE_SIZE: Final[int] = 8
+    cache: ClassVar[Dict[int, Dict[str, EnumLayout]]] = {}
+
+    @classmethod
+    def layout_for_valobj(cls, valobj: SBValue) -> EnumLayout:
+        uid = valobj.GetProcess().GetUniqueID()
+        if uid not in cls.cache:
+            if len(cls.cache) >= cls.MAX_CACHE_SIZE:
+                # Evict the oldest process
+                del cls.cache[next(iter(cls.cache))]
+
+            EnumLayoutCache.cache[uid] = {}
+
+        process = cls.cache[uid]
+
+        type_name = valobj.GetType().GetName()
+
+        if (layout := process.get(type_name)) is not None:
+            return layout
+
+        layout = EnumLayout(valobj.GetType(), valobj.GetTarget())
+        process[type_name] = layout
+        return layout
+
+
 def _getVariantName(variant: SBValue) -> str:
     """
     Since the enum variant's type name is in the form `TheEnumName::TheVariantName$Variant`,
@@ -836,8 +1064,9 @@ class MSVCEnumSyntheticProvider:
     variant: SBValue
     value: SBValue
     type_name: str
+    layout: EnumLayout
 
-    __slots__ = ("type_name", "valobj", "value", "variant")
+    __slots__ = ("layout", "type_name", "valobj", "value", "variant")
 
     @staticmethod
     def _normalize_type_name(name: str) -> str:
@@ -860,6 +1089,7 @@ class MSVCEnumSyntheticProvider:
         self.variant = valobj
         self.value = valobj
         self.type_name = self._normalize_type_name(self.valobj.GetTypeName())
+        self.layout = EnumLayoutCache.layout_for_valobj(valobj)
         self.update()
 
     def update(self):
@@ -876,55 +1106,6 @@ class MSVCEnumSyntheticProvider:
 
         if tag_val.IsValid():
             tag: int = tag_val.GetValueAsUnsigned()
-            for child in self.valobj.GetNonSyntheticValue().children:
-                if not child.name.startswith("variant"):
-                    continue
-
-                variant_type: SBType = child.GetType()
-                exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
-                    "DISCR_EXACT"
-                )
-
-                if exact.IsValid():
-                    discr: int = exact.GetConstantValue(
-                        self.valobj.target
-                    ).GetValueAsUnsigned()
-                    if tag == discr:
-                        self.variant = child
-                        self.value = child.GetChildMemberWithName("value")
-                        if (synth := self.value.GetSyntheticValue()).IsValid():
-                            self.value = synth
-
-                        return
-                else:  # if invalid, DISCR must be a range
-                    begin: int = (
-                        variant_type.GetStaticFieldWithName("DISCR_BEGIN")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-                    end: int = (
-                        variant_type.GetStaticFieldWithName("DISCR_END")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-
-                    # begin isn't necessarily smaller than end, so we must test for both cases
-                    if begin < end:
-                        if begin <= tag <= end:
-                            self.variant = child
-                            self.value = child.GetChildMemberWithName("value")
-                            if (synth := self.value.GetSyntheticValue()).IsValid():
-                                self.value = synth
-
-                            return
-                    else:
-                        if tag >= begin or tag <= end:
-                            self.variant = child
-                            self.value = child.GetChildMemberWithName("value")
-                            if (synth := self.value.GetSyntheticValue()).IsValid():
-                                self.value = synth
-
-                            return
         else:  # if invalid, tag is a 128 bit value
             tag_lo: int = self.valobj.GetChildMemberWithName(
                 "tag128_lo"
@@ -935,73 +1116,17 @@ class MSVCEnumSyntheticProvider:
 
             tag: int = (tag_hi << 64) | tag_lo
 
-            for child in self.valobj.GetNonSyntheticValue().children:
-                if not child.name.startswith("variant"):
-                    continue
+        result = self.layout.get_variant_idx_and_name(tag)
 
-                variant_type: SBType = child.GetType()
-                exact_lo_field: SBTypeStaticField = variant_type.GetStaticFieldWithName(
-                    "DISCR128_EXACT_LO"
-                )
+        if result is None:
+            self.variant = self.valobj
+            self.value = self.valobj
+            return
 
-                if exact_lo_field.IsValid():
-                    exact_lo: int = exact_lo_field.GetConstantValue(
-                        self.valobj.target
-                    ).GetValueAsUnsigned()
-                    exact_hi: int = (
-                        variant_type.GetStaticFieldWithName("DISCR128_EXACT_HI")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-
-                    discr: int = (exact_hi << 64) | exact_lo
-                    if tag == discr:
-                        self.variant = child
-                        self.value = child.GetChildMemberWithName("value")
-                        if (synth := self.value.GetSyntheticValue()).IsValid():
-                            self.value = synth
-                        return
-                else:  # if invalid, DISCR must be a range
-                    begin_lo: int = (
-                        variant_type.GetStaticFieldWithName("DISCR128_BEGIN_LO")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-                    begin_hi: int = (
-                        variant_type.GetStaticFieldWithName("DISCR128_BEGIN_HI")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-
-                    end_lo: int = (
-                        variant_type.GetStaticFieldWithName("DISCR128_END_LO")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-                    end_hi: int = (
-                        variant_type.GetStaticFieldWithName("DISCR128_END_HI")
-                        .GetConstantValue(self.valobj.target)
-                        .GetValueAsUnsigned()
-                    )
-
-                    begin = (begin_hi << 64) | begin_lo
-                    end = (end_hi << 64) | end_lo
-
-                    # begin isn't necessarily smaller than end, so we must test for both cases
-                    if begin < end:
-                        if begin <= tag <= end:
-                            self.variant = child
-                            self.value = child.GetChildMemberWithName("value")
-                        if (synth := self.value.GetSyntheticValue()).IsValid():
-                            self.value = synth
-                            return
-                    else:
-                        if tag >= begin or tag <= end:
-                            self.variant = child
-                            self.value = child.GetChildMemberWithName("value")
-                        if (synth := self.value.GetSyntheticValue()).IsValid():
-                            self.value = synth
-                            return
+        self.variant = self.valobj.GetChildAtIndex(result[0])
+        self.value = self.variant.GetChildMemberWithName("value")
+        if (synth := self.value.GetSyntheticValue()).IsValid():
+            self.value = synth
 
     def num_children(self) -> int:
         return self.value.GetNumChildren()
@@ -1022,26 +1147,14 @@ class MSVCEnumSyntheticProvider:
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     if valobj.TypeIsPointerType():
         valobj = valobj.Dereference()
-    enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
-    variant_names: SBType = valobj.target.FindFirstType(
-        f"{enum_synth.valobj.GetTypeName()}::VariantNames"
-    )
 
-    if LLDBFeature.StaticFields in FEATURE_FLAGS:
-        name_idx = (
-            enum_synth.variant.GetType()
-            .GetStaticFieldWithName("NAME")
-            .GetConstantValue(valobj.target)
-            .GetValueAsUnsigned()
-        )
-    else:
+    if LLDBFeature.StaticFields not in FEATURE_FLAGS:
         # LLDB versions prior to 19 do not have the `SBTypeGetStaticField` API, and have no way
         # to determine the value based on the tag field.
-        tag: SBValue = valobj.GetChildMemberWithName("tag")
+        tag_val: SBValue = valobj.GetChildMemberWithName("tag")
 
-        if tag.IsValid():
-            discr: int = tag.GetValueAsUnsigned()
-            return "".join(["{tag = ", str(tag.unsigned), "}"])
+        if tag_val.IsValid():
+            tag: int = tag_val.GetValueAsUnsigned()
         else:
             tag_lo: int = valobj.GetChildMemberWithName(
                 "tag128_lo"
@@ -1050,22 +1163,36 @@ def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
                 "tag128_hi"
             ).GetValueAsUnsigned()
 
-            discr: int = (tag_hi << 64) | tag_lo
+            tag: int = (tag_hi << 64) | tag_lo
 
-        return "".join(["{tag = ", str(discr), "}"])
+        return f"{{tag = {tag}}}"
 
-    name: str = variant_names.enum_members[name_idx].name
+    non_synth = valobj.GetNonSyntheticValue()
+    tag_val: SBValue = non_synth.GetChildMemberWithName("tag")
 
-    if enum_synth.num_children() == 0:
-        return name
+    if tag_val.IsValid():
+        tag: int = tag_val.GetValueAsUnsigned()
+    else:  # if invalid, tag is a 128 bit value
+        tag_lo: int = non_synth.GetChildMemberWithName("tag128_lo").GetValueAsUnsigned()
+        tag_hi: int = non_synth.GetChildMemberWithName("tag128_hi").GetValueAsUnsigned()
 
-    child_name: str = enum_synth.value.GetChildAtIndex(0).name
+        tag: int = (tag_hi << 64) | tag_lo
+
+    result = EnumLayoutCache.layout_for_valobj(non_synth).get_variant_idx_and_name(tag)
+
+    if result is None:
+        return f"{{tag = {tag}}}"
+
+    if valobj.GetNumChildren() == 0:
+        return result[1]
+
+    child_name: str = valobj.GetChildAtIndex(0).GetName()
     if child_name == "0" or child_name == "__0":
         # enum variant is a tuple struct
-        return name + TupleSummaryProvider(enum_synth.value, _dict)
+        return result[1] + TupleSummaryProvider(valobj, _dict)
     else:
         # enum variant is a regular struct
-        return name + StructSummaryProvider(enum_synth.value, _dict)
+        return result[1] + StructSummaryProvider(valobj, _dict)
 
 
 class TupleSyntheticProvider:
