@@ -1179,6 +1179,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 }
 
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
+    if tcx.is_impl_rpitit_param(param_def_id) {
+        return ObjectLifetimeDefault::Empty;
+    }
     // Scan the bounds and where-clauses on parameters to extract bounds of the form `T: 'a`
     // so as to determine the `ObjectLifetimeDefault` for each type parameter.
 
