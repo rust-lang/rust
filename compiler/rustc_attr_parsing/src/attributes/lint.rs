@@ -37,16 +37,15 @@ impl LintParser {
                 let p = parsers.last()?.meta_item()?;
                 let nv = p.args().as_name_value()?;
                 if !p.path().word_is(sym::reason) {
-                    // FIXME: We should recommend `reason` here
                     cx.emit_err(MalformedLintAttributeInput {
                         span: p.span(),
-                        help: MalformedLintAttributeInputHelp::Other { kind: kind.sym() },
+                        help: MalformedLintAttributeInputHelp::Reason {
+                            reason_span: p.path().span(),
+                        },
                         kind: kind.sym(),
                     });
-                } else {
-                    parsers = &parsers[..(parsers.len() - 1)];
                 }
-
+                parsers = &parsers[..(parsers.len() - 1)];
                 let reason = nv.expect_string_literal(cx)?;
                 reason
             };
