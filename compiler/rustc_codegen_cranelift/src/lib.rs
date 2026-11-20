@@ -128,7 +128,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         "cranelift"
     }
 
-    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
         use rustc_session::config::{InstrumentCoverage, LtoCli};
 
         match (sess.target.requires_lto, sess.early_lto()) {
@@ -153,15 +153,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
 
-        CodegenBackendInit {
+        let init = CodegenBackendInit {
             global_backend_features: vec![],
             replaced_rustc_intrinsics: vec![],
             fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
-        }
-    }
+        };
 
-    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         let target_features = match sess.target.arch {
             Arch::X86_64 if sess.target.os != Os::None => {
@@ -191,7 +189,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         // filled in by compiler-builtins. The only libc that provides these currently is glibc.
         let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
 
-        TargetConfig {
+        let config = TargetConfig {
             internal_target_features: UnordSet::from_iter(target_features),
             // `rustc_codegen_cranelift` polyfills functionality not yet
             // available in Cranelift.
@@ -200,7 +198,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             has_reliable_f16b: false,
             has_reliable_f128: has_reliable_f16_f128,
             has_reliable_f128_math,
-        }
+        };
+
+        (init, config)
     }
 
     fn print_version(&self) {

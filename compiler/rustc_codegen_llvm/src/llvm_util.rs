@@ -316,17 +316,48 @@ pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFe
     }
 }
 
+/// Extends the given list of target features with the LLVM target features that correspond
+/// to the given Rust target feature.
+/// This is written in curried style (returning a closure) so that it can be easily used with
+/// `target_spec_to_backend_features` and `flag_to_backend_features`.
+pub(crate) fn extend_with_llvm_features_for_rust_feature(
+    sess: &EarlySession,
+    llvm_features: &mut Vec<String>,
+) -> impl FnMut(/* rust_feature */ &str, /* enable */ bool) {
+    |rust_feature, enable| {
+        let enable_disable = if enable { '+' } else { '-' };
+        // We run through `to_llvm_features` when
+        // passing requests down to LLVM. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the LLVM name and the Rust name differ.
+        let Some(llvm_feature) = to_llvm_features(&sess.target, rust_feature) else { return };
+
+        llvm_features.extend(
+            std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name)).chain(
+                llvm_feature.dependencies.into_iter().filter_map(move |feat| {
+                    match (enable, feat) {
+                        (_, TargetFeatureFoldStrength::Both(f))
+                        | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {
+                            Some(format!("{enable_disable}{f}"))
+                        }
+                        _ => None,
+                    }
+                }),
+            ),
+        );
+    }
+}
+
 /// Used to generate cfg variables and apply features.
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
+pub(crate) fn target_config(sess: &EarlySession, global_llvm_features: &[String]) -> TargetConfig {
     require_inited();
-    let target_features = global_llvm_features(sess, /* for_cfg */ true);
 
     let triple = SmallCStr::new(&llvm_target(sess));
     let cpu = SmallCStr::new(target_cpu(sess));
-    let features = CString::new(target_features.join(",")).unwrap();
+    let features = CString::new(global_llvm_features.join(",")).unwrap();
     let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err));
 
@@ -683,23 +714,32 @@ fn llvm_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
     }
 }
 
-/// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
-/// `--target` and similar).
-///
-/// If `for_cfg` is `true` then we are assembling the feature list for the purpose of populating
-/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
-/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
-pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<String> {
+/// The list of LLVM features computed from the target itself as well as from `-Ctarget-cpu` and
+/// `-Zllvm-target-feature` and from `-C` flags that under the hood are mapped to target features in
+/// LLVM. Does NOT include the features in `-Ctarget-feature`!
+pub(crate) fn base_llvm_features(sess: &EarlySession) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
     // * Features from -Ctarget-cpu=*; are overridden by [^1]
     // * Features implied by --target; are overridden by
+    // * Features from -Zllvm-target-feature; are overridden by
+    // [this function is done here, the rest happens elsewhere]
     // * Features from -Ctarget-feature; are overridden by
-    // * function specific features.
+    // * function specific features
     //
     // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
     // through LLVM TargetMachine implementation.
+    //
+    // The reason this function stops before -Ctarget-feature is because for -Ctarget-feature we do
+    // *not* want backend-side implications to apply, only implications that we explicitly configure
+    // for Rust target features. The Rust session (for `cfg(target_feature)`) and the backend
+    // therefore start with the target features computed here, and then add -Ctarget-feature and
+    // function-specific features themselves. To ensure both are consistent in terms of which
+    // features end up being enabled, it is therefore necessary to do those two after everything
+    // else. (It is worth mentioning that the target features implied by --target are also Rust
+    // target features but for those, we *do* let the backend add its own implications before
+    // computing `cfg(target_feature)`).
     //
     // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
     // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
@@ -742,38 +782,11 @@ pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<St
         Some(_) | None => {}
     };
 
-    let mut extend_backend_features = |feature: &str, enable: bool| {
-        let enable_disable = if enable { '+' } else { '-' };
-        // We run through `to_llvm_features` when
-        // passing requests down to LLVM. This means that all in-language
-        // features also work on the command line instead of having two
-        // different names when the LLVM name and the Rust name differ.
-        let Some(llvm_feature) = to_llvm_features(&sess.target, feature) else { return };
-
-        features.extend(
-            std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name)).chain(
-                llvm_feature.dependencies.into_iter().filter_map(move |feat| {
-                    match (enable, feat) {
-                        (_, TargetFeatureFoldStrength::Both(f))
-                        | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {
-                            Some(format!("{enable_disable}{f}"))
-                        }
-                        _ => None,
-                    }
-                }),
-            ),
-        );
-    };
-
     // Features implied by an implicit or explicit `--target`.
-    target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
-
-    // -Ctarget-features. Skipped for `cfg` as there we parse -Ctarget-features directly instead of
-    // going via an LLVM target machine (which avoids accidentally picking up LLVM-level target
-    // feature implications that we do not want).
-    if !for_cfg {
-        target_features::flag_to_backend_features(sess, extend_backend_features);
-    }
+    target_features::target_spec_to_backend_features(
+        sess,
+        extend_with_llvm_features_for_rust_feature(sess, &mut features),
+    );
 
     // `-C` flags that map to LLVM target features.
     // We need to include them even with `only_base_features` as this is used to populate
@@ -791,10 +804,8 @@ pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<St
             features.push(feature.to_owned());
         } else {
             // LLVM seems to silently ignore entries without leading `+`/`-`. Let's emit a warning
-            // to avoid confusion. But only emit this warning once, under `for_cfg`.
-            if for_cfg {
-                sess.dcx().emit_warn(diagnostics::UnknownLlvmTargetFeaturePrefix { feature });
-            }
+            // to avoid confusion.
+            sess.dcx().emit_warn(diagnostics::UnknownLlvmTargetFeaturePrefix { feature });
         }
     }
 
