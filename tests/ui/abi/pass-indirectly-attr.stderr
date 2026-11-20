@@ -1,5 +1,5 @@
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/pass-indirectly-attr.rs:34:1
+  --> $DIR/pass-indirectly-attr.rs:37:1
    |
 LL | #[rustc_pass_indirectly_in_non_rustic_abis]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,8 +81,9 @@ error: fn_abi_of(extern_c) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-indirectly-attr.rs:19:1
+  --> $DIR/pass-indirectly-attr.rs:22:1
    |
 LL | pub extern "C" fn extern_c(_: Type) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -171,8 +172,9 @@ error: fn_abi_of(extern_rust) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-indirectly-attr.rs:26:1
+  --> $DIR/pass-indirectly-attr.rs:29:1
    |
 LL | pub extern "Rust" fn extern_rust(_: Type) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

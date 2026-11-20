@@ -1,0 +1,14 @@
+error: ptrauth discriminator encoding: "FDF16_DF16_E"
+  --> $DIR/discriminator-float-encoding.rs:27:1
+   |
+LL | extern "C" fn half(x: f16) -> f16 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FggE"
+  --> $DIR/discriminator-float-encoding.rs:32:1
+   |
+LL | extern "C" fn quad(x: f128) -> f128 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
