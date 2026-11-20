@@ -5,25 +5,13 @@
 use std::ffi::c_void;
 use std::ptr;
 
-pub type BOOL = i32;
-pub const FALSE: BOOL = 0i32;
-pub const TRUE: BOOL = 1i32;
+use windows_sys::Win32::Foundation::{FALSE, TRUE};
+use windows_sys::Win32::System::Threading::{
+    FlsAlloc, FlsFree, FlsGetValue, FlsSetValue, IsThreadAFiber, TlsAlloc, TlsFree, TlsGetValue,
+    TlsSetValue,
+};
 
-extern "system" {
-    fn TlsAlloc() -> u32;
-    fn TlsSetValue(key: u32, val: *mut c_void) -> BOOL;
-    fn TlsGetValue(key: u32) -> *mut c_void;
-    fn TlsFree(key: u32) -> BOOL;
-
-    fn FlsAlloc(lpcallback: Option<unsafe extern "system" fn(lpflsdata: *mut c_void)>) -> u32;
-    fn FlsSetValue(key: u32, val: *mut c_void) -> BOOL;
-    fn FlsGetValue(key: u32) -> *mut c_void;
-    fn FlsFree(key: u32) -> BOOL;
-
-    fn IsThreadAFiber() -> BOOL;
-}
-
-extern "system" fn dtor_unreachable(_val: *mut c_void) {
+extern "system" fn dtor_unreachable(_val: *const c_void) {
     unreachable!()
 }
 
@@ -36,7 +24,7 @@ fn fls_0_zero_value_does_not_run() {
 }
 
 fn fls_1_dtor_simple() {
-    extern "system" fn dtor(val: *mut c_void) {
+    extern "system" fn dtor(val: *const c_void) {
         assert!(!val.is_null());
         eprintln!("fls_1_dtor_simple");
 
@@ -60,12 +48,12 @@ fn fls_1_dtor_simple() {
 }
 
 fn fls_2_dtor_update_value_ignored() {
-    extern "system" fn early_dtor(val: *mut c_void) {
+    extern "system" fn early_dtor(val: *const c_void) {
         assert!(!val.is_null());
         eprintln!("fls_2.1_early_dtor");
     }
 
-    extern "system" fn later_dtor(val: *mut c_void) {
+    extern "system" fn later_dtor(val: *const c_void) {
         eprintln!("fls_2.2_later_dtor");
 
         // Updating a different fls slot's value doesn't cause their dtor to run, if it already did.
@@ -78,7 +66,7 @@ fn fls_2_dtor_update_value_ignored() {
 
         // Registering new fls slots in a dtor is always possible,
         // but their dtor might not get called.
-        extern "system" fn new_in_dtor(_val: *mut c_void) {}
+        extern "system" fn new_in_dtor(_val: *const c_void) {}
         let a_new_key_in_dtor = unsafe { FlsAlloc(Some(new_in_dtor)) };
         assert_eq!(unsafe { FlsSetValue(a_new_key_in_dtor, ptr::without_provenance_mut(1)) }, TRUE);
         assert_eq!(unsafe { FlsGetValue(a_new_key_in_dtor).addr() }, 1);
@@ -94,7 +82,7 @@ fn fls_2_dtor_update_value_ignored() {
 }
 
 fn fls_3_dtor_update_value_skipped_ignored() {
-    extern "system" fn later_dtor(val: *mut c_void) {
+    extern "system" fn later_dtor(val: *const c_void) {
         eprintln!("fls_3_later_dtor");
 
         // Updating a different fls slot's value doesn't cause their dtor to run, if it was already skipped.
@@ -112,7 +100,7 @@ fn fls_3_dtor_update_value_skipped_ignored() {
 }
 
 fn fls_4_dtor_update_value_used() {
-    extern "system" fn early_dtor(val: *mut c_void) {
+    extern "system" fn early_dtor(val: *const c_void) {
         eprintln!("fls_4.1_early_dtor");
 
         // Updating a different fls slot's value affect their dtor, if it hasn't yet run.
@@ -120,7 +108,7 @@ fn fls_4_dtor_update_value_used() {
         assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(1)) }, TRUE);
     }
 
-    extern "system" fn later_dtor(_val: *mut c_void) {
+    extern "system" fn later_dtor(_val: *const c_void) {
         eprintln!("fls_4.2_later_dtor");
     }
 
@@ -136,13 +124,13 @@ fn fls_4_dtor_update_value_used() {
 }
 
 fn fls_5_dtor_value() {
-    extern "system" fn dtor(val: *mut c_void) {
+    extern "system" fn dtor(val: *const c_void) {
         assert!(!val.is_null());
         eprintln!("fls_5_dtor_value");
 
         // When the key's dtor run, the key's value equals the destructor argument.
         let key = val as u32;
-        assert_eq!(unsafe { FlsGetValue(key) }, val);
+        assert_eq!(unsafe { FlsGetValue(key) }.cast_const(), val);
     }
 
     let key = unsafe { FlsAlloc(Some(dtor)) };
@@ -151,7 +139,7 @@ fn fls_5_dtor_value() {
 }
 
 fn fls_6_no_dtor_does_not_zero_value() {
-    extern "system" fn later_dtor(val: *mut c_void) {
+    extern "system" fn later_dtor(val: *const c_void) {
         eprintln!("fls_6_later_dtor");
 
         // If an earlier fls slot doesn't have a dtor, the key's value is _not_ zeroed out.
@@ -170,7 +158,7 @@ fn fls_6_no_dtor_does_not_zero_value() {
 
 fn fls_7_free() {
     // This dtor is not expected to be called.
-    extern "system" fn dtor_for_freed_key(_val: *mut c_void) {
+    extern "system" fn dtor_for_freed_key(_val: *const c_void) {
         eprintln!("dtor_for_freed_key");
     }
     let key_with_dtor = unsafe { FlsAlloc(Some(dtor_for_freed_key)) };
