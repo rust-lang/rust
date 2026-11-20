@@ -1411,74 +1411,49 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn mkdir(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        #[cfg_attr(not(unix), allow(unused_variables))]
-        let mode = if matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
-            u32::from(this.read_scalar(mode_op)?.to_u16()?)
-        } else {
-            this.read_scalar(mode_op)?.to_u32()?
-        };
-
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`mkdir`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
-        }
-
-        #[cfg_attr(not(unix), allow(unused_mut))]
-        let mut builder = DirBuilder::new();
-
-        // If the host supports it, forward on the mode of the directory
-        // (i.e. permission bits and the sticky bit)
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::DirBuilderExt;
-            builder.mode(mode);
-        }
-
-        let result = builder.create(path).map(|_| 0i32);
-
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
-    }
-
-    fn mkdirat(
+    fn mkdir(
         &mut self,
-        dirfd_op: &OpTy<'tcx>,
+        dirfd_op: Option<&OpTy<'tcx>>,
         path_op: &OpTy<'tcx>,
         mode_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
+        let mkdir_name = if dirfd_op.is_some() { "mkdirat" } else { "mkdir" };
 
-        let dirfd = ecx.read_scalar(dirfd_op)?.to_i32()?;
-        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
-
-        let mode = if matches!(&ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
-            u32::from(ecx.read_scalar(mode_op)?.to_u16()?)
-        } else {
-            ecx.read_scalar(mode_op)?.to_u32()?
+        let dirfd = match dirfd_op {
+            Some(dirfd_op) => Some(ecx.read_scalar(dirfd_op)?.to_i32()?),
+            None => None,
         };
+        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
+        let mode: u32 = ecx
+            .read_scalar(mode_op)?
+            .to_uint(ecx.libc_ty_layout("mode_t").size)?
+            .try_into()
+            .unwrap();
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
-            ecx.reject_in_isolation("`mkdirat`", reject_with)?;
-            return ecx.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+            ecx.reject_in_isolation(&format!("`{mkdir_name}`"), reject_with)?;
+            return ecx.set_errno_and_return_neg1(LibcError("EACCES"), dest);
         }
 
-        let dir = if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
-            None
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = ecx.machine.fds.get(dirfd) else {
-                return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-            let Some(dir) = fd.downcast::<DirHandle>() else {
-                return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-            };
-            Some(dir)
+        let dir = match dirfd {
+            Some(dirfd) => {
+                if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
+                    None
+                } else {
+                    // relative to dirfd, which must be a directory handle
+                    let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                        return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+                    };
+                    let Some(dir) = fd.downcast::<DirHandle>() else {
+                        return ecx.set_errno_and_return_neg1(LibcError("ENOTDIR"), dest);
+                    };
+                    Some(dir)
+                }
+            }
+            None => None,
         };
 
         let result = match dir {
@@ -1508,7 +1483,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 builder.create(path)
             }
         };
-        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result.map(|()| 0))?))
+
+        ecx.return_io_result_via_errno(result.map(|()| 0), dest)?;
+        interp_ok(())
     }
 
     fn rmdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {

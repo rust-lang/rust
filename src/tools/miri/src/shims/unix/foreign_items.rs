@@ -455,16 +455,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.mkdir(path, mode)?;
-                ecx.write_scalar(result, dest)?;
+                ecx.mkdir(None, path, mode, dest)?;
             }
             "mkdirat" => {
                 let [dirfd, path, mode] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.mkdirat(dirfd, path, mode)?;
-                ecx.write_scalar(result, dest)?;
+                ecx.mkdir(Some(dirfd), path, mode, dest)?;
             }
             "rmdir" => {
                 let [path] = &ecx
