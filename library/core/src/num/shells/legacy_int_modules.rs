@@ -30,7 +30,13 @@ macro_rules! legacy_int_module {
             /// ```
             ///
             #[$attr]
-            #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
+            #[deprecated(
+                since = "1.99.0",
+                note = concat!(
+                    "use `", stringify!($T), "::MIN` in expressions or declare a local `const MIN: ",
+                    stringify!($T), " = ", stringify!($T), "::MIN` instead of importing this constant",
+                ),
+            )]
             #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_min")]
             pub const MIN: $T = $T::MIN;
 
@@ -50,7 +56,13 @@ macro_rules! legacy_int_module {
             /// ```
             ///
             #[$attr]
-            #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
+            #[deprecated(
+                since = "1.99.0",
+                note = concat!(
+                    "use `", stringify!($T), "::MAX` in expressions or declare a local `const MAX: ",
+                    stringify!($T), " = ", stringify!($T), "::MAX` instead of importing this constant",
+                ),
+            )]
             #[rustc_diagnostic_item = concat!(stringify!($T), "_legacy_const_max")]
             pub const MAX: $T = $T::MAX;
         }
