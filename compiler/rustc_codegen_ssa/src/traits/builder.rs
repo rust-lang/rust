@@ -312,8 +312,8 @@ pub trait BuilderMethods<'a, 'tcx>:
         // but this works fine for all backends.
 
         let null = self.const_null(self.type_ptr());
-        let is_null = self.icmp(IntPredicate::IntNE, val, null);
-        self.assume(is_null);
+        let is_nonnull = self.icmp(IntPredicate::IntNE, val, null);
+        self.assume(is_nonnull);
     }
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
