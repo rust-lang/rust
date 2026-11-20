@@ -36,7 +36,9 @@ pub use a_module::{
 };
 
 //@ has aCrate/index.html '//a[@href="fn.private_function.html"]' 'private_function'
-//@ !hasraw aCrate/fn.private_function.html 'a_module'
+//@ has aCrate/fn.private_function.html '//span' 'Reexported from crate::a_module::private_function'
+//@ !has aCrate/fn.private_function.html '//a' 'a_module'
 //@ has aCrate/index.html '//a[@href="fn.other_private_function.html"]' 'other_private_function'
-//@ !hasraw aCrate/fn.other_private_function.html 'a_module'
+//@ has aCrate/fn.other_private_function.html '//span' 'Reexported from crate::a_module::private_function'
+//@ !has aCrate/fn.other_private_function.html '//a' 'a_module'
 pub use a_module::{other_private_function, private_function};
