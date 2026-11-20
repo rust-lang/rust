@@ -762,7 +762,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         args: ty::GenericArgs::empty(),
                     };
                     let fn_ptr =
-                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions());
+                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_direct_calls());
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {

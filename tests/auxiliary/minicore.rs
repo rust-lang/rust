@@ -391,6 +391,7 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 trait DispatchFromDyn<T> {}
 
 impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 
 #[lang = "unsize"]
 trait Unsize<T: PointeeSized>: PointeeSized {}
