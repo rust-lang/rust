@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 //@ aux-build:promotable_const_fn_lib.rs
 
 extern crate promotable_const_fn_lib;
