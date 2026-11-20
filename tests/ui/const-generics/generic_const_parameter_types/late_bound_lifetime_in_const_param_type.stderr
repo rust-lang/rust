@@ -1,0 +1,32 @@
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/late_bound_lifetime_in_const_param_type.rs:11:15
+   |
+LL | fn issue(_: S<{}>) {}
+   |               ^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/late_bound_lifetime_in_const_param_type.rs:14:16
+   |
+LL | fn elided(_: S<{ "a" }>) {}
+   |                ^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/late_bound_lifetime_in_const_param_type.rs:17:23
+   |
+LL | fn named<'a>(_: S<'a, { "a" }>) {}
+   |                       ^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/late_bound_lifetime_in_const_param_type.rs:20:31
+   |
+LL | fn fn_ptr(_: for<'a> fn(S<'a, { "a" }>)) {}
+   |                               ^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/late_bound_lifetime_in_const_param_type.rs:23:36
+   |
+LL | fn dyn_fn(_: &dyn for<'a> Fn(S<'a, { "a" }>)) {}
+   |                                    ^^^^^^^
+
+error: aborting due to 5 previous errors
+
