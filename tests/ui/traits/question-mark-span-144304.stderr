@@ -13,6 +13,7 @@ LL |     Err("str").map_err(|e| e)?;
              From<bool>
              From<i16>
              From<i8>
+             From<std::ascii::Char>
              From<u16>
              From<u8>
 
@@ -33,6 +34,7 @@ LL |     Err("str").map_err(|e| e.to_string())?;
              From<bool>
              From<i16>
              From<i8>
+             From<std::ascii::Char>
              From<u16>
              From<u8>
 
