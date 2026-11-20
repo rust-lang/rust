@@ -4659,9 +4659,9 @@ impl<'db> Type<'db> {
         Type { owner, ty }
     }
 
-    pub fn new_unit() -> Self {
-        let interner = DbInterner::conjure();
-        Type::no_params(Self::builtin_type_crate(interner.db()), Ty::new_unit(interner))
+    pub fn new_unit(db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
+        Type::no_params(Self::builtin_type_crate(db), Ty::new_unit(interner))
     }
 
     pub fn is_unit(&self) -> bool {

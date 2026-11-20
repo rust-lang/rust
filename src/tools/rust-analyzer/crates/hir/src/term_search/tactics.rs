@@ -575,7 +575,7 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
     let bool_ty = BuiltinType::bool().ty(db);
-    let unit_ty = Type::new_unit();
+    let unit_ty = Type::new_unit(db);
     [
         Expr::FamousType { ty: bool_ty.clone(), value: "true" },
         Expr::FamousType { ty: bool_ty, value: "false" },
