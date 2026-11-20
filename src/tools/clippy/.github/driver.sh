@@ -29,9 +29,8 @@ test "$sysroot" = $desired_sysroot
 
 # Check that the --sysroot argument is only passed once (SYSROOT is ignored)
 (
-    cd rustc_tools_util
-    touch src/lib.rs
-    SYSROOT=/tmp RUSTFLAGS="--sysroot=$(rustc --print sysroot)" ../target/debug/cargo-clippy clippy --verbose
+    touch src/driver.rs
+    SYSROOT=/tmp RUSTFLAGS="--sysroot=$(rustc --print sysroot)" ./target/debug/cargo-clippy clippy --verbose
 )
 
 # Check that the --sysroot argument is only passed once via arg_file.txt (SYSROOT is ignored)

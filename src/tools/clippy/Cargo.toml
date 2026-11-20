@@ -23,7 +23,6 @@ clippy_config = { path = "clippy_config" }
 clippy_lints = { path = "clippy_lints" }
 clippy_utils = { path = "clippy_utils" }
 declare_clippy_lint = { path = "declare_clippy_lint" }
-rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
 color-print = "0.3.4"
 anstream = "0.6.18"
@@ -45,9 +44,6 @@ version = "1.1"
 default-features = false
 # preserve_order keeps diagnostic output in file order
 features = ["parse", "preserve_order"]
-
-[build-dependencies]
-rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 
 [features]
 integration = []

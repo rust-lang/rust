@@ -24,7 +24,7 @@ fn main() -> ExitCode {
         };
     }
     if args.version {
-        return match writeln!(anstream::stdout(), "{}", rustc_tools_util::get_version_info!()) {
+        return match anstream::stdout().write_all(concat!("clippy ", env!("PKG_VERSION_STR")).as_bytes()) {
             Ok(()) => ExitCode::SUCCESS,
             Err(_) => ExitCode::FAILURE,
         };
