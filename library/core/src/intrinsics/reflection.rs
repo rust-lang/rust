@@ -25,7 +25,7 @@ pub fn type_id<T: ?Sized>() -> crate::any::TypeId;
 /// not implement it.
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub fn type_id_type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
+pub fn type_id_type_of(_id: crate::any::TypeId) -> crate::mem::type_info::TypeKind;
 
 /// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
 /// same type. This is necessary because at const-eval time the actual discriminating
@@ -188,6 +188,14 @@ pub fn type_id_points_to(_id: crate::any::TypeId) -> Option<crate::any::TypeId>;
 #[rustc_intrinsic]
 #[rustc_comptime]
 pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
+
+/// Given a `TypeId` that represents a dyn trait returns an [`core::mem::type_info::DynTrait`]. When called on
+/// something else this returns `None`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::dyn_trait`].
+#[rustc_intrinsic]
+#[rustc_comptime]
+pub fn type_id_dyn_trait(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::DynTrait>;
 
 /// Given a `TypeId` that represents a function pointer returns an [`core::mem::type_info::FnPtr`].
 /// When called on something else this returns `None`.

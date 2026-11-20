@@ -1,5 +1,5 @@
 use std::any::TypeId;
-use std::mem::type_info::{Abi, FnPtr, Type, TypeKind};
+use std::mem::type_info::{Abi, FnPtr, TypeKind};
 
 const STRING_TY: TypeId = const { TypeId::of::<String>() };
 const U8_TY: TypeId = const { TypeId::of::<u8>() };
@@ -18,15 +18,12 @@ fn test_fn_ptrs() {
 }
 
 #[test]
-fn test_typekind() {
-    assert!(matches!(const { Type::of::<fn()>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(&u8, &u8)>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(unsafe fn())>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(extern "system" fn())>().kind }, TypeKind::FnPtr));
-    assert!(matches!(
-        const { Type::of::<fn(#[rustc_splat] (String, u8))>().kind },
-        TypeKind::FnPtr
-    ));
+fn test_type() {
+    assert!(matches!(const { TypeKind::of::<fn()>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(&u8, &u8)>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(unsafe fn())>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(extern "system" fn())>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(#[rustc_splat] (String, u8))>() }, TypeKind::FnPtr));
 }
 
 #[test]
