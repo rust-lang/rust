@@ -797,3 +797,55 @@ fn read_binary_file_handles_lying_stat() {
     let bin = RealFileLoader.read_binary_file(kernel_max).unwrap();
     assert_eq!(&real[..], &bin[..]);
 }
+
+#[test]
+fn filename_for_diagnostics_resolves_parent_dir() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+
+    let with_parent = filename(&sm, "tests/sub/../helper.rs");
+    assert_eq!(sm.filename_for_diagnostics(&with_parent).to_string(), path_str("tests/helper.rs"));
+
+    // No dot segments, so the path comes back verbatim, separators included.
+    let clean = filename(&sm, "tests/clean.rs");
+    assert_eq!(sm.filename_for_diagnostics(&clean).to_string(), "tests/clean.rs");
+}
+
+#[test]
+fn filename_for_diagnostics_verbose_keeps_parent_dir() {
+    let sm = SourceMap::with_inputs(SourceMapInputs {
+        file_loader: Box::new(RealFileLoader),
+        path_mapping: FilePathMapping::empty(),
+        hash_kind: SourceFileHashAlgorithm::Md5,
+        checksum_hash_kind: None,
+        verbose: true,
+    });
+
+    let with_parent = filename(&sm, "tests/sub/../helper.rs");
+    assert_eq!(sm.filename_for_diagnostics(&with_parent).to_string(), "tests/sub/../helper.rs",);
+}
+
+#[test]
+fn filename_for_diagnostics_keeps_separators_without_dot_segments() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    // On Windows the remap prefix keeps `/` while the local part uses `\`.
+    // No dot segments, so the path must come back unchanged.
+    let path = "/rustc/FAKE_PREFIX\\library\\core\\src\\alloc\\layout.rs";
+    let name = filename(&sm, path);
+    assert_eq!(sm.filename_for_diagnostics(&name).to_string(), path);
+}
+
+#[test]
+fn filename_for_diagnostics_keeps_remapped_dot_segments() {
+    let mapping = FilePathMapping::new(
+        vec![(path("abc/def"), path("fake"))],
+        RemapPathScopeComponents::all(),
+    );
+    let sm = SourceMap::new(mapping);
+
+    // The remapped name prints as given, `..` included.
+    let remapped = filename(&sm, "abc/def/sub/../helper.rs");
+    assert_eq!(
+        sm.filename_for_diagnostics(&remapped).to_string(),
+        path_str("fake/sub/../helper.rs"),
+    );
+}
