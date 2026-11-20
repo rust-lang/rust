@@ -1,4 +1,4 @@
-#![cfg(not(skip_unsupported_miri_tests))] // UDP sockets are not supported in Miri
+#![cfg(not(all(windows, skip_unsupported_miri_tests)))] // Miri has no net support on Windows
 
 use crate::io::ErrorKind;
 use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
@@ -357,6 +357,7 @@ fn ttl() {
 
 #[test]
 #[cfg(any(target_family = "unix", target_os = "windows"))]
+#[cfg(not(skip_unsupported_miri_tests))] // socket flag not supported by Miri
 fn hop_limit() {
     let hlim = 100;
 
@@ -392,6 +393,7 @@ fn set_nonblocking() {
 // and must be rejected rather than truncated.
 #[test]
 #[cfg(all(target_pointer_width = "64", unix))]
+#[cfg(not(skip_unsupported_miri_tests))] // read-only mmap not supported by Miri
 fn send_datagram_larger_than_c_int_max() {
     // A read-only anonymous mapping rather than a 2 GiB `Vec`: the datagram is
     // rejected before the kernel ever reads the pages, so this costs no

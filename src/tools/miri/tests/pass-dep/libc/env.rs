@@ -90,6 +90,29 @@ fn test_unsetenv() {
     assert_eq!(result, -1);
 }
 
+#[cfg(target_os = "macos")]
+fn test_ns_get_environ() {
+    unsafe {
+        errno_check(libc::setenv(c"MIRI_TEST_NSGETENVIRON".as_ptr(), c"test_value".as_ptr(), 1));
+
+        let environ = libc::_NSGetEnviron();
+        assert!(!environ.is_null());
+        let mut entry = *environ;
+        assert!(!entry.is_null());
+
+        let mut found = false;
+        while !(*entry).is_null() {
+            if CStr::from_ptr(*entry) == c"MIRI_TEST_NSGETENVIRON=test_value" {
+                found = true;
+            }
+            entry = entry.add(1);
+        }
+        assert!(found);
+
+        errno_check(libc::unsetenv(c"MIRI_TEST_NSGETENVIRON".as_ptr()));
+    }
+}
+
 fn test_getcwd() {
     // Filling the buffer with `1` prevents the null terminator check from passing by mistake
     let mut buf = [1u8; libc::PATH_MAX as usize];
@@ -129,10 +152,32 @@ fn test_chdir() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 }
 
+#[cfg(target_os = "macos")]
+fn test_nsgetargv_argc() {
+    let argv = unsafe { *libc::_NSGetArgv() };
+    let c_argv_0 = unsafe { CStr::from_ptr(*argv).to_bytes() };
+    let argc = unsafe { *libc::_NSGetArgc() };
+    let argv_argc = unsafe { *argv.add(argc as usize) };
+
+    // In Miri, `argv[0]` points to the path of the source file,
+    // whereas natively, it points to the path of the compiled program.
+    if cfg!(miri) {
+        assert_eq!(c_argv_0, file!().as_bytes());
+    }
+
+    assert_eq!(argc, 1);
+
+    assert!(argv_argc.is_null());
+}
+
 fn main() {
     test_getenv();
     test_setenv();
     test_unsetenv();
+    #[cfg(target_os = "macos")]
+    test_ns_get_environ();
     test_getcwd();
     test_chdir();
+    #[cfg(target_os = "macos")]
+    test_nsgetargv_argc();
 }

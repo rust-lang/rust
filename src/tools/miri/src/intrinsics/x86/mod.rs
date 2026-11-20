@@ -740,7 +740,7 @@ fn conditional_dot_product<'tcx>(
     let (_, _, dest) = split_simd_to_128bit_chunks(ecx, dest)?;
 
     let element_layout = left.layout.field(ecx, 0).field(ecx, 0);
-    assert!(items_per_chunk <= 4);
+    assert!(matches!(items_per_chunk, 2 | 4));
 
     // `imm` is a `u8` for SSE4.1 or an `i32` for AVX :/
     let imm = ecx.read_scalar(imm)?.to_uint(imm.layout.size)?;
@@ -750,19 +750,28 @@ fn conditional_dot_product<'tcx>(
         let right = ecx.project_index(&right, i)?;
         let dest = ecx.project_index(&dest, i)?;
 
-        // Calculate dot product
-        // Elements are floating point numbers, but we can use `from_int`
-        // for the initial value because the representation of 0.0 is all zero bits.
-        let mut sum = ImmTy::from_int(0u8, element_layout);
+        // Masked-out products are +0.0, represented by all zero bits.
+        let mut products: [_; 4] = std::array::from_fn(|_| ImmTy::from_int(0u8, element_layout));
         for j in 0..items_per_chunk {
             if imm & (1 << j.strict_add(4)) != 0 {
                 let left = ecx.read_immediate(&ecx.project_index(&left, j)?)?;
                 let right = ecx.read_immediate(&ecx.project_index(&right, j)?)?;
 
-                let mul = ecx.binary_op(mir::BinOp::Mul, &left, &right)?;
-                sum = ecx.binary_op(mir::BinOp::Add, &sum, &mul)?;
+                products[usize::try_from(j).unwrap()] =
+                    ecx.binary_op(mir::BinOp::Mul, &left, &right)?;
             }
         }
+
+        // Reduce in the right order (tree reduction).
+        let sum = match items_per_chunk {
+            2 => ecx.binary_op(mir::BinOp::Add, &products[0], &products[1])?,
+            4 => {
+                let lower_sum = ecx.binary_op(mir::BinOp::Add, &products[0], &products[1])?;
+                let upper_sum = ecx.binary_op(mir::BinOp::Add, &products[2], &products[3])?;
+                ecx.binary_op(mir::BinOp::Add, &lower_sum, &upper_sum)?
+            }
+            _ => unreachable!(),
+        };
 
         // Write to destination (conditioned to imm)
         for j in 0..items_per_chunk {
