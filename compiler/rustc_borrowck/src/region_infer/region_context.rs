@@ -823,7 +823,7 @@ impl<'tcx> RegionInferenceContextInner<'tcx> {
         for location in locations {
             if from_location.is_predecessor_of(location, body) {
                 let bb = &body[location.block];
-                if let Some(terminator) = &bb.terminator
+                if let terminator = &bb.terminator
                 // terminator of a loop should be TerminatorKind::FalseUnwind
                 && let TerminatorKind::FalseUnwind { .. } = terminator.kind
                 {
