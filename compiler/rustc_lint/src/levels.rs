@@ -539,16 +539,16 @@ where
                 continue;
             };
             for &id in ids {
-                // ForceWarn and Forbid cannot be overridden
+                // ForceWarn cannot be overridden
                 if let Some(level_spec) = self.provider.current_specs().get(&id)
-                    && matches!(level_spec.level(), Level::ForceWarn | Level::Forbid)
+                    && matches!(level_spec.level(), Level::ForceWarn)
                 {
                     continue;
                 }
 
                 if self.check_gated_lint(id, DUMMY_SP, true) {
                     let src = LintLevelSource::CommandLine(lint_name, level);
-                    self.provider.insert(id, LevelSpec::new(level, None, src));
+                    self.insert_spec(id, LevelSpec::new(level, None, src));
                 }
             }
         }
@@ -582,11 +582,15 @@ where
             // as preventing `allow(lint)` for some lint `lint` in
             // `lint_group`. For now, issue a future-compatibility
             // warning for this case.
-            let fcw_warning = match old_src {
-                LintLevelSource::Default => false,
-                LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
-                LintLevelSource::CommandLine(name, _) => self.store.is_lint_group(name),
-            };
+            //
+            // Command-line flags were never able to lower a forbid, so there is
+            // nothing to stay compatible with there.
+            let fcw_warning = !matches!(src, LintLevelSource::CommandLine(..))
+                && match old_src {
+                    LintLevelSource::Default => false,
+                    LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
+                    LintLevelSource::CommandLine(name, _) => self.store.is_lint_group(name),
+                };
             debug!(
                 "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
                 fcw_warning,
@@ -606,11 +610,17 @@ where
                 }
             };
             if !fcw_warning {
+                let span = match src {
+                    LintLevelSource::CommandLine(..) => None,
+                    _ => Some(src.span()),
+                };
                 self.sess.dcx().emit_err(OverruledAttribute {
-                    span: src.span(),
-                    overruled: src.span(),
+                    span,
+                    overruled: span,
                     lint_level: level.as_str(),
                     lint_name: src.name(),
+                    flag: if span.is_none() { level.to_cmd_flag() } else { "" },
+                    command_line: span.is_none(),
                     sub,
                 });
             } else {
