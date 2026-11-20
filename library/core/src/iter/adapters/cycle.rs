@@ -1,4 +1,3 @@
-use crate::iter::FusedIterator;
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -105,6 +104,3 @@ where
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
     // and we can't do anything better than the default.
 }
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
