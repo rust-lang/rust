@@ -2533,6 +2533,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
             | (ty::Alias(IsRigid::No, _), _)
             | (_, ty::Alias(IsRigid::No, _)) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
+            // Whether an alias is marked as `IsRigid::Yes` depends on inference progress.
+            // A comparison modulo inference must therefore ignore it.
+            (ty::Alias(_, alias_a), ty::Alias(_, alias_b)) => {
+                self.relate(*alias_a, *alias_b)?;
+                Ok(a)
+            }
             _ => relate::structurally_relate_tys(self, a, b),
         }
     }
