@@ -1,0 +1,51 @@
+error[E0597]: `value` does not live long enough
+  --> $DIR/equality-implied-liveness.rs:58:38
+   |
+LL |     let value = 43u8;
+   |         ----- binding `value` declared here
+LL |     let short = Rc::new(RefCell::new(&value));
+   |                                      ^^^^^^ borrowed value does not live long enough
+...
+LL |     let result: &'static u8 = *long.borrow();
+   |                 ----------- type annotation requires that `value` is borrowed for `'static`
+LL |     result
+LL | }
+   | - `value` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/equality-implied-liveness.rs:61:54
+   |
+LL |     make(((), Equal(&&(), &&())), long.clone()).swap(make(((), Equal(&&(), &&())), short));
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | ) -> impl Swap + 'b + use<'b, T> {
+   |                     ++++++++++++
+
+error[E0597]: `value` does not live long enough
+  --> $DIR/equality-implied-liveness.rs:70:38
+   |
+LL |     let value = 43u8;
+   |         ----- binding `value` declared here
+LL |     let short = Rc::new(RefCell::new(&value));
+   |                                      ^^^^^^ borrowed value does not live long enough
+...
+LL |     let result: &'static u8 = *long.borrow();
+   |                 ----------- type annotation requires that `value` is borrowed for `'static`
+LL |     result
+LL | }
+   | - `value` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/equality-implied-liveness.rs:73:49
+   |
+LL |     make2(Equal(&&(), &&()), long.clone()).swap(make2(Equal(&&(), &&()), short));
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn make2<'a: 'a, 'b: 'b, T: Swap + 'a>(_: Equal<'a, 'b>, t: T) -> impl Swap + 'b + use<'b, T> {
+   |                                                                                  ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

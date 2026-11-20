@@ -1,0 +1,17 @@
+error[E0597]: `v` does not live long enough
+  --> $DIR/specialized-projection-hidden-lifetime.rs:46:29
+   |
+LL |         let v = vec![42];
+   |             - binding `v` declared here
+LL |         escaped = run::<T>(&v[0]);
+   |                             ^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `v` dropped here while still borrowed
+LL |     let reused = vec![7];
+LL |     println!("escaped = {escaped:?}, reused = {reused:?}");
+   |                          ------- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

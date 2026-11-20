@@ -2,6 +2,31 @@
 //@ compile-flags: --crate-type lib
 //@ check-pass
 
+mod direct {
+    struct Guard<T, F> {
+        val: T,
+        f: F,
+    }
+
+    struct Table {
+        items: usize,
+    }
+
+    impl Table {
+        fn prepare<'a, A>(&self, alloc: &'a A) -> Guard<usize, impl FnMut(&mut usize) + 'a> {
+            let _ = alloc;
+            Guard { val: self.items, f: |_: &mut usize| {} }
+        }
+
+        fn resize<A>(&mut self, alloc: &A) {
+            let mut g = self.prepare(alloc);
+            self.items += 1;
+            g.val += 1;
+            (g.f)(&mut g.val);
+        }
+    }
+}
+
 struct ScopeGuard<T, F>
 where
     F: FnMut(&mut T),

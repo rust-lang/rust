@@ -1,6 +1,3 @@
-//@ check-pass
-//@ known-bug: #151861
-
 // We once thought that we could accept this, but alas we cannot. Although in
 // this case `Captures<'o>` doesn't do anything, the presence of a trait bound
 // with a lifetime can result in unsoundness if the lifetime is not considered
@@ -17,6 +14,7 @@ fn test<'o>(v: &'o Vec<i32>) -> impl Captures<'o> + for<'a> Outlives<'a> {}
 
 fn opaque_doesnt_use_temporary() {
     let a = test(&vec![]);
+    //~^ ERROR temporary value dropped while borrowed
 }
 
 fn main() {}

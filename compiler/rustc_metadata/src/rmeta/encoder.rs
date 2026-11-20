@@ -1689,9 +1689,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .type_alias_is_checked(local_id, tcx.type_alias_is_checked(def_id));
 
                 if tcx.type_alias_is_checked(def_id) {
-                    self.table_writer().args_known_to_outlive_alias_params(
+                    self.table_writer().live_args_for_alias_params(
                         local_id,
-                        tcx.args_known_to_outlive_alias_params(def_id),
+                        tcx.live_args_for_alias_params(def_id),
                     );
                 }
             }
@@ -1706,24 +1706,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         tcx.explicit_implied_const_bounds(def_id).skip_binder(),
                     );
                 }
-                self.table_writer().args_known_to_outlive_alias_params(
-                    local_id,
-                    tcx.args_known_to_outlive_alias_params(def_id),
-                );
+                self.table_writer()
+                    .live_args_for_alias_params(local_id, tcx.live_args_for_alias_params(def_id));
+                self.table_writer()
+                    .captured_args_for_opaque(local_id, tcx.captured_args_for_opaque(def_id));
             }
             if let DefKind::AssocTy = def_kind {
                 let assoc_item = tcx.associated_item(def_id);
                 match assoc_item.container {
                     ty::AssocContainer::Trait => {
-                        self.table_writer().args_known_to_outlive_alias_params(
+                        self.table_writer().live_args_for_alias_params(
                             local_id,
-                            tcx.args_known_to_outlive_alias_params(def_id),
+                            tcx.live_args_for_alias_params(def_id),
                         );
                     }
                     ty::AssocContainer::InherentImpl => {
-                        self.table_writer().args_known_to_outlive_alias_params(
+                        self.table_writer().live_args_for_alias_params(
                             local_id,
-                            tcx.args_known_to_outlive_alias_params(def_id),
+                            tcx.live_args_for_alias_params(def_id),
                         );
                     }
                     ty::AssocContainer::TraitImpl(_) => {}

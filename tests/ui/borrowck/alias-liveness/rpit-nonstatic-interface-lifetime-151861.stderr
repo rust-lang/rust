@@ -1,0 +1,23 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/rpit-nonstatic-interface-lifetime-151861.rs:35:22
+   |
+LL |         let s = String::from("hi");
+   |             - binding `s` declared here
+LL |         let p = make(&s, &b);
+   |                      ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     // requires `&'r str: 'static`
+LL |     let _leaked = leak_it(out);
+   |                   ------------ argument requires that `s` is borrowed for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/rpit-nonstatic-interface-lifetime-151861.rs:26:15
+   |
+LL | fn leak_it<T: 'static>(val: T) -> &'static T {
+   |               ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
