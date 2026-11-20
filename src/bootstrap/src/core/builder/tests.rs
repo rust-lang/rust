@@ -1721,6 +1721,8 @@ mod snapshot {
             [test] compiletest-coverage 1 <host>
             [build] rustc 1 <host> -> std 1 <host>
             [test] compiletest-mir-opt 1 <host>
+            [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
+            [test] compiletest-mir-opt 1 <host-synthetic-miropt-abort>
             [test] compiletest-codegen-llvm 1 <host>
             [test] compiletest-codegen-units 1 <host>
             [test] compiletest-assembly-gcc 1 <host>
@@ -1916,8 +1918,12 @@ mod snapshot {
             [build] rustc 0 <host> -> CoverageDump 1 <host>
             [test] compiletest-coverage 2 <host>
             [test] compiletest-coverage 2 <host>
+            [build] rustc 1 <host> -> std 1 <host>
             [build] rustc 2 <host> -> std 2 <host>
             [test] compiletest-mir-opt 2 <host>
+            [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
+            [build] rustc 2 <host> -> std 2 <host-synthetic-miropt-abort>
+            [test] compiletest-mir-opt 2 <host-synthetic-miropt-abort>
             [test] compiletest-codegen-llvm 2 <host>
             [test] compiletest-codegen-units 2 <host>
             [test] compiletest-assembly-gcc 2 <host>
@@ -2157,6 +2163,48 @@ mod snapshot {
             [build] rustdoc 1 <host>
             [test] compiletest-run-make-cargo 1 <host>"#]]
         .assert_eq(&ctx.config("test").path("run-make-cargo").render_steps());
+    }
+
+    #[test]
+    fn test_mir_opt() {
+        let ctx = TestCtx::new();
+        expect_test::expect![[r#"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 1 <host> -> std 1 <host>
+            [build] rustc 0 <host> -> Compiletest 1 <host>
+            [test] compiletest-mir-opt 1 <host>
+            [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
+            [test] compiletest-mir-opt 1 <host-synthetic-miropt-abort>"#]]
+        .assert_eq(&prepare_test_config(&ctx).path("tests/mir-opt").render_steps());
+    }
+
+    #[test]
+    fn test_mir_opt_bless() {
+        let ctx = TestCtx::new();
+        expect_test::expect![[r#"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        [build] rustc 0 <target1> -> Compiletest 1 <target1>
+        [test] compiletest-mir-opt 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <i686-pc-windows-msvc>
+        [test] compiletest-mir-opt 1 <i686-pc-windows-msvc>
+        [build] rustc 1 <target1> -> std 1 <x86_64-apple-darwin-synthetic-miropt-abort>
+        [test] compiletest-mir-opt 1 <x86_64-apple-darwin-synthetic-miropt-abort>
+        [build] rustc 1 <target1> -> std 1 <i686-unknown-linux-musl-synthetic-miropt-abort>
+        [test] compiletest-mir-opt 1 <i686-unknown-linux-musl-synthetic-miropt-abort>"#]]
+        .assert_eq(
+            &prepare_test_config(&ctx)
+                .arg("--bless")
+                .hosts(&[TEST_TRIPLE_1])
+                .arg("--build")
+                .arg(TEST_TRIPLE_1)
+                .targets(&[TEST_TRIPLE_1])
+                .path("tests/mir-opt")
+                .get_steps()
+                .render_with(RenderConfig { normalize_host: false }),
+        );
     }
 
     #[test]
@@ -2915,7 +2963,7 @@ fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
 }
 
 fn normalize_target(target: TargetSelection, config: &RenderConfig) -> String {
-    let mut target = target.to_string();
+    let mut target = target.triple.to_string();
     if config.normalize_host {
         target = target.replace(&host_target(), "host");
     }

@@ -179,7 +179,11 @@ impl Cargo {
             // No need to configure the target linker for these command types.
             Kind::Clean | Kind::Check | Kind::Format | Kind::Setup => {}
             _ => {
-                cargo.configure_linker(builder);
+                // Do not configure the linker for synthetic targets, as we won't have cc set up
+                // for them.
+                if !target.is_synthetic() {
+                    cargo.configure_linker(builder);
+                }
             }
         }
 
