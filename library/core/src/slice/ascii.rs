@@ -595,11 +595,7 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 ///
 /// If any of these loads produces something for which `contains_nonascii`
 /// (above) returns true, then we know the answer is false.
-#[cfg(not(any(
-    all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "loongarch64", target_feature = "lsx"),
-    all(target_arch = "aarch64", target_feature = "neon")
-)))]
+#[cfg(not(all(target_arch = "loongarch64", target_feature = "lsx")))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 const fn is_ascii(s: &[u8]) -> bool {
@@ -610,6 +606,17 @@ const fn is_ascii(s: &[u8]) -> bool {
         if const {
             is_ascii_simple(s)
         } else {
+            #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+            const SIMD_MIN_LEN: usize = SSE2_CHUNK_SIZE;
+            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+            const SIMD_MIN_LEN: usize = NEON_CHUNK_SIZE;
+
+            // Use SIMD for big inputs.
+            #[cfg(any(all(target_arch = "x86_64", target_feature = "sse2"),all(target_arch = "aarch64", target_feature = "neon")))]
+            if s.len() >= SIMD_MIN_LEN {
+                return is_ascii_simd(s);
+            }
+
             /// Returns `true` if any byte in the word `v` is nonascii (>= 128). Snarfed
             /// from `../str/mod.rs`, which does something similar for utf8 validation.
             const fn contains_nonascii(v: usize) -> bool {
@@ -701,9 +708,16 @@ const fn is_ascii(s: &[u8]) -> bool {
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 const SSE2_CHUNK_SIZE: usize = 64;
 
+/// Width of a single SSE2 vector, used to vectorize the tail left over by the
+/// unrolled `SSE2_CHUNK_SIZE` loop.
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+const SSE2_VECTOR_SIZE: usize = 16;
+
+/// Uses explicit SIMD intrinsics to prevent LLVM from auto-vectorizing with
+/// broken code (e.g., AVX-512 on x86-64 that extracts mask bits one-by-one).
 #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
 #[inline]
-fn is_ascii_sse2(bytes: &[u8]) -> bool {
+fn is_ascii_simd(bytes: &[u8]) -> bool {
     use crate::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128};
 
     let (chunks, rest) = bytes.as_chunks::<SSE2_CHUNK_SIZE>();
@@ -727,8 +741,24 @@ fn is_ascii_sse2(bytes: &[u8]) -> bool {
         }
     }
 
-    // Handle remaining bytes
-    rest.iter().all(|b| b.is_ascii())
+    // The unrolled loop above leaves up to 63 bytes, so sweep those a vector at a time.
+    let (vectors, rest) = rest.as_chunks::<SSE2_VECTOR_SIZE>();
+
+    for vector in vectors {
+        // SAFETY: vector is 16 bytes, and `_mm_loadu_si128` has no alignment requirement.
+        if unsafe { _mm_movemask_epi8(_mm_loadu_si128(vector.as_ptr() as *const __m128i)) } != 0 {
+            return false;
+        }
+    }
+
+    // Handle the tail with SIMD.
+    if !rest.is_empty()
+        && let Some(rest) = bytes.last_chunk::<SSE2_VECTOR_SIZE>()
+    {
+        // SAFETY: `bytes.len() >= 16`.
+        return unsafe { _mm_movemask_epi8(_mm_loadu_si128(rest.as_ptr() as *const __m128i)) == 0 };
+    }
+    true
 }
 
 /// Chunk size for NEON vectorized ASCII checking (4x 16-byte loads).
@@ -742,7 +772,7 @@ const NEON_VECTOR_SIZE: usize = 16;
 
 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
 #[inline]
-fn is_ascii_neon(bytes: &[u8]) -> bool {
+fn is_ascii_simd(bytes: &[u8]) -> bool {
     use crate::arch::aarch64::{vld1q_u8, vmaxvq_u8, vorrq_u8};
 
     let (chunks, rest) = bytes.as_chunks::<NEON_CHUNK_SIZE>();
@@ -766,8 +796,7 @@ fn is_ascii_neon(bytes: &[u8]) -> bool {
         }
     }
 
-    // The unrolled loop above leaves up to 63 bytes, so sweep those a vector at
-    // a time before falling back to a byte-at-a-time check.
+    // The unrolled loop above leaves up to 63 bytes, so sweep those a vector at a time.
     let (vectors, rest) = rest.as_chunks::<NEON_VECTOR_SIZE>();
 
     for vector in vectors {
@@ -778,50 +807,14 @@ fn is_ascii_neon(bytes: &[u8]) -> bool {
         }
     }
 
-    // Handle remaining bytes
-    rest.iter().all(|b| b.is_ascii())
-}
-
-/// Uses explicit SIMD intrinsics to prevent LLVM from auto-vectorizing with
-/// broken code (e.g., AVX-512 on x86-64 that extracts mask bits one-by-one).
-#[cfg(any(
-    all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "aarch64", target_feature = "neon")
-))]
-#[inline]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
-const fn is_ascii(bytes: &[u8]) -> bool {
-    const USIZE_SIZE: usize = size_of::<usize>();
-    const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;
-
-    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
-    const SIMD_MIN_LEN: usize = SSE2_CHUNK_SIZE;
-    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-    const SIMD_MIN_LEN: usize = NEON_CHUNK_SIZE;
-
-    const_eval_select!(
-        @capture { bytes: &[u8] } -> bool:
-        if const {
-            is_ascii_simple(bytes)
-        } else {
-            // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
-            if bytes.len() < SIMD_MIN_LEN {
-                let (chunks, remainder) = bytes.as_chunks::<USIZE_SIZE>();
-                for chunk in chunks {
-                    let word = usize::from_ne_bytes(*chunk);
-                    if (word & NONASCII_MASK) != 0 {
-                        return false;
-                    }
-                }
-                return remainder.iter().all(|b| b.is_ascii());
-            }
-
-            #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
-            { is_ascii_sse2(bytes) }
-            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-            { is_ascii_neon(bytes) }
-        }
-    )
+    // Handle the tail with SIMD.
+    if !rest.is_empty()
+        && let Some(rest) = bytes.last_chunk::<NEON_VECTOR_SIZE>()
+    {
+        // SAFETY: `bytes.len() >= 16`.
+        return unsafe { vmaxvq_u8(vld1q_u8(rest.as_ptr())) < 128 };
+    }
+    true
 }
 
 /// ASCII test optimized to use the `vmskltz.b` instruction on `loongarch64`.
