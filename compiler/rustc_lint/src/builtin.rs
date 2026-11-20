@@ -1186,8 +1186,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             return;
         }
 
-        // FIXME(generic_const_exprs): Revisit this before stabilization.
-        // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
         let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
         if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS)
             && cx.tcx.features().generic_const_exprs()
@@ -3111,13 +3109,13 @@ declare_lint! {
     ///
     /// Even then, the analysis for whether a type is different under different platforms isn't
     /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
-    /// lint will not detect that.
+    /// lint will not detect that, allowing for a false-positive to trigger in that case.
     ///
     /// If you are in a situation where the presence of false positives are less of a problem than
     /// false negatives, you can use clippy's `clippy::useless_conversion` lint, which doesn't
     /// implement the heuristics this lint does.
     pub SELF_TYPE_CONVERSION,
-    Deny,
+    Warn,
     "unnecessary call to `.into()`",
 }
 
@@ -3293,7 +3291,6 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
         // There are likely other combinations that we should check for in order to avoid false
         // positives, like looking at the parent items for the type alias for `cfg` attributes, but
         // empirically these two checks seem to account for the majority of the cases in the wild.
-        // FIXME: verify the above with crater run :)
 
         self.tcx.sess.time("self_type_conversion_collect_ignored_type", || {
             // Whether we've encountered `#[cfg(..)] use foo::bar;`.
@@ -3373,7 +3370,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
-        if cx.tcx.sess.time("self_type_conversion_filter_cfgd_field", || {
+        let field_has_cfg = cx.tcx.sess.time("self_type_conversion_filter_cfgd_field", || {
             if let hir::ExprKind::Field(base, field) = rcvr.kind {
                 // Look at the original type. If the field being accessed or its type is behind a `cfg`
                 // attribute, we don't trigger the lint, as it's likely that field has different types
@@ -3447,12 +3444,6 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
                 return true;
             }
 
-            if ["crates_io", "cargo"]
-                .contains(&cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str())
-            {
-                return true;
-            }
-
             if cx.tcx.sess.time("self_type_conversion_filter_into_in_macros", || {
                 if let Some(expn) = expr.span.macro_backtrace().next() {
                     if let Some(def_id) = expn.macro_def_id
@@ -3497,7 +3488,9 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
                 return true;
             }
             false
-        }) {
+        });
+
+        if field_has_cfg {
             return;
         }
 

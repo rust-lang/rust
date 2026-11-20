@@ -174,7 +174,10 @@ pub(crate) enum ShadowedIntoIterDiagSub {
 #[diag("useless conversion to the same type: `{$ty}`")]
 #[note(
     "this method call relies on the `impl<T> Into<T> for T` blanket implementation and type \
-     inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be \
+     inference"
+)]
+#[note(
+    "calls like this are semver hazards as a new `impl Into<_>` that affects your type might be \
      added in the future causing type inference errors"
 )]
 pub(crate) struct SelfTypeConversionDiag<'t> {

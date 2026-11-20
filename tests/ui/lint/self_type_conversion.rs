@@ -136,6 +136,7 @@ mod b {
         //~^ ERROR useless conversion to the same type: `u64`
     }
 }
+
 mod c {
     cfg_select! {
         any(target_arch = "avr", target_arch = "msp430") => {
@@ -194,6 +195,56 @@ mod c {
         //~^ ERROR useless conversion to the same type: `u64`
     }
 }
+
+mod d {
+    pub type IntSmall = i16;
+    pub type FloatSmall = f32;
+    pub type IntBig = i32;
+    pub type FloatBig = f64;
+
+    cfg_select! {
+        any(target_arch = "avr", target_arch = "msp430") => {
+            use self::IntSmall as Int;
+        }
+        _ => {
+            use self::IntBig as Int;
+        }
+    }
+
+    #[cfg(any(target_arch = "avr", target_arch = "msp430"))]
+    use self::FloatSmall as Float;
+    #[cfg(not(any(target_arch = "avr", target_arch = "msp430")))]
+    use self::FloatBig as Float;
+
+    pub fn baz() {
+        let x: Int = 1;
+        let _: i32 = x.into(); // Ok, should not lint because the import is behind a `cfg_select!`
+        let y: Float = 1.;
+        let _: f64 = y.into(); // Ok, should not lint because the import is behind a `cfg` attr
+
+        let x: Option<Int> = Some(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Option<i32> = x.map(Into::into);
+        let y: Option<Float> = Some(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Option<f64> = y.map(Into::into);
+
+        let x: Result<Int, ()> = Ok(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Result<i32, ()> = x.map(Into::into);
+        let y: Result<Float, ()> = Ok(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Result<f64, ()> = y.map(Into::into);
+
+        let x: Result<(), Int> = Err(1);
+        // Ok, should not lint because the type alias is behind a `cfg_select!`
+        let _: Result<(), i32> = x.map_err(Into::into);
+        let y: Result<(), Float> = Err(1.);
+        // Ok, should not lint because the type alias is behind a `cfg` attr
+        let _: Result<(), f64> = y.map_err(Into::into);
+    }
+}
+
 
 struct C {
     #[cfg(true)]
