@@ -759,7 +759,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "box_into_inner_with_allocator", issue = "none")]
     #[inline]
     pub fn into_inner_with_allocator(boxed: Self) -> (T, A) {
-        // SAFETY: Nonnull points to an unique allocation of an initialised `T`
+        // SAFETY: Nonnull points to an unique allocation of an initialised `T`.
+        // We are however still responsible for the memory owned by the pointer,
+        // so we should drop it.
         unsafe {
             let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
             let inner = raw.read();
