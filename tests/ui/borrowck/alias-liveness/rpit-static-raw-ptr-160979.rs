@@ -2,15 +2,12 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #160979
 
-// This test exhibits UB by creating a dangling reference from a type where the
-// lifetime on a trait bound isn't live. This happens because we don't currently
-// consider lifetimes in trait bounds on aliases to be live.
+// This test exhibits that UB can be created by making a dangling reference from
+// a type where the lifetime on a trait bound isn't live.
 //
 // Ultimately, the *mechanism* of creating this dangling reference is likely
-// unsound, but is only exposed because the lack of liveness on lifetimes in
+// unsound, but was only exposed because the lack of liveness on lifetimes in
 // trait bounds on aliases.
 
 
@@ -38,8 +35,8 @@ fn make_producer<'a>(payload: &'a Payload) -> impl Produce<'a> + 'static {
 fn main() {
     let x: Box<Payload> = Box::new(Box::new(1));
     let wrong: &'static Payload = make_producer(&x).produce();
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     drop(x);
-    //[nll]~^ ERROR cannot move out of `x` because it is borrowed
+    //~^ ERROR cannot move out of `x` because it is borrowed
     println!("{wrong}");
 }

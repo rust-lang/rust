@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ check-pass
 
 // Minimized from auditeur's sequential owned_fn crater regression in #161154.
 
@@ -37,6 +36,7 @@ fn sequential<B: Step, A: Step>(before: B, after: A, owned: &mut u8) {
     (before.owned_fn)(owned);
     let after = after.into_inner().into_parts();
     (after.owned_fn)(owned);
+    //~^ ERROR cannot borrow `*owned`
 }
 
 fn main() {}

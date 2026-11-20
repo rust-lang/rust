@@ -59,6 +59,7 @@ fn differing_args<T: Rotating>(x: &String, o: &String) {
     let s = String::from("hi");
     let a = make_rotating::<T>(x, &s, o);
     drop(s);
+    //~^ ERROR cannot move out of `s`
     drop(a);
 }
 
