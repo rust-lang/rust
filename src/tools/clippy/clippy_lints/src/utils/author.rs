@@ -579,9 +579,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 ..
             }) => {
                 let capture_clause = match capture_clause {
-                    CaptureBy::Value { .. } => "Value { .. }",
-                    CaptureBy::Use { .. } => "Use { .. }",
                     CaptureBy::Ref => "Ref",
+                    CaptureBy::Value { .. } => "Value { .. }",
                 };
 
                 let closure_kind = match kind {
@@ -704,6 +703,12 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::Repeat(value, length) => {
                 bind!(self, value, length);
                 kind!("Repeat({value}, {length})");
+                self.expr(value);
+                self.const_arg(length);
+            },
+            ExprKind::RepeatUse(value, length) => {
+                bind!(self, value, length);
+                kind!("RepeatUse({value}, {length})");
                 self.expr(value);
                 self.const_arg(length);
             },

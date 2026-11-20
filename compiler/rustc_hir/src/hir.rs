@@ -2268,6 +2268,7 @@ impl Expr<'_> {
             | ExprKind::OffsetOf(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
@@ -2328,6 +2329,7 @@ impl Expr<'_> {
             | ExprKind::Closure { .. }
             | ExprKind::Block(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Array(..)
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
@@ -2431,6 +2433,7 @@ impl Expr<'_> {
             | ExprKind::OffsetOf(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Yield(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => false,
@@ -2531,7 +2534,7 @@ impl Expr<'_> {
                 },
                 args,
             ) => args.iter().any(|arg| arg.can_have_side_effects()),
-            ExprKind::Repeat(arg, _) => arg.can_have_side_effects(),
+            ExprKind::Repeat(arg, _) | ExprKind::RepeatUse(arg, ..) => arg.can_have_side_effects(),
             ExprKind::If(..)
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
@@ -2781,6 +2784,13 @@ pub enum ExprKind<'hir> {
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     Repeat(&'hir Expr<'hir>, &'hir ConstArg<'hir>),
+
+    /// An array literal constructed from one repeated `.use`d element.
+    ///
+    /// E.g., `[rc.use; 5]`. The first expression is the element
+    /// to be repeated; the second is the number of times to repeat it.
+    /// The result of the expression is cloned as many times as needed.
+    RepeatUse(&'hir Expr<'hir>, &'hir ConstArg<'hir>),
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),

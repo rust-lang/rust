@@ -734,7 +734,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::RawPtr(m, path) => {
                         let ctx = match m {
-                            RawPtrKind::Mut => PlaceContext::MutatingUse(
+                            RawPtrKind::Mut { ..} => PlaceContext::MutatingUse(
                                 MutatingUseContext::RawBorrow
                             ),
                             RawPtrKind::Const => PlaceContext::NonMutatingUse(

@@ -3,6 +3,7 @@
 use rustc_middle::middle::region::TempLifetime;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::Category;
@@ -182,7 +183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let ty = expr.ty;
             if !ty.is_sized(tcx, this.typing_env()) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!tcx.type_is_copy_modulo_regions(this.typing_env(), ty));
+                assert!(!this.infcx.type_is_copy_modulo_regions(this.param_env, ty));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

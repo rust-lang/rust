@@ -420,11 +420,10 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
         // Array length const arguments do not have `type_of` fed as there is never a corresponding
         // generic parameter definition.
         Node::Ty(&hir::Ty { kind: TyKind::Array(_, ref constant), .. })
-        | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
-            if constant.hir_id == arg_hir_id =>
-        {
-            tcx.types.usize
-        }
+        | Node::Expr(&Expr {
+            kind: ExprKind::Repeat(_, ref constant) | ExprKind::RepeatUse(_, ref constant),
+            ..
+        }) if constant.hir_id == arg_hir_id => tcx.types.usize,
 
         Node::TyPat(pat) => {
             let node = match tcx.parent_hir_node(pat.hir_id) {

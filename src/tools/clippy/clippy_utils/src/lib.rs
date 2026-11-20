@@ -700,7 +700,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, len) => {
+        ExprKind::Repeat(x, len) | ExprKind::RepeatUse(x, len) => {
             if let ConstArgKind::Anon(anon_const) = len.kind
                 && let ExprKind::Lit(const_lit) = cx.tcx.hir_body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
@@ -734,7 +734,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
                 ..
             }) => return sym.is_empty() && ty.basic_res().is_lang_item(cx, LangItem::String),
             ExprKind::Array([]) => return ty.basic_res().is_diag_item(cx, sym::Vec),
-            ExprKind::Repeat(_, len) => {
+            ExprKind::Repeat(_, len) | ExprKind::RepeatUse(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir_body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node
@@ -3535,7 +3535,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
         // ===== Coercion-propagation expressions =====
         ExprKind::Array(elems) | ExprKind::Tup(elems) => elems.iter().any(|elem| expr_requires_coercion(cx, elem)),
         // Array but with repeating syntax.
-        ExprKind::Repeat(rep_elem, _) => expr_requires_coercion(cx, rep_elem),
+        ExprKind::Repeat(rep_elem, _) | ExprKind::RepeatUse(rep_elem, _) => expr_requires_coercion(cx, rep_elem),
         // Others that may contain coercion sites.
         ExprKind::If(_, then, maybe_else) => {
             expr_requires_coercion(cx, then) || maybe_else.is_some_and(|e| expr_requires_coercion(cx, e))

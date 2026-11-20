@@ -352,6 +352,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | NamedConst { .. }
             | NonHirLiteral { .. }
             | Repeat { .. }
+            | RepeatUse { .. }
             | StaticRef { .. }
             | ThreadLocalRef { .. }
             | Tuple { .. }

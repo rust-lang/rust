@@ -999,11 +999,19 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // Now comes the rote stuff:
             hir::ExprKind::Repeat(v, _) => {
                 let ty = self.typeck_results.expr_ty(expr);
-                let ty::Array(_, count) = ty.kind() else {
+                let &ty::Array(_, count) = ty.kind() else {
                     span_bug!(expr.span, "unexpected repeat expr ty: {:?}", ty);
                 };
 
-                ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
+                ExprKind::Repeat { value: self.mirror_expr(v), count }
+            }
+            hir::ExprKind::RepeatUse(v, _) => {
+                let ty = self.typeck_results.expr_ty(expr);
+                let &ty::Array(_, count) = ty.kind() else {
+                    span_bug!(expr.span, "unexpected repeat expr ty: {:?}", ty);
+                };
+
+                ExprKind::RepeatUse { value: self.mirror_expr(v), count }
             }
             hir::ExprKind::Ret(v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
             hir::ExprKind::Become(call) => ExprKind::Become { value: self.mirror_expr(call) },

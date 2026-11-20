@@ -165,6 +165,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::MethodCall(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Ret(..)
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
