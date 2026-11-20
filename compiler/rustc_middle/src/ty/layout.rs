@@ -16,6 +16,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, bug, span_bug
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
+use rustc_type_ir::Const;
 use tracing::debug;
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -333,11 +334,20 @@ impl<'tcx> LayoutCx<'tcx> {
 /// While this is conservative, (aside from constant sizes, only pointers,
 /// newtypes thereof and null pointer optimized enums are allowed), it is
 /// enough to statically check common use cases of transmute.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum SizeSkeleton<'tcx> {
     /// Any statically computable Layout.
     /// Alignment can be `None` if unknown.
     Known(Size, Option<Align>),
+
+    /// An array with unevaluated const lengths.
+    Array {
+        /// The base size, including the element size and all known array
+        /// lengths accumulated.
+        base: Size,
+        align: Option<Align>,
+        const_lens: Vec<Const<TyCtxt<'tcx>>>,
+    },
 
     /// A potentially-wide pointer.
     Pointer {
@@ -471,9 +481,25 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 .checked_mul(c)
                                 .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
                             // Alignment is unchanged by arrays.
-                            return Ok(SizeSkeleton::Known(Size::from_bytes(size), a));
+                            Ok(SizeSkeleton::Known(Size::from_bytes(size), a))
+                        } else if s.bytes() == 0 {
+                            Ok(SizeSkeleton::Known(s, a))
+                        } else {
+                            Ok(SizeSkeleton::Array { base: s, align: a, const_lens: vec![len] })
                         }
-                        Err(err)
+                    }
+                    SizeSkeleton::Array { mut base, align, mut const_lens } => {
+                        match len_eval {
+                            Some(c) => {
+                                base = Size::from_bytes(base.bytes().checked_mul(c).ok_or_else(
+                                    || &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)),
+                                )?);
+                            }
+                            None => {
+                                const_lens.push(len);
+                            }
+                        }
+                        Ok(SizeSkeleton::Array { base, align, const_lens })
                     }
                     SizeSkeleton::Pointer { .. } => Err(err),
                 }
@@ -537,6 +563,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                     return Err(err);
                                 }
                             }
+                            SizeSkeleton::Array { .. } => {
+                                return Err(err);
+                            }
                             SizeSkeleton::Pointer { .. } => {
                                 if ptr.is_some() {
                                     return Err(err);
@@ -590,7 +619,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     // But in the case of `!null` patterns we need to note that in the
                     // raw pointer.
                     ty::PatternKind::NotNull => match base? {
-                        SizeSkeleton::Known(..) => base,
+                        known @ SizeSkeleton::Known(..) => Ok(known),
+                        array @ SizeSkeleton::Array { .. } => Ok(array),
                         SizeSkeleton::Pointer { non_zero: _, tail } => {
                             Ok(SizeSkeleton::Pointer { non_zero: true, tail })
                         }
@@ -602,12 +632,16 @@ impl<'tcx> SizeSkeleton<'tcx> {
         }
     }
 
-    pub fn same_size(self, other: SizeSkeleton<'tcx>) -> bool {
+    pub fn same_size(&self, other: &SizeSkeleton<'tcx>) -> bool {
         match (self, other) {
             (SizeSkeleton::Known(a, _), SizeSkeleton::Known(b, _)) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
+            (
+                SizeSkeleton::Array { base: a, const_lens: al, .. },
+                SizeSkeleton::Array { base: b, const_lens: bl, .. },
+            ) => a == b && al == bl,
             _ => false,
         }
     }
