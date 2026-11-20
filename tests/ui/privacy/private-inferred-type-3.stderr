@@ -1,8 +1,8 @@
-error: type `fn() {ext::priv_fn}` is private
+error: function `ext::priv_fn` is private
   --> $DIR/private-inferred-type-3.rs:8:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^ private type
+   |     ^^^^^^^^^ private function
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -22,11 +22,11 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn() {<u8 as ext::PrivTrait>::method}` is private
+error: associated function `ext::PrivTrait::method` is private
   --> $DIR/private-inferred-type-3.rs:8:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^ private type
+   |     ^^^^^^^^^ private associated function
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -46,11 +46,11 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+error: method `Pub::<u8>::priv_method` is private
   --> $DIR/private-inferred-type-3.rs:8:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^ private type
+   |     ^^^^^^^^^ private method
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
