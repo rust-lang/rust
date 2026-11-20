@@ -312,6 +312,11 @@ impl<I: Iterator + TrustedRandomAccess> SpecTake for Take<I> {
     {
         let mut acc = init;
         let end = self.n.min(self.iter.size());
+
+        if end == 0 && I::MAY_HAVE_SIDE_EFFECT {
+            let _ = self.iter.next();
+        }
+
         for i in 0..end {
             // SAFETY: i < end <= self.iter.size() and we discard the iterator at the end
             let val = unsafe { self.iter.__iterator_get_unchecked(i) };
@@ -323,6 +328,11 @@ impl<I: Iterator + TrustedRandomAccess> SpecTake for Take<I> {
     #[inline]
     fn spec_for_each<F: FnMut(Self::Item)>(mut self, mut f: F) {
         let end = self.n.min(self.iter.size());
+
+        if end == 0 && I::MAY_HAVE_SIDE_EFFECT {
+            let _ = self.iter.next();
+        }
+
         for i in 0..end {
             // SAFETY: i < end <= self.iter.size() and we discard the iterator at the end
             let val = unsafe { self.iter.__iterator_get_unchecked(i) };
