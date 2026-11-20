@@ -31,6 +31,7 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+use core::num::niche_types::Nanoseconds;
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
@@ -40,6 +41,77 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::{FromInner, IntoInner, time};
+
+const NANOS_PER_SEC: u32 = 1_000_000_000;
+
+pub(crate) mod ops {
+    use core::num::niche_types::Nanoseconds;
+
+    use super::{Duration, NANOS_PER_SEC};
+
+    type Timeval = (i64, Nanoseconds);
+
+    pub(crate) fn add((secs, nanos): Timeval, dur: Duration) -> Option<Timeval> {
+        let mut secs = secs.checked_add_unsigned(dur.as_secs())?;
+
+        // Nanosecond calculations can't overflow because `Nanoseconds` can only
+        // represent values lower than 1B, hence this sum must be lower than 2B.
+        let mut nanos = dur.subsec_nanos() + nanos.as_inner();
+        if nanos >= NANOS_PER_SEC {
+            nanos -= NANOS_PER_SEC;
+            secs = secs.checked_add(1)?;
+        }
+
+        let nanos = unsafe { Nanoseconds::new_unchecked(nanos) };
+        Some((secs, nanos))
+    }
+
+    pub(crate) fn sub((secs, nanos): Timeval, dur: Duration) -> Option<Timeval> {
+        let mut secs = secs.checked_sub_unsigned(dur.as_secs())?;
+
+        // The value represented by `Nanoseconds` is always lower than 1B, hence
+        // this subtraction cannot wrap.
+        let mut nanos = nanos.as_inner() as i32 - dur.subsec_nanos() as i32;
+        if nanos < 0 {
+            nanos += NANOS_PER_SEC as i32;
+            secs = secs.checked_sub(1)?;
+        }
+
+        let nanos = unsafe { Nanoseconds::new_unchecked(nanos as u32) };
+        Some((secs, nanos))
+    }
+
+    pub(crate) fn diff(from: Timeval, to: Timeval) -> Result<Duration, Duration> {
+        let mut nanos = from.1.as_inner() as i32 - to.1.as_inner() as i32;
+        if from.0 > to.0 {
+            let mut secs = from.0.wrapping_sub(to.0).cast_unsigned();
+            if nanos < 0 {
+                nanos += NANOS_PER_SEC as i32;
+                secs -= 1;
+            }
+
+            Ok(Duration::new(secs, nanos as u32))
+        } else if from.0 == to.0 {
+            if nanos >= 0 {
+                Ok(Duration::new(0, nanos as u32))
+            } else {
+                Err(Duration::new(0, (-nanos) as u32))
+            }
+        } else {
+            // `to` is definitely smaller than `from`. Continue as if `to` and
+            // `from` were flipped in the subtraction.
+            let mut secs = to.0.wrapping_sub(from.0).cast_unsigned();
+            nanos = -nanos;
+
+            if nanos < 0 {
+                nanos += NANOS_PER_SEC as i32;
+                secs -= 1;
+            }
+
+            Err(Duration::new(secs, nanos as u32))
+        }
+    }
+}
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
@@ -61,9 +133,6 @@ use crate::sys::{FromInner, IntoInner, time};
 /// allows measuring the duration between two instants (or comparing two
 /// instants).
 ///
-/// The size of an `Instant` struct may vary depending on the target operating
-/// system.
-///
 /// Example:
 ///
 /// ```no_run
@@ -81,27 +150,6 @@ use crate::sys::{FromInner, IntoInner, time};
 /// ```
 ///
 /// [platform bugs]: Instant#monotonicity
-///
-/// # OS-specific behaviors
-///
-/// An `Instant` is a wrapper around system-specific types and it may behave
-/// differently depending on the underlying operating system. For example,
-/// the following snippet is fine on Linux but panics on macOS:
-///
-/// ```no_run
-/// use std::time::{Instant, Duration};
-///
-/// let now = Instant::now();
-/// let days_per_10_millennia = 365_2425;
-/// let solar_seconds_per_day = 60 * 60 * 24;
-/// let millennium_in_solar_seconds = 31_556_952_000;
-/// assert_eq!(millennium_in_solar_seconds, days_per_10_millennia * solar_seconds_per_day / 10);
-///
-/// let duration = Duration::new(millennium_in_solar_seconds, 0);
-/// println!("{:?}", now + duration);
-/// ```
-///
-/// For cross-platform code, you can comfortably use durations of up to around one hundred years.
 ///
 /// # Underlying System calls
 ///
@@ -126,8 +174,8 @@ use crate::sys::{FromInner, IntoInner, time};
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
-/// > Note: mathematical operations like [`add`] may panic if the underlying
-/// > structure cannot represent the new point in time.
+/// > Note: mathematical operations like [`add`] may panic if the new point in
+/// > time cannot be represented.
 ///
 /// [`add`]: Instant::add
 ///
@@ -150,10 +198,13 @@ use crate::sys::{FromInner, IntoInner, time};
 /// [`sub`]: Instant::sub
 /// [`checked_duration_since`]: Instant::checked_duration_since
 ///
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
-pub struct Instant(time::Instant);
+pub struct Instant {
+    pub(crate) secs: i64,
+    pub(crate) nanos: Nanoseconds,
+}
 
 /// A measurement of the system clock, useful for talking to
 /// external entities like the file system or other processes.
@@ -283,7 +334,7 @@ impl Instant {
     #[stable(feature = "time2", since = "1.8.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "instant_now")]
     pub fn now() -> Instant {
-        Instant(time::Instant::now())
+        time::now()
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -338,7 +389,14 @@ impl Instant {
     #[must_use]
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
-        self.0.checked_sub_instant(&earlier.0)
+        match ops::diff((self.secs, self.nanos), (earlier.secs, earlier.nanos)) {
+            // On Windows there is a threshold below which we consider two timestamps
+            // equivalent due to measurement error. For more details and documentation
+            // consult the documentation of `epsilon`.
+            Ok(dur) | Err(dur) if dur <= time::epsilon() => Some(Duration::ZERO),
+            Ok(dur) => Some(dur),
+            Err(_) => None,
+        }
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -390,28 +448,19 @@ impl Instant {
     }
 
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
-    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
-    /// otherwise.
+    /// `Instant`, `None` otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_add_duration(&duration).map(Instant)
+        let (secs, nanos) = ops::add((self.secs, self.nanos), duration)?;
+        Some(Instant { secs, nanos })
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
-    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
-    /// otherwise.
+    /// `Instant`, `None` otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_sub_duration(&duration).map(Instant)
-    }
-
-    // Used by platform specific `sleep_until` implementations such as the one used on Linux.
-    #[cfg_attr(
-        not(target_os = "linux"),
-        allow(unused, reason = "not every platform has a specific `sleep_until`")
-    )]
-    pub(crate) fn into_inner(self) -> time::Instant {
-        self.0
+        let (secs, nanos) = ops::sub((self.secs, self.nanos), duration)?;
+        Some(Instant { secs, nanos })
     }
 }
 
@@ -421,8 +470,8 @@ impl Add<Duration> for Instant {
 
     /// # Panics
     ///
-    /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
+    /// This function may panic if the resulting point in time cannot be represented.
+    /// See [`Instant::checked_add`] for a version without panic.
     #[track_caller]
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
@@ -469,13 +518,6 @@ impl Sub<Instant> for Instant {
     /// [Monotonicity]: Instant#monotonicity
     fn sub(self, other: Instant) -> Duration {
         self.duration_since(other)
-    }
-}
-
-#[stable(feature = "time2", since = "1.8.0")]
-impl fmt::Debug for Instant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 
