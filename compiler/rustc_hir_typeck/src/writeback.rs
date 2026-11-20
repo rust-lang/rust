@@ -1006,7 +1006,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         value = fold_regions(tcx, value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.
-        if tcx.features().generic_const_exprs() {
+        if ty::gce_applies_to(tcx, &value) {
             value = value.fold_with(&mut EagerlyNormalizeConsts::new(self.fcx));
         }
 

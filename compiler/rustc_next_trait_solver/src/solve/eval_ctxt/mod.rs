@@ -63,6 +63,9 @@ enum CurrentGoalKind {
     /// These are currently the only goals whose impl where-clauses are considered to be
     /// productive steps.
     CoinductiveTrait,
+    /// A well-formedness goal GCE applies to, which GCE needs to be coinductive.
+    // FIXME(generic_const_exprs): remove with GCE
+    GceWellFormed,
     /// A `ProjectionGoal`. These are temporarily special wrt to cycle handling.
     Projection,
     // FIXME: Consider renaming `PredicateKind::NormalizesTo` to match with this
@@ -90,6 +93,11 @@ impl CurrentGoalKind {
                 } else {
                     CurrentGoalKind::Misc
                 }
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term))
+                if ty::gce_applies_to(cx, term) =>
+            {
+                CurrentGoalKind::GceWellFormed
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => CurrentGoalKind::Projection,
             ty::PredicateKind::NormalizesTo(_) => {
@@ -437,7 +445,9 @@ where
         match self.current_goal_kind {
             // We currently consider a cycle involving a trait goal for a coinductive
             // trait as coinductive as long as it otherwise only includes normalization.
-            CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
+            CurrentGoalKind::CoinductiveTrait | CurrentGoalKind::GceWellFormed => {
+                PathKind::Coinductive
+            }
             // We do need to treat cycles involving only coinductive trait goals
             // and normalization as coinductive due to trait-system-refactor-initiative#10.
             CurrentGoalKind::ProjectionComputeAssocTermCandidate | CurrentGoalKind::Projection => {
@@ -1559,7 +1569,7 @@ where
 
         let features = cx.features_for(alias_const.kind.def_id());
         // FIXME: get rid of this once GCE is removed
-        let is_gce = cx.features().generic_const_exprs();
+        let is_gce = features.generic_const_exprs();
 
         if self.typing_mode().is_erased_not_coherence()
             && (alias_const.has_opaque_types() || is_gce)
@@ -1671,7 +1681,7 @@ where
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if features.gca_const_items() => {
+            None if is_gce || features.gca_const_items() => {
                 if alias_const.has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {

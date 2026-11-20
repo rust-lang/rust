@@ -1587,7 +1587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return ty::Const::new_error(self.tcx, guar);
                 }
             }
-        } else if self.tcx.features().generic_const_exprs() {
+        } else if ty::gce_applies_to(self.tcx, ct) {
             rustc_trait_selection::traits::evaluate_const(&self.infcx, ct, self.param_env)
         } else {
             ct
