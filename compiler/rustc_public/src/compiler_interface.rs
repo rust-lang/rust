@@ -397,7 +397,7 @@ impl<'tcx> CompilerInterface<'tcx> {
     pub(crate) fn adt_is_manually_drop(&self, def: AdtDef) -> bool {
         self.with_cx(|tables, cx| cx.adt_is_manually_drop(def.internal(tables, cx.tcx)))
     }
-    /// Returns whether this ADT is unsafe cell 
+    /// Returns whether this ADT is unsafe cell
     pub(crate) fn adt_is_unsafe_cell(&self, def: AdtDef) -> bool {
         self.with_cx(|tables, cx| cx.adt_is_unsafe_cell(def.internal(tables, cx.tcx)))
     }

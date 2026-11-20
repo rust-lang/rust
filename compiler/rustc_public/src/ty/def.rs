@@ -215,7 +215,7 @@ impl AdtDef {
     pub fn is_unsafe_cell(&self) -> bool {
         with(|cx| cx.adt_is_unsafe_cell(*self))
     }
-    
+
     /// The number of variants in this ADT.
     pub fn num_variants(&self) -> usize {
         with(|cx| cx.adt_variants_len(*self))
