@@ -1,5 +1,5 @@
 error: unknown `doc` attribute `include`
-  --> $DIR/doc-include-suggestion.rs:2:7
+  --> $DIR/doc-include-suggestion.rs:1:7
    |
 LL | #[doc(include = "external-cross-doc.md")]
    |       ^^^^^^^ help: use `doc = include_str!` instead: `#[doc = include_str!("external-cross-doc.md")]`

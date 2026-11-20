@@ -1,4 +1,3 @@
-
 #![doc(test(no_crate_inject = 1))]
 //~^ ERROR
 #![doc(test(attr = 1))]

@@ -58,7 +58,6 @@ pub mod hardwired {
             INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
-            INVALID_DOC_ATTRIBUTES,
             INVALID_MACRO_EXPORT_ARGUMENTS,
             INVALID_TYPE_PARAM_DEFAULT,
             IRREFUTABLE_LET_PATTERNS,
@@ -3508,33 +3507,6 @@ declare_lint! {
     pub MISSING_ABI,
     Warn,
     "No declared ABI for extern declaration"
-}
-
-declare_lint! {
-    /// The `invalid_doc_attributes` lint detects when the `#[doc(...)]` is
-    /// misused.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(warnings)]
-    ///
-    /// pub mod submodule {
-    ///     #![doc(test(no_crate_inject))]
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previously, incorrect usage of the `#[doc(..)]` attribute was not
-    /// being validated. Usually these should be rejected as a hard error,
-    /// but this lint was introduced to avoid breaking any existing
-    /// crates which included them.
-    pub INVALID_DOC_ATTRIBUTES,
-    Warn,
-    "detects invalid `#[doc(...)]` attributes",
 }
 
 declare_lint! {
