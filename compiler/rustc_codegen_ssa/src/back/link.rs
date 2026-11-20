@@ -1920,10 +1920,20 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 flavor,
             )),
             (Some(linker), None) => {
-                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.dcx().emit_fatal(diagnostics::LinkerFileStem);
-                });
-                let flavor = sess.target.linker_flavor.with_linker_hints(stem);
+                let mut stem = linker
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or_else(|| {
+                        sess.dcx().emit_fatal(diagnostics::LinkerFileStem);
+                    })
+                    .to_owned();
+                // The above has an edge case: ld.lld becomes ld (.lld is ignored as an extension).
+                // This causes it to be confused with actual GNU ld. So we check and add the
+                // "extension" back if present.
+                if linker.extension().and_then(|ext| ext.to_str()) == Some("lld") {
+                    stem.push_str(".lld");
+                }
+                let flavor = sess.target.linker_flavor.with_linker_hints(&stem);
                 let flavor = adjust_flavor_to_features(flavor, features);
                 Some((linker, flavor))
             }
