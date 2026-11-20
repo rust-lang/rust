@@ -675,3 +675,34 @@ fn test_nonzero_range() {
         (usize::MAX, Some(usize::MAX))
     );
 }
+
+#[test]
+fn test_range_inclusive_try_fold_state_matches_next() {
+    // normal range
+    let mut a = 1..=3;
+    let mut b = 1..=3;
+    a.try_fold((), |_, _| Some(()));
+    for _ in b.by_ref() {}
+    assert_eq!(a, b);
+
+    // overflow at the end of the type
+    let mut a = 250u8..=255;
+    let mut b = 250u8..=255;
+    a.try_fold((), |_, _| Some(()));
+    for _ in b.by_ref() {}
+    assert_eq!(a, b);
+
+    // try_rfold, and overflow at the start of the type
+    let mut a = 0u8..=5;
+    let mut b = 0u8..=5;
+    a.try_rfold((), |_, _| Some(()));
+    while b.next_back().is_some() {}
+    assert_eq!(a, b);
+
+    // early break on the last element
+    let mut a = 1..=3;
+    let mut b = 1..=3;
+    a.try_fold((), |_, x| if x == 3 { None } else { Some(()) });
+    for _ in b.by_ref() {}
+    assert_eq!(a, b);
+}
