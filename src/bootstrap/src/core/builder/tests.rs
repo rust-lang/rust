@@ -1768,6 +1768,7 @@ mod snapshot {
             [test] link-check <host>
             [test] tier-check <host>
             [test] rustc 0 <host> -> rust-analyzer 1 <host>
+            [test] intrinsic-test <host>
             [build] rustc 0 <host> -> RustdocTheme 1 <host>
             [test] rustdoc-theme 1 <host>
             [test] compiletest-rustdoc-ui 1 <host>
@@ -1781,8 +1782,7 @@ mod snapshot {
             [build] rustc 0 <host> -> RunMakeSupport 1 <host>
             [test] compiletest-run-make 1 <host>
             [build] rustc 0 <host> -> cargo 1 <host>
-            [test] compiletest-run-make-cargo 1 <host>
-            [test] intrinsic-test <host>"#]].assert_eq(&prepare_test_config(&ctx)
+            [test] compiletest-run-make-cargo 1 <host>"#]].assert_eq(&prepare_test_config(&ctx)
             .render_steps());
     }
 
@@ -1973,6 +1973,7 @@ mod snapshot {
             [test] rustc 1 <host> -> rust-analyzer 2 <host>
             [doc] rustc (book) <host>
             [test] rustc 1 <host> -> lint-docs 2 <host>
+            [test] intrinsic-test <host>
             [build] rustc 0 <host> -> RustdocTheme 1 <host>
             [test] rustdoc-theme 2 <host>
             [test] compiletest-rustdoc-ui 2 <host>
@@ -1986,8 +1987,7 @@ mod snapshot {
             [build] rustc 0 <host> -> RunMakeSupport 1 <host>
             [test] compiletest-run-make 2 <host>
             [build] rustc 1 <host> -> cargo 2 <host>
-            [test] compiletest-run-make-cargo 2 <host>
-            [test] intrinsic-test <host>"#]].assert_eq(&prepare_test_config(&ctx)
+            [test] compiletest-run-make-cargo 2 <host>"#]].assert_eq(&prepare_test_config(&ctx)
             .stage(2)
             .render_steps());
     }

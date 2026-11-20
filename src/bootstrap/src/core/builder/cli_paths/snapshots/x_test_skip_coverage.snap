@@ -189,6 +189,9 @@ expression: test --skip=coverage
 [Test] test::StdarchGenCheck
     targets: [x86_64-unknown-linux-gnu]
     - Set({stdarch-gen-check})
+[Test] test::StdarchIntrinsicTest
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({intrinsic-test})
 [Test] test::RustdocJSStd
     targets: [x86_64-unknown-linux-gnu]
     - Suite(tests/rustdoc-js-std)
@@ -222,6 +225,3 @@ expression: test --skip=coverage
 [Test] test::RunMakeCargo
     targets: [aarch64-unknown-linux-gnu]
     - Suite(tests/run-make-cargo)
-[Test] test::IntrinsicTest
-    targets: [x86_64-unknown-linux-gnu]
-    - Set({intrinsic-test})
