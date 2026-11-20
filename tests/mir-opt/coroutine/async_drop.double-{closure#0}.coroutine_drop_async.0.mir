@@ -44,13 +44,13 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     let mut _43: std::future::ResumeTy;
     let mut _44: std::ptr::NonNull<std::task::Context<'_>>;
     scope 1 {
-        debug sync_int => (((*_42) as variant#6).1: SyncInt);
+        debug sync_int => (((*_42) as variant#3).0: SyncInt);
         let _4: AsyncInt;
         scope 2 {
-            debug async_int => (((*_42) as variant#6).2: AsyncInt);
+            debug async_int => (((*_42) as variant#3).1: AsyncInt);
             let _5: AsyncInt;
             scope 3 {
-                debug async_int_again => (((*_42) as variant#4).3: AsyncInt);
+                debug async_int_again => (((*_42) as variant#3).2: AsyncInt);
             }
         }
     }
@@ -85,12 +85,12 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
 
     bb5 (cleanup): {
         nop;
-        drop((((*_42) as variant#6).2: AsyncInt)) -> [return: bb6, unwind terminate(cleanup)];
+        drop((((*_42) as variant#3).1: AsyncInt)) -> [return: bb6, unwind terminate(cleanup)];
     }
 
     bb6 (cleanup): {
         nop;
-        drop((((*_42) as variant#6).1: SyncInt)) -> [return: bb7, unwind terminate(cleanup)];
+        drop((((*_42) as variant#3).0: SyncInt)) -> [return: bb7, unwind terminate(cleanup)];
     }
 
     bb7 (cleanup): {
@@ -146,7 +146,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb17: {
-        _13 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
+        _13 = &mut (((*_42) as variant#3).3: impl std::future::Future<Output = ()>);
         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb16, unwind: bb10];
     }
 
@@ -196,7 +196,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb26: {
-        _30 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
+        _30 = &mut (((*_42) as variant#5).2: impl std::future::Future<Output = ()>);
         _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb25, unwind: bb20];
     }
 

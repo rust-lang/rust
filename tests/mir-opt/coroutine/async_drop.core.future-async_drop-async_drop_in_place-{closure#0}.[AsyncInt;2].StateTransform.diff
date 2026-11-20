@@ -12,8 +12,9 @@
 +         field _s2: usize;
 +         field _s3: impl Future<Output = ()>;
 +         field _s4: impl Future<Output = ()>;
++         field _s5: &mut [AsyncInt; 2];
 +         variant_fields = {
-+             Unresumed(0): [],
++             Unresumed(0): [_s5],
 +             Returned (1): [],
 +             Panicked (2): [],
 +             Suspend0 (3): [_s0, _s1, _s2, _s3],
@@ -61,37 +62,46 @@
       let mut _38: &mut impl std::future::Future<Output = ()>;
       let mut _39: std::pin::Pin<&mut AsyncInt>;
       let mut _40: &mut AsyncInt;
-+     let mut _41: ();
-+     let mut _42: u32;
-+     let mut _43: &mut {async fn body of std::future::async_drop_in_place<[AsyncInt; 2]>()};
-+     let mut _44: *mut [AsyncInt];
-+     let mut _45: *mut [AsyncInt];
-+     let _46: std::future::ResumeTy;
-+     let mut _47: std::ptr::NonNull<std::task::Context<'_>>;
+      let mut _41: &mut [AsyncInt; 2];
+      let mut _42: &mut [AsyncInt; 2];
++     let mut _43: ();
++     let mut _44: u32;
++     let mut _45: &mut {async fn body of std::future::async_drop_in_place<[AsyncInt; 2]>()};
++     let mut _46: *mut [AsyncInt];
++     let mut _47: *mut [AsyncInt];
++     let _48: std::future::ResumeTy;
++     let mut _49: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
--         _3 = move (_1.0: &mut [AsyncInt; 2]);
+-         StorageLive(_41);
+-         StorageLive(_42);
+-         _42 = no_retag move (_1.0: &mut [AsyncInt; 2]);
+-         _41 = no_retag move _42;
+-         StorageDead(_42);
+-         _3 = move _41;
 -         _4 = &raw mut (*_3);
 -         _5 = move _4 as *mut [AsyncInt] (PointerCoercion(Unsize, Implicit));
 -         _6 = PtrMetadata(copy _5);
 -         _7 = const 0_usize;
 -         goto -> bb20;
-+         _47 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _46 = std::future::ResumeTy(move _47);
-+         _43 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<[AsyncInt; 2]>()});
-+         _42 = discriminant((*_43));
-+         switchInt(move _42) -> [0: bb28, 1: bb27, 2: bb26, 3: bb23, 4: bb24, 5: bb25, otherwise: bb8];
++         _49 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _48 = std::future::ResumeTy(move _49);
++         _45 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<[AsyncInt; 2]>()});
++         _44 = discriminant((*_45));
++         switchInt(move _44) -> [0: bb28, 1: bb27, 2: bb26, 3: bb23, 4: bb24, 5: bb25, otherwise: bb8];
       }
   
       bb1: {
 -         _0 = const ();
-+         _41 = const ();
-+         _0 = Poll::<()>::Ready(move _41);
-+         discriminant((*_43)) = 1;
++         _43 = const ();
+          StorageDead(_41);
++         _0 = Poll::<()>::Ready(move _43);
++         discriminant((*_45)) = 1;
           return;
       }
   
       bb2 (cleanup): {
+          StorageDead(_41);
 -         resume;
 +         goto -> bb22;
       }
@@ -99,16 +109,16 @@
       bb3 (cleanup): {
 -         _8 = &raw mut (*_5)[_7];
 -         _7 = Add(move _7, const 1_usize);
-+         _7 = no_retag copy (((*_43) as variant#5).2: usize);
-+         _44 = no_retag copy (((*_43) as variant#5).0: *mut [AsyncInt]);
-+         _8 = &raw mut (*_44)[_7];
-+         (((*_43) as variant#5).2: usize) = Add(move (((*_43) as variant#5).2: usize), const 1_usize);
++         _7 = no_retag copy (((*_45) as variant#3).2: usize);
++         _46 = no_retag copy (((*_45) as variant#3).0: *mut [AsyncInt]);
++         _8 = &raw mut (*_46)[_7];
++         (((*_45) as variant#3).2: usize) = Add(move (((*_45) as variant#3).2: usize), const 1_usize);
           drop((*_8)) -> [return: bb4, unwind terminate(cleanup)];
       }
   
       bb4 (cleanup): {
 -         _9 = Eq(copy _7, copy _6);
-+         _9 = Eq(copy (((*_43) as variant#5).2: usize), copy (((*_43) as variant#5).1: usize));
++         _9 = Eq(copy (((*_45) as variant#3).2: usize), copy (((*_45) as variant#3).1: usize));
           switchInt(move _9) -> [0: bb3, otherwise: bb2];
       }
   
@@ -130,7 +140,7 @@
   
       bb7: {
 -         StorageDead(_12);
-+         _46 = move _13;
++         _48 = move _13;
 +         StorageDead(_13);
           goto -> bb6;
       }
@@ -144,10 +154,10 @@
   
       bb9: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb9, unwind: bb8];
-+         _7 = no_retag copy (((*_43) as variant#5).2: usize);
-+         _45 = no_retag copy (((*_43) as variant#5).0: *mut [AsyncInt]);
-+         _22 = &raw mut (*_45)[_7];
-+         (((*_43) as variant#5).2: usize) = Add(move (((*_43) as variant#5).2: usize), const 1_usize);
++         _7 = no_retag copy (((*_45) as variant#3).2: usize);
++         _47 = no_retag copy (((*_45) as variant#3).0: *mut [AsyncInt]);
++         _22 = &raw mut (*_47)[_7];
++         (((*_45) as variant#3).2: usize) = Add(move (((*_45) as variant#3).2: usize), const 1_usize);
 +         _40 = &mut (*_22);
 +         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb21, unwind: bb4];
       }
@@ -156,7 +166,7 @@
 -         _2 = move _13;
 -         StorageDead(_13);
 -         goto -> bb9;
-+         _23 = Eq(copy (((*_43) as variant#5).2: usize), copy (((*_43) as variant#5).1: usize));
++         _23 = Eq(copy (((*_45) as variant#3).2: usize), copy (((*_45) as variant#3).1: usize));
 +         switchInt(move _23) -> [0: bb9, otherwise: bb1];
       }
   
@@ -184,14 +194,14 @@
       bb14: {
 -         _15 = discriminant(_14);
 -         switchInt(move _15) -> [0: bb7, 1: bb12, otherwise: bb13];
-+         _46 = move _25;
++         _48 = move _25;
 +         StorageDead(_25);
 +         goto -> bb13;
       }
   
       bb15: {
 -         _14 = <impl Future<Output = ()> as Future>::poll(move _16, move _17) -> [return: bb14, unwind: bb8];
-+         _46 = move _32;
++         _48 = move _32;
 +         StorageDead(_32);
 +         goto -> bb20;
       }
@@ -202,7 +212,8 @@
 +         StorageLive(_32);
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_32);
-+         discriminant((*_43)) = 5;
++         StorageDead(_41);
++         discriminant((*_45)) = 5;
 +         return;
       }
   
@@ -224,7 +235,7 @@
 -         _7 = Add(move _7, const 1_usize);
 -         _40 = &mut (*_22);
 -         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb39, unwind: bb4];
-+         _37 = move _46;
++         _37 = move _48;
 +         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb18;
       }
@@ -232,7 +243,7 @@
       bb20: {
 -         _23 = Eq(copy _7, copy _6);
 -         switchInt(move _23) -> [0: bb19, otherwise: bb1];
-+         _38 = &mut (((*_43) as variant#5).3: impl std::future::Future<Output = ()>);
++         _38 = &mut (((*_45) as variant#4).3: impl std::future::Future<Output = ()>);
 +         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb19, unwind: bb12];
       }
   
@@ -240,14 +251,14 @@
 -         StorageDead(_24);
 -         goto -> bb20;
 +         nop;
-+         (((*_43) as variant#5).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_39.0: &mut AsyncInt)) -> [return: bb20, unwind: bb12];
++         (((*_45) as variant#4).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_39.0: &mut AsyncInt)) -> [return: bb20, unwind: bb12];
       }
   
 -     bb22: {
 -         StorageDead(_24);
 -         goto -> bb6;
 +     bb22 (cleanup): {
-+         discriminant((*_43)) = 2;
++         discriminant((*_45)) = 2;
 +         resume;
       }
   
@@ -256,14 +267,16 @@
 -         goto -> bb4;
 +     bb23: {
 +         StorageLive(_13);
-+         _13 = move _46;
++         StorageLive(_41);
++         _13 = move _48;
 +         goto -> bb7;
       }
   
       bb24: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb24, unwind: bb23];
 +         StorageLive(_25);
-+         _25 = move _46;
++         StorageLive(_41);
++         _25 = move _48;
 +         goto -> bb14;
       }
   
@@ -272,7 +285,8 @@
 -         StorageDead(_25);
 -         goto -> bb24;
 +         StorageLive(_32);
-+         _32 = move _46;
++         StorageLive(_41);
++         _32 = move _48;
 +         goto -> bb15;
       }
   
@@ -348,11 +362,16 @@
 -     bb39: {
 -         StorageLive(_24);
 -         _24 = async_drop_in_place::<AsyncInt>(copy (_39.0: &mut AsyncInt)) -> [return: bb38, unwind: bb23];
-+         _3 = move ((*_43).0: &mut [AsyncInt; 2]);
++         StorageLive(_41);
++         StorageLive(_42);
++         _42 = no_retag move (((*_45) as variant#0).0: &mut [AsyncInt; 2]);
++         _41 = no_retag move _42;
++         StorageDead(_42);
++         _3 = move _41;
 +         _4 = &raw mut (*_3);
-+         (((*_43) as variant#5).0: *mut [AsyncInt]) = move _4 as *mut [AsyncInt] (PointerCoercion(Unsize, Implicit));
-+         (((*_43) as variant#5).1: usize) = PtrMetadata(copy (((*_43) as variant#5).0: *mut [AsyncInt]));
-+         (((*_43) as variant#5).2: usize) = const 0_usize;
++         (((*_45) as variant#3).0: *mut [AsyncInt]) = move _4 as *mut [AsyncInt] (PointerCoercion(Unsize, Implicit));
++         (((*_45) as variant#3).1: usize) = PtrMetadata(copy (((*_45) as variant#3).0: *mut [AsyncInt]));
++         (((*_45) as variant#3).2: usize) = const 0_usize;
 +         goto -> bb10;
       }
   }
