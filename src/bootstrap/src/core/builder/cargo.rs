@@ -1095,7 +1095,13 @@ impl Builder<'_> {
         cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
 
         if let Some(stack_protector) = &self.config.rust_stack_protector {
-            rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
+            // #[cfg(bootstrap)] - rustc 1.101 still uses -Z stack-protector
+            // remove this after beta rotates
+            if build_compiler_stage == 0 {
+                rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
+            } else {
+                rustflags.arg(&format!("-Cstack-protector={stack_protector}"));
+            }
         }
 
         let debuginfo_level = match mode {

@@ -783,7 +783,7 @@
 #rust.frame-pointers = false
 
 # Indicates whether stack protectors should be used
-# via the unstable option `-Zstack-protector`.
+# via `-Cstack-protector`.
 #
 # Valid options are : `none`(default), `strong`, or `all`.
 #rust.stack-protector = "none"
