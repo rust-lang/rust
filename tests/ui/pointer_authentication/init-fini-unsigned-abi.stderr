@@ -1,0 +1,29 @@
+error: `rust_init` is placed in `.init_array`, but pointer authentication does not sign its ABI
+  --> $DIR/init-fini-unsigned-abi.rs:28:1
+   |
+LL | static RUST_INIT: fn() = rust_init;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the loader authenticates every entry of `.init_array` and `.fini_array` with the init/fini signing schema, so an unsigned entry fails authentication when the loader runs it
+   = help: declare `rust_init` as `extern "C"`
+
+error: `rust_init` is placed in `.fini_array.100`, but pointer authentication does not sign its ABI
+  --> $DIR/init-fini-unsigned-abi.rs:33:1
+   |
+LL | static RUST_FINI: [fn(); 3] = [rust_init, rust_fini, rust_fini];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the loader authenticates every entry of `.init_array` and `.fini_array` with the init/fini signing schema, so an unsigned entry fails authentication when the loader runs it
+   = help: declare `rust_init` as `extern "C"`
+
+error: `rust_fini` is placed in `.fini_array.100`, but pointer authentication does not sign its ABI
+  --> $DIR/init-fini-unsigned-abi.rs:33:1
+   |
+LL | static RUST_FINI: [fn(); 3] = [rust_init, rust_fini, rust_fini];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the loader authenticates every entry of `.init_array` and `.fini_array` with the init/fini signing schema, so an unsigned entry fails authentication when the loader runs it
+   = help: declare `rust_fini` as `extern "C"`
+
+error: aborting due to 3 previous errors
+

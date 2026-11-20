@@ -1,5 +1,5 @@
 // ignore-tidy-file-linelength
-//@ revisions: DEFAULT ALL DISABLE_JUMP DISABLE_AUTH_TRAPS DISABLE_CALLS DISABLE_INDIRCT_GOTOS DISABLE_RETURNS DISABLE_INTRINSICS DISABLE_TYPEINFO DISABLE_VT_PTR_ADDR DISABLE_VT_PTR_TYPE NONE
+//@ revisions: DEFAULT ALL DISABLE_JUMP DISABLE_AUTH_TRAPS DISABLE_CALLS DISABLE_INDIRCT_GOTOS DISABLE_RETURNS DISABLE_INTRINSICS DISABLE_TYPEINFO DISABLE_VT_PTR_ADDR DISABLE_VT_PTR_TYPE DISABLE_INIT_FINI_ADDR DISABLE_INIT_FINI INIT_FINI_ADDR_ONLY NONE
 
 //@ add-minicore
 #![crate_type = "lib"]
@@ -31,6 +31,12 @@ extern crate minicore;
 //@[DISABLE_VT_PTR_ADDR] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-vt-ptr-addr-discrimination
 //@[DISABLE_VT_PTR_TYPE] needs-llvm-components: aarch64
 //@[DISABLE_VT_PTR_TYPE] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-vt-ptr-type-discrimination
+//@[DISABLE_INIT_FINI_ADDR] needs-llvm-components: aarch64
+//@[DISABLE_INIT_FINI_ADDR] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-init-fini-address-discrimination
+//@[DISABLE_INIT_FINI] needs-llvm-components: aarch64
+//@[DISABLE_INIT_FINI] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-init-fini
+//@[INIT_FINI_ADDR_ONLY] needs-llvm-components: aarch64
+//@[INIT_FINI_ADDR_ONLY] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-init-fini,+init-fini-address-discrimination
 //@[NONE] needs-llvm-components: aarch64
 //@[NONE] compile-flags: --target=aarch64-unknown-linux-pauthtest  -Zpointer-authentication=-aarch64-jump-table-hardening,-auth-traps,-calls,-indirect-gotos,-return-addresses,-init-fini,-init-fini-address-discrimination,-intrinsics,-typeinfo-vt-ptr-discrimination,-vt-ptr-addr-discrimination,-vt-ptr-type-discrimination
 
@@ -116,6 +122,17 @@ pub fn main() {}
 // DISABLE_VT_PTR_TYPE-SAME: "ptrauth-returns"
 // DISABLE_VT_PTR_TYPE: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
 // DISABLE_VT_PTR_TYPE-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1759}
+
+// Init/fini signing stays on; only its address discrimination bit (7) is cleared.
+// DISABLE_INIT_FINI_ADDR: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
+// DISABLE_INIT_FINI_ADDR-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1663}
+
+// As in Clang, the address discrimination bit (7) follows its own option: disabling init/fini
+// signing clears only bit 6, and enabling address discrimination does not enable init/fini signing.
+// DISABLE_INIT_FINI: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
+// DISABLE_INIT_FINI-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1727}
+// INIT_FINI_ADDR_ONLY: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
+// INIT_FINI_ADDR_ONLY-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1727}
 
 // NONE-NOT: ptrauth-returns
 // NONE-NOT: aarch64-jump-table-hardening
