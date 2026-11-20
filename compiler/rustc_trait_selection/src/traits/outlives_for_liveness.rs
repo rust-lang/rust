@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -10,6 +10,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::{DUMMY_SP, bug};
+use smallvec::SmallVec;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
@@ -659,6 +660,10 @@ fn live_args_for_outlives_clause<'tcx>(
 pub struct FreeRegionsVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
+    /// The current set of aliases being visited (to avoid cycles)
+    pub stack: SmallVec<[DefId; 4]>,
+    /// The full set of aliases that have been visited (to avoid repeated work)
+    pub visited: FxHashSet<(DefId, ty::GenericArgs<'tcx>)>,
     pub op: OP,
 }
 
@@ -709,8 +714,23 @@ where
                     | ty::AliasTyKind::Opaque { def_id }
                     | ty::AliasTyKind::Free { def_id } => def_id,
                 };
-                let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
 
+                // If we've seen this exact alias already (even if not in a cycle),
+                // then we don't need to visit it again.
+                // Importantly, we key on `(def_id, args)` rather than `ty`,
+                // because we can get cycles that different in rigidness.
+                if !self.visited.insert((def_id, args)) {
+                    return;
+                }
+
+                // A cycle with different arguments provides no safe restriction.
+                if self.stack.contains(&def_id) {
+                    tcx.for_each_free_region(&args, |outer_r| self.visit_region(outer_r));
+                    return;
+                }
+                self.stack.push(def_id);
+
+                let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
                 for clause in param_env.caller_bounds().non_trait_clauses().iter() {
                     let Some(outlives) = clause.as_type_outlives_clause() else {
                         continue;
@@ -724,6 +744,24 @@ where
                 for idx in capturable.iter() {
                     args[idx as usize].visit_with(self);
                 }
+
+                // This causes us to recurse into the args of alias bounds like
+                // `impl Captures<'a>` and `type Alias: Capture<a'>` and treat
+                // them as live.
+                for clause in tcx.item_bounds(def_id).instantiate(tcx, args).skip_norm_wip() {
+                    match clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(trait_clause) => {
+                            trait_clause.trait_ref.args.as_slice()[1..].visit_with(self);
+                        }
+                        ty::ClauseKind::Projection(proj_clause) => {
+                            proj_clause.projection_term.args.as_slice()[1..].visit_with(self);
+                            proj_clause.term.visit_with(self);
+                        }
+                        _ => {}
+                    }
+                }
+
+                self.stack.pop();
             }
 
             _ => ty.super_visit_with(self),

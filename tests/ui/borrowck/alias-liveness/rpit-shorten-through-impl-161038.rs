@@ -5,7 +5,7 @@
 //@ [polonius] compile-flags: -Zpolonius=next
 
 // Different variations of #161038: one with a trait with a method taking
-// a reference and one taking an impl Trait. Fundamentally, both exploit the
+// a reference and one taking an impl Trait. Fundamentally, each exploit the
 // fact that we don't treat `'a` as live in `Produce<'a>` bound in the return
 // type.
 

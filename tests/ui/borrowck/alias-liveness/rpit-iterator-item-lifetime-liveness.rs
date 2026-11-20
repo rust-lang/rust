@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ check-pass
 
 // Minimized from ty_python_semantic::Binding::enumerate_argument_types
 // regression in #161154.
@@ -32,6 +31,7 @@ impl<'a, 'db> Outer<'a, 'db> {
     fn check(&mut self) {
         for _ in self.iter() {
             self.update()
+            //~^ ERROR cannot borrow `*self`
         }
     }
     fn check_explicit(&mut self) {
@@ -72,6 +72,7 @@ mod elided_self {
         let mut checker = Checker { args: &args, count: 0 };
         for _ in checker.enumerate() {
             checker.bump();
+            //~^ ERROR cannot borrow `checker`
         }
     }
 

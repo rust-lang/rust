@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/marker-trait-blanket-151861.rs:35:23
+  --> $DIR/marker-trait-blanket-151861.rs:33:23
    |
 LL |         let s = String::from("hi");
    |             - binding `s` declared here
@@ -13,7 +13,7 @@ LL |     requires_static(out);
    |     -------------------- argument requires that `s` is borrowed for `'static`
    |
 note: requirement that the value outlives `'static` introduced here
-  --> $DIR/marker-trait-blanket-151861.rs:29:23
+  --> $DIR/marker-trait-blanket-151861.rs:27:23
    |
 LL | fn requires_static<T: 'static>(val: T) {}
    |                       ^^^^^^^
