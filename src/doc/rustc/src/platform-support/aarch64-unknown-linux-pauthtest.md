@@ -462,6 +462,7 @@ The following categories are supported (all present in tree):
   * pauth-extern-c.rs
   * pauth-extern-c-direct-indirect-call.rs
   * pauth-extern-weak-global.rs
+  * pauth-signed-abi.rs
   * pauth-init-fini.rs
   * pauth-attr-special-funcs.rs
 * End-to-end execution tests
@@ -473,6 +474,8 @@ The following categories are supported (all present in tree):
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
   * type_discrimination_not_supported_pointer_authentication.rs
+  * discriminator-abi-compat.rs
+  * discriminator-float-encoding.rs
   * incompatible_pauth.rs
 * Unit tests for siphash function:
   * compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs
@@ -494,6 +497,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-extern-c.rs \
   tests/codegen-llvm/pauth/pauth-extern-c-direct-indirect-call.rs \
   tests/codegen-llvm/pauth/pauth-extern-weak-global.rs \
+  tests/codegen-llvm/pauth/pauth-signed-abi.rs \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
@@ -502,6 +506,8 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
   tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
+  tests/ui/pointer_authentication/discriminator-abi-compat.rs \
+  tests/ui/pointer_authentication/discriminator-float-encoding.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 
