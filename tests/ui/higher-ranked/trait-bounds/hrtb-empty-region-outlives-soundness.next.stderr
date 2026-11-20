@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error: lifetime outlives placeholder
+  --> $DIR/hrtb-empty-region-outlives-soundness.rs:33:16
+   |
+LL | impl Trait for () {}
+   |                ^^ `'b` would have to outlive placeholder in universe `U0`
+   |
+   = note: outer lifetimes cannot depend on placeholders declared in a higher universe
+
+error: aborting due to 1 previous error
+
