@@ -13,7 +13,9 @@ use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
+use crate::shims::unix::socket::{
+    EvalContextExt, UnixSocketFileDescription, socket_action_deadline,
+};
 use crate::*;
 
 /// On Linux a TCP socket is initally in the TCP_CLOSE state:
@@ -608,7 +610,7 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
         let is_non_block = is_non_block || self.is_non_block.get();
-        let deadline = ecx.action_deadline(is_non_block, self.write_timeout.get());
+        let deadline = socket_action_deadline(ecx, is_non_block, self.write_timeout.get());
 
         let socket = self;
         ecx.ensure_connected(
@@ -656,16 +658,8 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
         let is_non_block = is_non_block || self.is_non_block.get();
-        let deadline = ecx.action_deadline(is_non_block, self.read_timeout.get());
+        let deadline = socket_action_deadline(ecx, is_non_block, self.read_timeout.get());
 
-        let finish = callback!(
-            @capture<'tcx> {
-                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
-            } |ecx, result: Result<u64, IoError>| {
-                // The source address of the data isn't available for stream-based sockets.
-                finish.call(ecx, result.map(|bytes| (bytes, None)))
-            }
-        );
         let socket = self;
         ecx.ensure_connected(
             socket.clone(),
@@ -679,7 +673,7 @@ impl UnixSocketFileDescription for TcpSocket {
                     len: u64,
                     is_peek: bool,
                     is_non_block: bool,
-                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
                 } |ecx, result: Result<(), ()>| {
                     if result.is_err() {
                         return finish.call(ecx, Err(LibcError("ENOTCONN")))
@@ -689,11 +683,18 @@ impl UnixSocketFileDescription for TcpSocket {
                         // We have a non-blocking operation or a non-blocking socket and
                         // thus don't want to block until we can receive.
                         let result = ecx.try_non_block_recv(&socket, ptr, len, is_peek)?;
-                        finish.call(ecx, result)
+                        finish.call(ecx, result.map(|bytes| (bytes, /* source_addr */ None)))
                     } else {
                         // The socket is in blocking mode and thus the receive call should block
                         // until we can receive some bytes from the socket or the timeout exceeded.
-                        ecx.block_for_recv(socket, deadline, ptr, len, is_peek, finish)
+                        ecx.block_for_recv(socket, deadline, ptr, len, is_peek, callback!(
+                            @capture<'tcx> {
+                                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+                            } |ecx, result: Result<u64, IoError>| {
+                                // The source address of the data isn't available for stream-based sockets.
+                                finish.call(ecx, result.map(|bytes| (bytes, /* source_addr */ None)))
+                            }
+                        ))
                     }
                 }
             ),
@@ -938,28 +939,6 @@ impl UnixSocketFileDescription for TcpSocket {
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Get the deadline for an action (e.g. reading or writing).
-    /// When `is_non_block` is [`true`], the returned deadline is "now", i.e.,
-    /// we wake up immediately if the action cannot be completed.
-    /// If `action_timeout` is `Some(duration)`, the returned deadline is in the
-    /// future be the specified `duration`. Otherwise, no deadline ([`None`]) is
-    /// returned, indicating that the action can block indefinitely.
-    fn action_deadline(
-        &self,
-        is_non_block: bool,
-        action_timeout: Option<Duration>,
-    ) -> Option<Deadline> {
-        let ecx = self.eval_context_ref();
-
-        if is_non_block {
-            // Non-blocking sockets always have a zero timeout.
-            Some(ecx.machine.monotonic_clock.now().into())
-        } else {
-            action_timeout
-                .map(|duration| ecx.machine.monotonic_clock.now().add_lossy(duration).into())
-        }
-    }
-
     /// Block the thread until there's an incoming connection or an error occurred.
     /// After a successful accept, `finish` is called with a tuple containing the
     /// file descriptor of the peer socket and it's address.
