@@ -636,7 +636,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
             sym::type_id_type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
-                ecx.write_type_info(ty, dest)?;
+                ecx.write_type_kind(ty, dest)?;
             }
 
             sym::type_id_is_signed => {
@@ -656,32 +656,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             sym::type_id_size_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
-                let variant_index = if layout.is_sized() {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let size_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+
+                ecx.write_option(layout.is_sized().then(|| ()), dest, |ecx, field, _| {
                     ecx.write_scalar(
                         ScalarInt::try_from_target_usize(layout.size.bytes(), ecx.tcx.tcx).unwrap(),
-                        &size_field_place,
-                    )?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
+                        &field,
+                    )
+                })?
             }
 
             sym::type_id_element_ty => {
                 let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind() {
-                    let (variant_idx, variant_place) =
-                        ecx.project_downcast_named(dest, sym::Some)?;
-                    let type_id_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*ty, &type_id_field_place)?;
-                    variant_idx
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
+
+                ecx.write_option(
+                    match ty.kind() {
+                        ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                        _ => None,
+                    },
+                    dest,
+                    |ecx, place, ty| ecx.write_type_id(*ty, &place),
+                )?
             }
 
             sym::type_id_array_len => {
@@ -758,30 +752,40 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             }
             sym::type_id_function_ptr => {
                 let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
-                    ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
+
+                ecx.write_option(
+                    match ty.kind() {
+                        ty::FnPtr(sig, fn_header) => Some((sig, fn_header)),
+                        _ => None,
+                    },
+                    dest,
+                    |ecx, place, (sig, fn_header)| {
+                        let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
+                        ecx.write_fn_ptr_type_info(place, &sig, fn_header)
+                    },
+                )?
+            }
+            sym::type_id_dyn_trait => {
+                let ty: Ty<'tcx> = ecx.read_type_id(&args[0])?;
+                ecx.write_option(
+                    match ty.kind() {
+                        ty::Dynamic(p, r) => Some((p, r)),
+                        _ => None,
+                    },
+                    dest,
+                    |ecx, place, (p, r)| ecx.write_dyn_trait_type_info(place, *p, *r),
+                )?
             }
             sym::type_id_points_to => {
                 let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =
-                    ty.kind()
-                {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*pointee_ty, &field_place)?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
+                ecx.write_option(
+                    match ty.kind() {
+                        ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => Some(pointee_ty),
+                        _ => None,
+                    },
+                    dest,
+                    |ecx, place, pointee_ty| ecx.write_type_id(*pointee_ty, &place),
+                )?
             }
 
             sym::type_id_variants => {
