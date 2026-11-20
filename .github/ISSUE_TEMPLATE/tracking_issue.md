@@ -17,6 +17,8 @@ For a language team feature, this would e.g., be `T-lang`:
 
 Such a feature should also be labeled with e.g., `F-my_feature`.
 This label is used to associate issues (e.g., bugs and design questions) to the feature.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 This is a tracking issue for `#![feature(FFF)]`.
