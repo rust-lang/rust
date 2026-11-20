@@ -66,6 +66,7 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
+use self::ordered_json::OrderedJson;
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, Defaultness, Item, ItemId, ItemKind, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
@@ -1827,7 +1828,7 @@ fn notable_traits_json<'a>(
     tys: impl Iterator<Item = &'a clean::Type>,
     item: &clean::Item,
     cx: &Context<'_>,
-) -> String {
+) -> OrderedJson {
     let mut mp = tys.map(|ty| notable_traits_decl_for_type(ty, cx)).collect::<IndexMap<_, _>>();
     if let Some((item_name, item_decl)) = notable_traits_decl_for_item(item, cx)
         && !item_decl.is_empty()
@@ -1835,7 +1836,7 @@ fn notable_traits_json<'a>(
         mp.insert(item_name, item_decl);
     }
     mp.sort_unstable_keys();
-    serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
+    OrderedJson::serialize(&mp).expect("serialize (string, string) -> json object cannot fail")
 }
 
 pub(crate) struct NotableTraitBadge {

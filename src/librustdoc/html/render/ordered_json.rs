@@ -8,7 +8,7 @@ use serde_json::Value;
 /// Prerendered json.
 ///
 /// Both the Display and serde_json::to_string implementations write the serialized json
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 #[serde(from = "Value")]
 #[serde(into = "Value")]
 pub(crate) struct OrderedJson(String);
@@ -31,6 +31,10 @@ impl OrderedJson {
     pub(crate) fn array_unsorted<T: Borrow<Self>, I: IntoIterator<Item = T>>(items: I) -> Self {
         let items = items.into_iter().format_with(",", |item, f| f(item.borrow()));
         Self(format!("[{items}]"))
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
