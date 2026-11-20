@@ -1,6 +1,8 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
+// ignore-tidy-file-filelength
+
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -58,6 +60,9 @@ pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
 
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
+
+const NIGHTLY_ONLY_OUTTYPES: [OutputType; 3] =
+    [OutputType::ThinLinkBitcode, OutputType::FullAnalysis, OutputType::Validation];
 
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -706,6 +711,8 @@ macro_rules! define_output_types {
             }
         ),* $(,)?
     ) => {
+        /// **WARNING: Do not use this struct's `Ord` trait**, it's only there for compatibilities with [`BTreeMap`].
+        /// But relying in an output type order for any behaviour that is not for hashing or making trees is very unwise.
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, StableHash)]
         #[derive(Encodable, Decodable)]
         pub enum OutputType {
@@ -732,7 +739,7 @@ macro_rules! define_output_types {
                 ALL_VARIANTS.iter().copied()
             }
 
-            fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
+            pub(crate) fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
                 match *self {
                     $(
                         OutputType::$Variant => $compatible,
@@ -748,7 +755,7 @@ macro_rules! define_output_types {
                 }
             }
 
-            fn from_shorthand(shorthand: &str) -> Option<Self> {
+            pub(crate) fn from_shorthand(shorthand: &str) -> Option<Self> {
                 match shorthand {
                     $(
                         s if s == $shorthand => Some(OutputType::$Variant),
@@ -757,7 +764,7 @@ macro_rules! define_output_types {
                 }
             }
 
-            fn shorthands_display() -> String {
+            pub(crate) fn shorthands_display() -> String {
                 let shorthands = vec![
                     $(
                         format!("`{}`", $shorthand),
@@ -804,11 +811,60 @@ macro_rules! define_output_types {
 }
 
 define_output_types! {
-    Assembly => {
-        shorthand: "asm",
-        extension: "s",
-        description: "Generates a file with the crate's assembly code",
-        default_filename: "CRATE_NAME.s",
+    DepInfo => {
+        shorthand: "dep-info",
+        extension: "d",
+        description: "Generates a file with Makefile syntax that indicates all the source files that were loaded to generate the crate",
+        default_filename: "CRATE_NAME.d",
+        is_text: true,
+        compatible_with_cgus_and_single_output: true
+    },
+    Validation => {
+        shorthand: "validation",
+        extension: "validation.rmeta",
+        description: "Generates metadata and exits after doing only validation and required analysis",
+        default_filename: "CRATE_NAME.validation.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    FullAnalysis => {
+        shorthand: "full-analysis",
+        extension: "full-analysis.rmeta",
+        description: "Generates metadata and exits after doing all analysis",
+        default_filename: "CRATE_NAME.full-analysis.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    Mir => {
+        shorthand: "mir",
+        extension: "mir",
+        description: "Generates a file containing rustc's mid-level intermediate representation",
+        default_filename: "CRATE_NAME.mir",
+        is_text: true,
+        compatible_with_cgus_and_single_output: false
+    },
+    Metadata => {
+        shorthand: "metadata",
+        extension: "rmeta",
+        description: "Generates a file containing metadata about the crate",
+        default_filename: "libCRATE_NAME.rmeta",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
+    #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
+    ThinLinkBitcode => {
+        shorthand: "thin-link-bitcode",
+        extension: "indexing.o",
+        description: "Generates the ThinLTO summary as bitcode",
+        default_filename: "CRATE_NAME.indexing.o",
+        is_text: false,
+        compatible_with_cgus_and_single_output: false
+    },
+    LlvmAssembly => {
+        shorthand: "llvm-ir",
+        extension: "ll",
+        description: "Generates a file containing LLVM IR",
+        default_filename: "CRATE_NAME.ll",
         is_text: true,
         compatible_with_cgus_and_single_output: false
     },
@@ -822,43 +878,11 @@ define_output_types! {
         is_text: false,
         compatible_with_cgus_and_single_output: false
     },
-    DepInfo => {
-        shorthand: "dep-info",
-        extension: "d",
-        description: "Generates a file with Makefile syntax that indicates all the source files that were loaded to generate the crate",
-        default_filename: "CRATE_NAME.d",
-        is_text: true,
-        compatible_with_cgus_and_single_output: true
-    },
-    Exe => {
-        shorthand: "link",
-        extension: "",
-        description: "Generates the crates specified by --crate-type. This is the default if --emit is not specified",
-        default_filename: "(platform and crate-type dependent)",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    LlvmAssembly => {
-        shorthand: "llvm-ir",
-        extension: "ll",
-        description: "Generates a file containing LLVM IR",
-        default_filename: "CRATE_NAME.ll",
-        is_text: true,
-        compatible_with_cgus_and_single_output: false
-    },
-    Metadata => {
-        shorthand: "metadata",
-        extension: "rmeta",
-        description: "Generates a file containing metadata about the crate",
-        default_filename: "libCRATE_NAME.rmeta",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    Mir => {
-        shorthand: "mir",
-        extension: "mir",
-        description: "Generates a file containing rustc's mid-level intermediate representation",
-        default_filename: "CRATE_NAME.mir",
+    Assembly => {
+        shorthand: "asm",
+        extension: "s",
+        description: "Generates a file with the crate's assembly code",
+        default_filename: "CRATE_NAME.s",
         is_text: true,
         compatible_with_cgus_and_single_output: false
     },
@@ -870,14 +894,13 @@ define_output_types! {
         is_text: false,
         compatible_with_cgus_and_single_output: false
     },
-    #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
-    ThinLinkBitcode => {
-        shorthand: "thin-link-bitcode",
-        extension: "indexing.o",
-        description: "Generates the ThinLTO summary as bitcode",
-        default_filename: "CRATE_NAME.indexing.o",
+    Exe => {
+        shorthand: "link",
+        extension: "",
+        description: "Generates the crates specified by --crate-type. This is the default if --emit is not specified",
+        default_filename: "(platform and crate-type dependent)",
         is_text: false,
-        compatible_with_cgus_and_single_output: false
+        compatible_with_cgus_and_single_output: true
     },
 }
 
@@ -918,7 +941,7 @@ pub enum ResolveDocLinks {
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
 #[derive(Clone, Debug, Hash, StableHash, Encodable, Decodable)]
-pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
+pub struct OutputTypes(pub(crate) BTreeMap<OutputType, Option<OutFileName>>);
 
 impl OutputTypes {
     pub fn new(entries: &[(OutputType, Option<OutFileName>)]) -> OutputTypes {
@@ -964,7 +987,10 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Object
             | OutputType::Exe => true,
-            OutputType::Metadata | OutputType::DepInfo => false,
+            OutputType::Metadata
+            | OutputType::DepInfo
+            | OutputType::Validation
+            | OutputType::FullAnalysis => false,
         })
     }
 
@@ -978,9 +1004,87 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Metadata
             | OutputType::Object
+            | OutputType::Validation
+            | OutputType::FullAnalysis
             | OutputType::DepInfo => false,
             OutputType::Exe => true,
         })
+    }
+
+    pub fn needs_full_analysis(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Validation | OutputType::DepInfo => false,
+            OutputType::Exe
+            | OutputType::Bitcode
+            | OutputType::Object
+            | OutputType::Mir
+            | OutputType::Assembly
+            | OutputType::ThinLinkBitcode
+            | OutputType::LlvmAssembly
+            // FIXME: Metadata does not technically need it,
+            // this is just to keep behaviour
+            | OutputType::Metadata
+            | OutputType::FullAnalysis => true,
+        })
+    }
+
+    pub fn needs_codegen(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Validation | OutputType::DepInfo | OutputType::FullAnalysis => false,
+            OutputType::Exe
+            | OutputType::Bitcode
+            | OutputType::Metadata
+            | OutputType::Object
+            | OutputType::Assembly
+            | OutputType::ThinLinkBitcode
+            | OutputType::LlvmAssembly
+            | OutputType::Mir => true,
+        })
+    }
+
+    pub fn needs_required_analysis(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::DepInfo => false,
+            OutputType::Exe
+            | OutputType::Bitcode
+            | OutputType::Object
+            | OutputType::Assembly
+            | OutputType::ThinLinkBitcode
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::FullAnalysis
+            | OutputType::Validation
+            // FIXME: Metadata does not technically need it,
+            // this is just to keep behaviour
+            | OutputType::Metadata => true,
+        })
+    }
+
+    pub fn metadata_output_type(&self) -> OutputType {
+        self.iter()
+            .fold(None, |acc, (&out, _)| match (acc, out) {
+                (Some(OutputType::Validation), OutputType::Metadata | OutputType::FullAnalysis) => {
+                    Some(out)
+                }
+                (Some(OutputType::Validation), _) => acc,
+                (Some(OutputType::FullAnalysis), OutputType::Metadata) => Some(out),
+                (Some(OutputType::FullAnalysis), _) => acc,
+                (Some(OutputType::Metadata), _) => Some(OutputType::Metadata),
+                _ => Some(out),
+            })
+            .unwrap_or(OutputType::Metadata)
+    }
+
+    pub fn needs_metadata(&self) -> bool {
+        self.iter().any(|(k, _)| matches!(*k, OutputType::Metadata))
+    }
+
+    pub fn needs_mir(&self) -> bool {
+        self.0.keys().any(|k| k == &OutputType::Mir)
+    }
+
+    pub fn all<F: Fn(&OutputType) -> bool>(&self, f: F) -> bool {
+        self.iter().map(|e| e.0).all(f)
     }
 }
 
@@ -1328,7 +1432,7 @@ impl OutputFilenames {
     fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
         match flavor {
-            OutputType::Metadata => {
+            OutputType::Metadata | OutputType::Validation | OutputType::FullAnalysis => {
                 debug!("using crate_name={} for {extension}", self.crate_stem);
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
@@ -2555,10 +2659,10 @@ fn parse_output_types(
                         display = OutputType::shorthands_display(),
                     ))
                 });
-                if output_type == OutputType::ThinLinkBitcode && !unstable_opts.unstable_options {
+                if NIGHTLY_ONLY_OUTTYPES.contains(&output_type) && !unstable_opts.unstable_options {
                     early_dcx.early_fatal(format!(
                         "{} requested but -Zunstable-options not specified",
-                        OutputType::ThinLinkBitcode.shorthand()
+                        output_type.shorthand()
                     ));
                 }
                 output_types.insert(output_type, path);

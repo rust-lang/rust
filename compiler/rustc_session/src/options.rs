@@ -21,7 +21,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
-use crate::config::*;
+use crate::config::{ErrorOutputType, OutputTypes, ResolveDocLinks, *};
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{EarlyDiagCtxt, Session, lint};
