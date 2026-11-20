@@ -1,0 +1,18 @@
+error: cannot implement `DispatchFromDyn` for the fundamental type `&Ptr<T>`
+  --> $DIR/anti-fundamental-dispatch-from-dyn-ref.rs:10:64
+   |
+LL | impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a Ptr<U>> for &'a Ptr<T> {}
+   |                                                                ^^^^^^^^^^ impl of `DispatchFromDyn` not allowed for `&Ptr<T>`
+   |
+   = note: `DispatchFromDyn` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `DispatchFromDyn` for the fundamental type `&mut Ptr<T>`
+  --> $DIR/anti-fundamental-dispatch-from-dyn-ref.rs:13:68
+   |
+LL | impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a mut Ptr<U>> for &'a mut Ptr<T> {}
+   |                                                                    ^^^^^^^^^^^^^^ impl of `DispatchFromDyn` not allowed for `&mut Ptr<T>`
+   |
+   = note: `DispatchFromDyn` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: aborting due to 2 previous errors
+
