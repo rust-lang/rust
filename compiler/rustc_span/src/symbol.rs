@@ -692,6 +692,8 @@ symbols! {
         compiler_fence,
         compiler_move,
         complex,
+        comptime_fetch_file,
+        comptime_list_files,
         concat,
         concat_bytes,
         concat_str,
