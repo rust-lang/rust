@@ -3253,6 +3253,60 @@ impl<'a, K, V> Cursor<'a, K, V> {
         }
     }
 
+    /// Placeholder info
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_lower<Q: ?Sized>(&mut self, bound: Bound<&Q>)
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            self.current = match self.root {
+                None => return,
+                Some(root) => {
+                    let edge = root.reborrow().lower_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current {
+                None => return,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.lower_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+    }
+
+    /// Placeholder info
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_upper<Q: ?Sized>(&mut self, bound: Bound<&Q>)
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            self.current = match self.root {
+                None => return,
+                Some(root) => {
+                    let edge = root.reborrow().upper_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current {
+                None => return,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.upper_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+    }
+
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
