@@ -18,9 +18,9 @@ impl<C> TimerContext for C
 where
     C: StackContext,
     //~^ ERROR: is not satisfied [E0277]
+    //~| ERROR: is not satisfied [E0277]
 {
     type Handler = Ctx<C::Dispatcher>;
-    //~^ ERROR: is not satisfied [E0277]
 }
 
 struct EthernetWorker<C>(C)
