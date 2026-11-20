@@ -1,0 +1,28 @@
+error: expected one of `:`, `@`, or `|`, found keyword `k#self`
+  --> $DIR/param-without-type.rs:6:10
+   |
+LL | fn foo(S k#self) {}
+   |          ^^^^^^ expected one of `:`, `@`, or `|`
+   |
+help: declare the type after the parameter binding
+   |
+LL - fn foo(S k#self) {}
+LL + fn foo(<identifier>: <type>) {}
+   |
+
+error: expected one of `:`, `@`, or `|`, found `k#not_a_keyword`
+  --> $DIR/param-without-type.rs:10:10
+   |
+LL | fn bar(S k#not_a_keyword) {}
+   |          ^^^^^^^^^^^^^^^ expected one of `:`, `@`, or `|`
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/param-without-type.rs:6:8
+   |
+LL | fn foo(S k#self) {}
+   |        ^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 3 previous errors
+

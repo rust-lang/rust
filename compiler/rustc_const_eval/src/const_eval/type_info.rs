@@ -3,13 +3,14 @@ mod adt;
 use std::borrow::Cow;
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_ir::AttrItem;
 use rustc_attr_ir::Attribute::Tool;
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttrItem, Attribute, AttributeKind, HasAttrs};
 use rustc_hir::intravisit::HirTyCtxt;
 use rustc_lint_defs::{Reflectiveness, ToolOptions};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -388,6 +389,46 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 Immediate::ScalarPair(
                     Scalar::from_pointer(ptr, this),
                     Scalar::from_target_usize(attr.trim_end().len() as u64, this),
+                ),
+                &place,
+            )
+        })
+    }
+
+    pub(crate) fn write_doc_attributes(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        def_id: Option<DefId>,
+    ) -> InterpResult<'tcx> {
+        // only the doc comments of exported items are encoded in cross-crate metadata
+        // see `rustc_metadata::rmeta::encoder::EncodeContext::encode_attrs`
+        // this mirrors the check so that we return the same comments regardless of crate
+        let attrs = if let Some(d) = def_id
+            && d.as_local().map_or(true, |d| {
+                !self.tcx.needs_metadata() || self.tcx.effective_visibilities(()).is_exported(d)
+            }) {
+            d.get_attrs(&self.tcx)
+        } else {
+            &[]
+        };
+
+        let docs = attrs
+            .iter()
+            .filter_map(|x| match x {
+                Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+                _ => None,
+            })
+            .collect::<Vec<Symbol>>();
+
+        self.allocate_fill_and_write_slice_ptr(place, docs.len() as _, |this, i, place| {
+            let doc = docs[i as usize];
+
+            let ptr = this.allocate_bytes_dedup(doc.as_str().as_bytes())?;
+
+            this.write_immediate(
+                Immediate::ScalarPair(
+                    Scalar::from_pointer(ptr, this),
+                    Scalar::from_target_usize(doc.as_str().len() as u64, this),
                 ),
                 &place,
             )

@@ -102,9 +102,9 @@ pub(crate) const fn check_language_ub() -> bool {
             false
         } else {
             // Disable UB checks in Miri.
-            !cfg!(miri)
+            !cfg!(miri) && intrinsics::ub_checks()
         }
-    ) && intrinsics::ub_checks()
+    )
 }
 
 /// Checks whether `ptr` is properly aligned with respect to the given alignment, and
