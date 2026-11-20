@@ -28,9 +28,8 @@ use rustc_hir::{
     ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
-    UNUSED_ATTRIBUTES,
+    INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1065,17 +1064,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
-        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
+        // Also error on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
-            || (int_reprs == 1 && is_c && item.is_some_and(is_c_like_enum))
+            || (int_reprs == 1 && is_c && item.is_some_and(is_fieldless_enum))
         {
-            self.tcx.emit_node_span_lint(
-                CONFLICTING_REPR_HINTS,
-                hir_id,
-                hint_spans.collect::<Vec<Span>>(),
-                diagnostics::ReprConflictingLint,
-            );
+            let hint_spans = hint_spans.clone().collect();
+            self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
     }
 
@@ -1489,7 +1484,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 }
 
-fn is_c_like_enum(item: &Item<'_>) -> bool {
+fn is_fieldless_enum(item: &Item<'_>) -> bool {
     if let ItemKind::Enum(_, _, ref def) = item.kind {
         for variant in def.variants {
             match variant.data {
