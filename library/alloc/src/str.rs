@@ -515,7 +515,7 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let s = "HELLO WORLD";
     ///
     /// assert_eq!("Hello world", s.word_to_titlecase());
@@ -524,7 +524,7 @@ impl str {
     /// The first *cased* letter is uppercased:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let the_night_before_christmas = "'twas";
     ///
     /// assert_eq!("'Twas", the_night_before_christmas.word_to_titlecase());
@@ -533,7 +533,7 @@ impl str {
     /// Languages without case are not changed:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let new_year = "农历新年";
     ///
     /// assert_eq!(new_year, new_year.word_to_titlecase());
@@ -542,7 +542,7 @@ impl str {
     /// Georgian uppercase ("Mtavruli") letters are not used in titlecase:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let georgian = "ერთობაშია";
     ///
     /// assert_eq!(georgian, georgian.word_to_titlecase());
@@ -552,7 +552,7 @@ impl str {
     /// so only the first cased letter in the whole string gets uppercased:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let blazingly_fast = "ferris and I";
     ///
     /// assert_eq!("Ferris and i", blazingly_fast.word_to_titlecase());
@@ -561,7 +561,7 @@ impl str {
     /// Tricky examples, with sigma:
     ///
     /// ```
-    /// #![feature(titlecase)]
+    /// #![feature(word_to_titlecase)]
     /// let odysseus = "ὈΔΥΣΣΕΎΣ";
     ///
     /// assert_eq!("Ὀδυσσεύς", odysseus.word_to_titlecase());
@@ -574,7 +574,7 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the titlecase word as a new String, \
                   without modifying the original"]
-    #[unstable(feature = "titlecase", issue = "153892")]
+    #[unstable(feature = "word_to_titlecase", issue = "153892")]
     pub fn word_to_titlecase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         let mut chars = self.char_indices();

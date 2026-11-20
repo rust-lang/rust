@@ -490,11 +490,11 @@ casemappingiter_impls! {
 }
 
 casemappingiter_impls! {
-    #[unstable(feature = "titlecase", issue = "153892")]
-    #[unstable(feature = "titlecase", issue = "153892")]
-    #[unstable(feature = "titlecase", issue = "153892")]
-    #[unstable(feature = "titlecase", issue = "153892")]
-    #[unstable(feature = "titlecase", issue = "153892")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
     /// Returns an iterator that yields the titlecase equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_titlecase`] method on [`char`]. See
@@ -664,7 +664,7 @@ impl Error for TryFromCharError {}
 /// the most significant bit represents whether the case
 /// conceptually starts as uppercase, while the least significant bit
 /// represents whether it conceptually ends as uppercase.
-#[unstable(feature = "titlecase", issue = "153892")]
+#[unstable(feature = "char_case", issue = "153892")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum CharCase {
     /// Lowercase. Corresponds to the `Lowercase` Unicode property.
