@@ -89,6 +89,9 @@ mod collections;
 #[path = "../alloc/src/raw_vec/mod.rs"]
 mod raw_vec;
 
+#[path = "../alloc/src/utf16_decode.rs"]
+mod utf16_decode;
+
 #[path = "../alloc/src/wtf8/mod.rs"]
 mod wtf8;
 

@@ -239,6 +239,86 @@ fn test_from_utf16_lossy() {
 }
 
 #[test]
+fn test_from_utf16_block_boundaries() {
+    fn check(input: &[u16]) {
+        let strict: Result<String, _> = char::decode_utf16(input.iter().copied()).collect();
+        assert_eq!(String::from_utf16(input).ok(), strict.ok());
+
+        let lossy: String = char::decode_utf16(input.iter().copied())
+            .map(|result| result.unwrap_or(char::REPLACEMENT_CHARACTER))
+            .collect();
+        assert_eq!(String::from_utf16_lossy(input), lossy);
+    }
+
+    const LENGTHS: &[usize] = &[0, 1, 2, 3, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65];
+    const UNITS: &[u16] = &[
+        0x0000, 0x0061, 0x007f, 0x0080, 0x07ff, 0x0800, 0xd7ff, 0xe000, 0xffff, 0xd800, 0xdbff,
+        0xdc00, 0xdfff,
+    ];
+
+    for &len in LENGTHS {
+        for phase in 0..UNITS.len() {
+            let input: Vec<u16> =
+                (0..len).map(|index| UNITS[(index + phase) % UNITS.len()]).collect();
+            check(&input);
+        }
+
+        for boundary in [16, 32, 48, 64] {
+            if boundary < len {
+                let mut input = vec![0x0061; len];
+                input[boundary - 1] = 0xd83d;
+                input[boundary] = 0xde00;
+                check(&input);
+
+                input[boundary] = 0x0062;
+                check(&input);
+
+                input[boundary - 1] = 0x0061;
+                input[boundary] = 0xdc00;
+                check(&input);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_from_utf16_dense_block_boundaries() {
+    fn check(input: &[u16]) {
+        let strict: Result<String, _> = char::decode_utf16(input.iter().copied()).collect();
+        assert_eq!(String::from_utf16(input).ok(), strict.ok());
+
+        let lossy: String = char::decode_utf16(input.iter().copied())
+            .map(|result| result.unwrap_or(char::REPLACEMENT_CHARACTER))
+            .collect();
+        assert_eq!(String::from_utf16_lossy(input), lossy);
+    }
+
+    for len in [15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 80] {
+        for unit in [0x0080, 0x07ff, 0x0800, 0xd7ff, 0xe000, 0xffff] {
+            check(&vec![unit; len]);
+        }
+    }
+
+    for boundary in [16, 32, 48, 64] {
+        for tail in [1, 2, 16, 17] {
+            for (lead, trail) in [(0xd800, 0xdc00), (0xdbff, 0xdfff)] {
+                let mut input = vec![0xffff; boundary + tail];
+                input[boundary - 1] = lead;
+                input[boundary] = trail;
+                check(&input);
+
+                input[boundary] = 0xffff;
+                check(&input);
+
+                input[boundary - 1] = 0xffff;
+                input[boundary] = trail;
+                check(&input);
+            }
+        }
+    }
+}
+
+#[test]
 fn test_push_bytes() {
     let mut s = String::from("ABC");
     unsafe {
