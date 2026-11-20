@@ -309,9 +309,16 @@ pub enum TyKind<I: Interner> {
 
     /// A view over an [`Adt`].
     ///
-    /// This variant contains the same data as `Adt` as well as a `Ty` field that represents the
-    /// set of fields that are viewed. This `Ty` should be either a type variable or a tuple of
-    /// `FieldRepresentingType`.
+    /// Takes an ADT and restricts the fields that can be accessed. The layout
+    /// is the same as the initial ADT. View types are `!MetaSized`.
+    ///
+    /// The fields that can be accessed are encoded as a tuple of `FieldRepresentingType`.
+    /// For instance, `view_type!(MyStruct.{ field1, field2 })` is represented as
+    /// `View(MyStruct, [], (field_of!(MyStruct.field1), field_of!(FieldInfo.field2)))`.
+    ///
+    /// Refer to the [View types experiment][1] project goal for more infos.
+    ///
+    /// [1]: https://goals.rust-lang.org/2026/view-types-experiment.html
     View(I::AdtDef, I::GenericArgs, I::Ty),
 
     /// A projection, opaque type, free type alias, or inherent associated type.
