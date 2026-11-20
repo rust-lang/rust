@@ -1,4 +1,5 @@
 mod adt;
+mod intrinsics;
 
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr_ir::Attribute::Tool;
