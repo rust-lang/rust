@@ -38,6 +38,7 @@ impl RiscVInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => {
@@ -49,8 +50,32 @@ impl RiscVInlineAsmRegClass {
             }
             // FIXME(f128): Add `q: F128;` once LLVM support the `Q` extension.
             Self::freg => types! { f: F16, F32; d: F64; },
-            Self::vreg => &[],
+            Self::vreg => {
+                if allow_experimental_reg {
+                    types! {
+                        v: VecI8(16), VecI16(8), VecI32(4), VecI64(2),
+                           VecI8(32), VecI16(16), VecI32(8), VecI64(4),
+                           VecI8(128), VecI16(64), VecI32(32), VecI64(16);
+                    }
+                } else {
+                    &[]
+                }
+            }
         }
+    }
+}
+
+fn has_v(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    is_clobber: bool,
+) -> Result<(), &'static str> {
+    if !target_features.contains(&sym::v) && !is_clobber {
+        Err("register can only be used with the `v` target feature")
+    } else {
+        Ok(())
     }
 }
 
@@ -132,38 +157,38 @@ def_regs! {
         f29: freg = ["f29", "ft9"],
         f30: freg = ["f30", "ft10"],
         f31: freg = ["f31", "ft11"],
-        v0: vreg = ["v0"],
-        v1: vreg = ["v1"],
-        v2: vreg = ["v2"],
-        v3: vreg = ["v3"],
-        v4: vreg = ["v4"],
-        v5: vreg = ["v5"],
-        v6: vreg = ["v6"],
-        v7: vreg = ["v7"],
-        v8: vreg = ["v8"],
-        v9: vreg = ["v9"],
-        v10: vreg = ["v10"],
-        v11: vreg = ["v11"],
-        v12: vreg = ["v12"],
-        v13: vreg = ["v13"],
-        v14: vreg = ["v14"],
-        v15: vreg = ["v15"],
-        v16: vreg = ["v16"],
-        v17: vreg = ["v17"],
-        v18: vreg = ["v18"],
-        v19: vreg = ["v19"],
-        v20: vreg = ["v20"],
-        v21: vreg = ["v21"],
-        v22: vreg = ["v22"],
-        v23: vreg = ["v23"],
-        v24: vreg = ["v24"],
-        v25: vreg = ["v25"],
-        v26: vreg = ["v26"],
-        v27: vreg = ["v27"],
-        v28: vreg = ["v28"],
-        v29: vreg = ["v29"],
-        v30: vreg = ["v30"],
-        v31: vreg = ["v31"],
+        v0: vreg = ["v0"] % has_v,
+        v1: vreg = ["v1"] % has_v,
+        v2: vreg = ["v2"] % has_v,
+        v3: vreg = ["v3"] % has_v,
+        v4: vreg = ["v4"] % has_v,
+        v5: vreg = ["v5"] % has_v,
+        v6: vreg = ["v6"] % has_v,
+        v7: vreg = ["v7"] % has_v,
+        v8: vreg = ["v8"] % has_v,
+        v9: vreg = ["v9"] % has_v,
+        v10: vreg = ["v10"] % has_v,
+        v11: vreg = ["v11"] % has_v,
+        v12: vreg = ["v12"] % has_v,
+        v13: vreg = ["v13"] % has_v,
+        v14: vreg = ["v14"] % has_v,
+        v15: vreg = ["v15"] % has_v,
+        v16: vreg = ["v16"] % has_v,
+        v17: vreg = ["v17"] % has_v,
+        v18: vreg = ["v18"] % has_v,
+        v19: vreg = ["v19"] % has_v,
+        v20: vreg = ["v20"] % has_v,
+        v21: vreg = ["v21"] % has_v,
+        v22: vreg = ["v22"] % has_v,
+        v23: vreg = ["v23"] % has_v,
+        v24: vreg = ["v24"] % has_v,
+        v25: vreg = ["v25"] % has_v,
+        v26: vreg = ["v26"] % has_v,
+        v27: vreg = ["v27"] % has_v,
+        v28: vreg = ["v28"] % has_v,
+        v29: vreg = ["v29"] % has_v,
+        v30: vreg = ["v30"] % has_v,
+        v31: vreg = ["v31"] % has_v,
         #error = ["x9", "s1"] =>
             "s1 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x8", "s0", "fp"] =>
