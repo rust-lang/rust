@@ -3132,6 +3132,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some((suggs, help, app, mutref));
                     }
 
+                    // Don't suggest borrowing a tail-less block that is an arm of
+                    // an `if`: `else &{ ... }` is not valid syntax, and the block has type `()`.
+                    if let hir::ExprKind::Block(block, _) = expr.kind
+                        && block.expr.is_none()
+                        && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If(..), .. }) =
+                            self.tcx.parent_hir_node(expr.hir_id)
+                    {
+                        return None;
+                    }
+
                     if let Some((sugg, msg)) = self.can_use_as_ref_or_mut(expr, mutability) {
                         return Some((
                             sugg,

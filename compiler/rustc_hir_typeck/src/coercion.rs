@@ -1883,16 +1883,11 @@ impl<'tcx> CoerceMany<'tcx> {
                         }
                     }
                     ObligationCauseCode::IfExpression {
-                        expr_id,
+                        expected_branch_id,
+                        found_branch_id,
                         tail_defines_return_position_impl_trait: Some(rpit_def_id),
+                        ..
                     } => {
-                        let hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::If(_, then_expr, Some(else_expr)),
-                            ..
-                        }) = fcx.tcx.hir_node(expr_id)
-                        else {
-                            unreachable!();
-                        };
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
                             fcx.param_env,
@@ -1900,19 +1895,21 @@ impl<'tcx> CoerceMany<'tcx> {
                             found,
                             coercion_error,
                         );
-                        let then_span = fcx.find_block_span_from_hir_id(then_expr.hir_id);
-                        let else_span = fcx.find_block_span_from_hir_id(else_expr.hir_id);
+                        let expected_expr = fcx.tcx.hir_node(expected_branch_id).expect_expr();
+                        let found_expr = fcx.tcx.hir_node(found_branch_id).expect_expr();
+                        let expected_span = fcx.find_block_span_from_hir_id(expected_branch_id);
+                        let found_span = fcx.find_block_span_from_hir_id(found_branch_id);
                         // Don't suggest wrapping whole block in `Box::new`.
-                        if then_span != then_expr.span && else_span != else_expr.span {
-                            let then_ty = fcx.typeck_results.borrow().expr_ty(then_expr);
-                            let else_ty = fcx.typeck_results.borrow().expr_ty(else_expr);
+                        if expected_span != expected_expr.span && found_span != found_expr.span {
+                            let expected_ty = fcx.typeck_results.borrow().expr_ty(expected_expr);
+                            let found_ty = fcx.typeck_results.borrow().expr_ty(found_expr);
                             self.suggest_boxing_tail_for_return_position_impl_trait(
                                 fcx,
                                 &mut err,
                                 rpit_def_id,
-                                then_ty,
-                                else_ty,
-                                [then_span, else_span].into_iter(),
+                                expected_ty,
+                                found_ty,
+                                [expected_span, found_span].into_iter(),
                             );
                         }
                     }

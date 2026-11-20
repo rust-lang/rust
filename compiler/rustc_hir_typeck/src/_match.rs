@@ -437,15 +437,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn if_cause(
         &self,
         expr_id: HirId,
-        else_expr: &'tcx hir::Expr<'tcx>,
+        expected_branch_id: HirId,
+        found_branch_id: HirId,
         tail_defines_return_position_impl_trait: Option<LocalDefId>,
     ) -> ObligationCause<'tcx> {
-        let error_sp = self.find_block_span_from_hir_id(else_expr.hir_id);
+        let error_sp = self.find_block_span_from_hir_id(found_branch_id);
 
         // Finally construct the cause:
         self.cause(
             error_sp,
-            ObligationCauseCode::IfExpression { expr_id, tail_defines_return_position_impl_trait },
+            ObligationCauseCode::IfExpression {
+                outermost_if_expr_id: expr_id,
+                expected_branch_id,
+                found_branch_id,
+                tail_defines_return_position_impl_trait,
+            },
         )
     }
 
