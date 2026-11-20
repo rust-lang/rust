@@ -116,10 +116,10 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
 
     // Okay, so we know we have some outlives bounds, and that none of them are `'static`.
     // Now, we need to find all other potentially-live args, those that outlive
-    // an outlives-bound region. `args_known_to_outlive_alias_params` does this
+    // an outlives-bound region. `live_args_for_alias_params` does this
     // for us, and in the case of opaques only includes *captured* regions, too.
 
-    let args_known_to_outlive = tcx.args_known_to_outlive_alias_params(def_id);
+    let args_known_to_outlive = tcx.live_args_for_alias_params(def_id);
     tracing::debug!(?args_known_to_outlive);
     let mut live_args = DenseBitSet::new_filled(self_identity_args.len());
     for outlives_region in outlives_regions {
@@ -141,19 +141,19 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
 /// the outlives relationships are identified in the context of the *parent*,
 /// since bounds and well-formed types are not lowered.
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
+pub(crate) fn live_args_for_alias_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Vec<(usize, DenseBitSet<u32>)> {
     match tcx.def_kind(def_id) {
-        DefKind::OpaqueTy => args_known_to_outlive_opaque_params(tcx, def_id),
+        DefKind::OpaqueTy => live_args_for_opaque_params(tcx, def_id),
         DefKind::AssocTy
             if let Some(ImplTraitInTraitData::Trait { fn_def_id: _, opaque_def_id }) =
                 tcx.opt_rpitit_info(def_id.to_def_id()) =>
         {
-            args_known_to_outlive_opaque_params(tcx, opaque_def_id.expect_local())
+            live_args_for_opaque_params(tcx, opaque_def_id.expect_local())
         }
-        DefKind::AssocTy | DefKind::TyAlias => args_known_to_outlive_non_opaque_params(tcx, def_id),
+        DefKind::AssocTy | DefKind::TyAlias => live_args_for_non_opaque_params(tcx, def_id),
         kind => {
             bug!("improper def_kind {kind:?} passed to `live_args_for_alias_from_outlives_bounds`")
         }
@@ -186,7 +186,7 @@ pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
 ///   - *All* captured regions are considered (not just those in outlives bounds)
 ///   - It doesn't matter if the captured region is early-bound or late-bound
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
+pub(crate) fn live_args_for_opaque_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Vec<(usize, DenseBitSet<u32>)> {
@@ -298,7 +298,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
+pub(crate) fn live_args_for_non_opaque_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Vec<(usize, DenseBitSet<u32>)> {
@@ -451,7 +451,7 @@ fn live_args_for_outlives_clause<'tcx>(
             // The underlying type can capture any arg that's known to outlive one
             // of the bound var's positions (they're all instantiated to the same
             // region at any use site this clause applies to).
-            let args_known_to_outlive = tcx.args_known_to_outlive_alias_params(alias_def_id);
+            let args_known_to_outlive = tcx.live_args_for_alias_params(alias_def_id);
             tracing::debug!(?outlived_regions, ?args_known_to_outlive);
             let mut capturable_args = DenseBitSet::new_empty(clause_identity_args.len());
             for &outlived_arg_idx in &outlived_regions {
