@@ -2,13 +2,19 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
+use std::io::ErrorKind;
 use std::net::UdpSocket;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
+
+const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
     test_create_ipv4();
     test_create_ipv6();
     test_connect();
+    test_read_write();
+    test_peek();
     test_sockopt_ttl();
     test_sockopt_read_timeout();
     test_sockopt_write_timeout();
@@ -28,6 +34,67 @@ fn test_connect() {
     socket.connect("127.0.1.1:8080").unwrap()
 }
 
+/// Test reading and writing into two connected sockets and ensuring
+/// that the other side receives the correct bytes.
+fn test_read_write() {
+    let tx_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let rx_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+
+    // Get local address with randomized port to know where we
+    // need to send the data to.
+    let address = rx_socket.local_addr().unwrap();
+
+    // Set the default destination address of the transmitting socket
+    // to the address of the receiving socket.
+    tx_socket.connect(address).unwrap();
+
+    let handle = thread::spawn(move || {
+        let bytes_sent = tx_socket.send(TEST_BYTES).unwrap();
+        assert_eq!(bytes_sent, TEST_BYTES.len());
+    });
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_received = rx_socket.recv(&mut buffer).unwrap();
+    assert_eq!(bytes_received, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
+
+    handle.join().unwrap();
+}
+
+/// Test that peeking on a receiving socket doesn't remove the bytes
+/// from the queue.
+fn test_peek() {
+    let tx_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let rx_socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+
+    // Get local address with randomized port to know where we
+    // need to send the data to.
+    let address = rx_socket.local_addr().unwrap();
+
+    // Set the default destination address of the transmitting socket
+    // to the address of the receiving socket.
+    tx_socket.connect(address).unwrap();
+
+    let handle = thread::spawn(move || {
+        let bytes_sent = tx_socket.send(TEST_BYTES).unwrap();
+        assert_eq!(bytes_sent, TEST_BYTES.len());
+    });
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_peeked = rx_socket.peek(&mut buffer).unwrap();
+    assert_eq!(bytes_peeked, TEST_BYTES.len());
+    assert_eq!(&buffer, &TEST_BYTES);
+
+    // Since the peek shouldn't remove the bytes from the queue,
+    // we should be able to read them again.
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_received = rx_socket.recv(&mut buffer).unwrap();
+    assert_eq!(bytes_received, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
+
+    handle.join().unwrap();
+}
+
 // Test setting and reading the TTL socket option.
 fn test_sockopt_ttl() {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
@@ -44,18 +111,22 @@ fn test_sockopt_read_timeout() {
     // By default, reads on blocking sockets should block indefinitely.
     assert_eq!(socket.read_timeout().unwrap(), None);
 
-    let short_read_timeout = Some(Duration::from_millis(40));
-    socket.set_read_timeout(short_read_timeout).unwrap();
-    assert_eq!(socket.read_timeout().unwrap(), short_read_timeout);
-
-    /*
-    TODO: Once UDP sockets support reading.
+    let short_read_timeout = Duration::from_millis(40);
+    socket.set_read_timeout(Some(short_read_timeout)).unwrap();
+    assert_eq!(socket.read_timeout().unwrap(), Some(short_read_timeout));
 
     let mut buffer = [0u8; 128];
+    let before = Instant::now();
     // This should not block indefinitely and instead return EAGAIN/EWOULDBLOCK.
-    let err = socket.read(&mut buffer).unwrap_err();
+    let err = socket.recv(&mut buffer).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
-    */
+    // Ensure that we blocked at least for `short_read_timeout`. The upper bound on the
+    // blocking time is pessimistic to account for slow CI runners.
+    let duration = before.elapsed();
+    assert!(
+        duration >= short_read_timeout && duration < short_read_timeout * 20,
+        "operation blocked for {duration:?}"
+    );
 }
 
 /// Test setting and reading the RCVTIMEO socket option.
@@ -71,19 +142,8 @@ fn test_sockopt_write_timeout() {
     socket.set_write_timeout(short_write_timeout).unwrap();
     assert_eq!(socket.write_timeout().unwrap(), short_write_timeout);
 
-    /*
-    TODO: Once UDP sockets support writing.
-
-    let fill_buffer = [1u8; 1024];
-    loop {
-        match socket.write_all(&fill_buffer) {
-            Ok(_) => { /* continue to fill up buffer */ }
-            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket,
-            // we know it's because of the write timeout exceeding because the write
-            // buffer is full.
-            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
-            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
-        }
-    }
-    */
+    // We cannot test "filling up" the UDP socket buffer since UDP is unreliable.
+    // This means the kernel can report to us that it sent the entire datagram but
+    // on the receiving end it just gets discarded should the buffer be full without
+    // notifying the sender.
 }

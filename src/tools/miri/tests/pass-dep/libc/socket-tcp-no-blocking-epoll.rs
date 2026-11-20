@@ -38,7 +38,7 @@ fn main() {
 /// Instead of busy waiting until we no longer get ENOTCONN, we register
 /// the client socket to epoll and wait for a WRITABLE event.
 fn test_connect_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -83,7 +83,7 @@ fn test_connect_nonblock() {
 /// Instead of busy waiting until we no longer get EWOULDBLOCK, we add the
 /// server socket to an epoll instance and wait for a READABLE event.
 fn test_accept_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -176,7 +176,7 @@ fn test_connect_nonblock_err() {
 /// read from the client, we register the client socket to epoll and wait for
 /// READABLE events.
 fn test_recv_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -261,7 +261,7 @@ fn test_recv_nonblock() {
 /// readiness instead of busy waiting until we can
 /// write again.
 fn test_send_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -356,7 +356,7 @@ fn test_send_nonblock() {
 /// Test that the EPOLLHUP and EPOLLRDHUP readiness are set when both
 /// the read and write ends of a socket are closed.
 fn test_shutdown_read_write() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -384,7 +384,7 @@ fn test_shutdown_read_write() {
 /// Test that the EPOLLRDHUP readiness is set when the read
 /// end of a socket is closed.
 fn test_shutdown_read() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -408,7 +408,7 @@ fn test_shutdown_read() {
 /// Test that the EPOLLRDHUP readiness is set when the write
 /// end of the peer socket is closed.
 fn test_shutdown_write() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -433,7 +433,7 @@ fn test_shutdown_write() {
 
 /// Test that Miri correctly removes the readable readiness or emits a new edge after a short read.
 fn test_readiness_after_short_read() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -516,7 +516,7 @@ fn test_readiness_after_short_read() {
 
 /// Test that Miri doesn't remove the readable readiness after a short peek.
 fn test_readiness_after_short_peek() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -557,7 +557,7 @@ fn test_readiness_after_short_peek() {
 
 /// Test that Miri correctly removes the writable readiness or emits a new edge after a short write.
 fn test_readiness_after_short_write() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -630,7 +630,7 @@ fn test_readiness_after_short_write() {
 /// Test that Miri correctly keeps the readable readiness when the read end of the client
 /// socket has been closed -- even after a short read.
 fn test_readable_after_read_shutdown_and_short_read() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -712,7 +712,7 @@ fn test_readable_after_read_shutdown_and_short_read() {
 /// Test that the writable readiness gets set when the write end of a socket
 /// is closed -- even when the socket write buffer is full.
 fn test_writable_after_write_shutdown_with_full_buffer() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();

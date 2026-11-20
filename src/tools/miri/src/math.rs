@@ -183,7 +183,9 @@ fn strip_float_suffix(intrinsic_name: &str) -> &str {
 }
 
 /// Given a floating-point operation and a floating-point value, clamps the result to the output
-/// range of the given operation according to the C standard, if any.
+/// range of the given operation according to the C standard ([C23 Section 7.12]), if any.
+///
+/// [C23 Section 7.12]: https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf#section.7.12
 pub(crate) fn clamp_float_value<S: Semantics>(
     intrinsic_name: &str,
     val: IeeeFloat<S>,
@@ -210,16 +212,16 @@ where
         // acos: [0, π]
         "acos" => val.clamp(zero, pi),
 
-        // asin: [-π, +π]
-        "asin" => val.clamp(pi.neg(), pi),
+        // asin: [-π/2, +π/2]
+        "asin" => val.clamp(pi_over_2.neg(), pi_over_2),
 
-        // atan: (-π/2, +π/2)
+        // atan: [-π/2, +π/2]
         "atan" => val.clamp(pi_over_2.neg(), pi_over_2),
 
-        // erfc: (-1, 1)
+        // erfc: [-1, 1]
         "erf" => val.clamp(one.neg(), one),
 
-        // erfc: (0, 2)
+        // erfc: [0, 2]
         "erfc" => val.clamp(zero, two),
 
         // atan2(y, x): arctan(y/x) in [−π, +π]
@@ -242,9 +244,11 @@ where
 /// # Return
 ///
 /// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
-/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (specifically, [C23 annex F.10])  when given `args` as arguments. Outputs that are unaffected by a relative error
 /// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
 /// implementation. Returns `None` if no specific value is guaranteed.
+///
+/// [C23 annex F.10]: https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf#section.13.10
 ///
 /// # Note
 ///
@@ -269,7 +273,7 @@ pub(crate) fn fixed_float_value<S: Semantics>(
 where
     IeeeFloat<S>: IeeeExt,
 {
-    let this = ecx.eval_context_mut();
+    let ecx = ecx.eval_context_mut();
     let one = IeeeFloat::<S>::one();
     let two = IeeeFloat::<S>::two();
     let three = IeeeFloat::<S>::three();
@@ -300,10 +304,13 @@ where
         // `_hypot` is the Windows name for this.
         ("_hypot" | "hypot", [x, y]) if !x.is_nan() && y.is_zero() => x.abs(),
 
+        // atan2 has many cases, but NaNs are excluded from all of them. It's easiest
+        // to handle that upfront.
+        ("atan2", [x, y]) if x.is_nan() || y.is_nan() => return None,
+
         // atan2(±0,−0) = ±π.
         // atan2(±0, y) = ±π for y < 0.
-        // Must check for non NaN because `y.is_negative()` also applies to NaN.
-        ("atan2", [x, y]) if (x.is_zero() && (y.is_negative() && !y.is_nan())) => pi.copy_sign(*x),
+        ("atan2", [x, y]) if (x.is_zero() && y.is_negative()) => pi.copy_sign(*x),
 
         // atan2(±x,−∞) = ±π for finite x > 0.
         ("atan2", [x, y]) if (!x.is_zero() && !x.is_infinite()) && y.is_neg_infinity() =>
@@ -321,30 +328,29 @@ where
         ("atan2", [x, y]) if x.is_infinite() && y.is_pos_infinity() => pi_over_4.copy_sign(*x),
 
         // atan2(±∞, y) returns ±π/2 for finite y.
-        ("atan2", [x, y]) if x.is_infinite() && (!y.is_infinite() && !y.is_nan()) =>
-            pi_over_2.copy_sign(*x),
+        ("atan2", [x, y]) if x.is_infinite() && !y.is_infinite() => pi_over_2.copy_sign(*x),
 
         // (-1)^(±INF) = 1
         ("pow", [base, exp]) if *base == -one && exp.is_infinite() => one,
 
         // 1^y = 1 for any y, even a NaN
         ("pow", [base, exp]) if *base == one => {
-            let rng = this.machine.rng.get_mut();
+            let rng = ecx.machine.rng.get_mut();
             // SNaN exponents get special treatment: they might return 1, or a NaN.
             // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
             // implementation behavior differs between glibc and musl.
-            let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
-            if return_nan { this.generate_nan(args) } else { one }
+            let return_nan = exp.is_signaling() && ecx.machine.float_nondet && rng.random();
+            if return_nan { ecx.generate_nan(args) } else { one }
         }
 
         // x^(±0) = 1 for any x, even a NaN
         ("pow", [base, exp]) if exp.is_zero() => {
-            let rng = this.machine.rng.get_mut();
+            let rng = ecx.machine.rng.get_mut();
             // SNaN bases get special treatment: they might return 1, or a NaN.
             // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
             // implementation behavior differs between glibc and musl.
-            let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
-            if return_nan { this.generate_nan(args) } else { one }
+            let return_nan = base.is_signaling() && ecx.machine.float_nondet && rng.random();
+            if return_nan { ecx.generate_nan(args) } else { one }
         }
 
         // There are a lot of cases for fixed outputs according to the C Standard, but these are
