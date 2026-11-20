@@ -307,13 +307,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     ///
     /// You may want to check the optimization level before bothering calling this.
     fn assume_nonnull(&mut self, val: Self::Value) {
-        // Arguably in LLVM it'd be better to emit an assume operand bundle instead
-        // <https://llvm.org/docs/LangRef.html#assume-operand-bundles>
-        // but this works fine for all backends.
-
         let null = self.const_null(self.type_ptr());
-        let is_null = self.icmp(IntPredicate::IntNE, val, null);
-        self.assume(is_null);
+        let is_nonnull = self.icmp(IntPredicate::IntNE, val, null);
+        self.assume(is_nonnull);
     }
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);

@@ -31,7 +31,6 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
@@ -39,6 +38,7 @@ use crate::llvm::{
     ToLlvmBool, Type, TypeKind, Value,
 };
 use crate::type_of::LayoutLlvmExt;
+use crate::{attributes, llvm_util};
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -856,6 +856,41 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             self.write_operand_repeatedly_unoptimized(cg_elem, count, dest);
         } else {
             self.write_operand_repeatedly_optimized(cg_elem, count, dest);
+        }
+    }
+
+    fn assume_nonnull(&mut self, val: Self::Value) {
+        if self.cx.sess().opts.optimize != OptLevel::No {
+            // In LLVM 23 and later we use an assume operand bundle
+            // <https://llvm.org/docs/LangRef.html#assume-operand-bundles>. In earlier versions we
+            // use a vanilla `assume` call because operand bundles aren't handled as well by LLVM
+            // optimization passes.
+            if llvm_util::get_version() < (23, 0, 0) {
+                let null = self.const_null(self.type_ptr());
+                let is_nonnull = self.icmp(IntPredicate::IntNE, val, null);
+                self.assume(is_nonnull);
+            } else {
+                // An assume with an operand bundle must have the following form:
+                //
+                //   call void @llvm.assume(i1 true) [<bundle>]
+                //
+                let (ty, f) = self.cx.get_intrinsic("llvm.assume".into(), &[]);
+                let args = [self.const_bool(true)];
+                let bundle = llvm::OperandBundleBox::new("nonnull", &[val]);
+                let bundles = [bundle.as_ref()];
+                unsafe {
+                    llvm::LLVMBuildCallWithOperandBundles(
+                        self.llbuilder(),
+                        ty,
+                        f,
+                        args.as_ptr(),
+                        args.len() as c_uint,
+                        bundles.as_ptr(),
+                        bundles.len() as c_uint,
+                        c"".as_ptr(),
+                    );
+                }
+            }
         }
     }
 
