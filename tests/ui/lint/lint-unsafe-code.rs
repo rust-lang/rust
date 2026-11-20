@@ -155,7 +155,7 @@ impl NakedTrait for Naked {
     //~^ ERROR usage of the unsafe `naked` attribute
 }
 
-extern "C" {
+extern "C" { //~ ERROR usage of an `extern` block
     #[unsafe(ffi_pure)]
     //~^ ERROR usage of the unsafe `ffi_pure` attribute
     fn ffi_pure();
