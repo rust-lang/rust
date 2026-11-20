@@ -2934,7 +2934,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
         // of the `weak` count (via `Weak::drop`, which uses release). If the upgraded
         // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if this.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+        if this.inner().weak.compare_exchange(1, usize::MAX, Acquire, Acquire).is_ok() {
             // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
             // counter in `drop` -- the only access that happens when any but the last reference
             // is being dropped.
@@ -2946,6 +2946,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
             this.inner().weak.store(1, Release); // release the lock
             unique
         } else {
+            let _ = this.inner().strong.load(Acquire);
             false
         }
     }
