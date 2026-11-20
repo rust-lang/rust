@@ -178,6 +178,9 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 
+        #[cfg(target_os = "haiku")]
+        libc::B_UNSUPPORTED => Unsupported,
+
         libc::ENOSYS => Unsupported,
         // EOPNOTSUPP and ENOTSUP can have the same value on some systems,
         // but different values on others (e.g. Apple), so we can't use a
