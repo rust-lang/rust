@@ -47,7 +47,9 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
 
                 for check in finder.into_found_enums() {
                     debug!("Inserting enum check");
-                    let new_block = split_block(basic_blocks, location);
+                    // Note: this split inserts a Goto(new_block) terminator,
+                    // which we later overwrite when we insert the check.
+                    let new_block = split_block(basic_blocks, location, source_info);
 
                     match check {
                         EnumCheckType::Direct { op_size, .. }
@@ -60,10 +62,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                                 source_info.span,
                                 "cannot build enum discriminant from zero-sized type",
                             );
-                            basic_blocks[block].terminator = Some(Terminator {
-                                source_info,
-                                kind: TerminatorKind::goto(new_block),
-                            });
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
                             insert_direct_enum_check(
@@ -240,17 +238,21 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
 fn split_block(
     basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
     location: Location,
+    source_info: SourceInfo,
 ) -> BasicBlock {
-    let block_data = &mut basic_blocks[location.block];
+    basic_blocks.push_with(|new_block_idx, basic_blocks| {
+        let block_data = &mut basic_blocks[location.block];
 
-    // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData::maybe_unterminated_stmts(
-        block_data.statements.split_off(location.statement_index),
-        block_data.terminator.take(),
-        block_data.is_cleanup,
-    );
+        // Drain every statement after this one
+        let remaining_stmts = block_data.statements.split_off(location.statement_index);
 
-    basic_blocks.push(new_block)
+        // replace the old terminator with a goto to the new block
+        let new_terminator = Terminator { source_info, kind: TerminatorKind::goto(new_block_idx) };
+        let old_terminator = std::mem::replace(block_data.terminator_mut(), new_terminator);
+
+        // move the old terminator to the new basic block
+        BasicBlockData::new_stmts(remaining_stmts, old_terminator, block_data.is_cleanup)
+    })
 }
 
 /// Inserts the cast of an operand (any type) to a u128 value that holds the discriminant value.
@@ -335,6 +337,7 @@ fn insert_discr_cast_to_u128<'tcx>(
     discr
 }
 
+// note: This function replaces the current_block terminator.
 fn insert_direct_enum_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
@@ -418,6 +421,7 @@ fn insert_direct_enum_check<'tcx>(
     });
 }
 
+// Note: this function replaces the block's terminator
 fn insert_uninhabited_enum_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
@@ -463,6 +467,7 @@ fn insert_uninhabited_enum_check<'tcx>(
     });
 }
 
+// Note: this function replaces the block's terminator.
 fn insert_niche_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
