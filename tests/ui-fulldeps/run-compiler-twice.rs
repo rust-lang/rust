@@ -18,7 +18,8 @@ extern crate rustc_span;
 use std::path::{Path, PathBuf};
 
 use rustc_interface::{Linker, interface};
-use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes, Sysroot};
+use rustc_session::config::{Input, Options, OutFileName, Sysroot};
+use rustc_session::output::{OutputType, OutputTypes};
 use rustc_span::FileName;
 
 fn main() {

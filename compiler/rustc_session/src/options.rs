@@ -22,6 +22,7 @@ use rustc_target::spec::{
 };
 
 use crate::config::*;
+use crate::output::{ErrorOutputType, OutputTypes, ResolveDocLinks};
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{EarlyDiagCtxt, Session, lint};
