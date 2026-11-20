@@ -174,6 +174,8 @@
 ))]
 mod tests;
 
+use core::intrinsics;
+
 use crate::ffi::OsStr;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
@@ -2642,11 +2644,15 @@ pub fn exit(code: i32) -> ! {
 ///
 /// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
+#[rustc_const_unstable(feature = "const_abort", issue = "166193")]
 #[cold]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-pub fn abort() -> ! {
-    crate::sys::abort_internal();
+pub const fn abort() -> ! {
+    // Some code uses `abort` as a non-unwinding alternative to `panic`. That
+    // should work in const, but `sys` code invokes native host functions. So we
+    // invoke `intrinsics::crash` instead to safely hard-abort execution.
+    intrinsics::const_eval_select((), crash, crate::sys::abort_internal)
 }
 
 #[doc(inline)]
