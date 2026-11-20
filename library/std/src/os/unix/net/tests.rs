@@ -836,6 +836,7 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
+#[cfg_attr(any(target_os = "solaris", target_os = "illumos"), ignore)] // See test_solaris_datagram_max_path
 fn test_unix_datagram_max_path() {
     let dir = tmpdir();
     // +1 for separator byte on join
@@ -856,6 +857,50 @@ fn test_unix_datagram_max_path() {
 
     let sock1 = or_panic!(UnixDatagram::bind(&path1));
     let sock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let msg = b"hello world";
+    or_panic!(sock1.send_to(msg, &path2));
+    let mut buf = [0; 11];
+    or_panic!(sock2.recv_from(&mut buf));
+    assert_eq!(msg, &buf[..]);
+}
+
+// Solaris and Illumos allow a socket to be binded to a path of up to
+// 1023 bytes with a max path component byte of 255.
+#[cfg(any(target_os = "illumos", target_os = "solaris"))]
+#[test]
+fn test_solaris_datagram_max_path() {
+    let dir = tmpdir();
+    // SUN_PATH_MAX_LEN = 1024 (includes nul terminating byte). We subtract 1 to disregard
+    // the nul terminating byte, then subtract by the length of the temp directory,
+    // and finally divide by 256 (max length of a path component + separator byte) to
+    // figure out how many nested directory components we need to create before creating
+    // the socket.
+    let nested_dir_comps = (SUN_PATH_MAX_LEN - 1 - dir.path().as_os_str().len()) / 256;
+    let mut nested_dirs_a = dir.path().to_path_buf();
+    let mut nested_dirs_b = dir.path().to_path_buf();
+
+    for _ in 0..nested_dir_comps {
+        nested_dirs_a.join(Path::new(vec!['a'; 255].as_slice()));
+
+        nested_dirs_b.join(Path::new(vec!['b'; 255].as_slice()));
+    }
+
+    or_panic!(crate::fs::create_dir_all(&nested_dirs_a));
+    or_panic!(crate::fs::create_dir_all(&nested_dirs_b));
+
+    // This socket component name should be less than 255 bytes and cover
+    // up to remaining path bytes totaling to SUN_PATH_MAX_LEN - 2 (minus two
+    // for nul terminating byte and separator byte)
+    let sock1_path = nested_dirs_a.join(Path::new(
+        vec!['a'; SUN_PATH_MAX_LEN - nested_dirs_a.as_os_str().len() - 2].as_slice(),
+    ));
+    let sock2_path = nested_dirs_b.join(Path::new(
+        vec!['b'; SUN_PATH_MAX_LEN - nested_dirs_b.as_os_str().len() - 2].as_slice(),
+    ));
+
+    let sock1 = or_panic!(UnixDatagram::bind(&sock1_path));
+    let sock2 = or_panic!(UnixDatagram::bind(&sock2_path));
 
     let msg = b"hello world";
     or_panic!(sock1.send_to(msg, &path2));

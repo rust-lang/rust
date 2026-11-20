@@ -45,6 +45,13 @@ const SOCK_MAX_SIZE: usize = cfg_select! {
         // https://github.com/IIJ-NetBSD/netbsd-src/blob/cc2b5d89fa44/sys/sys/socket.h#L272-L287
         libc::c_uchar::MAX as usize + 1
     }
+    any(target_os = "illumos", target_os = "solaris") => {
+        // On top of a two byte header for the socket family, Solaris and Illumos has
+        // a `sun_path` that can be dynamically allocated and holds up to MAXPATHLEN
+        // (which is set to PATH_MAX) bytes, including the nul-terminating byte.
+        // See this comment: https://github.com/rust-lang/rust/pull/161149#issuecomment-7003143698
+        SUN_PATH_OFFSET + libc::PATH_MAX as usize
+    }
     _ => {
         // All other platforms max socket address size is based on
         // the size of their sockaddr_un struct
@@ -67,14 +74,14 @@ const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
 pub(crate) const SUN_PATH_MAX_LEN: usize = SOCK_MAX_SIZE - SUN_PATH_OFFSET;
 /// Platform-dependent error message when user provides a longer socket address path
 /// than what the OS allows for.
-const LEN_EXCEEDED_MSG: &'static str =
-    cfg_select! {
-        any(target_os = "macos", target_os = "dragonfly") => {
-            "path must be shorter than SOCK_MAXADDRLEN - 1"
-        }
-        target_os = "netbsd" => "path must be shorter than UCHAR_MAX - 1",
-        _ => "path must be shorter than SUN_LEN",
-    };
+const LEN_EXCEEDED_MSG: &'static str = cfg_select! {
+    any(target_os = "macos", target_os = "dragonfly") => {
+        "path must be shorter than SOCK_MAXADDRLEN - 1"
+    }
+    target_os = "netbsd" => "path must be shorter than UCHAR_MAX - 1",
+    any(target_os = "illumos", target_os = "solaris") => "path must be shorter than PATH_MAX",
+    _ => "path must be shorter than SUN_LEN",
+};
 
 /// An internal helper struct that provides a `len` field describing the actual filled size of the socket
 /// address and a `buf` field that contains an internal platform-agnostic struct of `libc::sockaddr_un`.
@@ -99,6 +106,7 @@ const LEN_EXCEEDED_MSG: &'static str =
 ///
 /// Although `sockaddr_un.sun_path` is restricted to 104 characters on BSD platforms,
 /// DragonFlyBSD/NetBSD/Apple actually allow `sun_path` to hold up to 253 non-nul bytes.
+/// Solaris and Illumos also allow for a socket to be binded up to 1023 non-nul bytes as well.
 /// Therefore, this `SockaddrUn` struct aims to hold a buffer that contains the maximum
 /// socket address size for each platform.
 #[derive(Clone)]
@@ -180,9 +188,9 @@ impl SockaddrBuf {
                 // on QNX7.1 and QNX8 the `len` value returned by the SUN_LEN
                 // macro in its libc does not include the null byte in the count so
                 // don't add it here to match what a C program passes to bind(2) and
-                // similar functions
+                // similar functions.
                 // For BSD-based platforms, they do not count the nul terminating byte
-                // in the address length
+                // in the address length.
                 if cfg!(not(any(
                     target_os = "qnx",
                     target_env = "nto71",
