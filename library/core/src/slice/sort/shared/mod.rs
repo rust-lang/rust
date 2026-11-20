@@ -45,3 +45,20 @@ pub(crate) fn find_existing_run<T, F: FnMut(&T, &T) -> bool>(
         (run_len, strictly_descending)
     }
 }
+
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[cold]
+#[inline]
+pub(super) fn crash_for_invalid_arg() {
+    cfg_select! {
+        windows => {
+            // `core::process::crash()` crashes with `FAST_FAIL_FATAL_APP_EXIT`,
+            // but in this case we can use a more specific error code
+
+            /// From `winnt.h`
+            const FAST_FAIL_INVALID_ARG: crate::ffi::c_uint = 5;
+            crate::os::windows::__fastfail(FAST_FAIL_INVALID_ARG)
+        }
+        _ => core::process::crash(),
+    }
+}

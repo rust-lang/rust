@@ -31,6 +31,8 @@
 use crate::fmt;
 use crate::intrinsics::const_eval_select;
 use crate::panic::{Location, PanicInfo};
+#[cfg(panic = "immediate-abort")]
+use crate::process;
 
 #[cfg(feature = "panic_immediate_abort")]
 compile_error!(
@@ -58,26 +60,27 @@ compile_error!(
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => {
+            // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+            // that gets resolved to the `#[panic_handler]` function.
+            unsafe extern "Rust" {
+                #[lang = "panic_impl"]
+                fn panic_impl(pi: &PanicInfo<'_>) -> !;
+            }
+
+            let pi = PanicInfo::new(
+                &fmt,
+                Location::caller(),
+                /* can_unwind */ true,
+                /* force_no_backtrace */ false,
+            );
+
+            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+            unsafe { panic_impl(&pi) }
+        }
     }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    unsafe extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    let pi = PanicInfo::new(
-        &fmt,
-        Location::caller(),
-        /* can_unwind */ true,
-        /* force_no_backtrace */ false,
-    );
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
 }
 
 /// Like `panic_fmt`, but for non-unwinding panics.
@@ -98,28 +101,29 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
         if const #[track_caller] {
             // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
             panic_fmt(fmt)
-        } else #[track_caller] {
-            if cfg!(panic = "immediate-abort") {
-                super::intrinsics::abort_immediate()
+        } else #[track_caller] #[cfg_attr(panic = "immediate-abort", inline)] {
+            cfg_select! {
+                panic = "immediate-abort" => process::crash(),
+                _ => {
+                    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+                    // that gets resolved to the `#[panic_handler]` function.
+                    unsafe extern "Rust" {
+                        #[lang = "panic_impl"]
+                        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+                    }
+
+                    // PanicInfo with the `can_unwind` flag set to false forces an abort.
+                    let pi = PanicInfo::new(
+                        &fmt,
+                        Location::caller(),
+                        /* can_unwind */ false,
+                        force_no_backtrace,
+                    );
+
+                    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+                    unsafe { panic_impl(&pi) }
+                }
             }
-
-            // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-            // that gets resolved to the `#[panic_handler]` function.
-            unsafe extern "Rust" {
-                #[lang = "panic_impl"]
-                fn panic_impl(pi: &PanicInfo<'_>) -> !;
-            }
-
-            // PanicInfo with the `can_unwind` flag set to false forces an abort.
-            let pi = PanicInfo::new(
-                &fmt,
-                Location::caller(),
-                /* can_unwind */ false,
-                force_no_backtrace,
-            );
-
-            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-            unsafe { panic_impl(&pi) }
         }
     )
 }
@@ -264,11 +268,18 @@ pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
 #[track_caller]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
-    }
+    cfg_select! {
+        all(panic = "immediate-abort", windows) => {
+            // `core::process::crash()` crashes with `FAST_FAIL_FATAL_APP_EXIT`,
+            // but in this case we can use a more specific error code
 
-    panic!("index out of bounds: the len is {len} but the index is {index}")
+            /// From `winnt.h`
+            const FAST_FAIL_RANGE_CHECK_FAILURE: crate::ffi::c_uint = 8;
+            crate::os::windows::__fastfail(FAST_FAIL_RANGE_CHECK_FAILURE)
+        }
+        panic = "immediate-abort" => process::crash(),
+        _ => panic!("index out of bounds: the len is {len} but the index is {index}"),
+    }
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
@@ -277,16 +288,15 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
-    }
-
-    panic_nounwind_fmt(
-        format_args!(
-            "misaligned pointer dereference: address must be a multiple of {required:#x} but is {found:#x}"
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => panic_nounwind_fmt(
+            format_args!(
+                "misaligned pointer dereference: address must be a multiple of {required:#x} but is {found:#x}"
+            ),
+            /* force_no_backtrace */ false,
         ),
-        /* force_no_backtrace */ false,
-    )
+    }
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
@@ -295,14 +305,13 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => panic_nounwind_fmt(
+            format_args!("null pointer dereference occurred"),
+            /* force_no_backtrace */ false,
+        ),
     }
-
-    panic_nounwind_fmt(
-        format_args!("null pointer dereference occurred"),
-        /* force_no_backtrace */ false,
-    )
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
@@ -311,11 +320,13 @@ fn panic_null_pointer_dereference() -> ! {
 #[lang = "panic_null_reference_constructed"] // needed by codegen for panic on null reference formation
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_reference_constructed() -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => panic_nounwind_fmt(
+            format_args!("null reference produced"),
+            /* force_no_backtrace */ false,
+        ),
     }
-
-    panic_nounwind_fmt(format_args!("null reference produced"), /* force_no_backtrace */ false)
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
@@ -324,14 +335,13 @@ fn panic_null_reference_constructed() -> ! {
 #[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
 #[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
 fn panic_invalid_enum_construction(source: u128) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        super::intrinsics::abort_immediate()
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => panic_nounwind_fmt(
+            format_args!("trying to construct an enum from an invalid value {source:#x}"),
+            /* force_no_backtrace */ false,
+        ),
     }
-
-    panic_nounwind_fmt(
-        format_args!("trying to construct an enum from an invalid value {source:#x}"),
-        /* force_no_backtrace */ false,
-    )
 }
 
 /// Panics because we cannot unwind out of a function.

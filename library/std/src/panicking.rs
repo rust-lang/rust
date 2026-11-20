@@ -705,53 +705,54 @@ pub(crate) fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        intrinsics::abort_immediate()
-    }
-
-    struct Payload<A> {
-        inner: Option<A>,
-    }
-
-    impl<A: Send + 'static> PanicPayload for Payload<A> {
-        fn take_box(&mut self) -> Box<dyn Any + Send> {
-            // Note that this should be the only allocation performed in this code path. Currently
-            // this means that panic!() on OOM will invoke this code path, but then again we're not
-            // really ready for panic on OOM anyway. If we do start doing this, then we should
-            // propagate this allocation to be performed in the parent of this thread instead of the
-            // thread that's panicking.
-            match self.inner.take() {
-                Some(a) => Box::new(a) as Box<dyn Any + Send>,
-                None => process::abort(),
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => {
+            struct Payload<A> {
+                inner: Option<A>,
             }
-        }
 
-        fn get(&mut self) -> &(dyn Any + Send) {
-            match self.inner {
-                Some(ref a) => a,
-                None => process::abort(),
+            impl<A: Send + 'static> PanicPayload for Payload<A> {
+                fn take_box(&mut self) -> Box<dyn Any + Send> {
+                    // Note that this should be the only allocation performed in this code path. Currently
+                    // this means that panic!() on OOM will invoke this code path, but then again we're not
+                    // really ready for panic on OOM anyway. If we do start doing this, then we should
+                    // propagate this allocation to be performed in the parent of this thread instead of the
+                    // thread that's panicking.
+                    match self.inner.take() {
+                        Some(a) => Box::new(a) as Box<dyn Any + Send>,
+                        None => process::abort(),
+                    }
+                }
+
+                fn get(&mut self) -> &(dyn Any + Send) {
+                    match self.inner {
+                        Some(ref a) => a,
+                        None => process::abort(),
+                    }
+                }
             }
+
+            impl<A: 'static> fmt::Display for Payload<A> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match &self.inner {
+                        Some(a) => f.write_str(payload_as_str(a)),
+                        None => process::abort(),
+                    }
+                }
+            }
+
+            let loc = Location::caller();
+            crate::sys::backtrace::__rust_end_short_backtrace(move || {
+                panic_with_hook(
+                    &mut Payload { inner: Some(msg) },
+                    loc,
+                    /* can_unwind */ true,
+                    /* force_no_backtrace */ false,
+                )
+            })
         }
     }
-
-    impl<A: 'static> fmt::Display for Payload<A> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match &self.inner {
-                Some(a) => f.write_str(payload_as_str(a)),
-                None => process::abort(),
-            }
-        }
-    }
-
-    let loc = Location::caller();
-    crate::sys::backtrace::__rust_end_short_backtrace(move || {
-        panic_with_hook(
-            &mut Payload { inner: Some(msg) },
-            loc,
-            /* can_unwind */ true,
-            /* force_no_backtrace */ false,
-        )
-    })
 }
 
 fn payload_as_str(payload: &dyn Any) -> &str {
@@ -876,16 +877,15 @@ pub(crate) fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 
 /// A function with a fixed suffix (through `rustc_std_internal_symbol`)
 /// on which to slap yer breakpoints.
-#[inline(never)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
-    let code = __rust_start_panic(msg);
-    rtabort!("failed to initiate panic, error {code}")
-}
-
-#[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(panic = "immediate-abort")]
-fn rust_panic(_: &mut dyn PanicPayload) -> ! {
-    crate::intrinsics::abort_immediate();
+    cfg_select! {
+        panic = "immediate-abort" => process::crash(),
+        _ => {
+            let code = __rust_start_panic(msg);
+            rtabort!("failed to initiate panic, error {code}")
+        }
+    }
 }

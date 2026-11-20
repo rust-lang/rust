@@ -1,6 +1,7 @@
 //! This module contains a stable quicksort and partition implementation.
 
 use crate::mem::MaybeUninit;
+use crate::slice::sort::shared;
 use crate::slice::sort::shared::FreezeMarker;
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::StableSmallSortTypeImpl;
@@ -96,7 +97,7 @@ fn stable_partition<T, F: FnMut(&T, &T) -> bool>(
     let len = v.len();
 
     if intrinsics::unlikely(scratch.len() < len || pivot_pos >= len) {
-        intrinsics::abort_immediate()
+        shared::crash_for_invalid_arg()
     }
 
     let v_base = v.as_ptr();
