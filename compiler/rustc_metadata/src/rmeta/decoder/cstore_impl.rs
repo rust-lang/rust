@@ -359,6 +359,9 @@ provide! { tcx, def_id, other, cdata,
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
+    enabled_lang_features_in => {
+        tcx.arena.alloc(cdata.root.enabled_lang_features.decode((cdata, tcx)).collect())
+    }
     reachable_non_generics => {
         let reachable_non_generics = tcx
             .exported_non_generic_symbols(cdata.cnum)
@@ -440,6 +443,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
+        enabled_lang_features_in: |tcx, LocalCrate| {
+            tcx.arena.alloc(
+                tcx.features()
+                    .enabled_lang_features()
+                    .iter()
+                    .map(|feature| feature.gate_name)
+                    .collect(),
+            )
+        },
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()

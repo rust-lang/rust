@@ -1906,6 +1906,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Language features enabled in the crate.
+    query enabled_lang_features_in(_: CrateNum) -> &'tcx FxIndexSet<Symbol> {
+        desc { "getting the language features enabled in a crate" }
+        separate_provide_extern
+    }
+
     query specializes(_: (DefId, DefId)) -> bool {
         desc { "computing whether impls specialize one another" }
     }
