@@ -1472,12 +1472,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 #[cfg_attr(not(unix), allow(unused_mut))]
                 let mut builder = DirBuilder::new();
 
-                // If the host supports it, forward on the mode of the directory
-                // (i.e. permission bits and the sticky bit)
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::DirBuilderExt;
-                    builder.mode(mode);
+                // On Unix hosts, forward the mode of the directory
+                // (i.e. permission bits and the sticky bit).
+                // Other hosts can't represent it, so we only support the default mode there.
+                cfg_select! {
+                    unix => {
+                        use std::os::unix::fs::DirBuilderExt;
+                        builder.mode(mode);
+                    }
+                    _ =>
+                        if mode != 0o777 {
+                            throw_unsup_format!(
+                                "`{mkdir_name}` with mode {mode:#o} is not supported on non-Unix hosts \
+                                (only 0o777 is supported)"
+                            );
+                        },
                 }
 
                 builder.create(path)
