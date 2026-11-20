@@ -7,7 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, CanonAbi, Float, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, Float, Size, WrappingRange};
 use rustc_attr_ir::UnrollAttr;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope};
@@ -2156,11 +2156,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let schema = self.sess().pointer_authentication_functions()?;
 
-        // Pointer authentication support is currently limited to extern "C" calls; filter out other
-        // ABIs.
-        if fn_abi?.conv != CanonAbi::C {
-            return None;
-        }
+        // `ptrauth_discriminator` is only Some for ABIs that support pointer authentication (None
+        // by default) - see `is_ptrauth_signed_abi`.
+        let discriminator = fn_abi?.ptrauth_discriminator?;
         // Filter out LLVM intrinsics.
         if llvm::get_value_name(llfn).starts_with(b"llvm.") {
             return None;
@@ -2175,10 +2173,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
-            &[
-                self.const_u32(schema.key as u32),
-                self.const_u64(schema.constant_discriminator as u64),
-            ],
+            &[self.const_u32(schema.key as u32), self.const_u64(discriminator)],
         ))
     }
 
