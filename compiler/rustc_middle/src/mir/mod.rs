@@ -1353,28 +1353,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         BasicBlockData {
             statements,
             after_last_stmt_debuginfos: StmtDebugInfos::default(),
-            terminator: Some(terminator),
-            is_cleanup,
-        }
-    }
-
-    /// This is being phased out. Use [`BasicBlockData::new`] instead.
-    pub fn maybe_unterminated(
-        terminator: Option<Terminator<'tcx>>,
-        is_cleanup: bool,
-    ) -> BasicBlockData<'tcx> {
-        BasicBlockData::maybe_unterminated_stmts(Vec::new(), terminator, is_cleanup)
-    }
-
-    /// This is being phased out. Use [`BasicBlockData::new_stmts`] instead.
-    pub fn maybe_unterminated_stmts(
-        statements: Vec<Statement<'tcx>>,
-        terminator: Option<Terminator<'tcx>>,
-        is_cleanup: bool,
-    ) -> BasicBlockData<'tcx> {
-        BasicBlockData {
-            statements,
-            after_last_stmt_debuginfos: StmtDebugInfos::default(),
             terminator,
             is_cleanup,
         }
