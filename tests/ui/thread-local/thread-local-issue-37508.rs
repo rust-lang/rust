@@ -9,10 +9,9 @@
 
 #![no_main]
 #![no_std]
-#![feature(thread_local, lang_items)]
+#![feature(thread_local, lang_items, panic_unwind)]
 
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
+extern crate unwind;
 
 use core::panic::PanicInfo;
 
