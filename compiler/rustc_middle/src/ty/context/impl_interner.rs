@@ -183,6 +183,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
     }
 
+    fn expand_free_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
+        self.expand_free_alias_tys(t)
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
