@@ -1921,6 +1921,7 @@ impl Drop for IncrCompSession {
 }
 
 /// A runtime tracked borrow of the incr comp session. Can be sent to worker threads.
+#[derive(Clone)]
 pub struct BorrowedIncrCompSession {
     pub old_session_directory: Option<PathBuf>,
     pub new_session_directory: PathBuf,

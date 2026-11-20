@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
+#![feature(mpmc_channel)]
 #![feature(negative_impls)]
 #![feature(option_into_flat_iter)]
 #![feature(trait_alias)]
