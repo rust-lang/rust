@@ -50,7 +50,7 @@ where
     // but `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
 
     if fn_abi.ret.is_ignore() {
-        if fn_abi.ret.layout.is_repr_c() {
+        if !fn_abi.ret.layout.has_trivial_abi() {
             fn_abi.ret.make_indirect_from_ignore();
         }
     } else {
@@ -59,7 +59,7 @@ where
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
-            if arg.layout.is_repr_c() {
+            if !arg.layout.has_trivial_abi() {
                 arg.make_indirect_from_ignore();
             }
 

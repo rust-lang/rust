@@ -221,7 +221,7 @@ where
             continue;
         }
         if arg.is_ignore() {
-            if passes_zsts && arg.layout.is_repr_c() {
+            if passes_zsts && !arg.layout.has_trivial_abi() {
                 arg.make_indirect_from_ignore();
                 double_word_count += 1;
             }

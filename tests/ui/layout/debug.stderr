@@ -81,7 +81,7 @@ error: layout_of(E) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:7:1
@@ -116,7 +116,7 @@ error: layout_of(S) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:10:1
@@ -140,7 +140,7 @@ error: layout_of(U) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:13:1
@@ -213,7 +213,7 @@ error: layout_of(Result<i32, i32>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:16:1
@@ -235,7 +235,7 @@ error: layout_of(i32) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:19:1
@@ -259,7 +259,7 @@ error: layout_of(V) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:26:1
@@ -283,7 +283,7 @@ error: layout_of(W) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:32:1
@@ -307,7 +307,7 @@ error: layout_of(Y) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:38:1
@@ -331,7 +331,7 @@ error: layout_of(P1) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:45:1
@@ -355,7 +355,7 @@ error: layout_of(P2) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:49:1
@@ -379,7 +379,7 @@ error: layout_of(P3) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:57:1
@@ -403,7 +403,7 @@ error: layout_of(P4) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:61:1
@@ -427,7 +427,7 @@ error: layout_of(P5) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:65:1
@@ -451,7 +451,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:68:1
@@ -545,7 +545,7 @@ error: layout_of(Option<bool>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:92:1
@@ -618,7 +618,7 @@ error: layout_of(Option<char>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/debug.rs:95:1

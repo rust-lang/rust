@@ -46,7 +46,7 @@ where
         // powerpc-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == Os::Linux
             && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
-            && arg.layout.is_repr_c()
+            && !arg.layout.has_trivial_abi()
         {
             *gprs_in_use += 1;
             arg.make_indirect_from_ignore();
