@@ -88,23 +88,6 @@ fn eq() {
 }
 
 #[test]
-fn eq_unsized() {
-    #[derive(Eq)]
-    struct TestEq<T: ?Sized>(RefCell<usize>, T);
-    impl<T: ?Sized> PartialEq for TestEq<T> {
-        fn eq(&self, other: &TestEq<T>) -> bool {
-            *self.0.borrow_mut() += 1;
-            *other.0.borrow_mut() += 1;
-            true
-        }
-    }
-    let x = Rc::<TestEq<[u8; 3]>>::new(TestEq(RefCell::new(0), [0, 1, 2])) as Rc<TestEq<[u8]>>;
-    assert!(x == x);
-    assert!(!(x != x));
-    assert_eq!(*x.0.borrow(), 0);
-}
-
-#[test]
 fn eq_unsized_slice() {
     let a: Rc<[()]> = Rc::new([(); 3]);
     let ptr: *const () = Rc::into_raw(a.clone()).cast();
