@@ -169,8 +169,6 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(disjoint_bitor)]
-    ///
     /// assert_eq!(
     ///     // SAFETY: Only one, true value is passed.
     ///     unsafe { false.unchecked_disjoint_bitor(true) },
@@ -187,8 +185,9 @@ impl bool {
     /// # Safety
     ///
     /// This results in undefined behaviour if both `self` and `rhs` are true.
-    #[unstable(feature = "disjoint_bitor", issue = "135758")]
-    #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+    #[stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_trait_impl)]
     #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
     #[inline]
