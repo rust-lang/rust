@@ -375,6 +375,9 @@ impl StorageLiveLocals {
         for local in always_storage_live_locals.iter() {
             storage_live[local] = Set1::One(DefLocation::Argument);
         }
+        for local in (0..=body.arg_count).map(Local::from_usize) {
+            storage_live[local] = Set1::One(DefLocation::Argument);
+        }
         for (block, bbdata) in body.basic_blocks.iter_enumerated() {
             for (statement_index, statement) in bbdata.statements.iter().enumerate() {
                 if let StatementKind::StorageLive(local) = statement.kind {
