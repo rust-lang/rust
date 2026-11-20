@@ -204,6 +204,18 @@ impl AdtDef {
         with(|cx| cx.adt_is_simd(*self))
     }
 
+    pub fn is_phantom_data(&self) -> bool {
+        with(|cx| cx.adt_is_phantom_data(*self))
+    }
+
+    pub fn is_manually_drop(&self) -> bool {
+        with(|cx| cx.adt_is_manually_drop(*self))
+    }
+
+    pub fn is_unsafe_cell(&self) -> bool {
+        with(|cx| cx.adt_is_unsafe_cell(*self))
+    }
+
     /// The number of variants in this ADT.
     pub fn num_variants(&self) -> usize {
         with(|cx| cx.adt_variants_len(*self))
