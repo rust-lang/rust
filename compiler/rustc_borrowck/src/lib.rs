@@ -851,8 +851,26 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             },
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..) => {}
-            // Only relevant for liveness and unsafeck
-            StatementKind::PlaceMention(..) => {}
+            // We impose two requirements on `PlaceMention`s:
+            // - `Deref`s get materialized, so check that the pointer is live
+            // - Under MIR move elimination semantics, locals that are entirely
+            //   uninitialized or moved out of don't have storage, so reject that
+            StatementKind::PlaceMention(place) => {
+                let place_to_check = match place
+                    .iter_projections()
+                    .rfind(|(_, proj)| matches!(proj, ProjectionElem::Deref))
+                {
+                    Some((dereferenced_place, _)) => dereferenced_place,
+                    None => place.local.into(),
+                };
+
+                self.check_if_full_path_is_moved(
+                    location,
+                    InitializationRequiringAction::Use,
+                    (place_to_check, span),
+                    state,
+                );
+            }
             // Doesn't have any language semantics
             StatementKind::Coverage(..) => {}
             // These do not actually affect borrowck

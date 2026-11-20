@@ -1,0 +1,46 @@
+error[E0381]: used binding `x` isn't initialized on any path leading to this point
+  --> $DIR/placemention-mir-move-elim.rs:3:13
+   |
+LL |     let x: String;
+   |         - binding declared here but left uninitialized
+LL |     let _ = x;
+   |             ^ `x` used here but it isn't initialized on any path leading to this point
+   |
+help: consider assigning a value
+   |
+LL |     let x: String = Default::default();
+   |                   ++++++++++++++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/placemention-mir-move-elim.rs:7:13
+   |
+LL |     let x: String;
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+...
+LL |     drop(x);
+   |          - value moved here
+LL |     let _ = x;
+   |             ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
+
+error[E0381]: used binding `x` isn't initialized on any path leading to this point
+  --> $DIR/placemention-mir-move-elim.rs:10:13
+   |
+LL |     let x: (String,);
+   |         - binding declared here but left uninitialized
+LL |     let _ = x;
+   |             ^ `x` used here but it isn't initialized on any path leading to this point
+   |
+help: consider assigning a value
+   |
+LL |     let x: (String,) = (Default::default(),);
+   |                      +++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.
