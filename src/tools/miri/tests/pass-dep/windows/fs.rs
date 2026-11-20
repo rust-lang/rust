@@ -10,7 +10,7 @@ use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::path::Path;
 use std::{fs, mem, ptr};
 
-#[path = "../utils/mod.rs"]
+#[path = "../../utils/mod.rs"]
 mod utils;
 
 use windows_sys::Wdk::Storage::FileSystem::{NtReadFile, NtWriteFile};
@@ -114,7 +114,25 @@ unsafe fn test_create_normal_file() {
         panic!("Failed to close file")
     };
 
-    // Creating the file again should fail due to CREATE_NEW.
+    // Try again, this time without asking for any file access.
+    // That should still work.
+    fs::remove_file(&temp).unwrap(); // let's create the file again
+    let handle = CreateFileW(
+        raw_path.as_ptr(),
+        /* desired_access */ 0,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ptr::null_mut(),
+        CREATE_NEW,
+        FILE_FLAG_OPEN_REPARSE_POINT, // std also sets this
+        ptr::null_mut(),
+    );
+    assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
+    assert_eq!(GetLastError(), 0);
+    if CloseHandle(handle) == 0 {
+        panic!("Failed to close file")
+    };
+
+    // Creating the file when it already exists should fail due to CREATE_NEW.
     let handle = CreateFileW(
         raw_path.as_ptr(),
         GENERIC_READ | GENERIC_WRITE,
@@ -143,6 +161,22 @@ unsafe fn test_create_normal_file() {
         panic!("Failed to get file information: {}", GetLastError())
     };
     assert!(info.dwFileAttributes & REGULAR_FILE != 0);
+    // Even reading should fail. (Under the hood we did actually open the file for reading,
+    // so this checks that we do still reject read requests.)
+    let mut status = std::mem::zeroed::<IO_STATUS_BLOCK>();
+    let mut buffer = vec![0; 13];
+    let out = NtReadFile(
+        handle,
+        ptr::null_mut(),
+        None,
+        ptr::null_mut(),
+        &mut status,
+        buffer.as_mut_ptr().cast(),
+        buffer.len() as u32,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
+    assert_eq!(out, STATUS_ACCESS_DENIED);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
@@ -154,7 +188,7 @@ unsafe fn test_create_always_twice() {
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
-        GENERIC_READ | GENERIC_WRITE,
+        /* desired_access */ GENERIC_READ, // should work even without write access
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         ptr::null_mut(),
         CREATE_ALWAYS,
@@ -163,6 +197,22 @@ unsafe fn test_create_always_twice() {
     );
     assert_ne!(handle.addr(), usize::MAX, "CreateFileW Failed: {}", GetLastError());
     assert_eq!(GetLastError(), 0);
+    // Writing should fail as we did not request write access. (This is tricky because under the
+    // hood we actually do request write access to be able to create the file.)
+    let text = b"Example text!";
+    let mut status = std::mem::zeroed::<IO_STATUS_BLOCK>();
+    let out = NtWriteFile(
+        handle,
+        ptr::null_mut(),
+        None,
+        ptr::null_mut(),
+        &mut status,
+        text.as_ptr().cast(),
+        text.len() as u32,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
+    assert_eq!(out, STATUS_ACCESS_DENIED);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
@@ -285,17 +335,15 @@ unsafe fn test_file_read_write() {
         ptr::null_mut(),
         ptr::null_mut(),
     );
-
-    assert_eq!(out, status.Anonymous.Status);
     assert_eq!(out, STATUS_SUCCESS);
+    assert_eq!(status.Anonymous.Status, STATUS_SUCCESS);
+    assert_eq!(status.Information, text.len());
+    // GetLastError was not touched.
     assert_eq!(GetLastError(), 1234);
 
-    let file = fs::File::open(&temp).unwrap();
-    let handle = file.as_raw_handle();
-
-    // Testing NtReadFile doesn't clobber the error
-    SetLastError(1234);
-
+    // Reading would fail as the file was opened write-only.
+    status.Anonymous.Status = 1234;
+    status.Information = 1234;
     let mut buffer = vec![0; 13];
     let out = NtReadFile(
         handle,
@@ -308,10 +356,53 @@ unsafe fn test_file_read_write() {
         ptr::null_mut(),
         ptr::null_mut(),
     );
+    assert_eq!(out, STATUS_ACCESS_DENIED);
+    // The rest was not touched.
+    assert_eq!(status.Information, 1234);
+    assert_eq!(status.Anonymous.Status, 1234);
+    assert_eq!(GetLastError(), 1234);
 
-    assert_eq!(out, status.Anonymous.Status);
+    // Open for reading to also test that.
+    let file = fs::File::open(&temp).unwrap();
+    SetLastError(1234); // needs reset after opening file
+    let handle = file.as_raw_handle();
+    let mut buffer = vec![0; 13];
+    let out = NtReadFile(
+        handle,
+        ptr::null_mut(),
+        None,
+        ptr::null_mut(),
+        &mut status,
+        buffer.as_mut_ptr().cast(),
+        buffer.len() as u32,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
     assert_eq!(out, STATUS_SUCCESS);
+    assert_eq!(status.Anonymous.Status, STATUS_SUCCESS);
+    assert_eq!(status.Information, text.len());
     assert_eq!(buffer, text);
+    // GetLastError was not touched
+    assert_eq!(GetLastError(), 1234);
+
+    // Writing fails as the file was opened read-only.
+    status.Anonymous.Status = 1234;
+    status.Information = 1234;
+    let out = NtWriteFile(
+        handle,
+        ptr::null_mut(),
+        None,
+        ptr::null_mut(),
+        &mut status,
+        text.as_ptr().cast(),
+        text.len() as u32,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
+    assert_eq!(out, STATUS_ACCESS_DENIED);
+    // The rest was not touched.
+    assert_eq!(status.Information, 1234);
+    assert_eq!(status.Anonymous.Status, 1234);
     assert_eq!(GetLastError(), 1234);
 }
 

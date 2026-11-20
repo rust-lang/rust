@@ -13,7 +13,7 @@ use std::io::Write;
 use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, ptr};
 
 mod fs {
@@ -36,10 +36,13 @@ fn main() {
     test_rename();
     test_mkdir();
     test_rmdir();
+    test_unlink();
+    test_symlink();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_create_read_write();
+    test_append_seek_read_write();
     test_read_and_uninit();
     test_open_args(libc::open);
     #[cfg(target_os = "linux")]
@@ -51,6 +54,7 @@ fn main() {
     test_openat(libc::openat);
     #[cfg(target_os = "linux")]
     test_openat(libc::openat64);
+    test_unlinkat();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -114,6 +118,55 @@ fn main() {
     test_readlink();
     test_linkat();
     test_short_fs_operations();
+}
+
+fn test_append_seek_read_write() {
+    let path = utils::prepare_with_content("miri-pass-libc-append.txt", b"abc");
+    let cpath = utils::into_c_string(path);
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDWR | libc::O_APPEND) }).unwrap();
+
+    unsafe {
+        // Reading behaves as usual.
+        assert_eq!(errno_result(libc::lseek(fd, 1, libc::SEEK_SET)).unwrap(), 1);
+        assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), *b"b");
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 2);
+        // Same for `pread`.
+        let mut byte = 0u8;
+        assert_eq!(errno_result(libc::pread(fd, (&mut byte as *mut u8).cast(), 1, 0)).unwrap(), 1);
+        assert_eq!(byte, b'a');
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 2);
+
+        // But writing always adds at the end.
+        // The current position is 2, which would usually overwrite the `c`.
+        libc_utils::write_all(fd, b"d").unwrap();
+        // The current position also got updated to point at the end.
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"");
+        // Seek to beginning to check contents of the entire file.
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_SET)).unwrap(), 0);
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"abcd");
+
+        errno_check(libc::close(fd));
+
+        // Also test write-only append mode.
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_APPEND)).unwrap();
+        assert_eq!(errno_result(libc::lseek(fd, 1, libc::SEEK_SET)).unwrap(), 1);
+        let err = errno_result(libc::read(fd, (&mut byte as *mut u8).cast(), 1)).unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+        libc_utils::write_all(fd, b"e").unwrap();
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 5);
+        errno_check(libc::close(fd));
+
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY)).unwrap();
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"abcde");
+        errno_check(libc::close(fd));
+
+        // Read-only append works but we cannot actually write.
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY | libc::O_APPEND)).unwrap();
+        let err = libc_utils::write_all(fd, b"e").unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+        errno_check(libc::close(fd));
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -588,10 +641,86 @@ fn test_openat(
     errno_check(unsafe { libc::close(dirfd) });
 }
 
+fn test_unlinkat() {
+    let path = utils::prepare("miri_test_unlinkat");
+    fs::create_dir(&path).unwrap();
+    let cpath = utils::into_c_string(&path);
+    let dirfd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+
+    let unlinkat = |dirfd: libc::c_int, path: &CStr, flags: libc::c_int| {
+        errno_result(unsafe { libc::unlinkat(dirfd, path.as_ptr(), flags) })
+    };
+    let errno = |res: std::io::Result<libc::c_int>| res.unwrap_err().raw_os_error().unwrap();
+
+    // Remove a file relative to dirfd.
+    fs::write(path.join("file.txt"), b"data").unwrap();
+    assert_eq!(unlinkat(dirfd, c"file.txt", 0).unwrap(), 0);
+    assert!(!path.join("file.txt").exists());
+    // Now it is gone, so removing it again fails.
+    assert_eq!(errno(unlinkat(dirfd, c"file.txt", 0)), libc::ENOENT);
+
+    // Remove a file via its absolute path, can use garbage dirfd.
+    fs::write(path.join("file.txt"), b"data").unwrap();
+    let cfile = utils::into_c_string(path.join("file.txt"));
+    assert_eq!(unlinkat(999, &cfile, 0).unwrap(), 0);
+    assert!(!path.join("file.txt").exists());
+
+    // With `AT_FDCWD`, a relative path is relative to the working directory, not to an FD.
+    let original_cwd = env::current_dir().unwrap();
+    env::set_current_dir(&path).unwrap();
+    let cwd_file = Path::new("miri_test_unlinkat_cwd");
+    fs::write(cwd_file, b"data").unwrap();
+    assert_eq!(unlinkat(libc::AT_FDCWD, c"miri_test_unlinkat_cwd", 0).unwrap(), 0,);
+    assert!(!cwd_file.exists());
+    env::set_current_dir(original_cwd).unwrap();
+
+    // Remove a directory, which has to be empty.
+    fs::create_dir(path.join("dir")).unwrap();
+    fs::write(path.join("dir/file.txt"), b"data").unwrap();
+    // Test error when it is not empty.
+    // POSIX allows either of these errors.
+    let err = errno(unlinkat(dirfd, c"dir", libc::AT_REMOVEDIR));
+    assert!(matches!(err, libc::ENOTEMPTY | libc::EEXIST), "unexpected errno: {err}");
+    assert_eq!(unlinkat(dirfd, c"dir/file.txt", 0).unwrap(), 0);
+    assert_eq!(unlinkat(dirfd, c"dir", libc::AT_REMOVEDIR).unwrap(), 0);
+    assert!(!path.join("dir").exists());
+
+    // Symlinks are removed themselves, their targets are left alone.
+    if utils::have_symlink_permission() {
+        fs::write(path.join("file.txt"), b"data").unwrap();
+        fs::create_dir(path.join("dir")).unwrap();
+        // Check both paths relative to dirfd, and absolute paths.
+        for (fd, base) in [(dirfd, PathBuf::new()), (999, path.clone())] {
+            fs::symlink("file.txt", path.join("filelink")).unwrap();
+            fs::symlink("dir", path.join("dirlink")).unwrap();
+            let filelink = utils::into_c_string(base.join("filelink"));
+            let dirlink = utils::into_c_string(base.join("dirlink"));
+
+            assert_eq!(unlinkat(fd, &filelink, 0).unwrap(), 0);
+            assert!(path.join("filelink").symlink_metadata().is_err());
+            assert!(path.join("file.txt").exists());
+
+            // A symlink to a directory is not a directory, so `AT_REMOVEDIR` fails.
+            assert_eq!(errno(unlinkat(fd, &dirlink, libc::AT_REMOVEDIR)), libc::ENOTDIR);
+            // But it can be removed like a file.
+            assert_eq!(unlinkat(fd, &dirlink, 0).unwrap(), 0);
+            assert!(path.join("dirlink").symlink_metadata().is_err());
+            assert!(path.join("dir").exists());
+        }
+    }
+
+    // A relative path needs a dirfd that is an open directory.
+    assert_eq!(errno(unlinkat(999, c"file.txt", 0)), libc::EBADF);
+    let file = File::create(path.join("file.txt")).unwrap();
+    assert_eq!(errno(unlinkat(file.as_raw_fd(), c"file.txt", 0)), libc::ENOTDIR);
+
+    errno_check(unsafe { libc::close(dirfd) });
+}
+
 fn test_create_read_write() {
     let content = b"hello test";
     let path = utils::prepare("miri_test_create_read_write.txt");
-    let cpath = utils::into_c_string(path);
+    let cpath = utils::into_c_string(&path);
 
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT, 0o666) })
@@ -606,6 +735,17 @@ fn test_create_read_write() {
     assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
     let data = libc_utils::read_to_end(fd).unwrap();
     assert_eq!(*content, *data);
+    errno_check(unsafe { libc::close(fd) });
+
+    // We can also create with RDONLY.
+    fs::remove_file(&path).unwrap();
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY | libc::O_CREAT, 0o666) })
+            .unwrap();
+    let write_err = libc_utils::write_all(fd, content).unwrap_err();
+    assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
+    let data = libc_utils::read_to_end(fd).unwrap();
+    assert!(data.is_empty());
     errno_check(unsafe { libc::close(fd) });
 }
 
@@ -773,6 +913,81 @@ fn test_rmdir() {
     let err = errno_result(unsafe { libc::rmdir(c_file_path.as_ptr()) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
     fs::remove_file(&file_path).unwrap();
+}
+
+fn test_unlink() {
+    let path = utils::prepare_with_content("miri_test_libc_unlink.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    // Unlinking an existing file should succeed.
+    errno_check(unsafe { libc::unlink(cpath.as_ptr()) });
+    assert!(!path.exists());
+
+    // Unlinking it again should fail since it no longer exists.
+    let err = errno_result(unsafe { libc::unlink(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    let dir_path = utils::prepare("miri_test_libc_unlink");
+    fs::create_dir(&dir_path).unwrap();
+    let c_dir_path = utils::into_c_string(&dir_path);
+
+    // Unlinking a directory should fail since directories are removed using `rmdir`.
+    let err = errno_result(unsafe { libc::unlink(c_dir_path.as_ptr()) }).unwrap_err();
+    // Linux `unlink` call sets errno to `EISDIR`,
+    // while POSIX specifies `EPERM`, which macOS returns.
+    assert!(matches!(err.raw_os_error().unwrap(), libc::EISDIR | libc::EPERM));
+    assert!(dir_path.exists());
+    fs::remove_dir(&dir_path).unwrap();
+}
+
+fn test_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+    let file_target = utils::prepare_with_content("miri_test_libc_symlink_target.txt", b"hello");
+    let c_file_target = utils::into_c_string(&file_target);
+    let dir_target = utils::prepare("miri_test_libc_symlink_target_dir");
+    let c_dir_target = utils::into_c_string(&dir_target);
+    fs::create_dir(&dir_target).unwrap();
+    let link = utils::prepare("miri_test_libc_symlink_link");
+    let c_link = utils::into_c_string(&link);
+
+    // Test all four combinations: absolute/relative path, file/directory target.
+    // A relative target is resolved relative to the directory containing the link,
+    // so the file name alone works since `utils::prepare` puts all paths in the same directory.
+    let cases = [
+        // (target, is_dir)
+        (file_target.as_os_str(), false),
+        (file_target.file_name().unwrap(), false),
+        (dir_target.as_os_str(), true),
+        (dir_target.file_name().unwrap(), true),
+    ];
+
+    for (target, is_dir) in cases {
+        let c_target = utils::into_c_string(target);
+
+        // Creating a symlink should succeed and store `target` exactly as given.
+        errno_check(unsafe { libc::symlink(c_target.as_ptr(), c_link.as_ptr()) });
+        assert_eq!(fs::read_link(&link).unwrap(), target);
+
+        // Following the link should reach the target.
+        assert!(link.exists());
+        assert!(if is_dir { link.is_dir() } else { link.is_file() });
+
+        errno_check(unsafe { libc::unlink(c_link.as_ptr()) });
+    }
+
+    // Check error when link already exists.
+    let err =
+        errno_result(unsafe { libc::symlink(c_file_target.as_ptr(), c_file_target.as_ptr()) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
+    let err = errno_result(unsafe { libc::symlink(c_dir_target.as_ptr(), c_dir_target.as_ptr()) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
+
+    fs::remove_file(&file_target).unwrap();
+    fs::remove_dir(&dir_target).unwrap();
 }
 
 fn test_ftruncate<T: From<i32>>(

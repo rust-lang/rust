@@ -64,6 +64,7 @@ fn main() {
     }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_append();
         test_fs_set_permissions();
         test_file_set_permissions();
 
@@ -258,6 +259,31 @@ fn test_seek() {
     assert_eq!(&bytes[2..], contents.as_slice());
 
     // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_append() {
+    let bytes = b"Hello";
+    let path = utils::prepare_with_content("miri_test_fs_append.txt", bytes);
+
+    let mut file = OpenOptions::new().append(true).open(&path).unwrap();
+    file.write_all(b" World").unwrap();
+    file.seek(SeekFrom::Start(0)).unwrap();
+    file.write_all(b"!\n").unwrap();
+    drop(file);
+    assert_eq!(fs::read(&path).unwrap(), b"Hello World!\n");
+
+    // Also try combining this with reading.
+    let mut file = OpenOptions::new().read(true).append(true).open(&path).unwrap();
+    let mut buf = [0u8; 2];
+    file.read_exact(&mut buf).unwrap();
+    assert_eq!(&buf, b"He");
+    file.write_all(b"Next?").unwrap();
+    file.seek(SeekFrom::Current(-6)).unwrap();
+    file.read_exact(&mut buf).unwrap();
+    assert_eq!(&buf, b"\nN");
+    drop(file);
+
     remove_file(&path).unwrap();
 }
 
@@ -846,7 +872,16 @@ fn test_directory_handle() {
     assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 
     fs::create_dir(dirname.join("subdir")).unwrap();
-    let _subdir = dir.open_dir("subdir").unwrap();
+    let subdir = dir.open_dir("subdir").unwrap();
+
+    // Delete subdir.
+    // Close the handles first, Windows hosts may refuse to remove things that are still open.
+    drop(file);
+    drop(subdir);
+    dir.remove_file("file.txt").unwrap();
+    assert!(!filename.exists());
+    dir.remove_dir("subdir").unwrap();
+    assert!(!dirname.join("subdir").exists());
 }
 
 fn test_fs_set_permissions() {

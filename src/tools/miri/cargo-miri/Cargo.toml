@@ -23,6 +23,3 @@ rustc-build-sysroot = "0.5.13"
 # do not.  This makes `./miri install` after `./miri build` faster.
 # Require a version of serde without intransparent unreproducible binary blobs.
 serde = { version = "1.0.185", features = ["derive"] }
-
-[build-dependencies]
-rustc_tools_util = "0.4"
