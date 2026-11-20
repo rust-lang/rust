@@ -430,6 +430,7 @@ pub(crate) fn format_expr(
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..)
         | ast::ExprKind::UnsafeBinderCast(..)
+        | ast::ExprKind::Rescope(..)
         | ast::ExprKind::GcaMacro(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,
             // rustfmt tries to parse macro arguments when formatting macros, so it's not totally

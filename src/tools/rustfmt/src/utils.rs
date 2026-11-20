@@ -594,6 +594,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Use(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(..)
+        | ast::ExprKind::Rescope(..)
         | ast::ExprKind::Underscore => false,
     }
 }

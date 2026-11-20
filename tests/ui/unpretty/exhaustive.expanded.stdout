@@ -23,6 +23,7 @@
 #![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(specialization)]
+#![feature(super_let)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
@@ -305,6 +306,7 @@ mod expressions {
 
 
 
+
         // ...
 
 
@@ -355,6 +357,10 @@ mod expressions {
         let expr;
         format_args!("");
         format_args!("{0}", expr);
+    }
+    /// ExprKind::Rescope
+    fn expr_rescope() {
+        'a: { let expr; k#scope('a => expr); k#extend('a => expr); }
     }
 }
 mod items {
