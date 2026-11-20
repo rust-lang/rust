@@ -65,7 +65,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
     pub(crate) fn make(
         mut self: Box<ParserAnyMacro<'a, 'b>>,
         kind: AstFragmentKind,
-    ) -> AstFragment {
+    ) -> Result<AstFragment, AstFragment> {
         let ParserAnyMacro {
             site_span,
             macro_ident,
@@ -91,7 +91,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
                     bindings,
                     matched_rule_bindings,
                 );
-                return kind.dummy(site_span, guar);
+                return Err(kind.dummy(site_span, guar));
             }
         };
 
@@ -116,7 +116,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
         let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));
         ensure_complete_parse(parser, &path, kind.name(), site_span);
-        fragment
+        Ok(fragment)
     }
 
     #[instrument(skip(cx, tts, bindings, matched_rule_bindings))]

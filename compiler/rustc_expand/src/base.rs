@@ -407,47 +407,50 @@ pub trait GlobDelegationExpander {
     fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
-fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-    expr.map(|e| {
+fn make_stmts_default(expr: MacroResult<Box<ast::Expr>>) -> MacroResult<SmallVec<[ast::Stmt; 1]>> {
+    let mapper = |e: Box<ast::Expr>| {
         smallvec![ast::Stmt { id: ast::DUMMY_NODE_ID, span: e.span, kind: ast::StmtKind::Expr(e) }]
-    })
+    };
+    expr.map(|e| e.map(mapper).map_err(mapper))
 }
+
+type MacroResult<T> = Option<Result<T, T>>;
 
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
     /// Creates an expression.
-    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> MacroResult<Box<ast::Expr>> {
         None
     }
 
     /// Creates zero or more items.
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+    fn make_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::Item>; 1]>> {
         None
     }
 
     /// Creates zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_impl_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more impl items.
-    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_impl_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more trait items.
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
+    fn make_trait_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
         None
     }
 
     /// Creates zero or more items in an `extern {}` block
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
+    fn make_foreign_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::ForeignItem>; 1]>> {
         None
     }
 
     /// Creates a pattern.
-    fn make_pat(self: Box<Self>) -> Option<Box<ast::Pat>> {
+    fn make_pat(self: Box<Self>) -> MacroResult<Box<ast::Pat>> {
         None
     }
 
@@ -455,47 +458,47 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self: Box<Self>) -> MacroResult<SmallVec<[ast::Stmt; 1]>> {
         make_stmts_default(self.make_expr())
     }
 
-    fn make_ty(self: Box<Self>) -> Option<Box<ast::Ty>> {
+    fn make_ty(self: Box<Self>) -> MacroResult<Box<ast::Ty>> {
         None
     }
 
-    fn make_arms(self: Box<Self>) -> Option<SmallVec<[ast::Arm; 1]>> {
+    fn make_arms(self: Box<Self>) -> MacroResult<SmallVec<[ast::Arm; 1]>> {
         None
     }
 
-    fn make_expr_fields(self: Box<Self>) -> Option<SmallVec<[ast::ExprField; 1]>> {
+    fn make_expr_fields(self: Box<Self>) -> MacroResult<SmallVec<[ast::ExprField; 1]>> {
         None
     }
 
-    fn make_pat_fields(self: Box<Self>) -> Option<SmallVec<[ast::PatField; 1]>> {
+    fn make_pat_fields(self: Box<Self>) -> MacroResult<SmallVec<[ast::PatField; 1]>> {
         None
     }
 
-    fn make_generic_params(self: Box<Self>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
+    fn make_generic_params(self: Box<Self>) -> MacroResult<SmallVec<[ast::GenericParam; 1]>> {
         None
     }
 
-    fn make_params(self: Box<Self>) -> Option<SmallVec<[ast::Param; 1]>> {
+    fn make_params(self: Box<Self>) -> MacroResult<SmallVec<[ast::Param; 1]>> {
         None
     }
 
-    fn make_field_defs(self: Box<Self>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
+    fn make_field_defs(self: Box<Self>) -> MacroResult<SmallVec<[ast::FieldDef; 1]>> {
         None
     }
 
-    fn make_variants(self: Box<Self>) -> Option<SmallVec<[ast::Variant; 1]>> {
+    fn make_variants(self: Box<Self>) -> MacroResult<SmallVec<[ast::Variant; 1]>> {
         None
     }
 
-    fn make_where_predicates(self: Box<Self>) -> Option<SmallVec<[ast::WherePredicate; 1]>> {
+    fn make_where_predicates(self: Box<Self>) -> MacroResult<SmallVec<[ast::WherePredicate; 1]>> {
         None
     }
 
-    fn make_crate(self: Box<Self>) -> Option<ast::Crate> {
+    fn make_crate(self: Box<Self>) -> MacroResult<ast::Crate> {
         // Fn-like macros cannot produce a crate.
         unreachable!()
     }
@@ -525,29 +528,29 @@ impl MacEager {
 }
 
 impl MacResult for MacEager {
-    fn make_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
-        self.expr
+    fn make_expr(self: Box<Self>) -> MacroResult<Box<ast::Expr>> {
+        self.expr.map(|e| Ok(e))
     }
 
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
-        self.items
+    fn make_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::Item>; 1]>> {
+        self.items.map(|i| Ok(i))
     }
 
-    fn make_pat(self: Box<Self>) -> Option<Box<ast::Pat>> {
+    fn make_pat(self: Box<Self>) -> MacroResult<Box<ast::Pat>> {
         if let Some(e) = self.expr {
             if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
-                return Some(Box::new(ast::Pat {
+                return Some(Ok(Box::new(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
                     kind: PatKind::Expr(e),
-                }));
+                })));
             }
         }
         None
     }
 
-    fn make_ty(self: Box<Self>) -> Option<Box<ast::Ty>> {
-        self.ty
+    fn make_ty(self: Box<Self>) -> MacroResult<Box<ast::Ty>> {
+        self.ty.map(|t| Ok(t))
     }
 }
 
@@ -590,89 +593,97 @@ impl DummyResult {
 }
 
 impl MacResult for DummyResult {
-    fn make_expr(self: Box<DummyResult>) -> Option<Box<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span, self.guar))
+    fn make_expr(self: Box<DummyResult>) -> MacroResult<Box<ast::Expr>> {
+        Some(Err(DummyResult::raw_expr(self.span, self.guar)))
     }
 
-    fn make_pat(self: Box<DummyResult>) -> Option<Box<ast::Pat>> {
-        Some(Box::new(ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: self.span }))
+    fn make_pat(self: Box<DummyResult>) -> MacroResult<Box<ast::Pat>> {
+        Some(Err(Box::new(ast::Pat {
+            id: ast::DUMMY_NODE_ID,
+            kind: PatKind::Wild,
+            span: self.span,
+        })))
     }
 
-    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
-        Some(SmallVec::new())
+    fn make_items(self: Box<DummyResult>) -> MacroResult<SmallVec<[Box<ast::Item>; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        Some(SmallVec::new())
+    fn make_impl_items(self: Box<DummyResult>) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        Some(SmallVec::new())
+    fn make_trait_impl_items(
+        self: Box<DummyResult>,
+    ) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[Box<ast::AssocItem>; 1]>> {
-        Some(SmallVec::new())
+    fn make_trait_items(self: Box<DummyResult>) -> MacroResult<SmallVec<[Box<ast::AssocItem>; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::ForeignItem>; 1]>> {
-        Some(SmallVec::new())
+    fn make_foreign_items(self: Box<Self>) -> MacroResult<SmallVec<[Box<ast::ForeignItem>; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        Some(smallvec![ast::Stmt {
+    fn make_stmts(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::Stmt; 1]>> {
+        Some(Err(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.guar)),
             span: self.span,
-        }])
+        }]))
     }
 
-    fn make_ty(self: Box<DummyResult>) -> Option<Box<ast::Ty>> {
+    fn make_ty(self: Box<DummyResult>) -> MacroResult<Box<ast::Ty>> {
         // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
         // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
         // support, so we use an empty tuple instead.
-        Some(Box::new(ast::Ty {
+        Some(Err(Box::new(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             kind: ast::TyKind::Tup(ThinVec::new()),
             span: self.span,
-        }))
+        })))
     }
 
-    fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
-        Some(SmallVec::new())
+    fn make_arms(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::Arm; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_expr_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::ExprField; 1]>> {
-        Some(SmallVec::new())
+    fn make_expr_fields(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::ExprField; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_pat_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::PatField; 1]>> {
-        Some(SmallVec::new())
+    fn make_pat_fields(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::PatField; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_generic_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
-        Some(SmallVec::new())
+    fn make_generic_params(
+        self: Box<DummyResult>,
+    ) -> MacroResult<SmallVec<[ast::GenericParam; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::Param; 1]>> {
-        Some(SmallVec::new())
+    fn make_params(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::Param; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_field_defs(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
-        Some(SmallVec::new())
+    fn make_field_defs(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::FieldDef; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_variants(self: Box<DummyResult>) -> Option<SmallVec<[ast::Variant; 1]>> {
-        Some(SmallVec::new())
+    fn make_variants(self: Box<DummyResult>) -> MacroResult<SmallVec<[ast::Variant; 1]>> {
+        Some(Err(SmallVec::new()))
     }
 
-    fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(ast::Crate {
+    fn make_crate(self: Box<DummyResult>) -> MacroResult<ast::Crate> {
+        Some(Err(ast::Crate {
             attrs: Default::default(),
             items: Default::default(),
             spans: Default::default(),
             id: ast::DUMMY_NODE_ID,
             is_placeholder: Default::default(),
-        })
+        }))
     }
 }
 

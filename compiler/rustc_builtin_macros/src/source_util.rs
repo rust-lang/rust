@@ -140,13 +140,16 @@ pub(crate) fn expand_include<'cx>(
         span: Span,
     }
     impl<'a> MacResult for ExpandInclude<'a> {
-        fn make_expr(self: Box<ExpandInclude<'a>>) -> Option<Box<ast::Expr>> {
+        fn make_expr(
+            self: Box<ExpandInclude<'a>>,
+        ) -> Option<Result<Box<ast::Expr>, Box<ast::Expr>>> {
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,
                 StripTokens::Nothing,
                 Some(self.span),
             ));
+            // FIXME: can change this to result `Ok(Err(_))`?
             let expr = parse_expr(&mut p).ok()?;
             if p.token != token::Eof {
                 p.psess.buffer_lint(
@@ -156,10 +159,12 @@ pub(crate) fn expand_include<'cx>(
                     diagnostics::IncompleteInclude,
                 );
             }
-            Some(expr)
+            Some(Ok(expr))
         }
 
-        fn make_items(self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+        fn make_items(
+            self: Box<ExpandInclude<'a>>,
+        ) -> Option<Result<SmallVec<[Box<ast::Item>; 1]>, SmallVec<[Box<ast::Item>; 1]>>> {
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,
@@ -167,9 +172,11 @@ pub(crate) fn expand_include<'cx>(
                 Some(self.span),
             ));
             let mut ret = SmallVec::new();
+            let mut had_err = false;
             loop {
                 match p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes) {
                     Err(err) => {
+                        had_err = true;
                         err.emit();
                         break;
                     }
@@ -186,7 +193,7 @@ pub(crate) fn expand_include<'cx>(
                     }
                 }
             }
-            Some(ret)
+            Some(if had_err { Err(ret) } else { Ok(ret) })
         }
     }
 
