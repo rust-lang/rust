@@ -128,8 +128,10 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx, '_> {
         body: &Body<'tcx>,
         terminator: &Terminator<'tcx>,
     ) -> bool {
-        let TerminatorKind::Call { func, args, .. } = &terminator.kind else {
-            return false;
+        let (func, args) = match &terminator.kind {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => (func, args),
+            _ => return false,
         };
 
         // Resolving function type to a specific instance that is being called is expensive. To
@@ -228,12 +230,19 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue(()),
 
-            // Note that tail call terminator technically returns to the caller,
-            // but for purposes of this lint it makes sense to count it as possibly recursive,
-            // since it's still a call.
-            //
-            // If this'll be repurposed for something else, this might need to be changed.
-            TerminatorKind::TailCall { .. } => ControlFlow::Continue(()),
+            // Non-self tail calls exit to other functions and thus return control flow to the caller.
+            // Only self-recursive tail calls need to be continued.
+            TerminatorKind::TailCall { .. } => {
+                if self.classifier.is_recursive_terminator(
+                    self.tcx,
+                    self.body,
+                    self.body[bb].terminator(),
+                ) {
+                    ControlFlow::Continue(())
+                } else {
+                    ControlFlow::Break(NonRecursive)
+                }
+            }
         }
     }
 
@@ -249,7 +258,9 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
         //
         // But at the same time we would like to highlight both calls in a function like
         // `fn f() { if false { become f() } else { f() } }`, so we need to figure something out.
-        if self.classifier.is_recursive_terminator(self.tcx, self.body, terminator) {
+        if !matches!(terminator.kind, TerminatorKind::TailCall { .. })
+            && self.classifier.is_recursive_terminator(self.tcx, self.body, terminator)
+        {
             self.reachable_recursive_calls.push(terminator.source_info.span);
         }
 

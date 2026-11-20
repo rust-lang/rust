@@ -21,4 +21,15 @@ fn g(x: bool) {
     }
 }
 
+fn other(x: bool) {}
+
+// This should *not* lint, just like return.
+fn h(x: bool) {
+    if x {
+        become other(x)
+    } else {
+        h(!x)
+    }
+}
+
 fn main() {}
