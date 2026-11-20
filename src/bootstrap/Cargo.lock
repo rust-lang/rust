@@ -48,6 +48,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "cmake",
+ "errno",
  "expect-test",
  "home",
  "ignore",
