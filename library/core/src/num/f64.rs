@@ -34,8 +34,7 @@ use crate::{intrinsics, mem};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::RADIX` in expressions or declare a local \
-        `const RADIX: u32 = f64::RADIX` instead of importing this constant"
+    note = "use `f64::RADIX` or `const RADIX: u32 = f64::RADIX` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_radix"]
 pub const RADIX: u32 = f64::RADIX;
@@ -56,8 +55,7 @@ pub const RADIX: u32 = f64::RADIX;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MANTISSA_DIGITS` in expressions or declare a local \
-        `const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS` instead of importing this constant"
+    note = "use `f64::MANTISSA_DIGITS` or `const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_mantissa_dig"]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
@@ -78,8 +76,7 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::DIGITS` in expressions or declare a local \
-        `const DIGITS: u32 = f64::DIGITS` instead of importing this constant"
+    note = "use `f64::DIGITS` or `const DIGITS: u32 = f64::DIGITS` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_digits"]
 pub const DIGITS: u32 = f64::DIGITS;
@@ -104,8 +101,7 @@ pub const DIGITS: u32 = f64::DIGITS;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::EPSILON` in expressions or declare a local \
-        `const EPSILON: f64 = f64::EPSILON` instead of importing this constant"
+    note = "use `f64::EPSILON` or `const EPSILON: f64 = f64::EPSILON` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_epsilon"]
 pub const EPSILON: f64 = f64::EPSILON;
@@ -124,11 +120,7 @@ pub const EPSILON: f64 = f64::EPSILON;
 /// let min = f64::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(
-    since = "1.99.0",
-    note = "use `f64::MIN` in expressions or declare a local \
-        `const MIN: f64 = f64::MIN` instead of importing this constant"
-)]
+#[deprecated(since = "1.99.0", note = "use `f64::MIN` or `const MIN: f64 = f64::MIN` instead")]
 #[rustc_diagnostic_item = "f64_legacy_const_min"]
 pub const MIN: f64 = f64::MIN;
 
@@ -148,8 +140,7 @@ pub const MIN: f64 = f64::MIN;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MIN_POSITIVE` in expressions or declare a local \
-        `const MIN_POSITIVE: f64 = f64::MIN_POSITIVE` instead of importing this constant"
+    note = "use `f64::MIN_POSITIVE` or `const MIN_POSITIVE: f64 = f64::MIN_POSITIVE` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_min_positive"]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
@@ -168,11 +159,7 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 /// let max = f64::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(
-    since = "1.99.0",
-    note = "use `f64::MAX` in expressions or declare a local \
-        `const MAX: f64 = f64::MAX` instead of importing this constant"
-)]
+#[deprecated(since = "1.99.0", note = "use `f64::MAX` or `const MAX: f64 = f64::MAX` instead")]
 #[rustc_diagnostic_item = "f64_legacy_const_max"]
 pub const MAX: f64 = f64::MAX;
 
@@ -192,8 +179,7 @@ pub const MAX: f64 = f64::MAX;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MIN_EXP` in expressions or declare a local \
-        `const MIN_EXP: i32 = f64::MIN_EXP` instead of importing this constant"
+    note = "use `f64::MIN_EXP` or `const MIN_EXP: i32 = f64::MIN_EXP` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_min_exp"]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
@@ -214,8 +200,7 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MAX_EXP` in expressions or declare a local \
-        `const MAX_EXP: i32 = f64::MAX_EXP` instead of importing this constant"
+    note = "use `f64::MAX_EXP` or `const MAX_EXP: i32 = f64::MAX_EXP` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_max_exp"]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
@@ -236,8 +221,7 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MIN_10_EXP` in expressions or declare a local \
-        `const MIN_10_EXP: i32 = f64::MIN_10_EXP` instead of importing this constant"
+    note = "use `f64::MIN_10_EXP` or `const MIN_10_EXP: i32 = f64::MIN_10_EXP` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_min_10_exp"]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
@@ -258,8 +242,7 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::MAX_10_EXP` in expressions or declare a local \
-        `const MAX_10_EXP: i32 = f64::MAX_10_EXP` instead of importing this constant"
+    note = "use `f64::MAX_10_EXP` or `const MAX_10_EXP: i32 = f64::MAX_10_EXP` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_max_10_exp"]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
@@ -278,11 +261,7 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 /// let nan = f64::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(
-    since = "1.99.0",
-    note = "use `f64::NAN` in expressions or declare a local \
-        `const NAN: f64 = f64::NAN` instead of importing this constant"
-)]
+#[deprecated(since = "1.99.0", note = "use `f64::NAN` or `const NAN: f64 = f64::NAN` instead")]
 #[rustc_diagnostic_item = "f64_legacy_const_nan"]
 pub const NAN: f64 = f64::NAN;
 
@@ -302,8 +281,7 @@ pub const NAN: f64 = f64::NAN;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::INFINITY` in expressions or declare a local \
-        `const INFINITY: f64 = f64::INFINITY` instead of importing this constant"
+    note = "use `f64::INFINITY` or `const INFINITY: f64 = f64::INFINITY` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_infinity"]
 pub const INFINITY: f64 = f64::INFINITY;
@@ -324,8 +302,7 @@ pub const INFINITY: f64 = f64::INFINITY;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = "use `f64::NEG_INFINITY` in expressions or declare a local \
-        `const NEG_INFINITY: f64 = f64::NEG_INFINITY` instead of importing this constant"
+    note = "use `f64::NEG_INFINITY` or `const NEG_INFINITY: f64 = f64::NEG_INFINITY` instead"
 )]
 #[rustc_diagnostic_item = "f64_legacy_const_neg_infinity"]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
