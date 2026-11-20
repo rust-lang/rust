@@ -428,6 +428,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 AssocItemQSelf::Trait(trait_ref.def_id()),
                 assoc_tag,
                 constraint.ident,
+                hir_ref_id,
                 path_span,
                 Some(constraint),
             )?

@@ -1,0 +1,167 @@
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:13:23
+   |
+LL | fn path<T: Sub>(_: T::Assoc) {}
+   |                       ^^^^^
+   |
+note: item from `Sub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:9:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Base` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:6:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/usage-type-paths.rs:2:9
+   |
+LL | #![deny(resolving_to_items_shadowing_supertrait_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:15:22
+   |
+LL | fn equality<T: Child<Assoc = ()>>() {}
+   |                      ^^^^^
+   |
+note: item from `Sub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:9:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Base` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:6:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:17:19
+   |
+LL | fn bound<T: Child<Assoc: Copy>>() {}
+   |                   ^^^^^
+   |
+note: item from `Sub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:9:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Base` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:6:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:31:24
+   |
+LL |     fn method(_: Self::Assoc) {}
+   |                        ^^^^^
+   |
+note: item from `Sub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:9:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Base` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:6:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:27:24
+   |
+LL |     fn method(_: Self::Assoc);
+   |                        ^^^^^
+   |
+note: item from `Sub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:9:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Base` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:6:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
+  --> $DIR/usage-type-paths.rs:43:48
+   |
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Generic<u16>`
+   |     ambiguous `Assoc` from `Generic<u8>`
+LL | }
+LL | fn ambiguous<T: Generic<u8> + Generic<u16>>(_: T::Assoc) {}
+   |                                                ^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn ambiguous<T: Generic<u8> + Generic<u16>>(_: T::Assoc) {}
+LL + fn ambiguous<T: Generic<u8> + Generic<u16>>(_: <T as Generic<u16>>::Assoc) {}
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn ambiguous<T: Generic<u8> + Generic<u16>>(_: T::Assoc) {}
+LL + fn ambiguous<T: Generic<u8> + Generic<u16>>(_: <T as Generic<u8>>::Assoc) {}
+   |
+
+error: trait item `Assoc` from `Winner` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:53:30
+   |
+LL | fn repeated<T: Winner>(_: T::Assoc) {}
+   |                              ^^^^^
+   |
+note: item from `Winner` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:51:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: item from `Parent` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:48:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error: trait item `run` from `RtnSub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:65:8
+   |
+LL |     T::run(..): Send,
+   |        ^^^
+   |
+note: item from `RtnSub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:60:5
+   |
+LL |     fn run() -> impl Send;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: item from `RtnBase` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:57:5
+   |
+LL |     fn run() -> impl Send;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait item `run` from `RtnSub` shadows identically named item from supertrait
+  --> $DIR/usage-type-paths.rs:69:31
+   |
+LL | fn rtn_constraint<T: RtnChild<run(..): Send>>() {}
+   |                               ^^^
+   |
+note: item from `RtnSub` shadows a supertrait item
+  --> $DIR/usage-type-paths.rs:60:5
+   |
+LL |     fn run() -> impl Send;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: item from `RtnBase` is shadowed by a subtrait item
+  --> $DIR/usage-type-paths.rs:57:5
+   |
+LL |     fn run() -> impl Send;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0221`.
