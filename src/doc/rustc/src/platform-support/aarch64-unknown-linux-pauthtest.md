@@ -105,50 +105,34 @@ When using the AccessSoftek scripts to build the sysroot, the result includes a
 Clang-based toolchain. In this case, no wrapper script is required,
 `<toolchain_root>/bin/aarch64-linux-pauthtest-clang` can be used directly.
 
+Whichever compiler is used, define the following environment variables before running
+`x.py`:
+
+```sh
+export PAUTHTEST_SYSROOT=<toolchain_root>/aarch64-linux-pauthtest/usr
+export PAUTHTEST_RESOURCE_DIR=<toolchain_root>/lib/clang/<version>
+```
+
 ## Building the target
 
 Introduction of `aarch64-unknown-linux-pauthtest` target needs to be propagated
 to various crates/repos, so that they can correctly recognise and handle it.
-Specifically:
-* `cc-rs`: https://github.com/jchlanda/cc-rs/tree/jakub/cc-v1.2.28-pauthtest
-* `libc`: https://github.com/jchlanda/libc/tree/jakub/0.2.183-pauthtest
+At the time of writing this document the following require changes:
+* `cc-rs`: `bootstrap` pins `cc` 1.2.62, which does not know the target. `cc` 1.4.3, the
+  version `rustc_llvm` already uses, supports it.
 * `backtrace`: https://github.com/jchlanda/backtrace-rs/tree/jakub/backtrace-v0.3.76-pauthtest
 
-The patched versions of `cc-rs` and `libc` will have to be registered through
-`[patch.crates-io]` section of `Cargo.toml` files both in:
-`<rust_root>/src/bootstrap/` and `<rust_root>/library/`. Check out `cc-rs` and
-`libc` to `<rust_root>/patches` and update config files. See attached diff for
-details:
-
-<details>
+Update the `cc` pin in `<rust_root>/src/bootstrap/Cargo.toml`, then run
+`cargo update --manifest-path src/bootstrap/Cargo.toml -p cc --precise 1.4.3`:
 
 ```diff
-diff --git a/library/Cargo.toml b/library/Cargo.toml
-index e30e6240942..fb5a12f0065 100644
---- a/library/Cargo.toml
-+++ b/library/Cargo.toml
-@@ -59,3 +59,4 @@ rustflags = ["-Cpanic=abort"]
- rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
- rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
- rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
-+libc = { path = '<rust_root>/patches/libc' }
-diff --git a/src/bootstrap/Cargo.toml b/src/bootstrap/Cargo.toml
-index e1725db60cf..46763cdf9a4 100644
---- a/src/bootstrap/Cargo.toml
-+++ b/src/bootstrap/Cargo.toml
-@@ -94,3 +94,6 @@ debug = 0
- [profile.dev.package]
- # Only use debuginfo=1 to further reduce compile times.
- bootstrap.debug = 1
-+
-+[patch.crates-io]
-+cc = { path = '<rust_root>/patches/cc-rs' }
+-cc = "=1.2.62"
++cc = "=1.4.3"
 ```
 
-</details>
+With `cc` 1.4.3, `bootstrap` finds the sysroot through the environment variables described
+above.
 
-In contrast to `cc-rs` and `libc`, which are external crates resolved from
-[crates.io](https://crates.io/) and can be overridden using `[patch.crates-io]`,
 `backtrace` is included in the Rust repository as a git submodule under
 `<rust_root>/library/backtrace`. At the time of writing, the necessary change
 has not yet been committed there, which means an in-tree patch is currently
@@ -392,9 +376,6 @@ Authentication ELF ABI. Rust does not implement C++ virtual dispatch semantics,
 authenticated C++ member function pointers, or authenticated virtual table
 pointers.
 
-Similarly, `function-pointer-type-discrimination` is recognized for ABI
-compatibility purposes, but full support is not yet implemented in Rust.
-
 Even when these features do not directly affect generated Rust code, they still
 contribute to the emitted PAuth ABI metadata through the LLVM module flags:
 `aarch64-elf-pauthabi-platform`, `aarch64-elf-pauthabi-version`. These flags are
@@ -432,6 +413,39 @@ precedence, matching Clang's behavior. For example, the following would leave
 -Zpointer-authentication=+init-fini,-init-fini
 ```
 
+### Function pointer type discrimination
+
+Under `function-pointer-type-discrimination`, Rust signs an `extern "C"` or
+`extern "system"` function pointer with the discriminator of the function it
+points to, computed from its signature as Clang computes it for the
+corresponding C function type. It never resigns it: transmutes, `as` casts,
+union reads and copies keep its bits. A call authenticates with the
+discriminator of the type it is made through, so calls through an ABI-compatible
+type work, and calls that are UB fail authentication. Function pointers of other
+ABIs are neither signed nor authenticated. Init/fini entries keep their own
+discriminator.
+
+C signs a code address with the discriminator of the type of the slot that holds
+it, and a cast to another type resigns it for the new type. Rust signs a
+function pointer with the discriminator of the function it points to, and never
+resigns it. So whether a code address needs resigning when it passes between
+Rust and C depends on the type of the slot on the C side:
+
+* a function pointer of the function's own type: C and Rust use the same
+  discriminator, so the pointer is passed as is;
+* a function pointer of another type, such as a generic callback type (for
+  example GLib's `GCallback`): C uses the discriminator of that type, so the
+  pointer must be resigned for it;
+* a `void *` or an integer (`dlsym`, user data): C uses discriminator 0, so the
+  pointer must be resigned for 0.
+
+A code address crossing one of the last two kinds of slot needs an explicit
+conversion, `core::intrinsics::ptrauth_c_cast::<Src, Dst>`, the Rust
+equivalent of the C cast. `core::intrinsics::ptrauth_fn_ptr_discriminator::<F>()`
+gives the discriminator of a function pointer type, as Clang's
+`__builtin_ptrauth_type_discriminator` does, and `core::intrinsics::ptrauth_strip`
+removes the signature, to compare code addresses.
+
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. A
@@ -462,17 +476,43 @@ The following categories are supported (all present in tree):
   * pauth-extern-c.rs
   * pauth-extern-c-direct-indirect-call.rs
   * pauth-extern-weak-global.rs
+  * pauth-signed-abi.rs
   * pauth-init-fini.rs
   * pauth-attr-special-funcs.rs
+  * pauth-attr-cli-flags.rs
+  * pauth-fn-ptr-type-discrimination-const-aggregate.rs
+  * pauth-fn-ptr-type-discrimination-const-scalar.rs
+  * pauth-fn-ptr-type-discrimination-deeply-nested.rs
+  * pauth-fn-ptr-type-discrimination-encoder.rs
+  * pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs
+  * pauth-fn-ptr-type-discrimination-instance-signing.rs
+  * pauth-fn-ptr-type-discrimination-intrinsics.rs
+  * pauth-fn-ptr-type-discrimination-no-resign.rs
+  * pauth-fn-ptr-type-discrimination-option-callback.rs
+  * pauth-fn-ptr-type-discrimination-option-return.rs
+  * pauth-fn-ptr-type-discrimination-option.rs
+  * pauth-fn-ptr-type-discrimination-recursive-statics.rs
+  * pauth-fn-ptr-type-discrimination-running-test.rs
+  * pauth-fn-ptr-type-discrimination-rust-array.rs
+  * pauth-fn-ptr-type-discrimination-simd.rs
+  * pauth-fn-ptr-type-discrimination-static-allocs.rs
+  * pauth-fn-ptr-type-discrimination-struct-members.rs
+  * pauth-fn-ptr-type-discrimination-struct-name.rs
+  * pauth-fn-ptr-type-discrimination-transparent-wrapper.rs
+  * pauth-fn-ptr-type-discrimination-vtable.rs
+  * pauth-drop-terminator (implemented in run-make)
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
+  * C/Rust interop under function pointer type discrimination
+    (pauth-fn-ptr-type-discrimination-interop-ir)
 * UI error/warning reporting
   * crt-static-pauthtest.rs
   * pauth-static-link-warning
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
-  * type_discrimination_not_supported_pointer_authentication.rs
+  * discriminator-abi-compat.rs
+  * discriminator-float-encoding.rs
   * incompatible_pauth.rs
 * Unit tests for siphash function:
   * compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs
@@ -494,14 +534,38 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-extern-c.rs \
   tests/codegen-llvm/pauth/pauth-extern-c-direct-indirect-call.rs \
   tests/codegen-llvm/pauth/pauth-extern-weak-global.rs \
+  tests/codegen-llvm/pauth/pauth-signed-abi.rs \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-aggregate.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-scalar.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-deeply-nested.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-encoder.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-instance-signing.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-intrinsics.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-no-resign.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-callback.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-return.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-recursive-statics.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-running-test.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-rust-array.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-simd.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-static-allocs.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-members.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-name.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-transparent-wrapper.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-vtable.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
+  tests/run-make/pauth-drop-terminator \
+  tests/run-make/pauth-fn-ptr-type-discrimination-interop-ir \
   tests/ui/statics/crt-static-pauthtest.rs \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
-  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
+  tests/ui/pointer_authentication/discriminator-abi-compat.rs \
+  tests/ui/pointer_authentication/discriminator-float-encoding.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_abi::{Align, ExternAbi, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_attr_ir::Linkage;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_codegen_ssa::common;
@@ -196,7 +196,8 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        let mut should_sign = false;
+        // The discriminator to sign the address of an `extern_weak` function with (if needed).
+        let mut ptrauth_discriminator = None;
         // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
         // an extern_weak function, otherwise a global with the desired linkage.
         let actual_global = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
@@ -210,12 +211,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             {
                 let fn_sig = sig.with(*header);
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
-                // Decide if the initializer needs to be signed
-                if cx.sess().pointer_authentication_functions().is_some()
-                    && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
-                {
-                    should_sign = true;
-                }
+                // The initializer is called through its function pointer type, if type
+                // discrimination is enabled it is signed with the discriminator calls through that
+                // type authenticate with.
+                ptrauth_discriminator = fn_abi.ptrauth_discriminator;
                 cx.declare_fn(sym, fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
@@ -230,7 +229,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         cx.assume_dso_local(actual_global, true);
 
         // Sign the function pointer that is used to initialize the global
-        let initializer = if should_sign {
+        let initializer = if let Some(discriminator) = ptrauth_discriminator {
             let schema = cx
                 .tcx
                 .sess
@@ -240,7 +239,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             const_ptr_auth(
                 actual_global,
                 schema.key as u32,
-                schema.constant_discriminator as u64,
+                discriminator,
                 None, /* address_diversity */
             )
         } else {

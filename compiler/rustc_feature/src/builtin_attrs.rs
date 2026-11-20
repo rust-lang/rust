@@ -203,6 +203,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_dump_item_bounds,
     sym::rustc_dump_layout,
     sym::rustc_dump_object_lifetime_defaults,
+    sym::rustc_dump_ptrauth_discriminator,
     sym::rustc_dump_symbol_name,
     sym::rustc_dump_user_args,
     sym::rustc_dump_variances,

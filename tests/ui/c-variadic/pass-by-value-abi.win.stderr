@@ -64,8 +64,9 @@ error: fn_abi_of(take_va_list) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-by-value-abi.rs:27:1
+  --> $DIR/pass-by-value-abi.rs:30:1
    |
 LL | pub extern "C" fn take_va_list(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
