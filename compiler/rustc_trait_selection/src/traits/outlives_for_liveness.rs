@@ -1,43 +1,59 @@
-use std::debug_assert_matches;
-
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
-use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{SubregionOrigin, TyCtxtInferExt, TypeOutlivesConstraint};
 use rustc_middle::ty::{
     self, CallerBoundsIterator, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::{DUMMY_SP, bug};
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::regions::{region_known_to_outlive, test_region_obligations};
+use crate::regions::OutlivesEnvironmentBuildExt;
 
-/// Given a known `param_env` and a set of well formed types, can we prove that
-/// `ty` outlives `region`.
-///
-/// Copied from `ty_known_to_outlive` without normalization for `ty` because we
-/// don't want trait solving in liveness queries.
-fn param_known_to_outlive<'tcx>(
+/// Given a known `OutlivesEnvironment`, do we know that an arg outlives the region.
+fn arg_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
-    id: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
-    ty: Ty<'tcx>,
+    outlives_env: &OutlivesEnvironment<'tcx>,
+    arg: ty::GenericArg<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
-    debug_assert_matches!(ty.kind(), ty::Param(_));
+    // This is copied from `test_region_obligations`, but calls
+    // `infcx.resolve_regions_with_outlives_env` instead of `infcx.resolve_regions`.
 
-    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
-            sub_region: region,
-            sup_type: ty,
-            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
-        });
-        Ok(())
-    })
+    // Unfortunately, we have to use a new `InferCtxt` each call, because
+    // region constraints get added and solved there and we need to test each
+    // call individually.
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+
+    match arg.kind() {
+        ty::GenericArgKind::Type(ty) => {
+            infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+                sub_region: region,
+                sup_type: ty,
+                origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+            });
+        }
+        ty::GenericArgKind::Lifetime(lt) => {
+            infcx.sub_regions(
+                SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+                region,
+                lt,
+                ty::VisibleForLeakCheck::Unreachable,
+            );
+        }
+        ty::GenericArgKind::Const(..) => return false,
+    }
+
+    let errors = infcx.resolve_regions_with_outlives_env(outlives_env);
+    tracing::debug!(?errors);
+
+    // If we were able to prove that the type outlives the region without
+    // an error, it must be because of the implied or explicit bounds...
+    errors.is_empty()
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
@@ -292,6 +308,10 @@ pub(crate) fn live_args_for_opaque_params<'tcx>(
     }
     tracing::debug!(?parent_outlives_regions);
 
+    let infcx = tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis());
+    let outlives_env =
+        OutlivesEnvironment::new(&infcx, def_id, parent_param_env, wf_tys.iter().copied());
+
     // For every captured region, we want to consider outlived args from two sources:
     // 1) *Types*: These come from *parent* generics (and are not duplicated to the opaque)
     // 2) *Captured Regions*
@@ -307,14 +327,9 @@ pub(crate) fn live_args_for_opaque_params<'tcx>(
                 ty::GenericArgKind::Const(_) => continue,
                 // Lifetimes should be captured
                 ty::GenericArgKind::Lifetime(_) => continue,
-                ty::GenericArgKind::Type(t) => param_known_to_outlive(
-                    tcx,
-                    def_id,
-                    parent_param_env,
-                    &wf_tys,
-                    t,
-                    *parent_outlived_region,
-                ),
+                ty::GenericArgKind::Type(t) => {
+                    arg_known_to_outlive(tcx, &outlives_env, t.into(), *parent_outlived_region)
+                }
             };
             if !type_outlives {
                 continue;
@@ -326,12 +341,10 @@ pub(crate) fn live_args_for_opaque_params<'tcx>(
 
         for &(parent_outlives_region, opaque_arg_idx) in parent_outlives_regions.iter() {
             let region_outlives = parent_outlives_region == *parent_outlived_region
-                || region_known_to_outlive(
+                || arg_known_to_outlive(
                     tcx,
-                    def_id,
-                    parent_param_env,
-                    &wf_tys,
-                    parent_outlives_region,
+                    &outlives_env,
+                    parent_outlives_region.into(),
                     *parent_outlived_region,
                 );
             if !region_outlives {
@@ -363,6 +376,10 @@ pub(crate) fn live_args_for_non_opaque_params<'tcx>(
     tracing::debug!(?param_env);
     let wf_tys = tcx.assumed_wf_types(def_id).iter().map(|(ty, _)| *ty).collect::<FxIndexSet<_>>();
     let mut result = Vec::new();
+
+    let infcx = tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis());
+    let outlives_env = OutlivesEnvironment::new(&infcx, def_id, param_env, wf_tys.iter().copied());
+
     for (outlived_arg_idx, outlived_arg) in self_identity_args.iter().enumerate() {
         let Some(outlived_region) = outlived_arg.as_region() else {
             continue;
@@ -371,10 +388,10 @@ pub(crate) fn live_args_for_non_opaque_params<'tcx>(
         for (arg_idx, arg) in self_identity_args.iter().enumerate() {
             let outlives = match arg.kind() {
                 ty::GenericArgKind::Lifetime(r) => {
-                    region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
+                    arg_known_to_outlive(tcx, &outlives_env, r.into(), outlived_region)
                 }
                 ty::GenericArgKind::Type(t) => {
-                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
+                    arg_known_to_outlive(tcx, &outlives_env, t.into(), outlived_region)
                 }
                 ty::GenericArgKind::Const(_) => false,
             };

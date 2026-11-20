@@ -1,5 +1,6 @@
 //@ edition: 2024
 //@ check-pass
+//@ compile-flags: --crate-type lib
 
 // Minimized from polars-async's `parallelize_first_to_local` and polars-stream's
 // `rechunk_par` crater regressions in #161154.
@@ -196,6 +197,12 @@ mod unrelated_alias_outlives {
 
 // Const args don't need to be considered live.
 mod const_param {
+    // An associated type captures all of the trait's args. We don't treat const
+    // args as live, though.
+    trait Associated<'a, const N: usize> {
+        type Assoc;
+    }
+
     fn consumed<'o, I: Iterator<Item = u32>, const N: usize>(
         iter: I,
     ) -> impl Iterator<Item = u32> + 'o {
@@ -209,5 +216,3 @@ mod const_param {
         drop(it);
     }
 }
-
-fn main() {}
