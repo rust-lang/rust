@@ -1,3 +1,15 @@
+warning: the `must_use` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/unused-async.rs:51:7
+   |
+LL |     #[must_use]
+   |       ^^^^^^^^
+...
+LL |     async fn test_other_trait() -> i32 {
+   |
+   = help: the `must_use` attribute can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
+
 error: unused implementer of `Future` that must be used
   --> $DIR/unused-async.rs:31:5
    |
@@ -60,5 +72,5 @@ LL |     baz();
    |
    = note: futures do nothing unless you `.await` or poll them
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 1 warning emitted
 
