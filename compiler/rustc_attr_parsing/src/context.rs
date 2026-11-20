@@ -1168,7 +1168,12 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         let span = self.inner_span;
         self.emit_lint(
             lint,
-            crate::diagnostics::IllFormedAttributeInput::new(&suggestions, None, help.as_deref()),
+            crate::diagnostics::IllFormedAttributeInput::new(
+                None,
+                &suggestions,
+                None,
+                help.as_deref(),
+            ),
             span,
         );
     }

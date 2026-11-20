@@ -1,3 +1,25 @@
+error: this attribute can only be applied to a `use` item
+  --> $DIR/invalid-doc-attr.rs:8:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ only applicable on `use` items
+LL |
+LL | pub fn foo() {}
+   | --------------- not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+
+error: this attribute can only be applied to a `use` item
+  --> $DIR/invalid-doc-attr.rs:13:11
+   |
+LL |     #[doc(inline)]
+   |           ^^^^^^ only applicable on `use` items
+LL |
+LL |     pub fn baz() {}
+   |     --------------- not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+
 error: conflicting doc inlining attributes
   --> $DIR/invalid-doc-attr.rs:18:7
    |
@@ -47,28 +69,6 @@ LL | | pub extern crate self as reexport;
    | |__________________________________- not an `extern crate` item
    |
    = note: read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
-
-error: this attribute can only be applied to a `use` item
-  --> $DIR/invalid-doc-attr.rs:8:7
-   |
-LL | #[doc(inline)]
-   |       ^^^^^^ only applicable on `use` items
-LL |
-LL | pub fn foo() {}
-   | --------------- not a `use` item
-   |
-   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
-
-error: this attribute can only be applied to a `use` item
-  --> $DIR/invalid-doc-attr.rs:13:11
-   |
-LL |     #[doc(inline)]
-   |           ^^^^^^ only applicable on `use` items
-LL |
-LL |     pub fn baz() {}
-   |     --------------- not a `use` item
-   |
-   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
 
 error: aborting due to 6 previous errors
 

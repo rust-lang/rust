@@ -1,7 +1,6 @@
 //@ compile-flags: --passes unknown-pass
 
 #![deny(invalid_doc_attributes)]
-//~^ NOTE
 
 #![doc(no_default_passes)]
 //~^ ERROR unknown `doc` attribute `no_default_passes`

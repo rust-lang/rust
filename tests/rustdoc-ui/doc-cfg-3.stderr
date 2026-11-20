@@ -3,12 +3,6 @@ error: `any()` was used when other values were provided
    |
 LL | #![doc(auto_cfg(hide(target_os, values(any(), "linux"))))]
    |                                        ^^^^^  ------- value declared here
-   |
-note: the lint level is defined here
-  --> $DIR/doc-cfg-3.rs:3:9
-   |
-LL | #![deny(invalid_doc_attributes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `any()` was used when other values were provided
   --> $DIR/doc-cfg-3.rs:7:49

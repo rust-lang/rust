@@ -7,7 +7,7 @@ use rustc_attr_ir::{
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::{Span, Symbol, edition, kw, sym};
 
 use super::prelude::AllowedTargets;
@@ -104,9 +104,9 @@ fn parse_notable_trait(
                         spans.push_span_label(duplicate_span, msg!("multiple colors specified"));
                     }
 
-                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, DuplicateNotableTraitColor, spans);
+                    cx.emit_err(DuplicateNotableTraitColor { spans });
                 } else {
-                    let spans = meta_item_list_parser
+                    let spans: Vec<Span> = meta_item_list_parser
                         .mixed()
                         .map(|item| match item.meta_item() {
                             Some(meta) => meta.path().span(),
@@ -114,11 +114,7 @@ fn parse_notable_trait(
                         })
                         .collect();
 
-                    cx.emit_lint(
-                        INVALID_DOC_ATTRIBUTES,
-                        InvalidNotableTraitAttr,
-                        MultiSpan::from_spans(spans),
-                    );
+                    cx.emit_err(InvalidNotableTraitAttr { spans: spans.into() });
                 }
 
                 return;
@@ -127,59 +123,56 @@ fn parse_notable_trait(
         ArgParser::NameValue(_) => {
             // FIXME(164728): every invalid notable trait attribute lint produces exactly
             // the same warning and we should switch to more specific diagnostics
-            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            cx.emit_err(InvalidNotableTraitAttr { spans: span.into() });
             return;
         }
     };
 
-    let notable_trait_color_and_span = if let Some(notable_trait_color_attr) =
-        notable_trait_color_attr
-    {
-        let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
-            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-            return;
-        };
-        if !notable_trait_color_attr.path().word_is(sym::color) {
-            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-            return;
-        }
-        let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
-            cx.emit_lint(
-                INVALID_DOC_ATTRIBUTES,
-                InvalidNotableTraitAttr,
-                notable_trait_color_attr.path().span(),
-            );
-            return;
-        };
-
-        let color_value_span = notable_trait_color.value_span;
-
-        let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
-            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
-            return;
-        };
-
-        let notable_trait_color = match notable_trait_color.as_str() {
-            "grey" | "gray" => NotableTraitColor::Grey,
-            "red" => NotableTraitColor::Red,
-            "green" => NotableTraitColor::Green,
-            "yellow" => NotableTraitColor::Yellow,
-            "blue" => NotableTraitColor::Blue,
-            "magenta" => NotableTraitColor::Magenta,
-            "cyan" => NotableTraitColor::Cyan,
-            "transparent" => NotableTraitColor::Transparent,
-            _ => {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitColor, color_value_span);
+    let notable_trait_color_and_span =
+        if let Some(notable_trait_color_attr) = notable_trait_color_attr {
+            let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
+                cx.emit_err(InvalidNotableTraitAttr { spans: span.into() });
+                return;
+            };
+            if !notable_trait_color_attr.path().word_is(sym::color) {
+                cx.emit_err(InvalidNotableTraitAttr { spans: span.into() });
                 return;
             }
+            let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
+                cx.emit_err(InvalidNotableTraitAttr {
+                    spans: notable_trait_color_attr.path().span().into(),
+                });
+                return;
+            };
+
+            let color_value_span = notable_trait_color.value_span;
+
+            let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
+                cx.emit_err(InvalidNotableTraitAttr { spans: span.into() });
+                return;
+            };
+
+            let notable_trait_color = match notable_trait_color.as_str() {
+                "grey" | "gray" => NotableTraitColor::Grey,
+                "red" => NotableTraitColor::Red,
+                "green" => NotableTraitColor::Green,
+                "yellow" => NotableTraitColor::Yellow,
+                "blue" => NotableTraitColor::Blue,
+                "magenta" => NotableTraitColor::Magenta,
+                "cyan" => NotableTraitColor::Cyan,
+                "transparent" => NotableTraitColor::Transparent,
+                _ => {
+                    cx.emit_err(InvalidNotableTraitColor { span: color_value_span });
+                    return;
+                }
+            };
+            Some((notable_trait_color, notable_trait_color_attr.span()))
+        } else {
+            None
         };
-        Some((notable_trait_color, notable_trait_color_attr.span()))
-    } else {
-        None
-    };
 
     if cx.shared.target != Target::Trait {
-        cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocAttrNotTraitLevel { span, attr_name }, span);
+        cx.emit_err(DocAttrNotTraitLevel { span, attr_name });
         return;
     }
 
@@ -258,16 +251,12 @@ impl DocParser {
 
                 if let Some(used_span) = self.attribute.no_crate_inject {
                     let unused_span = path.span();
-                    cx.emit_lint(
-                        INVALID_DOC_ATTRIBUTES,
-                        DuplicateAttribute {
-                            this: unused_span,
-                            other: used_span,
-                            name: sym::no_crate_inject,
-                            warning: true,
-                        },
-                        unused_span,
-                    );
+                    cx.emit_err(DuplicateAttribute {
+                        this: unused_span,
+                        other: used_span,
+                        name: sym::no_crate_inject,
+                        warning: true,
+                    });
                     return;
                 }
 
@@ -294,10 +283,10 @@ impl DocParser {
                 }
             }
             Some(name) => {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocTestUnknown { name }, path.span());
+                cx.emit_err(DocTestUnknown { span: path.span(), name });
             }
             None => {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocTestLiteral, path.span());
+                cx.emit_err(DocTestLiteral { span: path.span() });
             }
         }
     }
@@ -387,11 +376,7 @@ impl DocParser {
             Target::Use | Target::ExternCrate | Target::Param => {} // Param has a custom error
             _ => {
                 let item_span = cx.target_span;
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocInlineOnlyUse { attr_span: span, item_span },
-                    span,
-                );
+                cx.emit_err(DocInlineOnlyUse { attr_span: span, item_span });
             }
         }
     }
@@ -435,11 +420,10 @@ impl DocParser {
                     ..
                 }) => match &mut cfg_values {
                     DocCfgHideShow::Any(any_span) => {
-                        cx.emit_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgHideShowValuesMix { value_span: *span },
-                            *any_span,
-                        );
+                        cx.emit_err(DocAutoCfgHideShowValuesMix {
+                            span: *any_span,
+                            value_span: *span,
+                        });
                     }
                     DocCfgHideShow::List(symbols) => {
                         if values_set.insert(symbol) {
@@ -448,11 +432,12 @@ impl DocParser {
                     }
                 },
                 // If it's any other kind of literal, then it's wrong and we emit a lint.
-                MetaItemOrLitParser::Lit(lit) => cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocAutoCfgHideShowUnexpectedItem { attr_name: lit.symbol },
-                    lit.span,
-                ),
+                MetaItemOrLitParser::Lit(lit) => {
+                    cx.emit_err(DocAutoCfgHideShowUnexpectedItem {
+                        span: lit.span,
+                        attr_name: lit.symbol,
+                    });
+                }
                 // If it's a list, then only `any()` and `none()` are allowed and they must not
                 // contain any item.
                 MetaItemOrLitParser::MetaItemParser(sub_item) => {
@@ -468,11 +453,10 @@ impl DocParser {
                             if let DocCfgHideShow::List(values) = &cfg_values
                                 && let Some(value) = values.first()
                             {
-                                cx.emit_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    DocAutoCfgHideShowValuesMix { value_span: value.span },
-                                    sub_item.span(),
-                                );
+                                cx.emit_err(DocAutoCfgHideShowValuesMix {
+                                    span: sub_item.span(),
+                                    value_span: value.span,
+                                });
                             } else {
                                 cfg_values.merge_with(&DocCfgHideShow::Any(sub_item.span()));
                             }
@@ -480,11 +464,10 @@ impl DocParser {
                             cfg_values.push_none(sub_item.span());
                         }
                     } else {
-                        cx.emit_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgHideShowUnexpectedItem { attr_name: ident.name },
-                            sub_item.span(),
-                        );
+                        cx.emit_err(DocAutoCfgHideShowUnexpectedItem {
+                            span: sub_item.span(),
+                            attr_name: ident.name,
+                        });
                     }
                 }
             }
@@ -505,11 +488,7 @@ impl DocParser {
             ArgParser::List(list) => {
                 'main: for meta in list.mixed() {
                     let MetaItemOrLitParser::MetaItemParser(item) = meta else {
-                        cx.emit_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgExpectsHideOrShow,
-                            meta.span(),
-                        );
+                        cx.emit_err(DocAutoCfgExpectsHideOrShow { span: meta.span() });
                         continue;
                     };
                     // Only `hide` and `show` are allowed in `auto_cfg` if it's a list, and both
@@ -518,20 +497,12 @@ impl DocParser {
                         Some(sym::hide) => (HideOrShow::Hide, sym::hide),
                         Some(sym::show) => (HideOrShow::Show, sym::show),
                         _ => {
-                            cx.emit_lint(
-                                INVALID_DOC_ATTRIBUTES,
-                                DocAutoCfgExpectsHideOrShow,
-                                item.span(),
-                            );
+                            cx.emit_err(DocAutoCfgExpectsHideOrShow { span: item.span() });
                             continue;
                         }
                     };
                     let ArgParser::List(list) = item.args() else {
-                        cx.emit_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgHideShowExpectsList { attr_name },
-                            item.span(),
-                        );
+                        cx.emit_err(DocAutoCfgHideShowExpectsList { span: item.span(), attr_name });
                         continue;
                     };
 
@@ -541,11 +512,10 @@ impl DocParser {
                     let mut values = None;
                     for item in list.mixed() {
                         let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
-                            cx.emit_lint(
-                                INVALID_DOC_ATTRIBUTES,
-                                DocAutoCfgHideShowUnexpectedItem { attr_name },
-                                item.span(),
-                            );
+                            cx.emit_err(DocAutoCfgHideShowUnexpectedItem {
+                                span: item.span(),
+                                attr_name,
+                            });
                             continue 'main;
                         };
                         match sub_item.args() {
@@ -563,30 +533,25 @@ impl DocParser {
                                     continue 'main;
                                 };
                                 if cfg_names.is_empty() {
-                                    cx.emit_lint(
-                                        INVALID_DOC_ATTRIBUTES,
-                                        DocAutoCfgHideShowNoIdentBeforeValues,
-                                        sub_item.span(),
-                                    );
+                                    cx.emit_err(DocAutoCfgHideShowNoIdentBeforeValues {
+                                        span: sub_item.span(),
+                                    });
                                     continue 'main;
                                 }
                                 self.parse_auto_cfg_values(cx, list, &mut values);
                             }
                             // No `name = value` is allowed.
                             ArgParser::NameValue(_) => {
-                                cx.emit_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    DocAutoCfgHideShowUnexpectedItem { attr_name },
-                                    sub_item.span(),
-                                );
+                                cx.emit_err(DocAutoCfgHideShowUnexpectedItem {
+                                    span: sub_item.span(),
+                                    attr_name,
+                                });
                             }
                             // If `values()` was already used, no item should come after it.
                             _ => {
-                                cx.emit_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    DocAutoCfgHideShowUnexpectedItemAfterValues,
-                                    sub_item.span(),
-                                );
+                                cx.emit_err(DocAutoCfgHideShowUnexpectedItemAfterValues {
+                                    span: sub_item.span(),
+                                });
                             }
                         }
                     }
@@ -609,7 +574,7 @@ impl DocParser {
             ArgParser::NameValue(nv) => {
                 let MetaItemLit { kind: LitKind::Bool(bool_value), span, .. } = nv.value_as_lit()
                 else {
-                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocAutoCfgWrongLiteral, nv.value_span);
+                    cx.emit_err(DocAutoCfgWrongLiteral { span: nv.value_span });
                     return;
                 };
                 self.attribute.auto_cfg_change.push((*bool_value, *span));
@@ -784,11 +749,7 @@ impl DocParser {
             }
             Some(sym::test) => {
                 let Some(list) = args.as_list() else {
-                    cx.emit_lint(
-                        INVALID_DOC_ATTRIBUTES,
-                        DocTestTakesList,
-                        args.span().unwrap_or(path.span()),
-                    );
+                    cx.emit_err(DocTestTakesList { span: args.span().unwrap_or(path.span()) });
                     return;
                 };
 
@@ -805,7 +766,7 @@ impl DocParser {
             }
             Some(sym::spotlight) => {
                 let span = path.span();
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownSpotlight { sugg_span: span }, span);
+                cx.emit_err(DocUnknownSpotlight { sugg_span: span });
             }
             Some(sym::include) if let Some(nv) = args.as_name_value() => {
                 let inner = match cx.attr_style {
@@ -814,32 +775,29 @@ impl DocParser {
                 };
                 let value = nv.value_as_lit().symbol;
                 let span = path.span();
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocUnknownInclude { inner, value, sugg: (span, Applicability::MaybeIncorrect) },
+                cx.emit_err(DocUnknownInclude {
                     span,
-                );
+                    inner,
+                    value,
+                    sugg: (span, Applicability::MaybeIncorrect),
+                });
             }
             Some(name @ (sym::passes | sym::no_default_passes)) => {
                 let span = path.span();
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    DocUnknownPasses { name, note_span: span },
-                    span,
-                );
+                cx.emit_err(DocUnknownPasses { span, name, note_span: span });
             }
             Some(sym::plugins) => {
                 let span = path.span();
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownPlugins { label_span: span }, span);
+                cx.emit_err(DocUnknownPlugins { label_span: span });
             }
             Some(name) => {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownAny { name }, path.span());
+                cx.emit_err(DocUnknownAny { span: path.span(), name });
             }
             None => {
                 let full_name =
                     path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
                 let name = Symbol::intern(&full_name);
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownAny { name }, path.span());
+                cx.emit_err(DocUnknownAny { span: path.span(), name });
             }
         }
     }
@@ -874,11 +832,7 @@ impl DocParser {
             _ => {
                 let suggestions = cx.adcx().suggestions();
                 let span = cx.inner_span;
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    IllFormedAttributeInput::new(&suggestions, None, None),
-                    span,
-                );
+                cx.emit_err(IllFormedAttributeInput::new(Some(span), &suggestions, None, None));
             }
         }
     }

@@ -137,6 +137,8 @@ pub(crate) struct RustcAllowConstFnUnstable {
     }"
 )]
 pub(crate) struct IllFormedAttributeInput {
+    #[primary_span]
+    pub span: Option<Span>,
     pub num_suggestions: usize,
     pub suggestions: DiagArgValue,
     #[note("for more information, visit <{$docs}>")]
@@ -148,11 +150,13 @@ pub(crate) struct IllFormedAttributeInput {
 
 impl IllFormedAttributeInput {
     pub(crate) fn new(
+        span: Option<Span>,
         suggestions: &[String],
         docs: Option<&'static str>,
         help: Option<&str>,
     ) -> Self {
         Self {
+            span,
             num_suggestions: suggestions.len(),
             suggestions: DiagArgValue::StrListSepByAnd(
                 suggestions.iter().map(|s| format!("`{s}`").into()).collect(),
@@ -223,7 +227,10 @@ pub(crate) struct DocAliasDuplicated {
 
 #[derive(Diagnostic)]
 #[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
-pub(crate) struct DocAutoCfgExpectsHideOrShow;
+pub(crate) struct DocAutoCfgExpectsHideOrShow {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("there exists a built-in attribute with the same name")]
@@ -232,29 +239,40 @@ pub(crate) struct AmbiguousDeriveHelpers;
 #[derive(Diagnostic)]
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or `values(...)`")]
 pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
+    #[primary_span]
+    pub span: Span,
     pub attr_name: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag("`any()` was used when other values were provided")]
 pub(crate) struct DocAutoCfgHideShowValuesMix {
+    #[primary_span]
+    pub span: Span,
     #[label("value declared here")]
     pub value_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag("unexpected item after `values()`")]
-pub(crate) struct DocAutoCfgHideShowUnexpectedItemAfterValues;
+pub(crate) struct DocAutoCfgHideShowUnexpectedItemAfterValues {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
 pub(crate) struct DocAutoCfgHideShowExpectsList {
+    #[primary_span]
+    pub span: Span,
     pub attr_name: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag("unknown `doc` attribute `include`")]
 pub(crate) struct DocUnknownInclude {
+    #[primary_span]
+    pub span: Span,
     pub inner: &'static str,
     pub value: Symbol,
     #[suggestion(
@@ -269,6 +287,7 @@ pub(crate) struct DocUnknownInclude {
 #[note("`doc(spotlight)` was renamed to `doc(notable_trait)`")]
 #[note("`doc(spotlight)` is now a no-op")]
 pub(crate) struct DocUnknownSpotlight {
+    #[primary_span]
     #[suggestion(
         "use `notable_trait` instead",
         style = "short",
@@ -285,6 +304,8 @@ pub(crate) struct DocUnknownSpotlight {
 )]
 #[note("`doc({$name})` is now a no-op")]
 pub(crate) struct DocUnknownPasses {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
     #[label("no longer functions")]
     pub note_span: Span,
@@ -297,6 +318,7 @@ pub(crate) struct DocUnknownPasses {
 )]
 #[note("`doc(plugins)` is now a no-op")]
 pub(crate) struct DocUnknownPlugins {
+    #[primary_span]
     #[label("no longer functions")]
     pub label_span: Span,
 }
@@ -304,30 +326,46 @@ pub(crate) struct DocUnknownPlugins {
 #[derive(Diagnostic)]
 #[diag("unknown `doc` attribute `{$name}`")]
 pub(crate) struct DocUnknownAny {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
-pub(crate) struct DocAutoCfgWrongLiteral;
+pub(crate) struct DocAutoCfgWrongLiteral {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("there must be at least one identifier before `values(...)`")]
-pub(crate) struct DocAutoCfgHideShowNoIdentBeforeValues;
+pub(crate) struct DocAutoCfgHideShowNoIdentBeforeValues {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#[doc(test(...)]` takes a list of attributes")]
-pub(crate) struct DocTestTakesList;
+pub(crate) struct DocTestTakesList {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("unknown `doc(test)` attribute `{$name}`")]
 pub(crate) struct DocTestUnknown {
+    #[primary_span]
+    pub span: Span,
     pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag("`#![doc(test(...)]` does not take a literal")]
-pub(crate) struct DocTestLiteral;
+pub(crate) struct DocTestLiteral {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("conflicting doc inlining attributes")]
@@ -343,6 +381,7 @@ pub(crate) struct DocInlineConflict {
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
 )]
 pub(crate) struct DocInlineOnlyUse {
+    #[primary_span]
     #[label("only applicable on `use` items")]
     pub attr_span: Span,
     #[label("not a `use` item")]
@@ -388,14 +427,20 @@ pub(crate) struct UnknownCrateTypesSuggestion {
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 #[help("only one color should be specified")]
-pub(crate) struct DuplicateNotableTraitColor;
+pub(crate) struct DuplicateNotableTraitColor {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
 
 #[derive(Diagnostic)]
 #[diag("expected either `doc(notable_trait)` or `doc(notable_trait(color=\"...\"))`")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
-pub(crate) struct InvalidNotableTraitAttr;
+pub(crate) struct InvalidNotableTraitAttr {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
 
 #[derive(Diagnostic)]
 #[diag("unknown color in `doc(notable_trait(color=\"...\"))`")]
@@ -403,7 +448,10 @@ pub(crate) struct InvalidNotableTraitAttr;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 #[help("expected grey, gray, red, green, yellow, blue, magenta, cyan, or transparent")]
-pub(crate) struct InvalidNotableTraitColor;
+pub(crate) struct InvalidNotableTraitColor {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
