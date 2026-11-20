@@ -56,14 +56,12 @@
       }
   
       bb1: {
--         _5 = core::num::imp::flt2dec::Sign::MinusPlus;
-+         _5 = const core::num::imp::flt2dec::Sign::MinusPlus;
+          _5 = const core::num::imp::flt2dec::Sign::MinusPlus;
           goto -> bb3;
       }
   
       bb2: {
--         _5 = core::num::imp::flt2dec::Sign::Minus;
-+         _5 = const core::num::imp::flt2dec::Sign::Minus;
+          _5 = const core::num::imp::flt2dec::Sign::Minus;
           goto -> bb3;
       }
   

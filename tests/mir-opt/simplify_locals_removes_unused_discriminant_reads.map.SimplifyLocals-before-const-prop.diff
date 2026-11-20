@@ -35,7 +35,7 @@
       }
   
       bb3: {
-          _0 = Option::<Box<()>>::None;
+          _0 = const Option::<Box<()>>::None;
           goto -> bb4;
       }
   

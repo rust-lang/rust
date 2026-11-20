@@ -2364,7 +2364,12 @@ impl Expr<'_> {
             ExprKind::Path(qpath) => {
                 match qpath {
                     QPath::Resolved(_, Path { res: Res::Def(def_kind, _), .. }) => match def_kind {
-                        DefKind::Const | DefKind::ConstParam | DefKind::AssocConst => true,
+                        DefKind::Const
+                        | DefKind::ConstParam
+                        | DefKind::AssocConst
+                        | DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::Ctor(..) => true,
 
                         DefKind::Mod
                         | DefKind::Struct
@@ -2377,10 +2382,7 @@ impl Expr<'_> {
                         | DefKind::TraitAlias
                         | DefKind::AssocTy
                         | DefKind::TyParam
-                        | DefKind::Fn
                         | DefKind::Static { .. }
-                        | DefKind::Ctor(..)
-                        | DefKind::AssocFn
                         | DefKind::Macro(_)
                         | DefKind::ExternCrate
                         | DefKind::Use

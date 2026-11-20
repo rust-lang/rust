@@ -17,12 +17,12 @@
       }
   
       bb2: {
-          (_2.0: Foo) = Foo::A;
+          (_2.0: Foo) = const Foo::A;
           goto -> bb4;
       }
   
       bb3: {
-          (_2.0: Foo) = Foo::B;
+          (_2.0: Foo) = const Foo::B;
           goto -> bb4;
       }
   

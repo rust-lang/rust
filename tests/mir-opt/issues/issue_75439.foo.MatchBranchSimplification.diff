@@ -40,7 +40,7 @@
       }
   
       bb4: {
-          _0 = Option::<[u8; 4]>::None;
+          _0 = const Option::<[u8; 4]>::None;
           goto -> bb5;
       }
   

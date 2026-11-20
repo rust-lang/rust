@@ -200,7 +200,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::SourceScopeLocalData,
     crate::mir::SwitchTargets,
     crate::mir::WithRetag,
-    crate::traits::IsConstable,
     crate::traits::OverflowError,
     crate::ty::AdtKind,
     crate::ty::AssocItem,

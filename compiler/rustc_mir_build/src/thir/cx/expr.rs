@@ -1484,6 +1484,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
+            | Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Const), _)
             | Res::SelfCtor(_) => {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
                 ExprKind::ZstLiteral { user_ty }
@@ -1509,23 +1510,20 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::NamedConst { def_id, args, user_ty }
             }
 
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), def_id) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                 debug!("convert_path_expr: user_ty={:?}", user_ty);
                 let ty = self.typeck_results.node_type(expr.hir_id);
-                match ty.kind() {
-                    // A unit struct/variant which is used as a value.
-                    // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
-                        adt_def: *adt_def,
-                        variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args: *args,
-                        user_ty,
-                        fields: Box::new([]),
-                        base: AdtExprBase::None,
-                    })),
-                    _ => bug!("unexpected ty: {:?}", ty),
+                let Some(adt_def) = ty.ty_adt_def() else {
+                    bug!("unexpected ty: {:?}", ty);
+                };
+
+                // A unit variant which is used as a value.
+                // We return a completely different ExprKind here to account for this special case.
+                ExprKind::UnitEnum {
+                    variant_index: adt_def.variant_index_with_ctor_id(def_id),
+                    user_ty,
                 }
             }
 

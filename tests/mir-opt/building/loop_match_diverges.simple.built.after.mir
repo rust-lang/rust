@@ -67,7 +67,7 @@ fn simple(_1: State) -> State {
     }
 
     bb11: {
-        _1 = State::B;
+        _1 = const State::B;
         _6 = discriminant(_1);
         falseEdge -> [real: bb12, imaginary: bb13];
     }
@@ -89,7 +89,7 @@ fn simple(_1: State) -> State {
     }
 
     bb16: {
-        _1 = State::C;
+        _1 = const State::C;
         _9 = discriminant(_1);
         falseEdge -> [real: bb18, imaginary: bb19];
     }
@@ -120,7 +120,7 @@ fn simple(_1: State) -> State {
     }
 
     bb23: {
-        _1 = State::A;
+        _1 = const State::A;
         _11 = discriminant(_1);
         falseEdge -> [real: bb24, imaginary: bb25];
     }

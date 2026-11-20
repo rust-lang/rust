@@ -16,7 +16,7 @@ fn option_direct(_1: Option<u32>) -> Option<u32> {
     }
 
     bb1: {
-        _0 = Option::<u32>::None;
+        _0 = const Option::<u32>::None;
         goto -> bb3;
     }
 

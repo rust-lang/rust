@@ -19,12 +19,12 @@
       }
   
       bb2: {
-          _2 = Foo::A;
+          _2 = const Foo::A;
           goto -> bb4;
       }
   
       bb3: {
-          _2 = Foo::B;
+          _2 = const Foo::B;
           goto -> bb4;
       }
   

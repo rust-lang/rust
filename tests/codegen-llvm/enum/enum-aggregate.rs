@@ -47,7 +47,7 @@ fn make_none_u16() -> Option<u16> {
     // CHECK-LABEL: { i16, i16 } @make_none_u16()
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret { i16, i16 } { i16 0, i16 undef }
-    None
+    None {}
 }
 
 #[no_mangle]

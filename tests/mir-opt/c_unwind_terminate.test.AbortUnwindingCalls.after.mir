@@ -10,7 +10,7 @@ fn test() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = Noise;
+        _1 = const Noise;
         StorageLive(_2);
         _2 = panic() -> [return: bb1, unwind: bb3];
     }

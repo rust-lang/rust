@@ -16,13 +16,13 @@
       }
   
       bb1: {
-          _2 = CustomDiscr::A;
+          _2 = const CustomDiscr::A;
 -         goto -> bb3;
 +         goto -> bb7;
       }
   
       bb2: {
-          _2 = CustomDiscr::B;
+          _2 = const CustomDiscr::B;
 -         goto -> bb3;
 +         goto -> bb8;
       }
