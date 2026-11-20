@@ -11,6 +11,7 @@ pub enum SolverProjectionLangItem {
     CoroutineYield,
     FieldBase,
     FieldType,
+    FnStaticFnPtr,
     FutureOutput,
     Metadata,
     // tidy-alphabetical-end
@@ -49,6 +50,7 @@ pub enum SolverTraitLangItem {
     FnMut,
     FnOnce,
     FnPtrTrait,
+    FnStaticTrait,
     Freeze,
     FusedIterator,
     Future,
