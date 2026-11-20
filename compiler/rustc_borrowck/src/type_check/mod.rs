@@ -118,7 +118,7 @@ pub(crate) fn type_check<'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(infcx, universal_regions, &mut constraints);
+    } = free_region_relations::create(infcx, body, universal_regions, &mut constraints);
 
     {
         // Scope these variables so it's clear they're not used later
