@@ -744,6 +744,32 @@ impl<T, A: Allocator> Box<T, A> {
         *boxed
     }
 
+    /// Consumes the `Box`, returning the wrapped value and the allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_into_inner_with_allocator)]
+    ///
+    /// let c = Box::new(5);
+    /// let (inner, a) = Box::into_inner_with_allocator(c);
+    ///
+    /// assert_eq!(inner, 5);
+    /// ```
+    #[unstable(feature = "box_into_inner_with_allocator", issue = "none")]
+    #[inline]
+    pub fn into_inner_with_allocator(boxed: Self) -> (T, A) {
+        // SAFETY: Nonnull points to an unique allocation of an initialised `T`.
+        // We are however still responsible for the memory owned by the pointer,
+        // so we should drop it.
+        unsafe {
+            let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
+            let inner = raw.read();
+            drop(Box::from_non_null_in(raw.cast_uninit(), &alloc));
+            (inner, alloc)
+        }
+    }
+
     /// Consumes the `Box` without consuming its allocation, returning the wrapped value and a `Box`
     /// to the uninitialized memory where the wrapped value used to live.
     ///
