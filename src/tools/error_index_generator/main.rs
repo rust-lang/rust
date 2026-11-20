@@ -191,7 +191,7 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 
 fn main() {
     let handler =
-        rustc_session::EarlyDiagCtxt::new(rustc_session::config::ErrorOutputType::default());
+        rustc_session::EarlyDiagCtxt::new(rustc_session::output::ErrorOutputType::default());
     rustc_driver::init_logger(&handler, rustc_log::LoggerConfig::from_env("RUST_LOG"));
     let (format, dst) = parse_args();
     let result = main_with_result(format, &dst);
