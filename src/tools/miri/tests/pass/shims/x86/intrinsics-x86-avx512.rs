@@ -1022,6 +1022,28 @@ unsafe fn test_avx512bw() {
         assert_eq_m512i(r, e);
     }
     test_mm512_avg_epu16();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_mulhrs_epi16() {
+        #[rustfmt::skip]
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, i16::MAX, i16::MIN, i16::MIN, -32768, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        );
+        #[rustfmt::skip]
+        let b = _mm512_set_epi16(
+            4, 128, 4, 3, 32767, -1, -32768, 1, i16::MAX, i16::MIN, i16::MAX, -32768, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        );
+        #[rustfmt::skip]
+        let e = _mm512_set_epi16(
+            0, 0, 0, 0, 5, 0, -7, 0, i16::MAX - 1, i16::MIN, -i16::MAX, i16::MIN, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        );
+        let r = _mm512_mulhrs_epi16(a, b);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_mulhrs_epi16();
 }
 
 #[target_feature(enable = "avx512vbmi,avx512vl")]
