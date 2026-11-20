@@ -415,3 +415,51 @@ where
         }
     }
 }
+
+/// Shims a custom global allocator `alloc` or `alloc_zeroed` call in Miri.
+/// Calls the custom_global_alloc intrinsic.
+///
+/// # Safety
+///
+/// The caller must ensure that:
+///
+///     - `size` argument is non-zero
+///     - `align` argument is a valid a power of two
+///     - `alloc_f` argument is  a valid function pointer to an `alloc` or `alloc_zeroed` method on a `GlobalAlloc` object
+#[lang = "global_alloc_shim"]
+unsafe fn global_alloc_shim(
+    size: usize,
+    align: usize,
+    alloc_f: unsafe fn(usize, usize) -> *mut u8,
+    zeroed: bool,
+) -> *mut u8 {
+    // SAFETY: guaranteed by the caller.
+    unsafe {
+        let ptr = alloc_f(size, align);
+        crate::intrinsics::custom_global_alloc(ptr, size, align, zeroed)
+    }
+}
+/// Shims a custom global allocator `dealloc` call.
+/// Calls the custom_global_alloc_dealloc intrinsic.
+///
+/// # Safety
+///
+/// The caller must ensure that:
+///
+///     - `ptr` is a pointer to a valid block of memory allocated with `dealloc_f`'s allocator
+///     - `size` is non-zero
+///     - `size` is a valid power of two
+///     - `dealloc_f` is a function pointer pointing to a `dealloc` method on a `GlobalAlloc` object
+#[lang = "global_alloc_dealloc_shim"]
+unsafe fn global_alloc_dealloc_shim(
+    ptr: *mut u8,
+    size: usize,
+    align: usize,
+    dealloc_f: unsafe fn(*mut u8, usize, usize) -> (),
+) {
+    // SAFETY: guaranteed by the caller.
+    unsafe {
+        let original_ptr = crate::intrinsics::custom_global_alloc_dealloc(ptr, size, align);
+        dealloc_f(original_ptr, size, align)
+    }
+}
