@@ -108,6 +108,8 @@ pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<Lan
         lang_items.fill_non_lang_core_items(db, crate_def_map);
     }
 
+    lang_items.rust_1_102_partial_eq_hack();
+
     lang_items.resolve_manually(db);
 
     if lang_items.is_empty() {
@@ -394,6 +396,16 @@ impl LangItems {
         let def = def.into();
         self.solver_adt[lang_item as usize] = Some(def);
         self.reverse_solver_adt.insert(def, lang_item);
+    }
+
+    /// FIXME: Remove this when we have MSRV >= 1.102.0.
+    /// See comments on [`LangItems::Rust1_102PartialEqHack`].
+    fn rust_1_102_partial_eq_hack(&mut self) {
+        if self.Rust1_102PartialEqHack.is_none() {
+            return;
+        }
+        self.Eq = self.PartialEq;
+        self.PartialEq = self.Rust1_102PartialEqHack;
     }
 }
 
@@ -853,6 +865,10 @@ language_item_table! { $ LangItems =>
     AsyncGenReady,           sym::AsyncGenReady,       FunctionId;
 
     PartialEq,               sym::eq,                  TraitId;
+    // FIXME: `PartialEq`'s lang item attribute has been changed into `partial_eq` and `eq` has
+    // been assigned to `Eq` in 1.102.0. Remove this and move `Eq` here once we bump our
+    // MSRV >= 1.102.0.
+    Rust1_102PartialEqHack,  sym::partial_eq,          TraitId;
     PartialOrd,              sym::partial_ord,         TraitId;
     CVoid,                   sym::c_void,              EnumId;
 
@@ -1048,7 +1064,7 @@ language_item_table! { $ LangItems =>
     PartialOrd_ge,                 FunctionId;
     PartialOrd_gt,                 FunctionId;
     Drop_drop,                     FunctionId;
-    Drop_pin_drop,                     FunctionId;
+    Drop_pin_drop,                 FunctionId;
     Debug_fmt,                     FunctionId;
     Deref_deref,                   FunctionId;
     DerefMut_deref_mut,            FunctionId;
