@@ -1469,8 +1469,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
+                    let mut sugg_span = pat.span.until(inner.span);
+                    if pat.span.hi() > inner.span.hi()
+                        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sugg_span)
+                        && let Some(prefix) = Self::open_paren_prefix(&snippet)
+                    {
+                        // Shrink the span so it does not include the opening parenthesis `(`
+                        sugg_span = sugg_span
+                            .shrink_to_lo()
+                            .with_hi(sugg_span.lo() + rustc_span::BytePos(prefix.len() as u32));
+                    }
                     err.span_suggestion_verbose(
-                        pat.span.until(inner.span),
+                        sugg_span,
                         format!("consider removing `&{pin_and_mut}` from the pattern"),
                         "",
                         Applicability::MaybeIncorrect,
@@ -1486,6 +1496,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {} // don't provide suggestions in other cases #55175
             }
         }
+    }
+
+    /// Returns the prefix of `snippet` preceding an opening parenthesis `(`,
+    /// skipping any `(` that appears inside line or block comments (including nested comments).
+    ///
+    /// This ensures we do not strip the opening `(` when suggesting the removal of `&`
+    /// from parenthesized patterns like `&(mut x)`, while correctly ignoring false-positive
+    /// parentheses inside comments like `& /* ( */ x`.
+    fn open_paren_prefix(snippet: &str) -> Option<&str> {
+        let bytes = snippet.as_bytes();
+        let mut i = 0;
+
+        while i < bytes.len() {
+            let next = bytes.get(i + 1).copied();
+            match (bytes[i], next) {
+                (b'/', Some(b'*')) => {
+                    let mut depth = 1usize;
+                    i += 2;
+                    while i < bytes.len() && depth > 0 {
+                        let next = bytes.get(i + 1).copied();
+                        match (bytes[i], next) {
+                            (b'/', Some(b'*')) => {
+                                depth += 1;
+                                i += 2;
+                            }
+                            (b'*', Some(b'/')) => {
+                                depth -= 1;
+                                i += 2;
+                            }
+                            _ => i += 1,
+                        }
+                    }
+                }
+                (b'/', Some(b'/')) => {
+                    i = match snippet[i..].find('\n') {
+                        Some(n) => i + n + 1,
+                        None => return None,
+                    };
+                }
+                (b'(', _) => return Some(&snippet[..i]),
+                _ => i += 1,
+            }
+        }
+        None
     }
 
     fn check_dereferenceable(
