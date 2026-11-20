@@ -157,11 +157,6 @@ impl<'a, 'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'a, 'tcx> {
     }
 }
 
-const UNRESOLVED_DEF_ID: DefId = DefId {
-    krate: rustc_span::def_id::CrateNum::MAX,
-    index: rustc_span::def_id::DefIndex::from_u32(0),
-};
-
 /// Decoder used to read the offload monomorphization manifest.
 pub(crate) struct OffloadManifestDecoder<'a, 'tcx> {
     decoder: MemDecoder<'a>,
@@ -328,8 +323,11 @@ impl<'a, 'tcx> SpanDecoder for OffloadManifestDecoder<'a, 'tcx> {
         let crate_name: String = Decodable::decode(self);
         let crate_name = Symbol::intern(&crate_name);
         let def_path_str: String = Decodable::decode(self);
+        let item = (crate_name, def_path_str);
         let map = self.get_or_build_def_path_map();
-        map.get(&(crate_name, def_path_str)).copied().unwrap_or(UNRESOLVED_DEF_ID)
+        map.get(&item)
+            .copied()
+            .unwrap_or_else(|| bug!("offload manifest: cannot resolve `{}{}`", item.0, item.1))
     }
 
     fn decode_attr_id(&mut self) -> rustc_ast::AttrId {
