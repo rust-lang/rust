@@ -1,0 +1,20 @@
+- // MIR for `fields` before ScalarReplacementOfAggregates
++ // MIR for `fields` after ScalarReplacementOfAggregates
+  
+  fn fields() -> (MaybeUninit<u8>, MaybeUninit<u16>) {
+      let mut _0: (std::mem::MaybeUninit<u8>, std::mem::MaybeUninit<u16>);
+      let mut _1: (std::mem::MaybeUninit<u8>, std::mem::MaybeUninit<u16>);
++     let mut _2: std::mem::MaybeUninit<u8>;
++     let mut _3: std::mem::MaybeUninit<u16>;
+  
+      bb0: {
+-         StorageAlloc(_1);
+-         _0 = (copy (_1.0: std::mem::MaybeUninit<u8>), copy (_1.1: std::mem::MaybeUninit<u16>));
++         StorageAlloc(_2);
++         StorageAlloc(_3);
++         nop;
++         _0 = (copy _2, copy _3);
+          return;
+      }
+  }
+  

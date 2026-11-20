@@ -1377,9 +1377,9 @@ pub(crate) fn provide(providers: &mut Providers) {
                         bb.statements
                             .iter()
                             .filter_map(|stmt| match stmt.kind {
-                                StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
-                                    None
-                                }
+                                StatementKind::StorageLive(_)
+                                | StatementKind::StorageDead(_)
+                                | StatementKind::StorageAlloc(_) => None,
                                 _ => Some(stmt),
                             })
                             .count()

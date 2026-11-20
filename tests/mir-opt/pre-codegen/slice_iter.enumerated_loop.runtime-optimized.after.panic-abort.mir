@@ -203,6 +203,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _19 = Offset(copy _16, const 1_usize);
         _8 = copy _19 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_19);
+        StorageAlloc(_12);
+        StorageAlloc(_11);
         goto -> bb13;
     }
 
@@ -242,6 +244,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb12: {
         _21 = SubUnchecked(copy _20, const 1_usize);
+        StorageAlloc(_12);
+        StorageAlloc(_8);
         _11 = copy _21 as *const T (Transmute);
         StorageDead(_20);
         goto -> bb13;
@@ -268,6 +272,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb14: {
+        StorageAlloc(_8);
+        StorageAlloc(_11);
         _12 = move (_27.0: usize);
         StorageLive(_28);
         _28 = (copy _26, copy _25);

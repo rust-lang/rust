@@ -176,7 +176,7 @@
   
       bb16: {
 -         unreachable;
-+         _19 = move _26;
++         _19 = copy _26;
 +         _18 = copy (_19.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb15;
       }
@@ -195,7 +195,7 @@
       }
   
       bb19: {
--         _12 = move _2;
+-         _12 = copy _2;
 -         _11 = std::future::get_context::<'_, '_>(move _12) -> [return: bb18, unwind: bb11];
 +         _22 = &mut (((*_25) as variant#4).1: [AsyncInt; 2]);
 +         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb18, unwind: bb5];
@@ -244,7 +244,7 @@
 -     }
 - 
 -     bb26: {
--         _19 = move _2;
+-         _19 = copy _2;
 -         _18 = std::future::get_context::<'_, '_>(move _19) -> [return: bb25, unwind: bb11];
 -     }
 - 

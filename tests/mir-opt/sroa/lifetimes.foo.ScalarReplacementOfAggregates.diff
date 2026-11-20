@@ -84,7 +84,7 @@
           StorageLive(_5);
           _26 = const true;
 -         _5 = move (_1.0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>);
-+         _5 = move _30;
++         _5 = copy _30;
           StorageLive(_6);
 -         _6 = copy (_1.1: u32);
 +         _6 = copy _31;

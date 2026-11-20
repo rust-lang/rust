@@ -15,6 +15,7 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_0);
 +         _0 = copy (*_2);
           StorageDead(_2);
           return;

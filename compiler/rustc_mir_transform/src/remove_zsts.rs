@@ -133,6 +133,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             }
             StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
+            | StatementKind::StorageAlloc(_)
             | StatementKind::Nop
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::ConstEvalCounter => None,

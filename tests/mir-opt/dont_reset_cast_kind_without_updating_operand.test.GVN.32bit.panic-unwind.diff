@@ -58,6 +58,7 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = copy _5;
+          StorageAlloc(_6);
           StorageLive(_12);
           _12 = const 1_usize;
 -         _6 = *const [()] from (copy _7, copy _12);
@@ -67,6 +68,7 @@
           StorageLive(_8);
           StorageLive(_9);
           _9 = copy _6;
+          StorageAlloc(_8);
           StorageLive(_13);
 -         _13 = copy _9;
 -         _8 = copy _9 as *mut () (PtrToPtr);

@@ -20,6 +20,7 @@
           _5 = const remap_debuginfo_locals::promoted[0];
 -         _3 = &(*_5);
 -         _2 = &raw const (*_3);
+-         StorageAlloc(_1);
 -         // DBG: _1 = &(*_2);
 -         _1 = &(*_2);
 -         StorageDead(_2);
