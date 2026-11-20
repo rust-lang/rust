@@ -278,7 +278,7 @@
     }
    },
    "ref_vec": {
-    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "type": "const alloc::vec::Vec<i32,alloc::alloc::Global> *",
     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
@@ -293,7 +293,7 @@
     }
    },
    "ptr_vec": {
-    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "type": "const alloc::vec::Vec<i32,alloc::alloc::Global> *",
     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
@@ -617,6 +617,18 @@
     "alloc::alloc::Global"
    ]
   },
+  "const alloc::vec::Vec<i32,alloc::alloc::Global> *": {
+   "size": 8,
+   "type_class": 4096,
+   "generic_params": [
+    "long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "const unsigned char *": {
+   "size": 8,
+   "type_class": 4096
+  },
   "core::num::niche_types::UsizeNoHighBit": {
    "size": 8,
    "type_class": 16384,
@@ -634,7 +646,7 @@
    "fields": [
     {
      "name": "pointer",
-     "type": "unsigned char *",
+     "type": "const unsigned char *",
      "offset": 0
     }
    ],
@@ -784,10 +796,6 @@
    "size": 1,
    "type_class": 4,
    "basic_type": 4
-  },
-  "unsigned char *": {
-   "size": 8,
-   "type_class": 4096
   },
   "unsigned int": {
    "size": 4,

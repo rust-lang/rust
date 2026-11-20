@@ -171,6 +171,18 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
+    // Mark the pointee of `&T` and `*const T` as `const`.
+    let pointee_type_di_node = match *ptr_type.kind() {
+        ty::Ref(_, _, ty::Mutability::Not) | ty::RawPtr(_, ty::Mutability::Not) => unsafe {
+            llvm::LLVMDIBuilderCreateQualifiedType(
+                DIB(cx),
+                dwarf_const::DW_TAG_const_type,
+                pointee_type_di_node,
+            )
+        },
+        _ => pointee_type_di_node,
+    };
+
     let data_layout = &cx.tcx.data_layout;
     let pointer_size = data_layout.pointer_size();
     let pointer_align = data_layout.pointer_align();

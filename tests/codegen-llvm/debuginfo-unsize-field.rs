@@ -12,6 +12,7 @@
 // and references types are
 //   linux:  name: "&debuginfo_unsize_field::Foo"
 //   win:    name: "ref$<debuginfo_unsize_field::Foo>"
+// and the pointee of shared references is `const`.
 
 // CHECK: ![[U8:[0-9]+]] = !DI{{Basic|Derived}}Type({{.*}}name: "u8",
 
@@ -22,7 +23,8 @@ pub struct Foo {
 // CHECK: !DICompositeType(tag: DW_TAG_structure_type, name: "{{&|ref\$<}}{{[^"]+}}::Foo{{>?}}", {{.*}}elements: ![[FOO_REF_ELEMS:[0-9]+]]
 // CHECK: ![[FOO_REF_ELEMS]] = !{![[FOO_REF_PTR:[0-9]+]], ![[FOO_REF_LEN:[0-9]+]]}
 // CHECK: ![[FOO_REF_PTR]] = !DIDerivedType(tag: DW_TAG_member, name: "data_ptr", {{.*}}baseType: ![[FOO_PTR:[0-9]+]]
-// CHECK: ![[FOO_PTR]] = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: ![[FOO:[0-9]+]]
+// CHECK: ![[FOO_PTR]] = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: ![[CONST_FOO:[0-9]+]]
+// CHECK: ![[CONST_FOO]] = !DIDerivedType(tag: DW_TAG_const_type, baseType: ![[FOO:[0-9]+]])
 // CHECK: ![[FOO]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Foo", {{.*}}elements: ![[FOO_ELEMS:[0-9]+]]
 // CHECK: ![[FOO_ELEMS]] = !{![[FOO_A:[0-9]+]], ![[FOO_B:[0-9]+]]}
 // CHECK: ![[FOO_A]] = !DIDerivedType(tag: DW_TAG_member, name: "a"
@@ -43,7 +45,8 @@ pub struct Bar {
 // CHECK: !DICompositeType(tag: DW_TAG_structure_type, name: "{{&|ref\$<}}{{[^"]+}}::Bar{{>?}}", {{.*}}elements: ![[BAR_REF_ELEMS:[0-9]+]]
 // CHECK: ![[BAR_REF_ELEMS]] = !{![[BAR_REF_PTR:[0-9]+]], ![[BAR_REF_LEN:[0-9]+]]}
 // CHECK: ![[BAR_REF_PTR]] = !DIDerivedType(tag: DW_TAG_member, name: "data_ptr", {{.*}}baseType: ![[BAR_PTR:[0-9]+]]
-// CHECK: ![[BAR_PTR]] = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: ![[BAR:[0-9]+]]
+// CHECK: ![[BAR_PTR]] = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: ![[CONST_BAR:[0-9]+]]
+// CHECK: ![[CONST_BAR]] = !DIDerivedType(tag: DW_TAG_const_type, baseType: ![[BAR:[0-9]+]])
 // CHECK: ![[BAR]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Bar", {{.*}}elements: ![[BAR_ELEMS:[0-9]+]]
 // CHECK: ![[BAR_ELEMS]] = !{![[BAR_A:[0-9]+]], ![[BAR_B:[0-9]+]]}
 // CHECK: ![[BAR_A]] = !DIDerivedType(tag: DW_TAG_member, name: "a"
@@ -53,7 +56,8 @@ pub struct Baz {
     a: u32,
     b: u8,
 }
-// CHECK: !DIDerivedType(tag: DW_TAG_pointer_type, name: "{{&|ref\$<}}{{[^"]+}}::Baz{{>?}}", {{.*}}baseType: ![[BAZ:[0-9]+]]
+// CHECK: !DIDerivedType(tag: DW_TAG_pointer_type, name: "{{&|ref\$<}}{{[^"]+}}::Baz{{>?}}", {{.*}}baseType: ![[CONST_BAZ:[0-9]+]]
+// CHECK: ![[CONST_BAZ]] = !DIDerivedType(tag: DW_TAG_const_type, baseType: ![[BAZ:[0-9]+]])
 // CHECK: ![[BAZ]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Baz", {{.*}}elements: ![[BAZ_ELEMS:[0-9]+]]
 // CHECK: ![[BAZ_ELEMS]] = !{![[BAZ_A:[0-9]+]], ![[BAZ_B:[0-9]+]]}
 // CHECK: ![[BAZ_A]] = !DIDerivedType(tag: DW_TAG_member, name: "a"
