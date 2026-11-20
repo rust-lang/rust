@@ -1,0 +1,19 @@
+error[E0038]: the trait `Sub` is not dyn compatible
+  --> $DIR/normalize-blanket.rs:17:12
+   |
+LL | fn foo(_: &dyn Sub) {}
+   |            ^^^^^^^ `Sub` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/normalize-blanket.rs:15:18
+   |
+LL | trait Sub: Super<Assoc = <Self as Constant>::Output> + Super<Assoc = i32> {}
+   |       ---        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^          ^^^^^^^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as Super>::Assoc == <Self as Constant>::Output` and `<Self as Super>::Assoc == i32`
+   |       |          |
+   |       |          ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as Super>::Assoc == <Self as Constant>::Output` and `<Self as Super>::Assoc == i32`
+   |       this trait is not dyn compatible...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.
