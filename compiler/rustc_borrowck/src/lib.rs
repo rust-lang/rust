@@ -2026,7 +2026,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::Transmute(_)
                 | ProjectionElem::PhantomDeref => (),
             }
 
@@ -2260,7 +2260,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 | ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
                     {}
 
-                ProjectionElem::UnwrapUnsafeBinder(_) => {
+                ProjectionElem::Transmute(_) => {
                     check_parent_of_field(self, location, place_base, span, state);
                 }
 
@@ -2672,7 +2672,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..)
-                    | ProjectionElem::UnwrapUnsafeBinder(_) => {
+                    | ProjectionElem::Transmute(_) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];

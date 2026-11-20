@@ -1173,10 +1173,10 @@ macro_rules! visit_place_fns {
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
                     if ty != new_ty { Some(PlaceElem::OpaqueCast(new_ty)) } else { None }
                 }
-                PlaceElem::UnwrapUnsafeBinder(ty) => {
+                PlaceElem::Transmute(ty) => {
                     let mut new_ty = ty;
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
-                    if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
+                    if ty != new_ty { Some(PlaceElem::Transmute(new_ty)) } else { None }
                 }
                 PlaceElem::Deref
                 | PlaceElem::PhantomDeref
@@ -1248,7 +1248,7 @@ macro_rules! visit_place_fns {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
                 | ProjectionElem::Field(_, ty)
-                | ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                | ProjectionElem::Transmute(ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) => {

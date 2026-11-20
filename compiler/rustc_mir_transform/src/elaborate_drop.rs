@@ -15,6 +15,7 @@ use tracing::{debug, instrument};
 
 use crate::coroutine::CTX_ARG;
 use crate::patch::MirPatch;
+use crate::util;
 
 /// Describes how/if a value should be dropped.
 #[derive(Debug)]
@@ -183,8 +184,12 @@ where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
-    #[instrument(level = "trace", skip(self), ret)]
     fn place_ty(&self, place: Place<'tcx>) -> Ty<'tcx> {
+        self.place_ref_ty(place.as_ref())
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn place_ref_ty(&self, place: PlaceRef<'tcx>) -> Ty<'tcx> {
         if place.local < self.elaborator.body().local_decls.next_index() {
             place.ty(self.elaborator.body(), self.tcx()).ty
         } else {
@@ -1216,21 +1221,72 @@ where
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.types.unit));
 
+        let mut statements = Vec::with_capacity(1);
+
+        // FIXME: can we deduplicate this logic with `add_moves_for_packed_drops`?
+
+        let (place, target_block) =
+            if util::place_unalignment_2(tcx, self.elaborator.typing_env(), self.place, |place| {
+                self.place_ref_ty(place)
+            })
+            .is_some()
+            {
+                let maybedangling_ty = Ty::new_adt(
+                    tcx,
+                    tcx.adt_def(
+                        tcx.require_lang_item(LangItem::MaybeDangling, self.source_info.span),
+                    ),
+                    tcx.mk_args(&[ty.into()]),
+                );
+
+                let temp = self.new_temp(maybedangling_ty);
+
+                let storage_dead_block = self.new_block_with_statements(
+                    unwind,
+                    vec![Statement::new(self.source_info, StatementKind::StorageDead(temp))],
+                    TerminatorKind::goto(succ),
+                );
+
+                statements.push(Statement::new(self.source_info, StatementKind::StorageLive(temp)));
+
+                let maybedangling_projected_place =
+                    self.place.project_deeper(&[PlaceElem::Transmute(maybedangling_ty)], tcx);
+
+                let temp_place = Place::from(temp);
+
+                statements.push(Statement::new(
+                    self.source_info,
+                    StatementKind::Assign(Box::new((
+                        temp_place,
+                        Rvalue::Use(Operand::Move(maybedangling_projected_place), WithRetag::Yes),
+                    ))),
+                ));
+
+                (
+                    temp_place.project_deeper(&[ProjectionElem::Field(FieldIdx::ZERO, ty)], tcx),
+                    storage_dead_block,
+                )
+            } else {
+                (self.place, succ)
+            };
+
+        statements.push(self.assign(
+            Place::from(ref_place),
+            Rvalue::Ref(
+                tcx.lifetimes.re_erased,
+                BorrowKind::Mut { kind: MutBorrowKind::Default },
+                place,
+            ),
+        ));
+
         self.new_block_with_statements(
             unwind,
-            vec![self.assign(
-                Place::from(ref_place),
-                Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { kind: MutBorrowKind::Default },
-                    self.place,
-                ),
-            )],
+            statements,
             TerminatorKind::Call {
                 func: Operand::function_handle(tcx, drop_fn, &[ty.into()], self.source_info.span),
                 args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,
-                target: Some(succ),
+                target: Some(target_block),
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: self.source_info.span,

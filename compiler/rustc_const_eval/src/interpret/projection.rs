@@ -414,7 +414,7 @@ where
             PhantomDeref => {
                 span_bug!(self.cur_span(), "PhantomDeref encountered after borrowck")
             }
-            UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
+            Transmute(target) => base.transmute(self.layout_of(target)?, self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(base)?.into(),

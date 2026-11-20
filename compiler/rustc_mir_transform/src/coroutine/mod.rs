@@ -445,7 +445,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             }
             PlaceElem::Field(..)
             | PlaceElem::OpaqueCast(..)
-            | PlaceElem::UnwrapUnsafeBinder(..)
+            | PlaceElem::Transmute(..)
             | PlaceElem::Deref
             | PlaceElem::ConstantIndex { .. }
             | PlaceElem::Subslice { .. }

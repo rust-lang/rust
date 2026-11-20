@@ -262,7 +262,7 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::Subslice { .. }, _, _)
                 | (ProjectionElem::OpaqueCast { .. }, _, _)
                 | (ProjectionElem::Downcast { .. }, _, _)
-                | (ProjectionElem::UnwrapUnsafeBinder(_), _, _) => {
+                | (ProjectionElem::Transmute(_), _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
                     // there's a deref later on, e.g., a borrow
@@ -537,7 +537,7 @@ fn place_projection_conflict<'tcx>(
             pi2_elem
         ),
 
-        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
+        (ProjectionElem::Transmute(_), _) => {
             unimplemented!()
         }
     }

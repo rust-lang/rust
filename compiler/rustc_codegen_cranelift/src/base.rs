@@ -998,7 +998,7 @@ pub(crate) fn codegen_place<'tcx>(
             }
             PlaceElem::PhantomDeref => bug!("encountered PhantomDeref in codegen"),
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::UnwrapUnsafeBinder(ty) => {
+            PlaceElem::Transmute(ty) => {
                 cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
             }
             PlaceElem::Field(field, _ty) => {

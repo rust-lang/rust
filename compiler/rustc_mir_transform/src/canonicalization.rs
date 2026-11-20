@@ -32,7 +32,7 @@ pub(super) fn canonicalize_binary_operations<'tcx, 'body>(
             ProjectionElem::Subslice { .. } => 4,
             ProjectionElem::Downcast(..) => 5,
             ProjectionElem::OpaqueCast(_) => 6,
-            ProjectionElem::UnwrapUnsafeBinder(_) => 7,
+            ProjectionElem::Transmute(_) => 7,
             ProjectionElem::PhantomDeref => 8,
         }
     }
