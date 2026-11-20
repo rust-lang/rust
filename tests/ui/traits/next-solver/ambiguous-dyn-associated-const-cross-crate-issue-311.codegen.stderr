@@ -1,0 +1,10 @@
+error[E0080]: unable to normalize `fn() -> usize {std::mem::size_of::<<dyn Project<Item = u16> as Project>::Item>}` during evaluation
+  --> $DIR/auxiliary/dyn-associated-const-cross-crate-aux-issue-311.rs:18:29
+   |
+LL | impl<T: ?Sized + Project> Adapter<T> {
+LL |     pub const SIZE: usize = size_of::<T::Item>();
+   |                             ^^^^^^^^^^^^^^^^^^^^ evaluation of `aux::Adapter::<dyn aux::Project<Item = u16>>::SIZE` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -391,7 +391,9 @@ pub fn report_result<'tcx>(
             ) => "unsupported operation",
             InvalidProgram(
                 // We list only the ones that can actually happen.
-                InvalidProgramInfo::AlreadyReported(_) | InvalidProgramInfo::Layout(..),
+                InvalidProgramInfo::AlreadyReported(_)
+                | InvalidProgramInfo::Layout(..)
+                | InvalidProgramInfo::NormalizationFailure(..),
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
