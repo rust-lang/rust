@@ -40,6 +40,7 @@ impl GeneratedAttrState {
                 },
                 span,
             },
+            GeneratedAttr::RustcMain => AttributeKind::RustcMain,
             GeneratedAttr::RustcTestMarker(test_marker) => {
                 AttributeKind::RustcTestMarker(test_marker)
             }

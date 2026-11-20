@@ -3489,6 +3489,7 @@ pub enum GeneratedAttr {
     DocHidden,
     Inline,
     RustcConstUnstableDerived,
+    RustcMain,
     RustcTestMarker(Symbol),
     RustcTrivialFieldReads,
     // tidy-alphabetical-end
@@ -3505,6 +3506,7 @@ impl GeneratedAttr {
             GeneratedAttr::RustcConstUnstableDerived => {
                 "#[rustc_const_unstable(feature = \"derive_const\", issue = \"143874\")]".into()
             }
+            GeneratedAttr::RustcMain => "#[rustc_main]".into(),
             GeneratedAttr::RustcTestMarker(test_path) => {
                 format!("#[rustc_test_marker = \"{test_path}\"]")
             }
@@ -3520,6 +3522,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::Inline => None,
             GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::RustcMain => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
             // tidy-alphabetical-end
@@ -3534,6 +3537,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => false,
             GeneratedAttr::Inline => false,
             GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::RustcMain => false,
             GeneratedAttr::RustcTestMarker(_) => false,
             GeneratedAttr::RustcTrivialFieldReads => false,
             // tidy-alphabetical-end
@@ -3548,6 +3552,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => &[sym::doc],
             GeneratedAttr::Inline => &[sym::inline],
             GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
+            GeneratedAttr::RustcMain => &[sym::rustc_main],
             GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
             GeneratedAttr::RustcTrivialFieldReads => &[sym::rustc_trivial_field_reads],
             // tidy-alphabetical-end
@@ -3562,6 +3567,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::Inline => None,
             GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::RustcMain => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
             // tidy-alphabetical-end
@@ -3576,6 +3582,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::Inline => None,
             GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::RustcMain => None,
             GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
             GeneratedAttr::RustcTrivialFieldReads => None,
             // tidy-alphabetical-end
@@ -3590,6 +3597,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::Inline => None,
             GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::RustcMain => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
             // tidy-alphabetical-end
