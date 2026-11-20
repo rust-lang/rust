@@ -2144,7 +2144,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     unreachable!("tried to assemble `Clone` for static coroutine")
                 }
                 hir::Movability::Movable => {
-                    if self.tcx().features().coroutine_clone() {
+                    if self.tcx().features_for(def_id).coroutine_clone() {
                         ty::Binder::dummy(vec![
                             args.as_coroutine().tupled_upvars_ty(),
                             Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),

@@ -250,7 +250,7 @@ where
         ty::Coroutine(def_id, args) => match ecx.cx().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
-                if ecx.cx().features().coroutine_clone() {
+                if ecx.cx().features_for(def_id.into()).coroutine_clone() {
                     Ok(ty::Binder::dummy(vec![
                         args.as_coroutine().tupled_upvars_ty(),
                         Ty::new_coroutine_witness_for_coroutine(ecx.cx(), def_id, args),

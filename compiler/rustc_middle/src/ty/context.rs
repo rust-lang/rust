@@ -114,10 +114,6 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn coroutine_clone(self) -> bool {
-        self.coroutine_clone()
-    }
-
     fn move_trait(self) -> bool {
         self.move_trait()
     }

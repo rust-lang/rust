@@ -599,8 +599,6 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
-    fn coroutine_clone(self) -> bool;
-
     fn move_trait(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
