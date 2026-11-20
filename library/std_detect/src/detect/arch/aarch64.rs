@@ -14,8 +14,9 @@ features! {
     /// The feature names are mostly taken from their FEAT_* definitions in the [ARM Architecture
     /// Reference Manual][docs].
     ///
-    /// Currently most features are only supported on linux-based platforms: on other platforms the
-    /// runtime check will always return `false`.
+    /// The implementation of the runtime check differs depending on the platform and the
+    /// particular feature in question. When there is no support for checking a given
+    /// feature on the platform, `false` is returned as a fallback.
     ///
     /// ## Supported arguments
     ///
