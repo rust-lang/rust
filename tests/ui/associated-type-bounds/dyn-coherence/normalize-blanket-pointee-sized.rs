@@ -1,6 +1,6 @@
 //@ check-pass
 
-// Determining that `Sub` is dyn-compatible requires normalizing `<Self as Constant>::Out`.
+// Determining that `Sub` is dyn-compatible requires normalizing `<Self as Constant>::Output`.
 // This depends on impl blocks elsewhere. Make sure we can do this.
 // Due to the `PointeeSized`, this normalization doesn't need any trait bounds on `Self`.
 
