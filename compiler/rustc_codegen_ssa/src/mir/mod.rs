@@ -219,7 +219,12 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let nop_landing_pads = tcx.find_noop_landing_pads_for_instance(mir, instance, cx.typing_env());
 
-    if tcx.features().ergonomic_clones() {
+    if mir.basic_blocks.iter().any(|bb| {
+        matches!(
+            bb.terminator().kind,
+            mir::TerminatorKind::Call { call_source: mir::CallSource::Use, .. }
+        )
+    }) {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             cx.typing_env(),
@@ -394,52 +399,50 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Body<'tcx> {
     let tcx = cx.tcx();
 
-    if tcx.features().ergonomic_clones() {
-        for bb in mir.basic_blocks.as_mut() {
-            let mir::TerminatorKind::Call {
-                args,
-                destination,
-                target,
-                call_source: mir::CallSource::Use,
-                ..
-            } = &bb.terminator().kind
-            else {
-                continue;
-            };
+    for bb in mir.basic_blocks.as_mut() {
+        let mir::TerminatorKind::Call {
+            args,
+            destination,
+            target,
+            call_source: mir::CallSource::Use,
+            ..
+        } = &bb.terminator().kind
+        else {
+            continue;
+        };
 
-            // CallSource::Use calls always use 1 argument.
-            assert_eq!(args.len(), 1);
-            let arg = &args[0];
+        // CallSource::Use calls always use 1 argument.
+        assert_eq!(args.len(), 1);
+        let arg = &args[0];
 
-            // These types are easily available from locals, so check that before
-            // doing DefId lookups to figure out what we're actually calling.
-            let arg_ty = arg.node.ty(&mir.local_decls, tcx);
+        // These types are easily available from locals, so check that before
+        // doing DefId lookups to figure out what we're actually calling.
+        let arg_ty = arg.node.ty(&mir.local_decls, tcx);
 
-            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
+        let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
 
-            if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
-                continue;
-            }
-
-            let Some(arg_place) = arg.node.place() else { continue };
-
-            let destination_block = target.unwrap();
-
-            bb.statements.push(mir::Statement::new(
-                bb.terminator().source_info,
-                mir::StatementKind::Assign(Box::new((
-                    *destination,
-                    mir::Rvalue::Use(
-                        mir::Operand::Copy(
-                            arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
-                        ),
-                        mir::WithRetag::Yes,
-                    ),
-                ))),
-            ));
-
-            bb.terminator_mut().kind = mir::TerminatorKind::goto(destination_block);
+        if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
+            continue;
         }
+
+        let Some(arg_place) = arg.node.place() else { continue };
+
+        let destination_block = target.unwrap();
+
+        bb.statements.push(mir::Statement::new(
+            bb.terminator().source_info,
+            mir::StatementKind::Assign(Box::new((
+                *destination,
+                mir::Rvalue::Use(
+                    mir::Operand::Copy(
+                        arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
+                    ),
+                    mir::WithRetag::Yes,
+                ),
+            ))),
+        ));
+
+        bb.terminator_mut().kind = mir::TerminatorKind::goto(destination_block);
     }
 
     mir
