@@ -358,10 +358,6 @@ impl Intrinsic {
         unsafe { LLVMIntrinsicIsOverloaded(self.id).is_true() }
     }
 
-    pub(crate) fn is_target_specific(self) -> bool {
-        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
-    }
-
     pub(crate) fn base_name(self) -> &'static [u8] {
         let mut len = 0;
         let ptr = unsafe { LLVMRustIntrinsicGetBaseName(self.id, &mut len) };

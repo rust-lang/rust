@@ -1058,24 +1058,45 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
-    Some(match rust_arch {
-        Arch::AArch64 | Arch::Arm64EC => "aarch64",
-        Arch::AmdGpu => "amdgcn",
-        Arch::Arm => "arm",
-        Arch::Bpf => "bpf",
-        Arch::Hexagon => "hexagon",
-        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
-        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
-        Arch::Nvptx64 => "nvvm",
-        Arch::PowerPC | Arch::PowerPC64 => "ppc",
-        Arch::RiscV32 | Arch::RiscV64 => "riscv",
-        Arch::S390x => "s390",
-        Arch::SpirV => "spv",
-        Arch::Wasm32 | Arch::Wasm64 => "wasm",
-        Arch::X86 | Arch::X86_64 => "x86",
-        _ => return None, // fallback for unknown archs
-    })
+fn is_valid_intrinsic_for_arch(name: &str, arch: &Arch) -> bool {
+    use Arch::*;
+
+    if matches!(arch, Other(_)) {
+        return true;
+    }
+
+    let Some((prefix, _)) = name[5..].split_once('.') else {
+        return true;
+    };
+
+    let allowed: &[Arch] = match prefix {
+        "aarch64" => &[AArch64, Arm64EC],
+        "amdgcn" => &[AmdGpu],
+        "arm" => &[Arm],
+        "avr" => &[Avr],
+        "bpf" => &[Bpf],
+        "csky" => &[CSky],
+        "hexagon" => &[Hexagon],
+        "loongarch" => &[LoongArch32, LoongArch64],
+        "m68k" => &[M68k],
+        "mips" => &[Mips, Mips32r6, Mips64, Mips64r6],
+        "msp430" => &[Msp430],
+        "nvvm" => &[Nvptx64],
+        "ppc" => &[PowerPC, PowerPC64],
+        "riscv" => &[RiscV32, RiscV64],
+        "s390" => &[S390x],
+        "sparc" => &[Sparc, Sparc64],
+        "spv" => &[SpirV],
+        "wasm" => &[Wasm32, Wasm64],
+        "x86" => &[X86, X86_64],
+        "xtensa" => &[Xtensa],
+        // Known LLVM target prefixes with no built-in `Arch` variant.
+        "dx" | "r600" | "ve" | "xcore" => &[],
+        // Target-independent (or unknown) intrinsic.
+        _ => return true,
+    };
+
+    allowed.contains(arch)
 }
 
 fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<'ll>) -> bool {
@@ -1451,27 +1472,21 @@ fn intrinsic_fn<'ll, 'tcx>(
     let tcx = bx.tcx;
     let span = || tcx.def_span(instance.def_id());
 
+    let rust_arch = &tcx.sess.target.arch;
+    if !is_valid_intrinsic_for_arch(name, rust_arch) {
+        tcx.dcx().emit_fatal(IntrinsicWrongArch {
+            name,
+            target_arch: rust_arch.desc(),
+            span: span(),
+        });
+    }
+
     let rust_fn_ty = bx.type_func(&rust_argument_tys, rust_return_ty);
 
     let (intrinsic, type_params) = match lookup_and_demangle(bx.cx, name.as_bytes()) {
         Some(parsed) => parsed,
         None => return fallback_intrinsic_fn(bx, name, rust_fn_ty, instance),
     };
-
-    if intrinsic.is_target_specific() {
-        let (llvm_arch, _) = name[5..].split_once('.').unwrap();
-        let rust_arch = &tcx.sess.target.arch;
-
-        if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
-            && llvm_arch != correct_llvm_arch
-        {
-            tcx.dcx().emit_fatal(IntrinsicWrongArch {
-                name,
-                target_arch: rust_arch.desc(),
-                span: span(),
-            });
-        }
-    }
 
     let is_overloaded = intrinsic.is_overloaded();
 

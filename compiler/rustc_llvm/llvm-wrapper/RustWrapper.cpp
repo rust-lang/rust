@@ -1702,10 +1702,6 @@ extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
   return CanUpgrade;
 }
 
-extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
-  return Intrinsic::isTargetIntrinsic(ID);
-}
-
 extern "C" const char *LLVMRustIntrinsicGetBaseName(unsigned ID,
                                                     size_t *NameLength) {
   auto baseName = Intrinsic::getBaseName(ID);

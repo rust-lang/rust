@@ -1211,7 +1211,6 @@ unsafe extern "C" {
         Fn: Value<'ll>,
         NewFn: &mut Option<Value<'ll>>,
     ) -> bool;
-    pub(crate) fn LLVMRustIsTargetIntrinsic(ID: NonZero<c_uint>) -> bool;
     pub(crate) fn LLVMRustIntrinsicGetBaseName(
         ID: NonZero<c_uint>,
         NameLength: &mut size_t,
