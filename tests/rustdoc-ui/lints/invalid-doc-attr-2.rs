@@ -2,6 +2,5 @@
 
 #![doc("other attribute")]
 //~^ ERROR
-//~| WARN
 #![doc]
 //~^ ERROR

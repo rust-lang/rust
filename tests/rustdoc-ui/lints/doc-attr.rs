@@ -3,10 +3,7 @@
 
 #[doc(123)]
 //~^ ERROR
-//~| WARN
 #[doc("hello", "bar")]
 //~^ ERROR
 //~| ERROR
-//~| WARN
-//~| WARN
 fn bar() {}

@@ -3,16 +3,12 @@
 
 #![doc(html_favicon_url)]
 //~^ ERROR
-//~| WARN
 #![doc(html_logo_url)]
 //~^ ERROR
-//~| WARN
 #![doc(html_playground_url)]
 //~^ ERROR
-//~| WARN
 #![doc(issue_tracker_base_url)]
 //~^ ERROR
-//~| WARN
 #![doc(html_favicon_url = 1)]
 //~^ ERROR
 //~| WARN
