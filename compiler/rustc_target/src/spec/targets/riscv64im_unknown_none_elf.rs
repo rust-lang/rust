@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
             atomic_cas: false,
-            features: "+m,+forced-atomics".into(),
+            features: "+m,+forced-atomics,+relax".into(),
             llvm_abiname: LlvmAbi::Lp64,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
