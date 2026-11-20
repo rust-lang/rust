@@ -71,18 +71,18 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits()
                                           | TypeFlags::HAS_RE_ERASED.bits();
 
-        /// Does this have `Projection`?
+        /// Does this have `AliasTyKind::Projection`?
         const HAS_TY_PROJECTION           = 1 << 10;
-        /// Does this have `Free` aliases?
+        /// Does this have `AliasTyKind::Free` aliases?
         const HAS_TY_FREE_ALIAS           = 1 << 11;
-        /// Does this have `Opaque`?
+        /// Does this have `AliasTyKind::Opaque`?
         const HAS_TY_OPAQUE               = 1 << 12;
-        /// Does this have `Inherent`?
+        /// Does this have `AliasTyKind::Inherent`?
         const HAS_TY_INHERENT             = 1 << 13;
         /// Does this have `ConstKind::Alias`?
         const HAS_CONST_ALIAS           = 1 << 14;
 
-        /// Does this have `Alias` or `ConstKind::Alias`?
+        /// Does this have `TyKind::Alias` or `ConstKind::Alias`?
         ///
         /// Rephrased, could this term be normalized further?
         const HAS_ALIAS                   = TypeFlags::HAS_TY_PROJECTION.bits()
