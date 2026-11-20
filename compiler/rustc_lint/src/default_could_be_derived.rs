@@ -47,7 +47,7 @@ declare_lint! {
     pub DEFAULT_OVERRIDES_DEFAULT_FIELDS,
     Deny,
     "detect `Default` impl that should use the type's default field values",
-    @feature_gate = default_field_values;
+    @feature_gate = default_field_values,
 }
 
 declare_lint_pass!(DefaultCouldBeDerived => [DEFAULT_OVERRIDES_DEFAULT_FIELDS]);

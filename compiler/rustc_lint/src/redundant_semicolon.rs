@@ -23,7 +23,7 @@ declare_lint! {
     /// and visual clutter.
     pub REDUNDANT_SEMICOLONS,
     Warn,
-    "detects unnecessary trailing semicolons"
+    "detects unnecessary trailing semicolons",
 }
 
 declare_lint_pass!(RedundantSemicolons => [REDUNDANT_SEMICOLONS]);

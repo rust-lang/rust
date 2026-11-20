@@ -31,7 +31,7 @@ declare_lint! {
     /// will always return false.
     USELESS_PTR_NULL_CHECKS,
     Warn,
-    "useless checking of non-null-typed pointer"
+    "useless checking of non-null-typed pointer",
 }
 
 declare_lint! {
@@ -54,7 +54,7 @@ declare_lint! {
     /// is [Undefined Behavior](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)!
     INVALID_NULL_ARGUMENTS,
     Deny,
-    "invalid null pointer in arguments"
+    "invalid null pointer in arguments",
 }
 
 declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS, INVALID_NULL_ARGUMENTS]);

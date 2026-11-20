@@ -203,7 +203,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #81670),
         report_in_deps: true,
-    };
+    },
     // We exempt `FORBIDDEN_LINT_GROUPS` from `-Dwarnings` because it specifically
     // triggers in cases (like #80988) where you have `forbid(warnings)`,
     // and so if we turned that into an error, it'd defeat the purpose of the
@@ -244,7 +244,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #57571),
         report_in_deps: true,
-    };
+    },
     crate_level_only
 }
 
@@ -281,7 +281,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #68585),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -343,7 +343,7 @@ declare_lint! {
     /// [issue #61053]: https://github.com/rust-lang/rust/issues/61053
     pub META_VARIABLE_MISUSE,
     Allow,
-    "possible meta-variable misuse at macro definition"
+    "possible meta-variable misuse at macro definition",
 }
 
 declare_lint! {
@@ -404,7 +404,7 @@ declare_lint! {
     /// [issue #35560]: https://github.com/rust-lang/rust/issues/35560
     pub INCOMPLETE_INCLUDE,
     Deny,
-    "trailing content in included file"
+    "trailing content in included file",
 }
 
 declare_lint! {
@@ -431,7 +431,7 @@ declare_lint! {
     pub ARITHMETIC_OVERFLOW,
     Deny,
     "arithmetic operation overflows",
-    @eval_always = true
+    @eval_always = true,
 }
 
 declare_lint! {
@@ -456,7 +456,7 @@ declare_lint! {
     pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime",
-    @eval_always = true
+    @eval_always = true,
 }
 
 declare_lint! {
@@ -478,7 +478,7 @@ declare_lint! {
     /// like `pub`.
     pub UNUSED_IMPORTS,
     Warn,
-    "imports that are never used"
+    "imports that are never used",
 }
 
 declare_lint! {
@@ -503,7 +503,7 @@ declare_lint! {
     /// module, add a visibility modifier like `pub`.
     pub REDUNDANT_IMPORTS,
     Allow,
-    "imports that are redundant due to being imported already"
+    "imports that are redundant due to being imported already",
 }
 
 declare_lint! {
@@ -544,7 +544,7 @@ declare_lint! {
     pub MUST_NOT_SUSPEND,
     Allow,
     "use of a `#[must_not_suspend]` value across a yield point",
-    @feature_gate = must_not_suspend;
+    @feature_gate = must_not_suspend,
 }
 
 declare_lint! {
@@ -580,7 +580,7 @@ declare_lint! {
     /// [2018 edition]: https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-clarity.html#no-more-extern-crate
     pub UNUSED_EXTERN_CRATES,
     Allow,
-    "extern crates that are never used"
+    "extern crates that are never used",
 }
 
 declare_lint! {
@@ -665,7 +665,7 @@ declare_lint! {
     /// can be noisy when refactoring or moving around code.
     pub UNUSED_QUALIFICATIONS,
     Allow,
-    "detects unnecessarily qualified names"
+    "detects unnecessarily qualified names",
 }
 
 declare_lint! {
@@ -688,7 +688,7 @@ declare_lint! {
     pub UNKNOWN_LINTS,
     Warn,
     "unrecognized lint attribute",
-    @eval_always = true
+    @eval_always = true,
 }
 
 declare_lint! {
@@ -714,7 +714,7 @@ declare_lint! {
     ///
     pub UNFULFILLED_LINT_EXPECTATIONS,
     Warn,
-    "unfulfilled lint expectation"
+    "unfulfilled lint expectation",
 }
 
 declare_lint! {
@@ -736,7 +736,7 @@ declare_lint! {
     /// such as `_x`.
     pub UNUSED_VARIABLES,
     Warn,
-    "detect variables which are not used in any way"
+    "detect variables which are not used in any way",
 }
 
 declare_lint! {
@@ -756,7 +756,7 @@ declare_lint! {
     /// These qualifiers have no effect, as `const _` items are unnameable.
     pub UNUSED_VISIBILITIES,
     Warn,
-    "detect visibility qualifiers on `const _` items"
+    "detect visibility qualifiers on `const _` items",
 }
 
 declare_lint! {
@@ -779,7 +779,7 @@ declare_lint! {
     /// trigger this lint.
     pub UNUSED_ASSIGNMENTS,
     Warn,
-    "detect assignments that will never be read"
+    "detect assignments that will never be read",
 }
 
 declare_lint! {
@@ -821,7 +821,7 @@ declare_lint! {
     /// field types, `PhantomData` should be used.
     pub DEAD_CODE,
     Warn,
-    "detect unused, unexported items"
+    "detect unused, unexported items",
 }
 
 declare_lint! {
@@ -880,7 +880,7 @@ declare_lint! {
     /// [attributes]: https://doc.rust-lang.org/reference/attributes.html
     pub UNUSED_ATTRIBUTES,
     Warn,
-    "detects attributes that were not used by the compiler"
+    "detects attributes that were not used by the compiler",
 }
 
 declare_lint! {
@@ -929,7 +929,7 @@ declare_lint! {
     /// probably wanted to put the `5` case above the `y` case.
     pub UNREACHABLE_PATTERNS,
     Warn,
-    "detects unreachable patterns"
+    "detects unreachable patterns",
 }
 
 declare_lint! {
@@ -983,7 +983,7 @@ declare_lint! {
     /// with `..=` the left and right bounds are inclusive.
     pub OVERLAPPING_RANGE_ENDPOINTS,
     Warn,
-    "detects range patterns with overlapping endpoints"
+    "detects range patterns with overlapping endpoints",
 }
 
 declare_lint! {
@@ -1012,7 +1012,7 @@ declare_lint! {
     /// with `..=` the right bound is inclusive, and with `..` it is exclusive.
     pub NON_CONTIGUOUS_RANGE_ENDPOINTS,
     Warn,
-    "detects off-by-one errors with exclusive range patterns"
+    "detects off-by-one errors with exclusive range patterns",
 }
 
 declare_lint! {
@@ -1057,7 +1057,7 @@ declare_lint! {
     /// [path pattern]: https://doc.rust-lang.org/reference/patterns.html#path-patterns
     pub BINDINGS_WITH_VARIANT_NAME,
     Deny,
-    "detects pattern bindings with the same name as one of the matched variants"
+    "detects pattern bindings with the same name as one of the matched variants",
 }
 
 declare_lint! {
@@ -1090,7 +1090,7 @@ declare_lint! {
     /// [`macro_export` attribute]: https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope
     pub UNUSED_MACROS,
     Warn,
-    "detects macros that were not used"
+    "detects macros that were not used",
 }
 
 declare_lint! {
@@ -1130,7 +1130,7 @@ declare_lint! {
     /// [`macro_export` attribute]: https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope
     pub UNUSED_MACRO_RULES,
     Allow,
-    "detects macro rules that were not used"
+    "detects macro rules that were not used",
 }
 
 declare_lint! {
@@ -1154,7 +1154,7 @@ declare_lint! {
     /// code directly.
     pub WARNINGS,
     Warn,
-    "mass-change the level for lints which produce warnings"
+    "mass-change the level for lints which produce warnings",
 }
 
 declare_lint! {
@@ -1164,7 +1164,7 @@ declare_lint! {
     /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
     pub UNUSED_FEATURES,
     Warn,
-    "unused features found in crate-level `#[feature]` directives"
+    "unused features found in crate-level `#[feature]` directives",
 }
 
 declare_lint! {
@@ -1191,7 +1191,7 @@ declare_lint! {
     /// To avoid this warning, remove the second `feature()` attribute.
     pub DUPLICATE_FEATURES,
     Deny,
-    "duplicate features found in crate-level `#[feature]` directives"
+    "duplicate features found in crate-level `#[feature]` directives",
 }
 
 declare_lint! {
@@ -1216,7 +1216,7 @@ declare_lint! {
     /// `#![feature]` attribute.
     pub STABLE_FEATURES,
     Warn,
-    "stable features found in `#[feature]` directive"
+    "stable features found in `#[feature]` directive",
 }
 
 declare_lint! {
@@ -1278,7 +1278,7 @@ declare_lint! {
     /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_CASTS,
     Allow,
-    "detects trivial casts which could be removed"
+    "detects trivial casts which could be removed",
 }
 
 declare_lint! {
@@ -1313,7 +1313,7 @@ declare_lint! {
     /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
-    "detects trivial casts of numeric types which could be removed"
+    "detects trivial casts of numeric types which could be removed",
 }
 
 declare_lint! {
@@ -1359,7 +1359,7 @@ declare_lint! {
     /// [Cargo documentation]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#public-dependency
     pub EXPORTED_PRIVATE_DEPENDENCIES,
     Warn,
-    "public interface leaks type from a private dependency"
+    "public interface leaks type from a private dependency",
 }
 
 declare_lint! {
@@ -1393,7 +1393,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #127909),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -1423,7 +1423,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #36887),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -1445,7 +1445,7 @@ declare_lint! {
     /// maintain consistency for renamed lints.
     pub RENAMED_AND_REMOVED_LINTS,
     Warn,
-    "lints that have been renamed or removed"
+    "lints that have been renamed or removed",
 }
 
 declare_lint! {
@@ -1561,7 +1561,7 @@ declare_lint! {
     "patterns in functions without body were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #35203),
-    };
+    },
 }
 
 declare_lint! {
@@ -1602,7 +1602,7 @@ declare_lint! {
     "detects generic lifetime arguments in path segments with late bound lifetime parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #42868),
-    };
+    },
 }
 
 declare_lint! {
@@ -1641,7 +1641,7 @@ declare_lint! {
     "distinct impls distinguished only by the leak-check code",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!("the behavior may change in a future release" #56105),
-    };
+    },
 }
 
 declare_lint! {
@@ -1691,7 +1691,7 @@ declare_lint! {
     /// `unsafe` marker because it is not required and may cause confusion.
     pub UNUSED_UNSAFE,
     Warn,
-    "unnecessary use of an `unsafe` block"
+    "unnecessary use of an `unsafe` block",
 }
 
 declare_lint! {
@@ -1712,7 +1712,7 @@ declare_lint! {
     /// required.
     pub UNUSED_MUT,
     Warn,
-    "detect mut variables which don't need to be mutable"
+    "detect mut variables which don't need to be mutable",
 }
 
 declare_lint! {
@@ -1744,7 +1744,7 @@ declare_lint! {
     "detects patterns whose meaning will change in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "match-ergonomics"),
-    };
+    },
 }
 
 declare_lint! {
@@ -1768,7 +1768,7 @@ declare_lint! {
     /// an infinite loop, using a `loop` expression is recommended.
     pub UNCONDITIONAL_RECURSION,
     Warn,
-    "functions that cannot return without calling themselves"
+    "functions that cannot return without calling themselves",
 }
 
 declare_lint! {
@@ -1802,7 +1802,7 @@ declare_lint! {
     /// [issue #44752]: https://github.com/rust-lang/rust/issues/44752
     pub SINGLE_USE_LIFETIMES,
     Allow,
-    "detects lifetime parameters that are only used once"
+    "detects lifetime parameters that are only used once",
 }
 
 declare_lint! {
@@ -1825,7 +1825,7 @@ declare_lint! {
     /// Consider removing the parameter.
     pub UNUSED_LIFETIMES,
     Allow,
-    "detects lifetime parameters that are never used"
+    "detects lifetime parameters that are never used",
 }
 
 declare_lint! {
@@ -1852,7 +1852,7 @@ declare_lint! {
     /// Consider removing the parameter.
     pub REDUNDANT_LIFETIMES,
     Allow,
-    "detects lifetime parameters that are redundant because they are equal to some other named lifetime"
+    "detects lifetime parameters that are redundant because they are equal to some other named lifetime",
 }
 
 declare_lint! {
@@ -1891,7 +1891,7 @@ declare_lint! {
     "raw pointer to an inference variable",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2018 "tyvar-behind-raw-pointer"),
-    };
+    },
 }
 
 declare_lint! {
@@ -1926,7 +1926,7 @@ declare_lint! {
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
-    "hidden lifetime parameters in types are deprecated"
+    "hidden lifetime parameters in types are deprecated",
 }
 
 declare_lint! {
@@ -1957,7 +1957,7 @@ declare_lint! {
     "suggest using `dyn Trait` for trait objects",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
-    };
+    },
 }
 
 declare_lint! {
@@ -2011,7 +2011,7 @@ declare_lint! {
      instead of `crate`, `self`, or an extern crate name",
      @future_incompatible = FutureIncompatibleInfo {
          reason: fcw!(EditionError 2018 "path-changes"),
-     };
+     },
 }
 
 declare_lint! {
@@ -2064,7 +2064,7 @@ declare_lint! {
         ),
         // Note: this item represents future incompatibility of all unstable functions in the
         //       standard library, and thus should never be removed or changed to an error.
-    };
+    },
 }
 
 declare_lint! {
@@ -2102,7 +2102,7 @@ declare_lint! {
     /// [RFC 2086]: https://rust-lang.github.io/rfcs/2086-allow-if-let-irrefutables.html
     pub IRREFUTABLE_LET_PATTERNS,
     Warn,
-    "detects irrefutable patterns in `if let` and `while let` statements"
+    "detects irrefutable patterns in `if let` and `while let` statements",
 }
 
 declare_lint! {
@@ -2125,7 +2125,7 @@ declare_lint! {
     /// `'_my_label:`.
     pub UNUSED_LABELS,
     Warn,
-    "detects labels that are never used"
+    "detects labels that are never used",
 }
 
 declare_lint! {
@@ -2192,7 +2192,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #83583),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -2246,7 +2246,7 @@ declare_lint! {
     pub MACRO_USE_EXTERN_CRATE,
     Allow,
     "the `#[macro_use]` attribute is now deprecated in favor of using macros \
-     via the module system"
+     via the module system",
 }
 
 declare_lint! {
@@ -2295,7 +2295,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #52234),
         report_in_deps: true,
-    };
+    },
     crate_level_only
 }
 
@@ -2373,7 +2373,7 @@ declare_lint! {
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
-    "outlives requirements can be inferred"
+    "outlives requirements can be inferred",
 }
 
 declare_lint! {
@@ -2447,7 +2447,7 @@ declare_lint! {
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #57644),
-    };
+    },
 }
 
 declare_lint! {
@@ -2656,8 +2656,8 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "unsafe-op-in-unsafe-fn"),
         explain_reason: false
-    };
-    @edition Edition2024 => Warn;
+    },
+    @edition Edition2024 => Warn,
 }
 
 declare_lint! {
@@ -2696,7 +2696,7 @@ declare_lint! {
     "detects a generic constant is used in a type without a emitting a warning",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #76200),
-    };
+    },
 }
 
 declare_lint! {
@@ -2755,7 +2755,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #74840),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -2852,7 +2852,7 @@ declare_lint! {
     pub INEFFECTIVE_UNSTABLE_REEXPORTS,
     Deny,
     "detects ineffective `#[unstable]` attributes on re-exports",
-    @feature_gate = staged_api;
+    @feature_gate = staged_api,
 }
 
 declare_lint! {
@@ -2879,7 +2879,7 @@ declare_lint! {
     /// `impl`s are always stable if both the type and trait are stable, and always unstable otherwise.
     pub INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
-    "detects `#[unstable]` on stable trait implementations for stable types"
+    "detects `#[unstable]` on stable trait implementations for stable types",
 }
 
 declare_lint! {
@@ -2919,7 +2919,7 @@ declare_lint! {
     "detect unsupported use of `Self` from outer item",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124186),
-    };
+    },
 }
 
 declare_lint! {
@@ -2965,7 +2965,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79813),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -3029,7 +3029,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79813),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -3076,7 +3076,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79202),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -3188,7 +3188,7 @@ declare_lint! {
     /// cfg but on Linux based target.
     pub EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
     Deny,
-    "detects builtin cfgs set via the `--cfg`"
+    "detects builtin cfgs set via the `--cfg`",
 }
 
 declare_lint! {
@@ -3238,7 +3238,7 @@ declare_lint! {
     "unstable syntax can change at any point in the future, causing a hard error!",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #154045),
-    };
+    },
 }
 
 declare_lint! {
@@ -3378,7 +3378,7 @@ declare_lint! {
     /// objects, associated types can be removed from the trait object.
     pub UNUSED_ASSOCIATED_TYPE_BOUNDS,
     Warn,
-    "detects unused `Foo = Bar` bounds in `dyn Trait<Foo = Bar>`"
+    "detects unused `Foo = Bar` bounds in `dyn Trait<Foo = Bar>`",
 }
 
 declare_lint! {
@@ -3401,7 +3401,7 @@ declare_lint! {
     /// to avoid the warning.
     pub UNUSED_DOC_COMMENTS,
     Warn,
-    "detects doc comments that aren't used by rustdoc"
+    "detects doc comments that aren't used by rustdoc",
 }
 
 declare_lint! {
@@ -3480,7 +3480,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "disjoint-capture-in-closures"),
         explain_reason: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -3507,7 +3507,7 @@ declare_lint! {
     /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
     Warn,
-    "No declared ABI for extern declaration"
+    "No declared ABI for extern declaration",
 }
 
 declare_lint! {
@@ -3572,7 +3572,7 @@ declare_lint! {
     "detects usage of old versions of or-patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2021 "or-patterns-macro-rules"),
-    };
+    },
 }
 
 declare_lint! {
@@ -3620,7 +3620,7 @@ declare_lint! {
         prelude in future editions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2021 "prelude"),
-    };
+    },
 }
 
 declare_lint! {
@@ -3659,7 +3659,7 @@ declare_lint! {
         prelude in future editions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "prelude"),
-    };
+    },
 }
 
 declare_lint! {
@@ -3695,7 +3695,7 @@ declare_lint! {
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "reserving-syntax"),
-    };
+    },
     crate_level_only
 }
 
@@ -3743,7 +3743,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #137018),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -3787,7 +3787,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #130260),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -3816,7 +3816,7 @@ declare_lint! {
     /// in parentheses.
     pub BREAK_WITH_LABEL_AND_LOOP,
     Warn,
-    "`break` expression with label and unlabeled loop as value expression"
+    "`break` expression with label and unlabeled loop as value expression",
 }
 
 declare_lint! {
@@ -3879,7 +3879,7 @@ declare_lint! {
     pub NON_EXHAUSTIVE_OMITTED_PATTERNS,
     Allow,
     "detect when patterns of types marked `non_exhaustive` are missed",
-    @feature_gate = non_exhaustive_omitted_patterns_lint;
+    @feature_gate = non_exhaustive_omitted_patterns_lint,
 }
 
 declare_lint! {
@@ -3982,7 +3982,7 @@ declare_lint! {
     /// [issue #90979]: https://github.com/rust-lang/rust/issues/90979
     pub DUPLICATE_MACRO_ATTRIBUTES,
     Warn,
-    "duplicated attribute"
+    "duplicated attribute",
 }
 
 declare_lint! {
@@ -4013,7 +4013,7 @@ declare_lint! {
     /// undecided currently.
     pub DEPRECATED_WHERE_CLAUSE_LOCATION,
     Warn,
-    "deprecated where clause location"
+    "deprecated where clause location",
 }
 
 declare_lint! {
@@ -4037,7 +4037,7 @@ declare_lint! {
     pub TEST_UNSTABLE_LINT,
     Deny,
     "this unstable lint is only for testing",
-    @feature_gate = test_unstable_lint;
+    @feature_gate = test_unstable_lint,
 }
 
 declare_lint! {
@@ -4069,7 +4069,7 @@ declare_lint! {
     /// that desire this ability it is therefore necessary to avoid such calls.
     pub FFI_UNWIND_CALLS,
     Allow,
-    "call to foreign functions or function pointers with FFI-unwind ABI"
+    "call to foreign functions or function pointers with FFI-unwind ABI",
 }
 
 declare_lint! {
@@ -4182,7 +4182,7 @@ declare_lint! {
     /// For backwards compatibility, this is not a hard error.
     pub NAMED_ARGUMENTS_USED_POSITIONALLY,
     Warn,
-    "named arguments in format used positionally"
+    "named arguments in format used positionally",
 }
 
 declare_lint! {
@@ -4294,7 +4294,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #57571),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -4363,7 +4363,7 @@ declare_lint! {
     "detects derive helper attributes that are ambiguous with built-in attributes",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #151276),
-    };
+    },
 }
 
 declare_lint! {
@@ -4585,7 +4585,7 @@ declare_lint! {
     pub MALFORMED_DIAGNOSTIC_FILTERS,
     Warn,
     "detects malformed filters in diagnostic attributes",
-    @feature_gate = rustc_attrs;
+    @feature_gate = rustc_attrs,
 }
 
 declare_lint! {
@@ -4620,7 +4620,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -4693,7 +4693,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #152822),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -4729,7 +4729,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #147319),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -4778,7 +4778,7 @@ declare_lint! {
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #149145),
-    };
+    },
 }
 
 declare_lint! {
@@ -4937,7 +4937,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #120192),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5001,7 +5001,7 @@ declare_lint! {
     "impl contains type parameters that are not covered",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124559),
-    };
+    },
 }
 
 declare_lint! {
@@ -5048,7 +5048,7 @@ declare_lint! {
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "newly-unsafe-functions"),
-    };
+    },
 }
 
 declare_lint! {
@@ -5083,7 +5083,7 @@ declare_lint! {
     "detects missing unsafe keyword on extern declarations",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "unsafe-extern"),
-    };
+    },
 }
 
 declare_lint! {
@@ -5123,7 +5123,7 @@ declare_lint! {
     "detects unsafe attributes outside of unsafe",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "unsafe-attributes"),
-    };
+    },
 }
 
 declare_lint! {
@@ -5162,7 +5162,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124535),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5204,7 +5204,7 @@ declare_lint! {
     // warn by default at the call site.
     Allow,
     "detects when a supertrait item is shadowed by a subtrait item",
-    @feature_gate = supertrait_item_shadowing;
+    @feature_gate = supertrait_item_shadowing,
 }
 
 declare_lint! {
@@ -5243,7 +5243,7 @@ declare_lint! {
     // warn by default at the usage site.
     Allow,
     "detects when a supertrait item is shadowed by a subtrait item",
-    @feature_gate = supertrait_item_shadowing;
+    @feature_gate = supertrait_item_shadowing,
 }
 
 declare_lint! {
@@ -5319,7 +5319,7 @@ declare_lint! {
     "Detect and warn on significant change in drop order in tail expression location",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "temporary-tail-expr-scope"),
-    };
+    },
 }
 
 declare_lint! {
@@ -5357,7 +5357,7 @@ declare_lint! {
     "will be parsed as a guarded string in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "reserved-syntax"),
-    };
+    },
     crate_level_only
 }
 
@@ -5399,7 +5399,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #134375),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5438,7 +5438,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #117938),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5471,7 +5471,7 @@ declare_lint! {
     pub TAIL_CALL_TRACK_CALLER,
     Warn,
     "detects tail calls of functions marked with `#[track_caller]`",
-    @feature_gate = explicit_tail_calls;
+    @feature_gate = explicit_tail_calls,
 }
 declare_lint! {
     /// The `repr_c_enums_larger_than_int` lint detects `repr(C)` enums with discriminant
@@ -5518,7 +5518,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124403),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -5564,7 +5564,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #145544),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5614,7 +5614,7 @@ declare_lint! {
     pub DEPRECATED_LLVM_INTRINSIC,
     Allow,
     "detects uses of deprecated LLVM intrinsics",
-    @feature_gate = link_llvm_intrinsics;
+    @feature_gate = link_llvm_intrinsics,
 }
 
 declare_lint! {
@@ -5664,7 +5664,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -5704,7 +5704,7 @@ declare_lint! {
     pub UNSAFE_CODE,
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
-    @eval_always = true
+    @eval_always = true,
 }
 
 declare_lint! {
@@ -5746,7 +5746,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #156047),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5803,7 +5803,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #159228),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint! {
@@ -5829,7 +5829,7 @@ declare_lint! {
     pub DUPLICATE_TOOLS,
     Deny,
     "duplicate tools found in crate-level `#[register_tools]` directives",
-    @feature_gate = register_tool;
+    @feature_gate = register_tool,
 }
 
 declare_lint! {
@@ -5883,7 +5883,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError # 163160),
         report_in_deps: true,
-    };
+    },
 }
 
 declare_lint! {
@@ -5922,7 +5922,7 @@ declare_lint! {
     "detects unsafe functions with the `#[panic_handler]` attribute",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #163263),
-    };
+    },
 }
 
 declare_lint! {
@@ -5981,7 +5981,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #154613),
         report_in_deps: false,
-    };
+    },
     crate_level_only
 }
 
@@ -6017,7 +6017,7 @@ declare_lint! {
     pub UNEVALUATED_DEFAULT_FIELD_VALUE,
     Warn,
     r#"detects default field values on types that have const parameters"#,
-    @feature_gate = default_field_values;
+    @feature_gate = default_field_values,
 }
 
 declare_lint! {
@@ -6049,5 +6049,5 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #164032),
         report_in_deps: true,
-    };
+    },
 }

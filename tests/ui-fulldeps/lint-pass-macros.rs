@@ -11,7 +11,7 @@ use rustc_lint::{LintPass, LintVec, declare_lint, declare_lint_pass, impl_lint_p
 declare_lint! {
     pub TEST_LINT,
     Allow,
-    "test"
+    "test",
 }
 
 struct Foo;

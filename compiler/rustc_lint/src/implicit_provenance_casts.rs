@@ -52,7 +52,7 @@ declare_lint! {
     pub IMPLICIT_PROVENANCE_CASTS,
     Allow,
     "an `as` cast relying on exposed provenance is used",
-    @feature_gate = strict_provenance_lints;
+    @feature_gate = strict_provenance_lints,
 }
 
 declare_lint_pass!(

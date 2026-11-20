@@ -54,8 +54,8 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "static-mut-references"),
         explain_reason: false,
-    };
-    @edition Edition2024 => Deny;
+    },
+    @edition Edition2024 => Deny,
 }
 
 declare_lint_pass!(StaticMutRefs => [STATIC_MUT_REFS]);
