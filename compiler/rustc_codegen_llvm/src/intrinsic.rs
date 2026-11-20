@@ -1,3 +1,5 @@
+// ignore-tidy-file-filelength
+
 use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
