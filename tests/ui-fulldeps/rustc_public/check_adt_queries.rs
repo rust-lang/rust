@@ -1,5 +1,5 @@
 //@ run-pass
-//! Test that users are able to retrieve infromation about ADTs 
+//! Test that users are able to retrieve information about ADTs
 
 //@ ignore-stage1
 //@ ignore-cross-compile
@@ -86,7 +86,6 @@ fn test_adts() -> ControlFlow<()> {
     assert_name(&adt_names, "UnsafeCell");
 
     // Verify all AdtDef::ty() returns the self type (Adt)
-    
     adt_defs.iter().for_each(|adt|{
         let ty = adt.ty();
         assert!(
@@ -149,7 +148,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
 
             let mut _manually_drop = ManuallyDrop::new(42);
 
-            let _cs: &CStr = c"hello"; 
+            let _cs: &CStr = c"hello";
 
             let _simd = f32x4::splat(10.0);
         }}
