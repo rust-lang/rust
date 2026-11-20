@@ -1,0 +1,22 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/paren-sugar-non-fn-trait-ufcs-issue-153855.rs:13:12
+   |
+LL |     <u8 as Tr(&u8)>::method;
+   |            ^^^^^^^ associated item constraint not allowed here
+
+error[E0277]: the trait bound `u8: Tr<'_, '_, (&u8,)>` is not satisfied
+  --> $DIR/paren-sugar-non-fn-trait-ufcs-issue-153855.rs:13:6
+   |
+LL |     <u8 as Tr(&u8)>::method;
+   |      ^^ the trait `Tr<'_, '_, (&u8,)>` is not implemented for `u8`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/paren-sugar-non-fn-trait-ufcs-issue-153855.rs:8:1
+   |
+LL | trait Tr<'a, 'b, T> {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0229, E0277.
+For more information about an error, try `rustc --explain E0229`.

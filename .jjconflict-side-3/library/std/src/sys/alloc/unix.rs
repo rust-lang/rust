@@ -1,0 +1,103 @@
+use super::{MIN_ALIGN, realloc_fallback};
+use crate::alloc::Layout;
+use crate::ptr;
+
+// Used by rustc for checking the definitions of other function with the same symbol names
+//
+// See the `invalid_runtime_symbols_definitions` lint.
+#[cfg(not(test))]
+mod runtime_symbols {
+    use core::ffi::{c_size_t, c_void};
+
+    unsafe extern "C" {
+        #[rustc_canonical_symbol]
+        fn malloc(size: c_size_t) -> *mut c_void;
+
+        #[rustc_canonical_symbol]
+        fn realloc(ptr: *mut c_void, size: c_size_t) -> *mut c_void;
+
+        #[rustc_canonical_symbol]
+        fn free(ptr: *mut c_void);
+    }
+}
+
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // jemalloc provides alignment less than MIN_ALIGN for small allocations.
+    // So only rely on MIN_ALIGN if size >= align.
+    // Also see <https://github.com/rust-lang/rust/issues/45955> and
+    // <https://github.com/rust-lang/rust/issues/62251#issuecomment-507580914>.
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { libc::malloc(layout.size()) as *mut u8 }
+    } else {
+        // `posix_memalign` returns a non-aligned value if supplied a very
+        // large alignment on older versions of Apple's platforms (unknown
+        // exactly which version range, but the issue is definitely
+        // present in macOS 10.14 and iOS 13.3).
+        //
+        // <https://github.com/rust-lang/rust/issues/30170>
+        #[cfg(target_vendor = "apple")]
+        {
+            if layout.align() > (1 << 31) {
+                return ptr::null_mut();
+            }
+        }
+        unsafe { aligned_malloc(&layout) }
+    }
+}
+
+#[inline]
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    // See the comment above in `alloc` for why this check looks the way it does.
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { libc::calloc(layout.size(), 1) as *mut u8 }
+    } else {
+        let ptr = unsafe { alloc(layout) };
+        if !ptr.is_null() {
+            unsafe { ptr::write_bytes(ptr, 0, layout.size()) };
+        }
+        ptr
+    }
+}
+
+#[inline]
+pub unsafe fn dealloc(ptr: *mut u8, _layout: Layout) {
+    unsafe { libc::free(ptr as *mut libc::c_void) }
+}
+
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
+        unsafe { libc::realloc(ptr as *mut libc::c_void, new_size) as *mut u8 }
+    } else {
+        unsafe { realloc_fallback(ptr, layout, new_size) }
+    }
+}
+
+cfg_select! {
+    // We use posix_memalign wherever possible, but some targets have very incomplete POSIX coverage
+    // so we need a fallback for those.
+    any(target_os = "horizon", target_os = "vita") => {
+        #[inline]
+        unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
+            unsafe { libc::memalign(layout.align(), layout.size()) as *mut u8 }
+        }
+    }
+    _ => {
+        #[inline]
+        #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
+        unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
+            let mut out = ptr::null_mut();
+            // We prefer posix_memalign over aligned_alloc since it is more widely available, and
+            // since with aligned_alloc, implementations are making almost arbitrary choices for
+            // which alignments are "supported", making it hard to use. For instance, some
+            // implementations require the size to be a multiple of the alignment (wasi emmalloc),
+            // while others require the alignment to be at least the pointer size (Illumos, macOS).
+            // posix_memalign only has one, clear requirement: that the alignment be a multiple of
+            // `sizeof(void*)`. Since these are all powers of 2, we can just use max.
+            let align = layout.align().max(size_of::<usize>());
+            let ret = unsafe { libc::posix_memalign(&mut out, align, layout.size()) };
+            if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
+        }
+    }
+}

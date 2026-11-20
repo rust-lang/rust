@@ -1,0 +1,10 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-3.rs:8:10
+   |
+LL | #[expect(unexpected_cfgs)]
+   |          ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: 1 warning emitted
+

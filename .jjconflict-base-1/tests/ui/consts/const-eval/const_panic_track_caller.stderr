@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: hey
+  --> $DIR/const_panic_track_caller.rs:19:16
+   |
+LL | const X: u32 = c();
+   |                ^^^ evaluation of `X` failed inside this call
+   |
+note: inside `c`
+  --> $DIR/const_panic_track_caller.rs:15:5
+   |
+LL |     b()
+   |     ^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

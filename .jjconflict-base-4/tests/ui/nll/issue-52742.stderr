@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-52742.rs:12:9
+   |
+LL |     fn take_bar(&mut self, b: Bar<'_>) {
+   |                 ---------  - has type `Bar<'1>`
+   |                 |
+   |                 has type `&mut Foo<'_, '2>`
+LL |         self.y = b.z
+   |         ^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+
+error: aborting due to 1 previous error
+

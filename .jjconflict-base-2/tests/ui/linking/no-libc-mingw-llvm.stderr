@@ -1,0 +1,11 @@
+warning: clang: warning: argument unused during compilation: '-nolibc' [-Wunused-command-line-argument]
+         
+   |
+note: the lint level is defined here
+  --> $DIR/no-libc-mingw-llvm.rs:4:9
+   |
+LL | #![warn(linker_info)]
+   |         ^^^^^^^^^^^
+
+warning: 1 warning emitted
+

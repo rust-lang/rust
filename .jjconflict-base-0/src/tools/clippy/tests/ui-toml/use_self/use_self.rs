@@ -1,0 +1,17 @@
+//@revisions: default disabled
+//@[disabled] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/disabled
+//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/use_self/default
+
+#![warn(clippy::use_self)]
+
+fn main() {}
+
+struct Basic {
+    flag: Option<Box<Basic>>,
+    //~[default]^ use_self
+}
+
+impl Basic {
+    fn x(_: Basic) {}
+    //~[default,disabled]^ use_self
+}

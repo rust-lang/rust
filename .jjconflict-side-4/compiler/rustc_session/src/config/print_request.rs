@@ -1,0 +1,343 @@
+//! Code for dealing with `--print` requests.
+
+use std::fmt;
+use std::sync::LazyLock;
+
+use rustc_data_structures::fx::FxHashSet;
+
+use crate::EarlyDiagCtxt;
+use crate::config::{
+    CodegenOptions, OutFileName, UnstableOptions, nightly_options, split_out_file_name,
+};
+use crate::macros::AllVariants;
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct PrintRequest {
+    pub kind: PrintKind,
+    pub out: OutFileName,
+    pub arg: Option<String>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(AllVariants)]
+pub enum PrintKind {
+    // tidy-alphabetical-start
+    /// All target JSON specifications.
+    AllTargetSpecsJson,
+
+    /// Does the backend supports the [`PrintRequest::arg`] `asm!()` mnemonic? (perma-unstable)
+    BackendHasMnemonic,
+
+    /// Does the backend supports Zstd compression? (perma-unstable)
+    BackendHasZstd,
+
+    /// List of all calling conventions supported by rustc.
+    CallingConventions,
+
+    /// List of cfg values.
+    Cfg,
+
+    /// List of check-cfg values.
+    CheckCfg,
+
+    /// List of available code models for the current backend.
+    CodeModels,
+
+    /// Name of the crate being compiled.
+    CrateName,
+
+    /// Lint levels of the crate's root module.
+    CrateRootLintLevels,
+
+    /// The current selected deployment target. (Apple only)
+    DeploymentTarget,
+
+    /// The names of the files created by the `--emit=link` option. (e.g. `libfoo.a`)
+    FileNames,
+
+    /// Target-tuple of the host compiler.
+    HostTuple,
+
+    /// Linker invocations.
+    LinkArgs,
+
+    /// When compiling a `staticlib` crate, print the linker flags used.
+    NativeStaticLibs,
+
+    /// List of available relocation models for the current backend.
+    RelocationModels,
+
+    /// List of available split debuginfos for the current target.
+    SplitDebuginfo,
+
+    /// List of available stack protector strategies for the current backend.
+    StackProtectorStrategies,
+
+    /// List of available crate types for the current target.
+    SupportedCrateTypes,
+
+    /// Path to the sysroot.
+    Sysroot,
+
+    /// List of available CPU values for the current target.
+    TargetCPUs,
+
+    /// List of available target features for the current target.
+    TargetFeatures,
+
+    /// Path to the target libdir.
+    TargetLibdir,
+
+    /// List of supported targets.
+    TargetList,
+
+    /// Current target JSON specification.
+    TargetSpecJson,
+
+    /// Target JSON specification schema.
+    TargetSpecJsonSchema,
+
+    /// List of available TLS models for the current backend.
+    TlsModels,
+
+    /// Target-tuple for WebAssembly's proc-macro crates.
+    WasmProcMacroTuple,
+    // tidy-alphabetical-end
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(AllVariants)]
+pub enum PrintCategory {
+    Target,
+    Codegen,
+    Linker,
+    Crate,
+}
+
+impl PrintKind {
+    fn name(self) -> &'static str {
+        use PrintKind::*;
+        match self {
+            // tidy-alphabetical-start
+            AllTargetSpecsJson => "all-target-specs-json",
+            BackendHasMnemonic => "backend-has-mnemonic",
+            BackendHasZstd => "backend-has-zstd",
+            CallingConventions => "calling-conventions",
+            Cfg => "cfg",
+            CheckCfg => "check-cfg",
+            CodeModels => "code-models",
+            CrateName => "crate-name",
+            CrateRootLintLevels => "crate-root-lint-levels",
+            DeploymentTarget => "deployment-target",
+            FileNames => "file-names",
+            HostTuple => "host-tuple",
+            LinkArgs => "link-args",
+            NativeStaticLibs => "native-static-libs",
+            RelocationModels => "relocation-models",
+            SplitDebuginfo => "split-debuginfo",
+            StackProtectorStrategies => "stack-protector-strategies",
+            SupportedCrateTypes => "supported-crate-types",
+            Sysroot => "sysroot",
+            TargetCPUs => "target-cpus",
+            TargetFeatures => "target-features",
+            TargetLibdir => "target-libdir",
+            TargetList => "target-list",
+            TargetSpecJson => "target-spec-json",
+            TargetSpecJsonSchema => "target-spec-json-schema",
+            TlsModels => "tls-models",
+            WasmProcMacroTuple => "wasm-proc-macro-tuple",
+            // tidy-alphabetical-end
+        }
+    }
+
+    fn category(self) -> PrintCategory {
+        use PrintKind::*;
+        match self {
+            TargetList | TargetSpecJsonSchema | AllTargetSpecsJson | TargetSpecJson
+            | TargetCPUs | TargetFeatures | DeploymentTarget | HostTuple | SupportedCrateTypes
+            | Sysroot | TargetLibdir | Cfg | CheckCfg | WasmProcMacroTuple => PrintCategory::Target,
+
+            BackendHasMnemonic
+            | BackendHasZstd
+            | CallingConventions
+            | CodeModels
+            | SplitDebuginfo
+            | StackProtectorStrategies
+            | TlsModels
+            | RelocationModels => PrintCategory::Codegen,
+
+            LinkArgs | NativeStaticLibs => PrintCategory::Linker,
+
+            CrateName | CrateRootLintLevels | FileNames => PrintCategory::Crate,
+        }
+    }
+
+    fn is_stable(self) -> bool {
+        use PrintKind::*;
+        match self {
+            // Stable values:
+            CallingConventions
+            | Cfg
+            | CodeModels
+            | CrateName
+            | DeploymentTarget
+            | FileNames
+            | HostTuple
+            | LinkArgs
+            | NativeStaticLibs
+            | RelocationModels
+            | SplitDebuginfo
+            | StackProtectorStrategies
+            | Sysroot
+            | TargetCPUs
+            | TargetFeatures
+            | TargetLibdir
+            | TargetList
+            | TlsModels => true,
+
+            // Unstable values:
+            AllTargetSpecsJson => false,
+            BackendHasMnemonic => false, // (perma-unstable, for use by compiletest)
+            BackendHasZstd => false,     // (perma-unstable, for use by compiletest)
+            CheckCfg => false,
+            CrateRootLintLevels => false,
+            SupportedCrateTypes => false,
+            TargetSpecJson => false,
+            TargetSpecJsonSchema => false,
+            WasmProcMacroTuple => false,
+        }
+    }
+
+    fn from_str(s: &str) -> Option<Self> {
+        Self::ALL_VARIANTS.iter().find(|kind| kind.name() == s).copied()
+    }
+}
+
+impl fmt::Display for PrintKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.name().fmt(f)
+    }
+}
+
+pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
+    let print_kinds =
+        PrintKind::ALL_VARIANTS.iter().map(|kind| kind.name()).collect::<Vec<_>>().join("|");
+    format!(
+        "Compiler information to print on stdout (or to a file)\n\
+        INFO may be one of <{print_kinds}>.",
+    )
+});
+
+pub fn collect_print_requests(
+    early_dcx: &EarlyDiagCtxt,
+    cg: &mut CodegenOptions,
+    unstable_opts: &UnstableOptions,
+    matches: &getopts::Matches,
+    allowed: &[PrintCategory],
+) -> Vec<PrintRequest> {
+    let mut prints = Vec::<PrintRequest>::new();
+    if cg.target_cpu.as_deref() == Some("help") {
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetCPUs,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
+        cg.target_cpu = None;
+    };
+    if cg.target_feature == "help" {
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetFeatures,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
+        cg.target_feature = String::new();
+    }
+
+    // We disallow reusing the same path in multiple prints, such as `--print
+    // cfg=output.txt --print link-args=output.txt`, because outputs are printed
+    // by disparate pieces of the compiler, and keeping track of which files
+    // need to be overwritten vs appended to is annoying.
+    let mut printed_paths = FxHashSet::default();
+
+    prints.extend(matches.opt_strs("print").into_iter().map(|req| {
+        let (req, out) = split_out_file_name(&req);
+
+        let (kind, arg) = if let Some(mnemonic) = req.strip_prefix("backend-has-mnemonic") {
+            check_print_request_stability(early_dcx, unstable_opts, PrintKind::BackendHasMnemonic);
+            // BackendHasMnemonic requires a mnemonic argument
+            if let Some(mnemonic) = mnemonic.strip_prefix(':')
+                && !mnemonic.is_empty()
+            {
+                (PrintKind::BackendHasMnemonic, Some(mnemonic.to_string()))
+            } else {
+                early_dcx.early_fatal(
+                    "expected mnemonic name after `--print=backend-has-mnemonic:`, \
+                    for example: `--print=backend-has-mnemonic:RET`",
+                );
+            }
+        } else if let Some(print_kind) = PrintKind::from_str(req)
+            && allowed.contains(&print_kind.category())
+        {
+            check_print_request_stability(early_dcx, unstable_opts, print_kind);
+            (print_kind, None)
+        } else {
+            let is_nightly = nightly_options::match_is_nightly_build(matches);
+            emit_unknown_print_request_help(early_dcx, req, is_nightly, allowed)
+        };
+
+        let out = out.unwrap_or(OutFileName::Stdout);
+        if let OutFileName::Real(path) = &out {
+            if !printed_paths.insert(path.clone()) {
+                early_dcx.early_fatal(format!(
+                    "cannot print multiple outputs to the same path: {}",
+                    path.display(),
+                ));
+            }
+        }
+
+        PrintRequest { kind, out, arg }
+    }));
+
+    prints
+}
+
+fn check_print_request_stability(
+    early_dcx: &EarlyDiagCtxt,
+    unstable_opts: &UnstableOptions,
+    print_kind: PrintKind,
+) {
+    if !print_kind.is_stable() && !unstable_opts.unstable_options {
+        early_dcx.early_fatal(format!(
+            "the `-Z unstable-options` flag must also be passed to enable the `{print_kind}` print option"
+        ));
+    }
+}
+
+fn emit_unknown_print_request_help(
+    early_dcx: &EarlyDiagCtxt,
+    req: &str,
+    is_nightly: bool,
+    allowed: &[PrintCategory],
+) -> ! {
+    let prints = PrintKind::ALL_VARIANTS
+        .iter()
+        // If we're not on nightly, we don't want to print unstable options
+        .filter(|kind| is_nightly || kind.is_stable())
+        .filter(|kind| allowed.contains(&kind.category()))
+        .map(|kind| format!("`{kind}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
+    diag.help(format!("valid print requests are: {prints}"));
+
+    if req == "lints" {
+        diag.help("use `-Whelp` to print a list of lints");
+    }
+
+    if allowed == PrintCategory::ALL_VARIANTS {
+        diag.help("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information");
+    }
+
+    diag.emit_fatal()
+}

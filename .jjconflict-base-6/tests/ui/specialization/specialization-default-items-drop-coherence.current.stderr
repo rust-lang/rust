@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Overlap` for type `u32`
+  --> $DIR/specialization-default-items-drop-coherence.rs:26:1
+   |
+LL | impl Overlap for u32 {
+   | -------------------- first implementation here
+...
+LL | impl Overlap for <u32 as Default>::Id {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

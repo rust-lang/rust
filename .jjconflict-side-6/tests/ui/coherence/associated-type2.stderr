@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Unit`
+  --> $DIR/associated-type2.rs:11:1
+   |
+LL |     type Unit;
+   |     --------- `Unit` from trait
+...
+LL | impl<T> ToUnit for *const T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Unit` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

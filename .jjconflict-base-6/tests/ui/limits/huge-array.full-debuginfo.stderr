@@ -1,0 +1,8 @@
+error: values of the type `[[u8; 1518599999]; 1518600000]` are too big for the target architecture
+  --> $DIR/huge-array.rs:9:9
+   |
+LL |     let s: [T; 1518600000] = [t; 1518600000];
+   |         ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: attempt to use a non-constant value in a constant
+  --> $DIR/explicit-self-lowercase-param.rs:4:29
+   |
+LL |     fn do_nothing(self: Box<self>) {}
+   |                             ^^^^ help: try using `Self`
+
+error: aborting due to 1 previous error
+

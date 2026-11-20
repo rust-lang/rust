@@ -1,0 +1,17 @@
+print-type-size type: `{coroutine@$DIR/coroutine_discr_placement.rs:13:5: 13:7}`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Suspend0`: 7 bytes
+print-type-size         padding: 3 bytes
+print-type-size         local `.w`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Suspend1`: 7 bytes
+print-type-size         padding: 3 bytes
+print-type-size         local `.z`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<i32>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.value`: 4 bytes
+print-type-size type: `std::mem::MaybeUninit<i32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `MaybeUninit`: 4 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 4 bytes

@@ -1,0 +1,16 @@
+warning: use of deprecated macro `local_deprecated`: local deprecation note
+  --> $DIR/macro-deprecation.rs:11:5
+   |
+LL |     local_deprecated!();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated macro `deprecated_macro`: deprecation note
+  --> $DIR/macro-deprecation.rs:12:5
+   |
+LL |     deprecated_macro!();
+   |     ^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

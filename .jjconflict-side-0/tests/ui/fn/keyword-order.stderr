@@ -1,0 +1,18 @@
+error: `default` is not followed by an item
+  --> $DIR/keyword-order.rs:3:1
+   |
+LL | default pub const async unsafe extern fn err() {}
+   | ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: expected item, found keyword `pub`
+  --> $DIR/keyword-order.rs:3:9
+   |
+LL | default pub const async unsafe extern fn err() {}
+   |         ^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

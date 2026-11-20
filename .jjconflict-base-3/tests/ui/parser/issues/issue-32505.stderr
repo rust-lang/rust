@@ -1,0 +1,22 @@
+error: expected expression, found `)`
+  --> $DIR/issue-32505.rs:2:12
+   |
+LL |     foo(|_|)
+   |         ---^ expected expression
+   |         |
+   |         while parsing the body of this closure
+   |
+help: you might have meant to open the body of the closure
+   |
+LL |     foo(|_| {})
+   |             ++
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/issue-32505.rs:2:5
+   |
+LL |     foo(|_|)
+   |     ^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,21 @@
+- // MIR for `multiple_edges` before CopyProp
++ // MIR for `multiple_edges` after CopyProp
+  
+  fn multiple_edges(_1: bool) -> u8 {
+      let mut _0: u8;
+      let mut _2: u8;
+  
+      bb0: {
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _2 = dummy(const 13_u8) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          _0 = copy _2;
+          return;
+      }
+  }
+  

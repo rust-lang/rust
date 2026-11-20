@@ -1,0 +1,72 @@
+error: redundant argument
+  --> $DIR/issue-105225.rs:7:21
+   |
+LL |     println!("{x}", x);
+   |                     ^ help: this can be removed
+   |
+note: the formatting specifier is referencing the binding already
+  --> $DIR/issue-105225.rs:7:16
+   |
+LL |     println!("{x}", x);
+   |                ^
+
+error: redundant argument
+  --> $DIR/issue-105225.rs:10:27
+   |
+LL |     println!("{x} {}", x, x);
+   |                           ^ help: this can be removed
+   |
+note: the formatting specifier is referencing the binding already
+  --> $DIR/issue-105225.rs:10:16
+   |
+LL |     println!("{x} {}", x, x);
+   |                ^
+
+error: redundant argument
+  --> $DIR/issue-105225.rs:13:27
+   |
+LL |     println!("{} {x}", x, x);
+   |                           ^ help: this can be removed
+   |
+note: the formatting specifier is referencing the binding already
+  --> $DIR/issue-105225.rs:13:19
+   |
+LL |     println!("{} {x}", x, x);
+   |                   ^
+
+error: redundant arguments
+  --> $DIR/issue-105225.rs:16:25
+   |
+LL |     println!("{x} {y}", x, y);
+   |                         ^  ^
+   |
+note: the formatting specifiers are referencing the bindings already
+  --> $DIR/issue-105225.rs:16:16
+   |
+LL |     println!("{x} {y}", x, y);
+   |                ^   ^
+help: this can be removed
+   |
+LL -     println!("{x} {y}", x, y);
+LL +     println!("{x} {y}", );
+   |
+
+error: redundant arguments
+  --> $DIR/issue-105225.rs:19:43
+   |
+LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
+   |                                           ^  ^
+   |
+note: the formatting specifiers are referencing the bindings already
+  --> $DIR/issue-105225.rs:19:26
+   |
+LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
+   |                          ^
+help: this can be removed
+   |
+LL -     println!("{} {} {x} {y} {}", x, x, x, y, y);
+LL +     println!("{} {} {x} {y} {}", x, x, x, );
+   |
+
+error: aborting due to 5 previous errors
+

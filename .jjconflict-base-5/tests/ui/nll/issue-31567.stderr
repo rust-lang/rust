@@ -1,0 +1,16 @@
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-31567.rs:10:26
+   |
+LL | fn get_dangling<'a>(v: VecWrapper<'a>) -> &'a u32 {
+   |                 -- lifetime `'a` defined here
+LL |     let s_inner: &'a S = &*v.0;
+   |                  -----   ^^^^^
+   |                  |
+   |                  type annotation requires that `*v.0` is borrowed for `'a`
+LL |     &s_inner.0
+LL | }
+   | - here, drop of `v` needs exclusive access to `*v.0`, because the type `VecWrapper<'_>` implements the `Drop` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0713`.

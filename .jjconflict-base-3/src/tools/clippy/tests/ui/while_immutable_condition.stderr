@@ -1,0 +1,96 @@
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:22:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+   = note: `-D clippy::while-immutable-condition` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_immutable_condition)]`
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:29:11
+   |
+LL |     while y < 10 && x < 3 {
+   |           ^^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:38:11
+   |
+LL |     while !cond {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:84:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:91:11
+   |
+LL |     while i < 3 && j > 0 {
+   |           ^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:97:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:114:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:121:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:189:15
+   |
+LL |         while self.count < n {
+   |               ^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:199:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+   = note: this loop contains `return`s or `break`s
+   = help: rewrite it as `if cond { loop { } }`
+
+error: variables in the condition are not mutated in the loop body
+  --> tests/ui/while_immutable_condition.rs:208:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+   = note: this loop contains `return`s or `break`s
+   = help: rewrite it as `if cond { loop { } }`
+
+error: aborting due to 11 previous errors
+

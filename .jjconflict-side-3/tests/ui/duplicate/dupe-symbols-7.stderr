@@ -1,0 +1,10 @@
+error: entry symbol `main` declared multiple times
+  --> $DIR/dupe-symbols-7.rs:7:1
+   |
+LL | fn main(){}
+   | ^^^^^^^^^
+   |
+   = help: did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,37 @@
+error[E0277]: the trait bound `{integer}: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-locals.rs:11:12
+   |
+LL |         x: 3
+   |            ^ the trait `Trait` is not implemented for `{integer}`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-structs-and-enums-locals.rs:1:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+note: required by a bound in `Foo`
+  --> $DIR/on-structs-and-enums-locals.rs:5:14
+   |
+LL | struct Foo<T:Trait> {
+   |              ^^^^^ required by this bound in `Foo`
+
+error[E0277]: the trait bound `usize: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-locals.rs:15:14
+   |
+LL |     let baz: Foo<usize> = loop { };
+   |              ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on-structs-and-enums-locals.rs:1:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+note: required by a bound in `Foo`
+  --> $DIR/on-structs-and-enums-locals.rs:5:14
+   |
+LL | struct Foo<T:Trait> {
+   |              ^^^^^ required by this bound in `Foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

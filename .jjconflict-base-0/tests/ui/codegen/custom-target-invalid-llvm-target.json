@@ -1,0 +1,6 @@
+{
+    "llvm-target": "not-a-real-target",
+    "data-layout": "e",
+    "arch": "x86_64",
+    "target-pointer-width": 64
+}

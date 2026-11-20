@@ -1,0 +1,4 @@
+[package]
+name = "indirect-arity-mismatch-abort"
+version = "0.1.0"
+edition = "2021"

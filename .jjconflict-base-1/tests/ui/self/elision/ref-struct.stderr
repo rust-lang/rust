@@ -1,0 +1,77 @@
+error: lifetime may not live long enough
+  --> $DIR/ref-struct.rs:12:9
+   |
+LL |     fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                         -           - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn ref_Struct<'a>(self: &Struct, f: &'a u32) -> &'a u32 {
+   |                  ++++                    ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-struct.rs:17:9
+   |
+LL |     fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                 -            - let's call the lifetime of this reference `'1`
+   |                                 |
+   |                                 let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_ref_Struct<'a>(self: Box<&Struct>, f: &'a u32) -> &'a u32 {
+   |                      ++++                         ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-struct.rs:22:9
+   |
+LL |     fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                 -            - let's call the lifetime of this reference `'1`
+   |                                 |
+   |                                 let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn pin_ref_Struct<'a>(self: Pin<&Struct>, f: &'a u32) -> &'a u32 {
+   |                      ++++                         ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-struct.rs:27:9
+   |
+LL |     fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                         -             - let's call the lifetime of this reference `'1`
+   |                                         |
+   |                                         let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_box_ref_Struct<'a>(self: Box<Box<&Struct>>, f: &'a u32) -> &'a u32 {
+   |                          ++++                              ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-struct.rs:32:9
+   |
+LL |     fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                     -             - let's call the lifetime of this reference `'1`
+   |                                     |
+   |                                     let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn box_pin_Struct<'a>(self: Box<Pin<&Struct>>, f: &'a u32) -> &'a u32 {
+   |                      ++++                              ++          ++
+
+error: aborting due to 5 previous errors
+

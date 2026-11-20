@@ -1,0 +1,14 @@
+error: expected field pattern, found `...`
+  --> $DIR/issue-46718-struct-pattern-dotdotdot.rs:11:55
+   |
+LL |             PersonalityInventory { expressivity: exp, ... } => exp
+   |                                                       ^^^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL -             PersonalityInventory { expressivity: exp, ... } => exp
+LL +             PersonalityInventory { expressivity: exp, .. } => exp
+   |
+
+error: aborting due to 1 previous error
+

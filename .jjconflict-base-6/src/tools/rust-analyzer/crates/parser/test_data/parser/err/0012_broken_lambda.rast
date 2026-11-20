@@ -1,0 +1,387 @@
+SOURCE_FILE@0..389
+  FN@0..389
+    VISIBILITY@0..10
+      PUB_KW@0..3
+      L_PAREN@3..4
+      SUPER_KW@4..9
+      R_PAREN@9..10
+    WHITESPACE@10..11
+    FN_KW@11..13
+    WHITESPACE@13..14
+    NAME@14..21
+      IDENT@14..21 "process"
+    GENERIC_PARAM_LIST@21..38
+      L_ANGLE@21..22
+      LIFETIME_PARAM@22..24
+        LIFETIME@22..24 "'a"
+      COMMA@24..25
+      WHITESPACE@25..26
+      TYPE_PARAM@26..37
+        NAME@26..27
+          IDENT@26..27 "S"
+        COLON@27..28
+        WHITESPACE@28..29
+        PATH@29..37
+          PATH_SEGMENT@29..37
+            NAME_REF@29..33
+              IDENT@29..33 "Sink"
+            GENERIC_ARG_LIST@33..37
+              L_ANGLE@33..34
+              LIFETIME_ARG@34..36
+                LIFETIME@34..36 "'a"
+              R_ANGLE@36..37
+      R_ANGLE@37..38
+    PARAM_LIST@38..93
+      L_PAREN@38..39
+      PARAM@39..54
+        IDENT_PAT@39..46
+          NAME@39..46
+            IDENT@39..46 "builder"
+        COLON@46..47
+        WHITESPACE@47..48
+        REF_TYPE@48..54
+          AMP@48..49
+          MUT_KW@49..52
+          WHITESPACE@52..53
+          PATH_TYPE@53..54
+            PATH@53..54
+              PATH_SEGMENT@53..54
+                NAME_REF@53..54
+                  IDENT@53..54 "S"
+      COMMA@54..55
+      WHITESPACE@55..56
+      PARAM@56..72
+        IDENT_PAT@56..62
+          NAME@56..62
+            IDENT@56..62 "tokens"
+        COLON@62..63
+        WHITESPACE@63..64
+        REF_TYPE@64..72
+          AMP@64..65
+          SLICE_TYPE@65..72
+            L_BRACK@65..66
+            PATH_TYPE@66..71
+              PATH@66..71
+                PATH_SEGMENT@66..71
+                  NAME_REF@66..71
+                    IDENT@66..71 "Token"
+            R_BRACK@71..72
+      COMMA@72..73
+      WHITESPACE@73..74
+      PARAM@74..92
+        IDENT_PAT@74..80
+          NAME@74..80
+            IDENT@74..80 "events"
+        COLON@80..81
+        WHITESPACE@81..82
+        PATH_TYPE@82..92
+          PATH@82..92
+            PATH_SEGMENT@82..92
+              NAME_REF@82..85
+                IDENT@82..85 "Vec"
+              GENERIC_ARG_LIST@85..92
+                L_ANGLE@85..86
+                TYPE_ARG@86..91
+                  PATH_TYPE@86..91
+                    PATH@86..91
+                      PATH_SEGMENT@86..91
+                        NAME_REF@86..91
+                          IDENT@86..91 "Event"
+                R_ANGLE@91..92
+      R_PAREN@92..93
+    WHITESPACE@93..94
+    BLOCK_EXPR@94..389
+      L_CURLY@94..95
+      WHITESPACE@95..100
+      LET_STMT@100..125
+        LET_KW@100..103
+        WHITESPACE@103..104
+        IDENT_PAT@104..120
+          MUT_KW@104..107
+          WHITESPACE@107..108
+          NAME@108..120
+            IDENT@108..120 "next_tok_idx"
+        WHITESPACE@120..121
+        EQ@121..122
+        WHITESPACE@122..123
+        LITERAL@123..124
+          INT_NUMBER@123..124 "0"
+        SEMICOLON@124..125
+      WHITESPACE@125..130
+      LET_STMT@130..389
+        LET_KW@130..133
+        WHITESPACE@133..134
+        IDENT_PAT@134..140
+          NAME@134..140
+            IDENT@134..140 "eat_ws"
+        WHITESPACE@140..141
+        EQ@141..142
+        WHITESPACE@142..143
+        CLOSURE_EXPR@143..389
+          PARAM_LIST@143..388
+            PIPE@143..144
+            PARAM@144..159
+              IDENT_PAT@144..147
+                NAME@144..147
+                  IDENT@144..147 "idx"
+              COLON@147..148
+              WHITESPACE@148..149
+              REF_TYPE@149..159
+                AMP@149..150
+                MUT_KW@150..153
+                WHITESPACE@153..154
+                PATH_TYPE@154..159
+                  PATH@154..159
+                    PATH_SEGMENT@154..159
+                      NAME_REF@154..159
+                        IDENT@154..159 "usize"
+            COMMA@159..160
+            WHITESPACE@160..161
+            PARAM@161..167
+              REF_PAT@161..167
+                AMP@161..162
+                MUT_KW@162..165
+                WHITESPACE@165..166
+                err: `expected pattern`
+                ERROR@166..167
+                  PIPE@166..167
+                  err: `expected COMMA`
+            WHITESPACE@167..168
+            err: `expected pattern`
+            PARAM@168..169
+              ERROR@168..169
+                L_CURLY@168..169
+                err: `expected COMMA`
+            WHITESPACE@169..178
+            err: `expected pattern`
+            PARAM@178..183
+              ERROR@178..183
+                WHILE_KW@178..183
+                err: `expected COMMA`
+            WHITESPACE@183..184
+            err: `expected pattern`
+            PARAM@184..187
+              ERROR@184..187
+                LET_KW@184..187
+                err: `expected COMMA`
+            WHITESPACE@187..188
+            PARAM@188..199
+              TUPLE_STRUCT_PAT@188..199
+                PATH@188..192
+                  PATH_SEGMENT@188..192
+                    NAME_REF@188..192
+                      IDENT@188..192 "Some"
+                L_PAREN@192..193
+                IDENT_PAT@193..198
+                  NAME@193..198
+                    IDENT@193..198 "token"
+                R_PAREN@198..199
+                err: `expected COMMA`
+            WHITESPACE@199..200
+            err: `expected pattern`
+            PARAM@200..201
+              ERROR@200..201
+                EQ@200..201
+                err: `expected COMMA`
+            WHITESPACE@201..202
+            PARAM@202..208
+              IDENT_PAT@202..208
+                NAME@202..208
+                  IDENT@202..208 "tokens"
+                  err: `expected COMMA`
+                  err: `expected pattern`
+            PARAM@208..209
+              ERROR@208..209
+                DOT@208..209
+                err: `expected COMMA`
+            PARAM@209..218
+              TUPLE_STRUCT_PAT@209..218
+                PATH@209..212
+                  PATH_SEGMENT@209..212
+                    NAME_REF@209..212
+                      IDENT@209..212 "get"
+                L_PAREN@212..213
+                err: `expected pattern`
+                ERROR@213..214
+                  STAR@213..214
+                  err: `expected COMMA`
+                IDENT_PAT@214..217
+                  NAME@214..217
+                    IDENT@214..217 "idx"
+                R_PAREN@217..218
+                err: `expected COMMA`
+            WHITESPACE@218..219
+            err: `expected pattern`
+            PARAM@219..220
+              ERROR@219..220
+                L_CURLY@219..220
+                err: `expected COMMA`
+            WHITESPACE@220..233
+            err: `expected pattern`
+            PARAM@233..235
+              ERROR@233..235
+                IF_KW@233..235
+                err: `expected COMMA`
+            WHITESPACE@235..236
+            err: `expected pattern`
+            PARAM@236..237
+              ERROR@236..237
+                BANG@236..237
+                err: `expected COMMA`
+            PARAM@237..242
+              IDENT_PAT@237..242
+                NAME@237..242
+                  IDENT@237..242 "token"
+                  err: `expected COMMA`
+                  err: `expected pattern`
+            PARAM@242..243
+              ERROR@242..243
+                DOT@242..243
+                err: `expected COMMA`
+            PARAM@243..247
+              IDENT_PAT@243..247
+                NAME@243..247
+                  IDENT@243..247 "kind"
+                  err: `expected COMMA`
+                  err: `expected pattern`
+            PARAM@247..248
+              ERROR@247..248
+                DOT@247..248
+                err: `expected COMMA`
+            PARAM@248..259
+              TUPLE_STRUCT_PAT@248..259
+                PATH@248..257
+                  PATH_SEGMENT@248..257
+                    NAME_REF@248..257
+                      IDENT@248..257 "is_trivia"
+                L_PAREN@257..258
+                R_PAREN@258..259
+                err: `expected COMMA`
+            WHITESPACE@259..260
+            err: `expected pattern`
+            PARAM@260..261
+              ERROR@260..261
+                L_CURLY@260..261
+                err: `expected COMMA`
+            WHITESPACE@261..278
+            PARAM@278..283
+              IDENT_PAT@278..283
+                NAME@278..283
+                  IDENT@278..283 "break"
+                  err: `expected COMMA`
+                  err: `expected pattern`
+            PARAM@283..284
+              ERROR@283..284
+                SEMICOLON@283..284
+                err: `expected COMMA`
+            WHITESPACE@284..297
+            err: `expected pattern`
+            PARAM@297..298
+              ERROR@297..298
+                R_CURLY@297..298
+                err: `expected COMMA`
+            WHITESPACE@298..311
+            PARAM@311..318
+              IDENT_PAT@311..318
+                NAME@311..318
+                  IDENT@311..318 "builder"
+                  err: `expected COMMA`
+                  err: `expected pattern`
+            PARAM@318..319
+              ERROR@318..319
+                DOT@318..319
+                err: `expected COMMA`
+            PARAM@319..346
+              TUPLE_STRUCT_PAT@319..346
+                PATH@319..323
+                  PATH_SEGMENT@319..323
+                    NAME_REF@319..323
+                      IDENT@319..323 "leaf"
+                L_PAREN@323..324
+                IDENT_PAT@324..329
+                  NAME@324..329
+                    IDENT@324..329 "token"
+                    err: `expected COMMA`
+                    err: `expected pattern`
+                ERROR@329..330
+                  DOT@329..330
+                  err: `expected COMMA`
+                IDENT_PAT@330..334
+                  NAME@330..334
+                    IDENT@330..334 "kind"
+                COMMA@334..335
+                WHITESPACE@335..336
+                IDENT_PAT@336..341
+                  NAME@336..341
+                    IDENT@336..341 "token"
+                    err: `expected COMMA`
+                    err: `expected pattern`
+                ERROR@341..342
+                  DOT@341..342
+                  err: `expected COMMA`
+                IDENT_PAT@342..345
+                  NAME@342..345
+                    IDENT@342..345 "len"
+                R_PAREN@345..346
+                err: `expected COMMA`
+                err: `expected pattern`
+            PARAM@346..347
+              ERROR@346..347
+                SEMICOLON@346..347
+                err: `expected COMMA`
+            WHITESPACE@347..360
+            err: `expected pattern`
+            PARAM@360..361
+              ERROR@360..361
+                STAR@360..361
+                err: `expected COMMA`
+            PARAM@361..364
+              IDENT_PAT@361..364
+                NAME@361..364
+                  IDENT@361..364 "idx"
+                  err: `expected COMMA`
+            WHITESPACE@364..365
+            err: `expected pattern`
+            PARAM@365..366
+              ERROR@365..366
+                PLUS@365..366
+                err: `expected COMMA`
+                err: `expected pattern`
+            PARAM@366..367
+              ERROR@366..367
+                EQ@366..367
+                err: `expected COMMA`
+            WHITESPACE@367..368
+            PARAM@368..369
+              LITERAL@368..369
+                INT_NUMBER@368..369 "1"
+                err: `expected COMMA`
+            WHITESPACE@369..378
+            err: `expected pattern`
+            PARAM@378..379
+              ERROR@378..379
+                R_CURLY@378..379
+                err: `expected COMMA`
+            WHITESPACE@379..384
+            err: `expected pattern`
+            PARAM@384..385
+              ERROR@384..385
+                R_CURLY@384..385
+                err: `expected COMMA`
+                err: `expected pattern`
+            PARAM@385..386
+              ERROR@385..386
+                SEMICOLON@385..386
+                err: `expected COMMA`
+            WHITESPACE@386..387
+            err: `expected pattern`
+            PARAM@387..388
+              ERROR@387..388
+                R_CURLY@387..388
+                err: `expected COMMA`
+                err: `expected PIPE`
+          WHITESPACE@388..389
+          err: `expected expression`
+          err: `expected SEMI`
+          err: `expected R_CURLY`
+          ERROR@389..389

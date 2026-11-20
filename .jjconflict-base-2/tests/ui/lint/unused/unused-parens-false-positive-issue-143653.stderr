@@ -1,0 +1,19 @@
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-false-positive-issue-143653.rs:10:43
+   |
+LL | fn bar(_: Box<dyn FnMut(&mut u32) -> &mut (dyn MyTrait)>) {}
+   |                                           ^           ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-false-positive-issue-143653.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - fn bar(_: Box<dyn FnMut(&mut u32) -> &mut (dyn MyTrait)>) {}
+LL + fn bar(_: Box<dyn FnMut(&mut u32) -> &mut dyn MyTrait>) {}
+   |
+
+error: aborting due to 1 previous error
+

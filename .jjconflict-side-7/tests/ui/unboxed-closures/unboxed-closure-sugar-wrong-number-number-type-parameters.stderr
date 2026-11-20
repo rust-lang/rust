@@ -1,0 +1,92 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:17
+   |
+LL | fn foo1(_: &dyn Zero()) {
+   |                 ^^^^-- help: remove the unnecessary parenthetical generics
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:3:7
+   |
+LL | trait Zero { fn dummy(&self); }
+   |       ^^^^
+
+error[E0220]: associated type `Output` not found for `Zero`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:17
+   |
+LL | fn foo1(_: &dyn Zero()) {
+   |                 ^^^^^^ associated type `Output` not found
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:10:17
+   |
+LL | fn foo2(_: &dyn Zero<usize>) {
+   |                 ^^^^------- help: remove the unnecessary generics
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:3:7
+   |
+LL | trait Zero { fn dummy(&self); }
+   |       ^^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:14:17
+   |
+LL | fn foo3(_: &dyn Zero <   usize   >) {
+   |                 ^^^^-------------- help: remove the unnecessary generics
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:3:7
+   |
+LL | trait Zero { fn dummy(&self); }
+   |       ^^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:18:17
+   |
+LL | fn foo4(_: &dyn Zero(usize)) {
+   |                 ^^^^------- help: remove the unnecessary parenthetical generics
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:3:7
+   |
+LL | trait Zero { fn dummy(&self); }
+   |       ^^^^
+
+error[E0220]: associated type `Output` not found for `Zero`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:18:17
+   |
+LL | fn foo4(_: &dyn Zero(usize)) {
+   |                 ^^^^^^^^^^^ associated type `Output` not found
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:23:17
+   |
+LL | fn foo5(_: &dyn Zero (   usize   )) {
+   |                 ^^^^-------------- help: remove the unnecessary parenthetical generics
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:3:7
+   |
+LL | trait Zero { fn dummy(&self); }
+   |       ^^^^
+
+error[E0220]: associated type `Output` not found for `Zero`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:23:17
+   |
+LL | fn foo5(_: &dyn Zero (   usize   )) {
+   |                 ^^^^^^^^^^^^^^^^^^ associated type `Output` not found
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

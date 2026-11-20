@@ -1,0 +1,115 @@
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`
+  --> $DIR/syntax-error-not-missing-field.rs:16:30
+   |
+LL |     let f = Foo { a: make_a(); b: 2 };
+   |             ---              ^
+   |             |                |
+   |             |                expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `b`
+  --> $DIR/syntax-error-not-missing-field.rs:20:31
+   |
+LL |     let f = Foo { a: make_a() b: 2 };
+   |             ---              -^ expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                |
+   |             |                help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: cannot use a comma after the base struct
+  --> $DIR/syntax-error-not-missing-field.rs:24:32
+   |
+LL |     let f = Foo { a: make_a(), ..todo!(), };
+   |                                ^^^^^^^^^
+   |
+   = note: the base struct must always be the last field
+help: remove this comma
+   |
+LL -     let f = Foo { a: make_a(), ..todo!(), };
+LL +     let f = Foo { a: make_a(), ..todo!() };
+   |
+
+error: expected one of `,`, `:`, or `}`, found `(`
+  --> $DIR/syntax-error-not-missing-field.rs:28:25
+   |
+LL |     let f = Foo { make_a(), b: 2, };
+   |             ---   ------^ expected one of `,`, `:`, or `}`
+   |             |     |
+   |             |     while parsing this struct field
+   |             while parsing this struct
+   |
+help: try naming a field
+   |
+LL |     let f = Foo { make_a: make_a(), b: 2, };
+   |                   +++++++
+
+error: expected `,`
+  --> $DIR/syntax-error-not-missing-field.rs:31:31
+   |
+LL | fn pat_wrong_separator(Foo { a; b }: Foo) {
+   |                        ---    ^
+   |                        |
+   |                        while parsing the fields for this pattern
+
+error: expected `,`
+  --> $DIR/syntax-error-not-missing-field.rs:35:34
+   |
+LL | fn pat_missing_separator(Foo { a b }: Foo) {
+   |                          ---     ^
+   |                          |
+   |                          while parsing the fields for this pattern
+
+error: expected `}`, found `,`
+  --> $DIR/syntax-error-not-missing-field.rs:39:39
+   |
+LL | fn pat_rest_trailing_comma(Foo { a, .., }: Foo) {
+   |                                     --^
+   |                                     | |
+   |                                     | expected `}`
+   |                                     | help: remove this comma
+   |                                     `..` must be at the end and cannot have a trailing comma
+
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`
+  --> $DIR/syntax-error-not-missing-field.rs:43:35
+   |
+LL |     let e = Bar::Baz { a: make_a(); b: 2 };
+   |             --------              ^
+   |             |                     |
+   |             |                     expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                     help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `b`
+  --> $DIR/syntax-error-not-missing-field.rs:47:36
+   |
+LL |     let e = Bar::Baz { a: make_a() b: 2 };
+   |             --------              -^ expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                     |
+   |             |                     help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: expected identifier, found `,`
+  --> $DIR/syntax-error-not-missing-field.rs:57:37
+   |
+LL |     static A: MyStruct = MyStruct { ,s: TheStruct };
+   |                          --------   ^ expected identifier
+   |                          |
+   |                          while parsing this struct
+   |
+help: remove this comma
+   |
+LL -     static A: MyStruct = MyStruct { ,s: TheStruct };
+LL +     static A: MyStruct = MyStruct { s: TheStruct };
+   |
+
+error: expected identifier, found `,`
+  --> $DIR/syntax-error-not-missing-field.rs:64:36
+   |
+LL |     static A: MyStruct = MyStruct {,};
+   |                          --------  ^ expected identifier
+   |                          |
+   |                          while parsing this struct
+
+error: aborting due to 11 previous errors
+

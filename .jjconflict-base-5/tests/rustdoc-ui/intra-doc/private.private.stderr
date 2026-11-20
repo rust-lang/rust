@@ -1,0 +1,27 @@
+warning: public documentation for `DocMe` links to private item `DontDocMe`
+  --> $DIR/private.rs:7:11
+   |
+LL | /// docs [DontDocMe] [DontDocMe::f] [DontDocMe::x]
+   |           ^^^^^^^^^ this item is private
+   |
+   = note: this link resolves only because you passed `--document-private-items`, but will break without
+   = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
+
+warning: public documentation for `DocMe` links to private item `DontDocMe::f`
+  --> $DIR/private.rs:7:23
+   |
+LL | /// docs [DontDocMe] [DontDocMe::f] [DontDocMe::x]
+   |                       ^^^^^^^^^^^^ this item is private
+   |
+   = note: this link resolves only because you passed `--document-private-items`, but will break without
+
+warning: public documentation for `DocMe` links to private item `DontDocMe::x`
+  --> $DIR/private.rs:7:38
+   |
+LL | /// docs [DontDocMe] [DontDocMe::f] [DontDocMe::x]
+   |                                      ^^^^^^^^^^^^ this item is private
+   |
+   = note: this link resolves only because you passed `--document-private-items`, but will break without
+
+warning: 3 warnings emitted
+

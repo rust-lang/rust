@@ -1,0 +1,8 @@
+error: expected item after doc comment
+  --> $DIR/doc-before-eof.rs:3:1
+   |
+LL | /// hi
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment doesn't document anything
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,57 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/deriving-with-repr-packed.rs:22:10
+   |
+LL | #[derive(Debug, Default)]
+   |          ----- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct X(Y);
+   |          ^ move occurs because value has type `Y`, which does not implement the `Copy` trait
+   |
+note: if `Y` implemented `Clone`, you could clone the value
+  --> $DIR/deriving-with-repr-packed.rs:16:1
+   |
+LL | struct Y(usize);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | struct X(Y);
+   |          - you could clone this value
+   = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+
+error[E0161]: cannot move a value of type `[u8]`
+  --> $DIR/deriving-with-repr-packed.rs:29:5
+   |
+LL |     data: [u8],
+   |     ^^^^^^^^^^ the size of `[u8]` cannot be statically determined
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/deriving-with-repr-packed.rs:29:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: [u8],
+   |     ^^^^^^^^^^ move occurs because value has type `[u8]`, which does not implement the `Copy` trait
+   |
+   = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+
+error[E0161]: cannot move a value of type `str`
+  --> $DIR/deriving-with-repr-packed.rs:38:5
+   |
+LL |     data: str,
+   |     ^^^^^^^^^ the size of `str` cannot be statically determined
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/deriving-with-repr-packed.rs:38:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: str,
+   |     ^^^^^^^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
+   |
+   = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0161, E0507.
+For more information about an error, try `rustc --explain E0161`.

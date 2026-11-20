@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `&mut usize: Default` is not satisfied
+  --> $DIR/suggest-adding-reference-to-trait-assoc-item.rs:13:9
+   |
+LL |     foo(Default::default());
+   |         ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `&mut usize`
+   |
+help: consider mutably borrowing here
+   |
+LL |     foo(&mut Default::default());
+   |         ++++
+
+error[E0277]: the trait bound `&usize: Default` is not satisfied
+  --> $DIR/suggest-adding-reference-to-trait-assoc-item.rs:14:9
+   |
+LL |     bar(Default::default());
+   |         ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `&usize`
+   |
+help: consider borrowing here
+   |
+LL |     bar(&Default::default());
+   |         +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

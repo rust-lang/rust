@@ -1,0 +1,32 @@
+error[E0407]: method `b` is not a member of trait `Drop`
+  --> $DIR/unexpected-sort.rs:10:5
+   |
+LL |     fn b() {}
+   |     ^^^^^^^^^ not a member of trait `Drop`
+
+error[E0437]: type `c` is not a member of trait `AsyncDrop`
+  --> $DIR/unexpected-sort.rs:13:5
+   |
+LL |     type c = ();
+   |     ^^^^^^^^^^^^ not a member of trait `AsyncDrop`
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/unexpected-sort.rs:9:1
+   |
+LL | impl Drop for a {
+   | ^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/unexpected-sort.rs:12:1
+   |
+LL | impl AsyncDrop for a {
+   | ^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `async fn drop(self: Pin<&mut Self>) { todo!() }`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0407, E0437.
+For more information about an error, try `rustc --explain E0046`.

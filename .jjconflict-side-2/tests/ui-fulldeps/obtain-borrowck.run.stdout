@@ -1,0 +1,10 @@
+Bodies retrieved for:
+::X::provided
+::foo
+::main
+::main::{constant#0}
+::with_nested_body
+::with_nested_body::{closure#0}
+::{impl#0}::new
+::{impl#1}::provided
+::{impl#1}::required

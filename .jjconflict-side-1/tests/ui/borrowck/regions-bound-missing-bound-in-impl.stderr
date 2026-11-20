@@ -1,0 +1,137 @@
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:19:17
+   |
+LL |     fn no_bound<'b:'a>(self, b: Inv<'b>) {
+   |                 ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'b` differs between the trait and impl
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:10:17
+   |
+LL | pub trait Foo<'a, 't> {
+   | --------------------- in this trait...
+LL |     fn no_bound<'b>(self, b: Inv<'b>);
+   |                 ^^ `'b` is late-bound
+...
+LL | impl<'a, 't> Foo<'a, 't> for &'a isize {
+   | -------------------------------------- in this impl...
+LL |     fn no_bound<'b:'a>(self, b: Inv<'b>) {
+   |                 ^^ -- this lifetime bound makes `'b` early-bound
+   |                 |
+   |                 `'b` is early-bound
+
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:23:18
+   |
+LL |     fn has_bound<'b>(self, b: Inv<'b>) {
+   |                  ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'b` differs between the trait and impl
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:11:18
+   |
+LL | pub trait Foo<'a, 't> {
+   | --------------------- in this trait...
+LL |     fn no_bound<'b>(self, b: Inv<'b>);
+LL |     fn has_bound<'b:'a>(self, b: Inv<'b>);
+   |                  ^^ -- this lifetime bound makes `'b` early-bound
+   |                  |
+   |                  `'b` is early-bound
+...
+LL | impl<'a, 't> Foo<'a, 't> for &'a isize {
+   | -------------------------------------- in this impl...
+...
+LL |     fn has_bound<'b>(self, b: Inv<'b>) {
+   |                  ^^ `'b` is late-bound
+
+error[E0308]: method not compatible with trait
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:5
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&'a _, Inv<'c>, Inv<'c>, Inv<'_>)`
+              found signature `fn(&'a _, Inv<'_>, Inv<'c>, Inv<'_>)`
+note: the lifetime `'c` as defined here...
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
+note: ...does not necessarily outlive the lifetime `'c` as defined here
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:12:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+   |                        ^^
+
+error[E0308]: method not compatible with trait
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:5
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&'a _, Inv<'c>, Inv<'c>, Inv<'_>)`
+              found signature `fn(&'a _, Inv<'_>, Inv<'c>, Inv<'_>)`
+note: the lifetime `'c` as defined here...
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:12:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+   |                        ^^
+note: ...does not necessarily outlive the lifetime `'c` as defined here
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
+
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:42:30
+   |
+LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
+   |                              ^^^             ^^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'_` differs between the trait and impl
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:13:21
+   |
+LL | pub trait Foo<'a, 't> {
+   | --------------------- in this trait...
+...
+LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+   |                     ^^          -- this lifetime bound makes `'b` early-bound
+   |                     |
+   |                     `'b` is early-bound
+...
+LL | impl<'a, 't> Foo<'a, 't> for &'a isize {
+   | -------------------------------------- in this impl...
+...
+LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
+   |                              ^^^ `'_` is late-bound
+note: `'_` differs between the trait and impl
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:13:27
+   |
+LL | pub trait Foo<'a, 't> {
+   | --------------------- in this trait...
+...
+LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+   |                           ^^ -- this lifetime bound makes `'d` early-bound
+   |                           |
+   |                           `'d` is early-bound
+...
+LL | impl<'a, 't> Foo<'a, 't> for &'a isize {
+   | -------------------------------------- in this impl...
+...
+LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
+   |                                              ^^^ `'_` is late-bound
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:49:26
+   |
+LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
+   |     ------------------------------------------------------- definition of `another_bound` from trait
+...
+LL |     fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
+   |                          ^^ impl has extra requirement `'x: 't`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0195, E0276, E0308.
+For more information about an error, try `rustc --explain E0195`.

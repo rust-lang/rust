@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `continue`
+  --> $DIR/keyword-continue-as-identifier.rs:4:9
+   |
+LL |     let continue = "foo";
+   |         ^^^^^^^^ expected identifier, found keyword
+   |
+help: escape `continue` to use it as an identifier
+   |
+LL |     let r#continue = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

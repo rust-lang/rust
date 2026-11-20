@@ -1,0 +1,28 @@
+error[E0282]: type annotations needed for `[Foo<_>; 2]`
+  --> $DIR/copy-check-inference-side-effects.rs:15:9
+   |
+LL |     let a /* : [Foo<?x>; 2] */ = [Foo::<_>; 2];
+   |         ^
+LL |
+LL |     let b /* : [String; ?x] */ = ["string".to_string(); _];
+   |                                   -------------------- type must be known at this point
+   |
+help: consider giving `a` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let a: [Foo<N>; 2] /* : [Foo<?x>; 2] */ = [Foo::<_>; 2];
+   |          +++++++++++++
+
+error[E0282]: type annotations needed for `[String; _]`
+  --> $DIR/copy-check-inference-side-effects.rs:25:9
+   |
+LL |     let b /* : [String; ?x] */ = ["string".to_string(); _];
+   |         ^                         -------------------- type must be known at this point
+   |
+help: consider giving `b` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let b: [_; N] /* : [String; ?x] */ = ["string".to_string(); _];
+   |          ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,0 +1,242 @@
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:25:14
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(item /* eof */);
+   |              ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:item`
+  --> $DIR/metavar-at-eof.rs:7:16
+   |
+LL |     (item      $x:item      ) => {};
+   |                ^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:26:15
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(block /* eof */);
+   |               ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:block`
+  --> $DIR/metavar-at-eof.rs:8:16
+   |
+LL |     (block     $x:block     ) => {};
+   |                ^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:27:14
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(stmt /* eof */);
+   |              ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:stmt`
+  --> $DIR/metavar-at-eof.rs:9:16
+   |
+LL |     (stmt      $x:stmt      ) => {};
+   |                ^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:28:13
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(pat /* eof */);
+   |             ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:pat`
+  --> $DIR/metavar-at-eof.rs:10:16
+   |
+LL |     (pat       $x:pat       ) => {};
+   |                ^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:29:19
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(pat_param /* eof */);
+   |                   ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:pat_param`
+  --> $DIR/metavar-at-eof.rs:11:16
+   |
+LL |     (pat_param $x:pat_param ) => {};
+   |                ^^^^^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:30:14
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(expr /* eof */);
+   |              ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:expr`
+  --> $DIR/metavar-at-eof.rs:12:16
+   |
+LL |     (expr      $x:expr      ) => {};
+   |                ^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:31:19
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(expr_2021 /* eof */);
+   |                   ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:expr_2021`
+  --> $DIR/metavar-at-eof.rs:13:16
+   |
+LL |     (expr_2021 $x:expr_2021 ) => {};
+   |                ^^^^^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:32:12
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(ty /* eof */);
+   |            ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:ty`
+  --> $DIR/metavar-at-eof.rs:14:16
+   |
+LL |     (ty        $x:ty        ) => {};
+   |                ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:33:15
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(ident /* eof */);
+   |               ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:ident`
+  --> $DIR/metavar-at-eof.rs:15:16
+   |
+LL |     (ident     $x:ident     ) => {};
+   |                ^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:34:18
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(lifetime /* eof */);
+   |                  ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:lifetime`
+  --> $DIR/metavar-at-eof.rs:16:16
+   |
+LL |     (lifetime  $x:lifetime  ) => {};
+   |                ^^^^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:35:17
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(literal /* eof */);
+   |                 ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:literal`
+  --> $DIR/metavar-at-eof.rs:17:16
+   |
+LL |     (literal   $x:literal   ) => {};
+   |                ^^^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:36:14
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(meta /* eof */);
+   |              ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:meta`
+  --> $DIR/metavar-at-eof.rs:18:16
+   |
+LL |     (meta      $x:meta      ) => {};
+   |                ^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:37:14
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(path /* eof */);
+   |              ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:path`
+  --> $DIR/metavar-at-eof.rs:19:16
+   |
+LL |     (path      $x:path      ) => {};
+   |                ^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:38:13
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(vis /* eof */);
+   |             ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:vis`
+  --> $DIR/metavar-at-eof.rs:20:16
+   |
+LL |     (vis       $x:vis       ) => {};
+   |                ^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:39:15
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(guard /* eof */);
+   |               ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:guard`
+  --> $DIR/metavar-at-eof.rs:21:16
+   |
+LL |     (guard     $x:guard     ) => {};
+   |                ^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/metavar-at-eof.rs:40:12
+   |
+LL | macro_rules! unambig {
+   | -------------------- when calling this macro
+...
+LL | unambig!(tt /* eof */);
+   |            ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:tt`
+  --> $DIR/metavar-at-eof.rs:22:16
+   |
+LL |     (tt        $x:tt        ) => {};
+   |                ^^^^^
+
+error: aborting due to 16 previous errors
+

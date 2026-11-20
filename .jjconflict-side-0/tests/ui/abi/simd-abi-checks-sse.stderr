@@ -1,0 +1,11 @@
+error: this function definition requires the `sse` target feature, which is not enabled
+  --> $DIR/simd-abi-checks-sse.rs:18:1
+   |
+LL | pub unsafe extern "C" fn f(_: Simd<i64, 2>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = note: the function has type `Simd<i64, 2>` in its signature, which is passed in SIMD vector registers under the "C" ABI
+   = help: consider enabling the missing target feature globally (`-C target-feature=+sse`) or locally (`#[target_feature(enable="sse")]`)
+
+error: aborting due to 1 previous error
+

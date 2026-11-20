@@ -1,0 +1,23 @@
+error: the feature `intrinsics` is internal to the compiler or standard library
+  --> $DIR/internal_features.rs:3:12
+   |
+LL | #![feature(intrinsics, panic_internals)]
+   |            ^^^^^^^^^^
+   |
+   = note: using it is strongly discouraged
+note: the lint level is defined here
+  --> $DIR/internal_features.rs:1:11
+   |
+LL | #![forbid(internal_features)]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: the feature `panic_internals` is internal to the compiler or standard library
+  --> $DIR/internal_features.rs:3:24
+   |
+LL | #![feature(intrinsics, panic_internals)]
+   |                        ^^^^^^^^^^^^^^^
+   |
+   = note: using it is strongly discouraged
+
+error: aborting due to 2 previous errors
+

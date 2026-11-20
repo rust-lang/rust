@@ -1,0 +1,21 @@
+error[E0046]: not all trait items implemented, missing one of: `a1`, `b1`
+  --> $DIR/rustc_must_implement_one_of-unstable.rs:8:1
+   |
+LL | impl Trait1 for A {
+   | ^^^^^^^^^^^^^^^^^ missing one of `a1`, `b1` in implementation
+   |
+   = help: implement the missing item: `fn a1(&self) -> u64 { todo!() }`
+   = help: implement the missing item: `fn b1(&self) -> u64 { todo!() }`
+
+error[E0046]: not all trait items implemented, missing one of: `a2`, `b2`
+  --> $DIR/rustc_must_implement_one_of-unstable.rs:12:1
+   |
+LL | impl Trait2 for A {
+   | ^^^^^^^^^^^^^^^^^ missing one of `a2`, `b2` in implementation
+   |
+   = help: implement the missing item: `fn a2(&self) -> u64 { todo!() }`
+   = help: implement the missing item: `fn b2(&self) -> u64 { todo!() }` (unstable, requires feature `trait2_b2`)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

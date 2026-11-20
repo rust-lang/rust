@@ -1,0 +1,8 @@
+error: expected `{` after struct name, found `!`
+  --> $DIR/bad-struct-following-where.rs:1:25
+   |
+LL | struct A where T: Sized !
+   |                         ^ expected `{` after struct name
+
+error: aborting due to 1 previous error
+

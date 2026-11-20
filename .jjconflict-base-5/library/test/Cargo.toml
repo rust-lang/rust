@@ -1,0 +1,14 @@
+cargo-features = ["public-dependency"]
+
+[package]
+name = "test"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+getopts = { version = "0.2.24", default-features = false, features = ['rustc-dep-of-std'] }
+std = { path = "../std", public = true }
+core = { path = "../core", public = true }
+
+[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+libc = { version = "0.2.150", default-features = false }

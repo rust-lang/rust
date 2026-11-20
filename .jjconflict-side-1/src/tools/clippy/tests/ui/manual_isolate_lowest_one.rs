@@ -1,0 +1,92 @@
+#![warn(clippy::manual_isolate_lowest_one)]
+
+use std::num::NonZero;
+
+fn main() {
+    let x_u32: u32 = 5;
+    let _ = x_u32 & x_u32.wrapping_neg();
+    //~^ manual_isolate_lowest_one
+
+    let x_i32: i32 = 5;
+    let _ = x_i32 & -x_i32;
+    //~^ manual_isolate_lowest_one
+
+    let x_u64: u64 = 5;
+    let _ = x_u64.wrapping_neg() & x_u64;
+    //~^ manual_isolate_lowest_one
+
+    let x_i64: i64 = 5;
+    let _ = -x_i64 & x_i64;
+    //~^ manual_isolate_lowest_one
+
+    let nz_u32 = NonZero::<u32>::new(5).unwrap();
+    let _ = nz_u32.get() & nz_u32.get().wrapping_neg();
+    //~^ manual_isolate_lowest_one
+    let _ = nz_u32.get().wrapping_neg() & nz_u32.get();
+    //~^ manual_isolate_lowest_one
+
+    let nz_i32 = NonZero::<i32>::new(5).unwrap();
+    let _ = nz_i32.get() & -nz_i32.get();
+    //~^ manual_isolate_lowest_one
+    let _ = -nz_i32.get() & nz_i32.get();
+    //~^ manual_isolate_lowest_one
+
+    let other: u32 = 6;
+    let _ = x_u32 & other.wrapping_neg();
+    let _ = x_u32 | x_u32.wrapping_neg();
+    let _ = x_u32 & x_u32.wrapping_sub(1);
+    let _ = next_u32() & next_u32().wrapping_neg();
+
+    let values = [x_u32];
+    let _ = values[0] & values[0].wrapping_neg();
+    let _ = x_u32.count_ones() & x_u32.count_ones().wrapping_neg();
+    let other_nz = NonZero::<u32>::new(6).unwrap();
+    let _ = nz_u32.get() & other_nz.get().wrapping_neg();
+    let _ = next_nonzero_u32().get() & next_nonzero_u32().get().wrapping_neg();
+
+    macro_rules! x_u32_from_macro {
+        () => {
+            x_u32
+        };
+    }
+    macro_rules! wrapping_neg_from_macro {
+        () => {
+            x_u32.wrapping_neg()
+        };
+    }
+    macro_rules! bitand_wrapping_neg_from_macro {
+        () => {
+            x_u32 & x_u32.wrapping_neg()
+        };
+    }
+    macro_rules! neg_i32_from_macro {
+        () => {
+            -x_i32
+        };
+    }
+
+    let _ = x_u32_from_macro!() & x_u32.wrapping_neg();
+    let _ = x_u32 & wrapping_neg_from_macro!();
+    let _ = bitand_wrapping_neg_from_macro!();
+    let _ = x_i32 & neg_i32_from_macro!();
+    let _ = neg_i32_from_macro!() & x_i32;
+}
+
+#[clippy::msrv = "1.96"]
+fn older_msrv(x: u32) {
+    let _ = x & x.wrapping_neg();
+}
+
+#[clippy::msrv = "1.97"]
+fn meets_msrv(x: u32) {
+    let _ = x & x.wrapping_neg();
+    //~^ manual_isolate_lowest_one
+}
+
+fn next_u32() -> u32 {
+    5
+}
+
+fn next_nonzero_u32() -> NonZero<u32> {
+    NonZero::new(5).unwrap()
+}

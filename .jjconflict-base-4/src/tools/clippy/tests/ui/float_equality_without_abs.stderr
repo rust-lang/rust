@@ -1,0 +1,109 @@
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:7:5
+   |
+LL |     (a - b) < f32::EPSILON
+   |     -------^^^^^^^^^^^^^^^
+   |     |
+   |     help: add `.abs()`: `(a - b).abs()`
+   |
+   = note: `-D clippy::float-equality-without-abs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::float_equality_without_abs)]`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:17:13
+   |
+LL |     let _ = (a - b) < f32::EPSILON;
+   |             -------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a - b).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:20:13
+   |
+LL |     let _ = a - b < f32::EPSILON;
+   |             -----^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a - b).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:23:13
+   |
+LL |     let _ = a - b.abs() < f32::EPSILON;
+   |             -----------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a - b.abs()).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:26:13
+   |
+LL |     let _ = (a as f64 - b as f64) < f64::EPSILON;
+   |             ---------------------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a as f64 - b as f64).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:29:13
+   |
+LL |     let _ = 1.0 - 2.0 < f32::EPSILON;
+   |             ---------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(1.0 - 2.0).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:32:13
+   |
+LL |     let _ = f32::EPSILON > (a - b);
+   |             ^^^^^^^^^^^^^^^-------
+   |                            |
+   |                            help: add `.abs()`: `(a - b).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:35:13
+   |
+LL |     let _ = f32::EPSILON > a - b;
+   |             ^^^^^^^^^^^^^^^-----
+   |                            |
+   |                            help: add `.abs()`: `(a - b).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:38:13
+   |
+LL |     let _ = f32::EPSILON > a - b.abs();
+   |             ^^^^^^^^^^^^^^^-----------
+   |                            |
+   |                            help: add `.abs()`: `(a - b.abs()).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:41:13
+   |
+LL |     let _ = f64::EPSILON > (a as f64 - b as f64);
+   |             ^^^^^^^^^^^^^^^---------------------
+   |                            |
+   |                            help: add `.abs()`: `(a as f64 - b as f64).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:44:13
+   |
+LL |     let _ = f32::EPSILON > 1.0 - 2.0;
+   |             ^^^^^^^^^^^^^^^---------
+   |                            |
+   |                            help: add `.abs()`: `(1.0 - 2.0).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:47:13
+   |
+LL |     let _ = (a as f16 - b as f16) < f16::EPSILON;
+   |             ---------------------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a as f16 - b as f16).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:50:13
+   |
+LL |     let _ = (a as f128 - b as f128) < f128::EPSILON;
+   |             -----------------------^^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a as f128 - b as f128).abs()`
+
+error: aborting due to 13 previous errors
+

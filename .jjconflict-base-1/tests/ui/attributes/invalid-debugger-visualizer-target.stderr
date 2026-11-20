@@ -1,0 +1,10 @@
+error: the `debugger_visualizer` attribute cannot be used on functions
+  --> $DIR/invalid-debugger-visualizer-target.rs:1:3
+   |
+LL | #[debugger_visualizer(natvis_file = "./foo.natvis.xml")]
+   |   ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `debugger_visualizer` attribute can be applied to crates and modules
+
+error: aborting due to 1 previous error
+

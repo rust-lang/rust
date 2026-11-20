@@ -1,0 +1,26 @@
+error: cannot find macro parameter `$nonexistent` in this scope
+  --> $DIR/issue-6596-1.rs:3:9
+   |
+LL | macro_rules! e {
+LL |     ($inp:ident) => (
+LL |         $nonexistent
+   |         ^^^^^^^^^^^^ not found in this scope
+...
+LL |     e!(foo);
+   |     ------- in this macro invocation
+   |
+   = note: available metavariable names are: $inp
+
+error: cannot find macro parameter `$x` in this scope
+  --> $DIR/issue-6596-1.rs:10:9
+   |
+LL | macro_rules! m {
+LL |     () => (
+LL |         $x
+   |         ^^ not found in this scope
+...
+LL |     m!();
+   |     ---- in this macro invocation
+
+error: aborting due to 2 previous errors
+

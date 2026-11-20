@@ -1,0 +1,24 @@
+error: relaxed bounds are not permitted in trait alias bounds
+  --> $DIR/relaxed-bounds.rs:6:16
+   |
+LL | trait Alias0 = ?Sized;
+   |                ^^^^^^
+   |
+   = note: trait aliases are not implicitly bounded by `Sized`, so there is nothing to relax
+
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds.rs:7:28
+   |
+LL | trait Alias1 = where Self: ?Sized;
+   |                            ^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined on the closest item
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/relaxed-bounds.rs:17:12
+   |
+LL | fn take<T: ?SizedAlias>() {}
+   |            ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,11 @@
+error: redundant closure
+  --> tests/ui/eta_nostd.rs:9:40
+   |
+LL |     let _: Option<Vec<u8>> = true.then(|| vec![]);
+   |                                        ^^^^^^^^^ help: replace the closure with `Vec::new`: `alloc::vec::Vec::new`
+   |
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
+error: aborting due to 1 previous error
+

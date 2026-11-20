@@ -1,0 +1,8 @@
+error: unknown start of token: \
+  --> $DIR/lex-stray-backslash.rs:1:1
+   |
+LL | \
+   | ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,35 @@
+error: this `repeat().take()` can be written more concisely
+  --> tests/ui/manual_repeat_n.rs:6:13
+   |
+LL |     let _ = repeat(10).take(3);
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(10, 3)`
+   |
+   = note: `-D clippy::manual-repeat-n` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_repeat_n)]`
+
+error: this `repeat().take()` can be written more concisely
+  --> tests/ui/manual_repeat_n.rs:9:13
+   |
+LL |     let _ = repeat(String::from("foo")).take(4);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(String::from("foo"), 4)`
+
+error: this `repeat().take()` can be written more concisely
+  --> tests/ui/manual_repeat_n.rs:12:18
+   |
+LL |     for value in std::iter::repeat(5).take(3) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(5, 3)`
+
+error: this `repeat().take()` can be written more concisely
+  --> tests/ui/manual_repeat_n.rs:15:21
+   |
+LL |     let _: Vec<_> = std::iter::repeat(String::from("bar")).take(10).collect();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(String::from("bar"), 10)`
+
+error: this `repeat().take()` can be written more concisely
+  --> tests/ui/manual_repeat_n.rs:18:13
+   |
+LL |     let _ = repeat(vec![1, 2]).take(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(vec![1, 2], 2)`
+
+error: aborting due to 5 previous errors
+

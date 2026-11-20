@@ -1,0 +1,128 @@
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:22:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::panic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::panic)]`
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:25:5
+   |
+LL |     panic!("message");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:28:5
+   |
+LL |     panic!("{} {}", "panic with", "multiple arguments");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:36:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:39:5
+   |
+LL |     panic!("message");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:42:5
+   |
+LL |     panic!("{} {}", "panic with", "multiple arguments");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `todo` should not be present in production code
+  --> tests/ui/panicking_macros.rs:50:5
+   |
+LL |     todo!();
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::todo` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::todo)]`
+
+error: `todo` should not be present in production code
+  --> tests/ui/panicking_macros.rs:53:5
+   |
+LL |     todo!("message");
+   |     ^^^^^^^^^^^^^^^^
+
+error: `todo` should not be present in production code
+  --> tests/ui/panicking_macros.rs:56:5
+   |
+LL |     todo!("{} {}", "panic with", "multiple arguments");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `unimplemented` should not be present in production code
+  --> tests/ui/panicking_macros.rs:64:5
+   |
+LL |     unimplemented!();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unimplemented` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unimplemented)]`
+
+error: `unimplemented` should not be present in production code
+  --> tests/ui/panicking_macros.rs:67:5
+   |
+LL |     unimplemented!("message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `unimplemented` should not be present in production code
+  --> tests/ui/panicking_macros.rs:70:5
+   |
+LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of the `unreachable!` macro
+  --> tests/ui/panicking_macros.rs:78:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unreachable` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unreachable)]`
+
+error: usage of the `unreachable!` macro
+  --> tests/ui/panicking_macros.rs:81:5
+   |
+LL |     unreachable!("message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of the `unreachable!` macro
+  --> tests/ui/panicking_macros.rs:84:5
+   |
+LL |     unreachable!("{} {}", "panic with", "multiple arguments");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:92:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^
+
+error: `todo` should not be present in production code
+  --> tests/ui/panicking_macros.rs:95:5
+   |
+LL |     todo!();
+   |     ^^^^^^^
+
+error: `unimplemented` should not be present in production code
+  --> tests/ui/panicking_macros.rs:98:5
+   |
+LL |     unimplemented!();
+   |     ^^^^^^^^^^^^^^^^
+
+error: usage of the `unreachable!` macro
+  --> tests/ui/panicking_macros.rs:101:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 19 previous errors
+

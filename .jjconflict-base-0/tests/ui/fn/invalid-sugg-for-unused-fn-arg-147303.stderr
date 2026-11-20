@@ -1,0 +1,14 @@
+error: unused variable: `rough`
+  --> $DIR/invalid-sugg-for-unused-fn-arg-147303.rs:10:12
+   |
+LL |     fn fun(rough: i32) {}
+   |            ^^^^^ help: if this is intentional, prefix it with an underscore: `_rough`
+   |
+note: the lint level is defined here
+  --> $DIR/invalid-sugg-for-unused-fn-arg-147303.rs:3:29
+   |
+LL | #![deny(unused_assignments, unused_variables)]
+   |                             ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

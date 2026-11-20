@@ -1,0 +1,40 @@
+error[E0404]: expected trait, found builtin type `usize`
+  --> $DIR/suggestion-trait-object-issue-139174.rs:3:36
+   |
+LL | fn f<'a>(x: Box<dyn Fn() -> Option<usize + 'a>>) -> usize {
+   |                                    ^^^^^ not a trait
+
+error[E0404]: expected trait, found builtin type `usize`
+  --> $DIR/suggestion-trait-object-issue-139174.rs:9:32
+   |
+LL | fn create_adder<'a>(x: i32) -> usize + 'a {
+   |                                ^^^^^ not a trait
+
+error[E0404]: expected trait, found builtin type `usize`
+  --> $DIR/suggestion-trait-object-issue-139174.rs:16:8
+   |
+LL |     x: usize + 'a,
+   |        ^^^^^ not a trait
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggestion-trait-object-issue-139174.rs:3:36
+   |
+LL | fn f<'a>(x: Box<dyn Fn() -> Option<usize + 'a>>) -> usize {
+   |                                    ^^^^^^^^^^
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggestion-trait-object-issue-139174.rs:9:32
+   |
+LL | fn create_adder<'a>(x: i32) -> usize + 'a {
+   |                                ^^^^^^^^^^
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggestion-trait-object-issue-139174.rs:16:8
+   |
+LL |     x: usize + 'a,
+   |        ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0404, E0782.
+For more information about an error, try `rustc --explain E0404`.

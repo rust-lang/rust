@@ -1,0 +1,57 @@
+error[E0277]: the trait bound `Pin<Box<pin_box_self::W>>: From<pin_box_self::W>` is not satisfied
+  --> $DIR/self-mapping-output-from-wrap-errors.rs:19:5
+   |
+LL | /     reuse impl MyAdd for W {
+LL | |
+LL | |         *self.0
+LL | |     }
+   | |_____^ the trait `From<pin_box_self::W>` is not implemented for `Pin<Box<pin_box_self::W>>`
+   |
+help: the trait `From<W>` is not implemented for `Pin<Box<pin_box_self::W>>`
+      but trait `From<Box<W>>` is implemented for it
+  --> $SRC_DIR/alloc/src/boxed/convert.rs:LL:COL
+   = help: for that trait implementation, expected `Box<pin_box_self::W>`, found `pin_box_self::W`
+
+error[E0277]: the trait bound `Box<Box<Box<Arc<Box<Rc<many_froms::W>>>>>>: From<many_froms::W>` is not satisfied
+  --> $DIR/self-mapping-output-from-wrap-errors.rs:42:5
+   |
+LL | /     reuse impl MyAdd for W {
+LL | |
+LL | |         ******self.0
+LL | |     }
+   | |_____^ the trait `From<many_froms::W>` is not implemented for `Box<Box<Box<Arc<Box<Rc<many_froms::W>>>>>>`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `Box<ByteStr>` implements `From<Box<[u8]>>`
+             `Box<CStr>` implements `From<&CStr>`
+             `Box<CStr>` implements `From<&mut CStr>`
+             `Box<CStr>` implements `From<CString>`
+             `Box<CStr>` implements `From<Cow<'_, CStr>>`
+             `Box<OsStr>` implements `From<&OsStr>`
+             `Box<OsStr>` implements `From<&mut OsStr>`
+             `Box<OsStr>` implements `From<Cow<'_, OsStr>>`
+           and 25 others
+
+error[E0277]: the trait bound `Box<Arc<Rc<Box<Rc<many_froms_2::W>>>>>: From<many_froms_2::W>` is not satisfied
+  --> $DIR/self-mapping-output-from-wrap-errors.rs:65:5
+   |
+LL | /     reuse impl MyAdd for W {
+LL | |
+LL | |         *****self.0
+LL | |     }
+   | |_____^ the trait `From<many_froms_2::W>` is not implemented for `Box<Arc<Rc<Box<Rc<many_froms_2::W>>>>>`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `Box<ByteStr>` implements `From<Box<[u8]>>`
+             `Box<CStr>` implements `From<&CStr>`
+             `Box<CStr>` implements `From<&mut CStr>`
+             `Box<CStr>` implements `From<CString>`
+             `Box<CStr>` implements `From<Cow<'_, CStr>>`
+             `Box<OsStr>` implements `From<&OsStr>`
+             `Box<OsStr>` implements `From<&mut OsStr>`
+             `Box<OsStr>` implements `From<Cow<'_, OsStr>>`
+           and 25 others
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

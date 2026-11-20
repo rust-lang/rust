@@ -1,0 +1,45 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-nested.rs:30:35
+   |
+LL | fn define<T>() -> OuterOpaque1<T> {}
+   |                                   ^^
+   |                                   |
+   |                                   the parameter type `T` must be valid for the static lifetime...
+   |                                   ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn define<T: 'static>() -> OuterOpaque1<T> {}
+   |            +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-nested.rs:33:65
+   |
+LL | fn define_rpit<T>() -> impl Trait<&'static T, Out = impl Sized> {}
+   |                                                                 ^^
+   |                                                                 |
+   |                                                                 the parameter type `T` must be valid for the static lifetime...
+   |                                                                 ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn define_rpit<T: 'static>() -> impl Trait<&'static T, Out = impl Sized> {}
+   |                 +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-nested.rs:42:47
+   |
+LL | fn define_nested_rpit<T>() -> OuterOpaque2<T> {}
+   |                                               ^^
+   |                                               |
+   |                                               the parameter type `T` must be valid for the static lifetime...
+   |                                               ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn define_nested_rpit<T: 'static>() -> OuterOpaque2<T> {}
+   |                        +++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

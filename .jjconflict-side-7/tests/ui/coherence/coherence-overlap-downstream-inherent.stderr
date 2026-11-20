@@ -1,0 +1,23 @@
+error[E0592]: duplicate definitions with name `dummy`
+  --> $DIR/coherence-overlap-downstream-inherent.rs:7:26
+   |
+LL | impl<T:Sugar> Sweet<T> { fn dummy(&self) { } }
+   |                          ^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
+LL |
+LL | impl<T:Fruit> Sweet<T> { fn dummy(&self) { } }
+   |                          --------------- other definition for `dummy`
+
+error[E0592]: duplicate definitions with name `f`
+  --> $DIR/coherence-overlap-downstream-inherent.rs:13:38
+   |
+LL | impl<X, T> A<T, X> where T: Bar<X> { fn f(&self) {} }
+   |                                      ^^^^^^^^^^^ duplicate definitions for `f`
+LL |
+LL | impl<X> A<i32, X> { fn f(&self) {} }
+   |                     ----------- other definition for `f`
+   |
+   = note: downstream crates may implement trait `Bar<_>` for type `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0592`.

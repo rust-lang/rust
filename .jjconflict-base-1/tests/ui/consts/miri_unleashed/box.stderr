@@ -1,0 +1,17 @@
+error[E0080]: calling non-const function `Box::<i32>::new`
+  --> $DIR/box.rs:8:11
+   |
+LL |     &mut *(Box::new(0))
+   |           ^^^^^^^^^^^^^ evaluation of `TEST_BAD` failed here
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/box.rs:8:11
+   |
+LL |     &mut *(Box::new(0))
+   |           ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

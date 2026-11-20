@@ -1,0 +1,40 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          PATH_PAT
+            PATH
+              PATH
+                PATH_SEGMENT
+                  TYPE_ANCHOR
+                    L_ANGLE "<"
+                    INFER_TYPE
+                      UNDERSCORE "_"
+                    R_ANGLE ">"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Foo"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

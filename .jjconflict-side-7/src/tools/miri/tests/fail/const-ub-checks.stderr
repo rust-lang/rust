@@ -1,0 +1,23 @@
+error[E0080]: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
+  --> tests/fail/const-ub-checks.rs:LL:CC
+   |
+LL |     ptr.read();
+   |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
+
+note: erroneous constant encountered
+  --> tests/fail/const-ub-checks.rs:LL:CC
+   |
+LL |     let _x = UNALIGNED_READ;
+   |              ^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> tests/fail/const-ub-checks.rs:LL:CC
+   |
+LL |     let _x = UNALIGNED_READ;
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

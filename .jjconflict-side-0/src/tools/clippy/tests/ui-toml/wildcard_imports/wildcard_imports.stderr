@@ -1,0 +1,23 @@
+error: usage of wildcard import
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:23:9
+   |
+LL | pub use utils::*;
+   |         ^^^^^^^^ help: try: `utils::{BAR, print}`
+   |
+   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+
+error: usage of wildcard import
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:25:5
+   |
+LL | use my_crate::utils::*;
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `my_crate::utils::my_util_fn`
+
+error: usage of wildcard import
+  --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:27:5
+   |
+LL | use prelude::*;
+   |     ^^^^^^^^^^ help: try: `prelude::FOO`
+
+error: aborting due to 3 previous errors
+

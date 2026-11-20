@@ -1,0 +1,37 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/parameter-defaults.rs:10:12
+   |
+LL | const NONE<T = ()>: Option<T> = None::<T>;
+   |            ^^^^^^
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/parameter-defaults.rs:14:16
+   |
+LL |     const NADA<T = ()>: Option<T> = None::<T>;
+   |                ^^^^^^
+
+error[E0282]: type annotations needed for `Option<_>`
+  --> $DIR/parameter-defaults.rs:20:18
+   |
+LL | fn body0() { let _ = NONE; }
+   |                  ^   ---- type must be known at this point
+   |
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL | fn body0() { let _: Option<T> = NONE; }
+   |                   +++++++++++
+
+error[E0282]: type annotations needed for `Option<_>`
+  --> $DIR/parameter-defaults.rs:21:18
+   |
+LL | fn body1() { let _ = Host::NADA; }
+   |                  ^   ---------- type must be known at this point
+   |
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL | fn body1() { let _: Option<T> = Host::NADA; }
+   |                   +++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

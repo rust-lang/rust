@@ -1,0 +1,10 @@
+error: invalid suffix `z` for number literal
+  --> $DIR/issue-104620.rs:3:16
+   |
+LL | #![rustc_dummy=5z]
+   |                ^^ invalid suffix `z`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 1 previous error
+

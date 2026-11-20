@@ -1,0 +1,38 @@
+error: path separator must be a double colon
+  --> $DIR/triple-colon-delegation.rs:20:18
+   |
+LL |     reuse Trait:::foo;
+   |                  ^
+   |
+help: use a double colon instead
+   |
+LL -     reuse Trait:::foo;
+LL +     reuse Trait::foo;
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon-delegation.rs:21:21
+   |
+LL |     reuse to_reuse:::bar;
+   |                     ^
+   |
+help: use a double colon instead
+   |
+LL -     reuse to_reuse:::bar;
+LL +     reuse to_reuse::bar;
+   |
+
+error: path separator must be a double colon
+  --> $DIR/triple-colon-delegation.rs:33:18
+   |
+LL |     reuse Trait:::* {
+   |                  ^
+   |
+help: use a double colon instead
+   |
+LL -     reuse Trait:::* {
+LL +     reuse Trait::* {
+   |
+
+error: aborting due to 3 previous errors
+

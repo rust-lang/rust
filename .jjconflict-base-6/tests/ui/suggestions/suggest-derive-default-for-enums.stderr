@@ -1,0 +1,25 @@
+error[E0599]: the method `bar` exists for enum `MyEnum`, but its trait bounds were not satisfied
+  --> $DIR/suggest-derive-default-for-enums.rs:13:7
+   |
+LL | enum MyEnum {
+   | ----------- method `bar` not found for this enum because it doesn't satisfy `MyEnum: Default` or `MyEnum: Foo`
+...
+LL |     x.bar();
+   |       ^^^ method cannot be called on `MyEnum` due to unsatisfied trait bounds
+   |
+note: trait bound `MyEnum: Default` was not satisfied
+  --> $DIR/suggest-derive-default-for-enums.rs:9:9
+   |
+LL | impl<T: Default> Foo for T {}
+   |         ^^^^^^^  ---     -
+   |         |
+   |         unsatisfied trait bound introduced here
+help: consider annotating `MyEnum` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | enum MyEnum {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

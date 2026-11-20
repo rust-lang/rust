@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `Sweet`
+  --> $DIR/coherence-overlap-downstream.rs:8:1
+   |
+LL | impl<T:Sugar> Sweet for T { }
+   | ------------------------- first implementation here
+LL | impl<T:Fruit> Sweet for T { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error[E0119]: conflicting implementations of trait `Foo<_>` for type `i32`
+  --> $DIR/coherence-overlap-downstream.rs:14:1
+   |
+LL | impl<X, T> Foo<X> for T where T: Bar<X> {}
+   | --------------------------------------- first implementation here
+LL | impl<X> Foo<X> for i32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
+   |
+   = note: downstream crates may implement trait `Bar<_>` for type `i32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

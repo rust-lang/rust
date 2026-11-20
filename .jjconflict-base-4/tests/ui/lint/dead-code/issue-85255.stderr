@@ -1,0 +1,68 @@
+warning: fields `a` and `b` are never read
+  --> $DIR/issue-85255.rs:7:5
+   |
+LL | struct Foo {
+   |        --- fields in this struct
+LL |     a: i32,
+   |     ^
+LL |     pub b: i32,
+   |         ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-85255.rs:4:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: methods `a` and `b` are never used
+  --> $DIR/issue-85255.rs:14:8
+   |
+LL | impl Bar {
+   | -------- methods in this implementation
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: fields `a` and `b` are never read
+  --> $DIR/issue-85255.rs:19:5
+   |
+LL | pub(crate) struct Foo1 {
+   |                   ---- fields in this struct
+LL |     a: i32,
+   |     ^
+LL |     pub b: i32,
+   |         ^
+
+warning: methods `a` and `b` are never used
+  --> $DIR/issue-85255.rs:26:8
+   |
+LL | impl Bar1 {
+   | --------- methods in this implementation
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: fields `a` and `b` are never read
+  --> $DIR/issue-85255.rs:31:5
+   |
+LL | pub(crate) struct Foo2 {
+   |                   ---- fields in this struct
+LL |     a: i32,
+   |     ^
+LL |     pub b: i32,
+   |         ^
+
+warning: methods `a` and `b` are never used
+  --> $DIR/issue-85255.rs:38:8
+   |
+LL | impl Bar2 {
+   | --------- methods in this implementation
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: 6 warnings emitted
+

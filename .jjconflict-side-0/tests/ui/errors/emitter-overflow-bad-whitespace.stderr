@@ -1,0 +1,13 @@
+error: unknown start of token: \u{a0}
+  --> $DIR/emitter-overflow-bad-whitespace.rs:10:1
+   |
+LL |     ...
+   | ^
+   |
+help: Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
+   |
+LL |                                          fn main() {              return;              }
+   | +
+
+error: aborting due to 1 previous error
+

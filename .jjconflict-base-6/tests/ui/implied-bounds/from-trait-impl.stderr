@@ -1,0 +1,49 @@
+error[E0477]: the type `&str` does not fulfill the required lifetime
+  --> $DIR/from-trait-impl.rs:13:15
+   |
+LL | fn func1(foo: Foo<(&str,)>) {
+   |               ^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error[E0310]: the parameter type `X` may not live long enough
+  --> $DIR/from-trait-impl.rs:21:1
+   |
+LL | impl<X> TestTrait for [Foo<(X,)>; 1] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | the parameter type `X` must be valid for the static lifetime...
+   | ...so that the type `X` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<X: 'static> TestTrait for [Foo<(X,)>; 1] {}
+   |       +++++++++
+
+error[E0310]: the parameter type `X` may not live long enough
+  --> $DIR/from-trait-impl.rs:21:23
+   |
+LL | impl<X> TestTrait for [Foo<(X,)>; 1] {}
+   |                       ^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `X` must be valid for the static lifetime...
+   |                       ...so that the type `X` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<X: 'static> TestTrait for [Foo<(X,)>; 1] {}
+   |       +++++++++
+
+error: lifetime may not live long enough
+  --> $DIR/from-trait-impl.rs:13:1
+   |
+LL | fn func1(foo: Foo<(&str,)>) {
+   | ^^^^^^^^^^^^^^^^^^^-^^^^^^^
+   | |                  |
+   | |                  let's call the lifetime of this reference `'1`
+   | requires that `'1` must outlive `'static`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0310, E0477.
+For more information about an error, try `rustc --explain E0310`.

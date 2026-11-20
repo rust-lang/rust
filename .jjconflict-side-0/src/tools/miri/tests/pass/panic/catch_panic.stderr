@@ -1,0 +1,47 @@
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Hello from std::panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+Caught panic message (&str): Hello from std::panic
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Hello from std::panic: 1
+Caught panic message (String): Hello from std::panic: 1
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Hello from std::panic_any: 2
+Caught panic message (String): Hello from std::panic_any: 2
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Box<dyn Any>
+Failed to get caught panic message.
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Hello from core::panic
+Caught panic message (&str): Hello from core::panic
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+Hello from core::panic: 5
+Caught panic message (String): Hello from core::panic: 5
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+index out of bounds: the len is 3 but the index is 4
+Caught panic message (String): index out of bounds: the len is 3 but the index is 4
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+attempt to divide by zero
+Caught panic message (&str): attempt to divide by zero
+
+thread 'main' ($TID) panicked at RUSTLIB/core/src/ptr/const_ptr.rs:LL:CC:
+align_offset: align is not a power-of-two
+Caught panic message (&str): align_offset: align is not a power-of-two
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+assertion failed: false
+Caught panic message (&str): assertion failed: false
+
+thread 'main' ($TID) panicked at tests/pass/panic/catch_panic.rs:LL:CC:
+assertion failed: false
+Caught panic message (&str): assertion failed: false
+Success!

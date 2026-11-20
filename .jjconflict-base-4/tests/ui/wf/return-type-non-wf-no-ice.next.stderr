@@ -1,0 +1,8 @@
+error: the type `Foo<T>` is not well-formed
+  --> $DIR/return-type-non-wf-no-ice.rs:13:16
+   |
+LL | fn foo<T>() -> Foo<T> {
+   |                ^^^^^^
+
+error: aborting due to 1 previous error
+

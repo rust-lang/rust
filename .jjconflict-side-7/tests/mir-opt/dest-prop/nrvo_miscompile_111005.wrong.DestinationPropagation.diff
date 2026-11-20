@@ -1,0 +1,18 @@
+- // MIR for `wrong` before DestinationPropagation
++ // MIR for `wrong` after DestinationPropagation
+  
+  fn wrong(_1: char) -> char {
+      let mut _0: char;
+      let mut _2: char;
+  
+      bb0: {
+-         _2 = copy _1;
+-         _0 = copy _2;
+-         _2 = const 'b';
++         nop;
++         _0 = copy _1;
++         _1 = const 'b';
+          return;
+      }
+  }
+  

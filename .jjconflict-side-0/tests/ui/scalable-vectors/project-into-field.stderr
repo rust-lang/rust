@@ -1,0 +1,8 @@
+error: cannot project into scalable vector type `Sv`
+  --> $DIR/project-into-field.rs:18:5
+   |
+LL |     x.0
+   |     ^^^
+
+error: aborting due to 1 previous error
+

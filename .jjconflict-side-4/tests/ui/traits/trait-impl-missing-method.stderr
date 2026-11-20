@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `trait_method`
+  --> $DIR/trait-impl-missing-method.rs:9:1
+   |
+LL |     fn trait_method(&self);
+   |     ----------------------- `trait_method` from trait
+...
+LL | impl MyTrait for ImplType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `trait_method` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

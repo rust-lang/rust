@@ -1,0 +1,25 @@
+error[E0507]: cannot move out of dereference of `Ref<'_, TheDarkKnight>`
+  --> $DIR/E0507.rs:12:5
+   |
+LL |     x.borrow().nothing_is_true();
+   |     ^^^^^^^^^^ ----------------- value moved due to this method call
+   |     |
+   |     move occurs because value has type `TheDarkKnight`, which does not implement the `Copy` trait
+   |
+note: `TheDarkKnight::nothing_is_true` takes ownership of the receiver `self`, which moves value
+  --> $DIR/E0507.rs:6:24
+   |
+LL |     fn nothing_is_true(self) {}
+   |                        ^^^^
+note: if `TheDarkKnight` implemented `Clone`, you could clone the value
+  --> $DIR/E0507.rs:3:1
+   |
+LL | struct TheDarkKnight;
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     x.borrow().nothing_is_true();
+   |     ---------- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

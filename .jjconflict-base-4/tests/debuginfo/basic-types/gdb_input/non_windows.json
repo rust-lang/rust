@@ -1,0 +1,90 @@
+{
+ "bless_metadata": {
+  "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+  "debugger_version": "GNU gdb (Fedora Linux) 17.1-6.fc44",
+  "feature_flags": ""
+ },
+ "breakpoints": [
+  {
+   "b": {
+    "type": "bool",
+    "pretty_print": "false",
+    "value": "false"
+   },
+   "i": {
+    "type": "isize",
+    "pretty_print": "-1",
+    "value": "-1"
+   },
+   "c": {
+    "type": "char",
+    "pretty_print": "97 'a'",
+    "value": "97 'a'"
+   },
+   "i8": {
+    "type": "i8",
+    "pretty_print": "68",
+    "value": "68"
+   },
+   "i16": {
+    "type": "i16",
+    "pretty_print": "-16",
+    "value": "-16"
+   },
+   "i32": {
+    "type": "i32",
+    "pretty_print": "-32",
+    "value": "-32"
+   },
+   "i64": {
+    "type": "i64",
+    "pretty_print": "-64",
+    "value": "-64"
+   },
+   "u": {
+    "type": "usize",
+    "pretty_print": "1",
+    "value": "1"
+   },
+   "u8": {
+    "type": "u8",
+    "pretty_print": "100",
+    "value": "100"
+   },
+   "u16": {
+    "type": "u16",
+    "pretty_print": "16",
+    "value": "16"
+   },
+   "u32": {
+    "type": "u32",
+    "pretty_print": "32",
+    "value": "32"
+   },
+   "u64": {
+    "type": "u64",
+    "pretty_print": "64",
+    "value": "64"
+   },
+   "f16": {
+    "type": "f16",
+    "pretty_print": "1.5",
+    "value": "1.5"
+   },
+   "f32": {
+    "type": "f32",
+    "pretty_print": "2.5",
+    "value": "2.5"
+   },
+   "f64": {
+    "type": "f64",
+    "pretty_print": "3.5",
+    "value": "3.5"
+   },
+   "s": {
+    "type": "&str",
+    "pretty_print": "\"Hello, World!\""
+   }
+  }
+ ]
+}

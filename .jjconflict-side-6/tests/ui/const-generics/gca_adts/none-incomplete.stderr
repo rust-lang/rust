@@ -1,0 +1,8 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/none-incomplete.rs:19:24
+   |
+LL |     let _: Struct<gca!(<MyOption>::MyNone)>;
+   |                        ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

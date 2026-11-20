@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/unwind-abort.rs:7:15
+   |
+LL | const _: () = foo();
+   |               ^^^^^ evaluation of `_` failed inside this call
+   |
+note: inside `foo`
+  --> $DIR/unwind-abort.rs:4:5
+   |
+LL |     panic!()
+   |     ^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

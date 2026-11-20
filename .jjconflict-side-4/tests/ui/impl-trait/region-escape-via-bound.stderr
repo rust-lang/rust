@@ -1,0 +1,19 @@
+error[E0700]: hidden type for `impl Trait<'y>` captures lifetime that does not appear in bounds
+  --> $DIR/region-escape-via-bound.rs:17:5
+   |
+LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
+   |        --                           -------------- opaque type defined here
+   |        |
+   |        hidden type `Cell<&'x u32>` captures the lifetime `'x` as defined here
+...
+LL |     x
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'x`
+   |
+LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + use<'y, 'x>
+   |                                                    +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

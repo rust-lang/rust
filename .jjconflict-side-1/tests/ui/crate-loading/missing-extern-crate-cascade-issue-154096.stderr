@@ -1,0 +1,9 @@
+error[E0463]: can't find crate for `missing_154096`
+  --> $DIR/missing-extern-crate-cascade-issue-154096.rs:3:1
+   |
+LL | extern crate missing_154096;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.

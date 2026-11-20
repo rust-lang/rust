@@ -1,0 +1,9 @@
+error[E0529]: expected an array or slice, found `()`
+  --> $DIR/match-vec-mismatch-2.rs:3:9
+   |
+LL |         [()] => { }
+   |         ^^^^ pattern cannot match with input type `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0529`.

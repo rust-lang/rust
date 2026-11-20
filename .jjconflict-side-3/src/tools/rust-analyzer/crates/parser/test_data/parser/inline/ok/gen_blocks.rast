@@ -1,0 +1,101 @@
+SOURCE_FILE
+  FN
+    COMMENT "// 2024"
+    WHITESPACE "\n"
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            GEN_KW "gen"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              EXPR_STMT
+                YIELD_EXPR
+                  YIELD_KW "yield"
+                  WHITESPACE " "
+                  LITERAL
+                    STRING "\"\""
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            GEN_KW "gen"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              EXPR_STMT
+                YIELD_EXPR
+                  YIELD_KW "yield"
+                  WHITESPACE " "
+                  LITERAL
+                    STRING "\"\""
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            GEN_KW "gen"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              EXPR_STMT
+                YIELD_EXPR
+                  YIELD_KW "yield"
+                  WHITESPACE " "
+                  LITERAL
+                    STRING "\"\""
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            GEN_KW "gen"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              EXPR_STMT
+                YIELD_EXPR
+                  YIELD_KW "yield"
+                  WHITESPACE " "
+                  LITERAL
+                    STRING "\"\""
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

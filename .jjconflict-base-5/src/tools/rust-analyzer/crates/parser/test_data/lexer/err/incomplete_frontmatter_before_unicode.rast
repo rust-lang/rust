@@ -1,0 +1,7 @@
+MINUS "-"
+MINUS "-"
+MINUS "-"
+WHITESPACE "\n"
+MINUS "-"
+ERROR "│"
+WHITESPACE "\n"

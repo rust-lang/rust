@@ -1,0 +1,60 @@
+error: multiple declared defaults
+  --> $DIR/multiple-defaults.rs:6:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^
+...
+LL |     A,
+   |     - first default
+LL |     #[default] // also "HELP make `A` default", but compiletest can't handle multispans
+LL |     B,
+   |     - additional default
+   |
+   = note: only one variant can be default
+
+error: multiple declared defaults
+  --> $DIR/multiple-defaults.rs:18:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^
+...
+LL |     A,
+   |     - first default
+LL |     #[default]
+LL |     A,
+   |     - additional default
+   |
+   = note: only one variant can be default
+
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/multiple-defaults.rs:23:5
+   |
+LL |     A,
+   |     - previous definition of the type `A` here
+LL |     #[default]
+LL |     A,
+   |     ^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the type namespace of this enum
+
+error: multiple declared defaults
+  --> $DIR/multiple-defaults.rs:31:18
+   |
+LL |         #[derive(Default)]
+   |                  ^^^^^^^
+...
+LL |                 $id,
+   |                 ---
+   |                 |
+   |                 first default
+   |                 additional default
+...
+LL | m! { A B }
+   | ---------- in this macro invocation
+   |
+   = note: only one variant can be default
+   = note: this error originates in the derive macro `Default` which comes from the expansion of the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

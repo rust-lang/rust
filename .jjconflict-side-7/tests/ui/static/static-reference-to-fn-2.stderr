@@ -1,0 +1,49 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/static-reference-to-fn-2.rs:18:22
+   |
+LL | fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
+   |           ----- has type `&mut StateMachineIter<'1>`
+LL |     self_.statefn = &id(state2 as StateMachineFunc);
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary value which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/static-reference-to-fn-2.rs:24:22
+   |
+LL | fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
+   |           ----- has type `&mut StateMachineIter<'1>`
+LL |     self_.statefn = &id(state3 as StateMachineFunc);
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary value which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/static-reference-to-fn-2.rs:30:22
+   |
+LL | fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
+   |           ----- has type `&mut StateMachineIter<'1>`
+LL |     self_.statefn = &id(finished as StateMachineFunc);
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary value which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/static-reference-to-fn-2.rs:40:5
+   |
+LL | /     StateMachineIter {
+LL | |
+LL | |         statefn: &id(state1 as StateMachineFunc)
+   | |                   ------------------------------ temporary value created here
+LL | |     }
+   | |_____^ returns a value referencing data owned by the current function
+   |
+   = help: use `.collect()` to allocate the iterator
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0515, E0716.
+For more information about an error, try `rustc --explain E0515`.

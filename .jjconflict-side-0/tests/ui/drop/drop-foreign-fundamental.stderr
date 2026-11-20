@@ -1,0 +1,9 @@
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/drop-foreign-fundamental.rs:16:15
+   |
+LL | impl Drop for Pin<Whatever<A>> {
+   |               ^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0120`.

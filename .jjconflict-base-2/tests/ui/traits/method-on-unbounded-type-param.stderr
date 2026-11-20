@@ -1,0 +1,84 @@
+error[E0599]: no method named `cmp` found for type parameter `T` in the current scope
+  --> $DIR/method-on-unbounded-type-param.rs:2:7
+   |
+LL | fn f<T>(a: T, b: T) -> std::cmp::Ordering {
+   |      - method `cmp` not found for this type parameter
+LL |     a.cmp(&b)
+   |       ^^^ method cannot be called on `T` due to unsatisfied trait bounds
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
+   |
+LL | fn f<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
+   |       ++++++++++
+LL | fn f<T: Ord>(a: T, b: T) -> std::cmp::Ordering {
+   |       +++++
+
+error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
+  --> $DIR/method-on-unbounded-type-param.rs:5:10
+   |
+LL |     (&a).cmp(&b)
+   |          ^^^ method cannot be called on `&T` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Ord`
+           which is required by `&T: Ord`
+           `&T: Iterator`
+           which is required by `&mut &T: Iterator`
+           `T: Iterator`
+           which is required by `&mut T: Iterator`
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
+   |
+LL | fn g<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
+   |       ++++++++++
+LL | fn g<T: Ord>(a: T, b: T) -> std::cmp::Ordering {
+   |       +++++
+
+error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
+  --> $DIR/method-on-unbounded-type-param.rs:8:7
+   |
+LL |     a.cmp(&b)
+   |       ^^^ method cannot be called on `&T` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Ord`
+           which is required by `&T: Ord`
+           `&T: Iterator`
+           which is required by `&mut &T: Iterator`
+           `T: Iterator`
+           which is required by `&mut T: Iterator`
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
+   |
+LL | fn h<T: Iterator>(a: &T, b: T) -> std::cmp::Ordering {
+   |       ++++++++++
+LL | fn h<T: Ord>(a: &T, b: T) -> std::cmp::Ordering {
+   |       +++++
+
+error[E0599]: the method `cmp` exists for struct `Box<dyn T>`, but its trait bounds were not satisfied
+  --> $DIR/method-on-unbounded-type-param.rs:14:7
+   |
+LL | trait T {}
+   | ------- doesn't satisfy `dyn T: Iterator` or `dyn T: Ord`
+...
+LL |     x.cmp(&x);
+   |       ^^^ method cannot be called on `Box<dyn T>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `dyn T: Iterator`
+           which is required by `Box<dyn T>: Iterator`
+           `dyn T: Ord`
+           which is required by `Box<dyn T>: Ord`
+           `Box<dyn T>: Iterator`
+           which is required by `&mut Box<dyn T>: Iterator`
+           `dyn T: Iterator`
+           which is required by `&mut dyn T: Iterator`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `cmp`, perhaps you need to implement one of them:
+           candidate #1: `Ord`
+   = note: the trait `Iterator` defines an item `cmp`, but is explicitly unimplemented
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

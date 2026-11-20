@@ -1,0 +1,50 @@
+error: manual checked division
+  --> tests/ui/manual_checked_ops.rs:8:8
+   |
+LL |     if b != 0 {
+   |        ^^^^^^ check performed here
+LL |
+LL |         let _result = a / b;
+   |                       ----- division performed here
+LL |         let _another = (a + 1) / b;
+   |                        ----------- ... and here
+   |
+   = help: consider using `checked_div`
+   = note: `-D clippy::manual-checked-ops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_checked_ops)]`
+
+error: manual checked division
+  --> tests/ui/manual_checked_ops.rs:15:8
+   |
+LL |     if b != 0 {
+   |        ^^^^^^ check performed here
+LL |
+LL |         a /= b;
+   |         ------ division performed here
+   |
+   = help: consider using `checked_div`
+
+error: manual checked division
+  --> tests/ui/manual_checked_ops.rs:20:8
+   |
+LL |     if b > 0 {
+   |        ^^^^^ check performed here
+LL |
+LL |         let _result = a / b;
+   |                       ----- division performed here
+   |
+   = help: consider using `checked_div`
+
+error: manual checked division
+  --> tests/ui/manual_checked_ops.rs:25:8
+   |
+LL |     if b == 0 {
+   |        ^^^^^^ check performed here
+...
+LL |         let _result = a / b;
+   |                       ----- division performed here
+   |
+   = help: consider using `checked_div`
+
+error: aborting due to 4 previous errors
+

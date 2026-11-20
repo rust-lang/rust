@@ -1,0 +1,48 @@
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/macros-no-semicolon-items.rs:1:17
+   |
+LL | macro_rules! foo()
+   |                 ^^
+   |
+help: change the delimiters to curly braces
+   |
+LL - macro_rules! foo()
+LL + macro_rules! foo{}
+   |
+help: add a semicolon
+   |
+LL | macro_rules! foo();
+   |                   +
+
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/macros-no-semicolon-items.rs:8:5
+   |
+LL |   bar!(
+   |  _____^
+LL | |     blah
+LL | |     blah
+LL | |     blah
+LL | | )
+   | |_^
+   |
+help: change the delimiters to curly braces
+   |
+LL ~ bar!{
+LL |     blah
+LL |     blah
+LL |     blah
+LL + }
+   |
+help: add a semicolon
+   |
+LL | );
+   |  +
+
+error: macros must contain at least one rule
+  --> $DIR/macros-no-semicolon-items.rs:1:1
+   |
+LL | macro_rules! foo()
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

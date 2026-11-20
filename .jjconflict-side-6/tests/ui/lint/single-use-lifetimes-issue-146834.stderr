@@ -1,0 +1,55 @@
+error: `ensures` attribute requires an argument, e.g., `#[ensures(|result: &T| condition)]`
+  --> $DIR/single-use-lifetimes-issue-146834.rs:9:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/single-use-lifetimes-issue-146834.rs:11:42
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+   |                 -------     -------      ^     ^ expected named lifetime parameter
+   |                                          |
+   |                                          expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+note: these named lifetimes are available to use
+  --> $DIR/single-use-lifetimes-issue-146834.rs:11:6
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+   |      ^^  ^^
+help: consider using one of the available lifetimes here
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&'lifetime i32, &'lifetime i32) {
+   |                                           +++++++++       +++++++++
+
+warning: lifetime parameter `'a` only used once
+  --> $DIR/single-use-lifetimes-issue-146834.rs:11:6
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+   |      ^^          -- ...is used only here
+   |      |
+   |      this lifetime...
+   |
+   = note: requested on the command line with `-W single-use-lifetimes`
+help: elide the single-use lifetime
+   |
+LL - fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+LL + fn f<'b>(a: &i32, b: &'b i32) -> (&i32, &i32) {
+   |
+
+warning: lifetime parameter `'b` only used once
+  --> $DIR/single-use-lifetimes-issue-146834.rs:11:10
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+   |          ^^ this lifetime... -- ...is used only here
+   |
+help: elide the single-use lifetime
+   |
+LL - fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
+LL + fn f<'a>(a: &'a i32, b: &i32) -> (&i32, &i32) {
+   |
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0106`.

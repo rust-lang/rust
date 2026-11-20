@@ -1,0 +1,47 @@
+error: this `.find_map(..)` can be written more simply using `.find(..)`
+  --> tests/ui/unnecessary_find_map.rs:2:20
+   |
+LL |     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-find-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_find_map)]`
+
+error: this `.find_map(..)` can be written more simply using `.find(..)`
+  --> tests/ui/unnecessary_find_map.rs:5:20
+   |
+LL |       let _ = (0..4).find_map(|x| {
+   |  ____________________^
+LL | |
+LL | |
+LL | |         if x > 1 {
+...  |
+LL | |         None
+LL | |     });
+   | |______^
+
+error: this `.find_map(..)` can be written more simply using `.find(..)`
+  --> tests/ui/unnecessary_find_map.rs:13:20
+   |
+LL |       let _ = (0..4).find_map(|x| match x {
+   |  ____________________^
+LL | |
+LL | |         0 | 1 => None,
+LL | |         _ => Some(x),
+LL | |     });
+   | |______^
+
+error: this `.find_map(..)` can be written more simply using `.map(..).next()`
+  --> tests/ui/unnecessary_find_map.rs:19:20
+   |
+LL |     let _ = (0..4).find_map(|x| Some(x + 1));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `.find_map(..)` can be written more simply using `.find(..)`
+  --> tests/ui/unnecessary_find_map.rs:31:33
+   |
+LL |     let _x = std::iter::once(1).find_map(|n| (n > 1).then_some(n));
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

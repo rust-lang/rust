@@ -1,0 +1,41 @@
+error: extern items cannot be `const`
+  --> $DIR/foreign-const-semantic-fail.rs:4:11
+   |
+LL |     const A: isize;
+   |           ^
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: try using a static value
+   |
+LL -     const A: isize;
+LL +     static A: isize;
+   |
+
+error: extern items cannot be `const`
+  --> $DIR/foreign-const-semantic-fail.rs:6:11
+   |
+LL |     const B: isize = 42;
+   |           ^
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: try using a static value
+   |
+LL -     const B: isize = 42;
+LL +     static B: isize = 42;
+   |
+
+error: incorrect `static` inside `extern` block
+  --> $DIR/foreign-const-semantic-fail.rs:6:11
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+...
+LL |     const B: isize = 42;
+   |           ^          -- the invalid body
+   |           |
+   |           cannot have a body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 3 previous errors
+

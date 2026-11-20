@@ -1,0 +1,136 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:4:9
+   |
+LL | struct S1<X: ?Sized> {
+   |           - this type parameter needs to be `Sized`
+LL |     f1: X,
+   |         ^ doesn't have a size known at compile-time
+   |
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct S1<X: ?Sized> {
+LL + struct S1<X> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     f1: &X,
+   |         +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     f1: Box<X>,
+   |         ++++ +
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:10:8
+   |
+LL | struct S2<X: ?Sized> {
+   |           - this type parameter needs to be `Sized`
+LL |     f: isize,
+LL |     g: X,
+   |        ^ doesn't have a size known at compile-time
+   |
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct S2<X: ?Sized> {
+LL + struct S2<X> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     g: &X,
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     g: Box<X>,
+   |        ++++ +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized5.rs:15:8
+   |
+LL |     f: str,
+   |        ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     f: &str,
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     f: Box<str>,
+   |        ++++   +
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized5.rs:20:8
+   |
+LL |     f: [u8],
+   |        ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     f: &[u8],
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     f: Box<[u8]>,
+   |        ++++    +
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:25:8
+   |
+LL | enum E<X: ?Sized> {
+   |        - this type parameter needs to be `Sized`
+LL |     V1(X, isize),
+   |        ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum E<X: ?Sized> {
+LL + enum E<X> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     V1(&X, isize),
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     V1(Box<X>, isize),
+   |        ++++ +
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized5.rs:29:12
+   |
+LL | enum F<X: ?Sized> {
+   |        - this type parameter needs to be `Sized`
+LL |     V2{f1: X, f: isize},
+   |            ^ doesn't have a size known at compile-time
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - enum F<X: ?Sized> {
+LL + enum F<X> {
+   |
+help: borrowed types always have a statically known size
+   |
+LL |     V2{f1: &X, f: isize},
+   |            +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     V2{f1: Box<X>, f: isize},
+   |            ++++ +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

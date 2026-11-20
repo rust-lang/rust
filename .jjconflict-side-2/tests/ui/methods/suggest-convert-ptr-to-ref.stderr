@@ -1,0 +1,72 @@
+error[E0599]: `*const u8` doesn't implement `std::fmt::Display`
+  --> $DIR/suggest-convert-ptr-to-ref.rs:5:22
+   |
+LL |     println!("{}", z.to_string());
+   |                      ^^^^^^^^^ method cannot be called on `*const u8` due to unsatisfied trait bounds
+   |
+note: the method `to_string` exists on the type `&u8`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   = note: you might want to use the unsafe method `<*const T>::as_ref` to get an optional reference to the value behind the pointer
+   = note: read the documentation for `<*const T>::as_ref` and ensure you satisfy its safety preconditions before calling it to avoid undefined behavior: https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref
+   = note: the following trait bounds were not satisfied:
+           `*const u8: std::fmt::Display`
+           which is required by `*const u8: ToString`
+
+error[E0599]: `*mut u8` doesn't implement `std::fmt::Display`
+  --> $DIR/suggest-convert-ptr-to-ref.rs:8:22
+   |
+LL |     println!("{}", t.to_string());
+   |                      ^^^^^^^^^ method cannot be called on `*mut u8` due to unsatisfied trait bounds
+   |
+note: the method `to_string` exists on the type `&&mut u8`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   = note: you might want to use the unsafe method `<*mut T>::as_ref` to get an optional reference to the value behind the pointer
+   = note: read the documentation for `<*mut T>::as_ref` and ensure you satisfy its safety preconditions before calling it to avoid undefined behavior: https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref-1
+   = note: the following trait bounds were not satisfied:
+           `*mut u8: std::fmt::Display`
+           which is required by `*mut u8: ToString`
+
+error[E0599]: no method named `make_ascii_lowercase` found for raw pointer `*mut u8` in the current scope
+  --> $DIR/suggest-convert-ptr-to-ref.rs:9:7
+   |
+LL |     t.make_ascii_lowercase();
+   |       ^^^^^^^^^^^^^^^^^^^^ method not found in `*mut u8`
+   |
+note: the method `make_ascii_lowercase` exists on the type `&mut u8`
+  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: you might want to use the unsafe method `<*mut T>::as_mut` to get an optional reference to the value behind the pointer
+   = note: read the documentation for `<*mut T>::as_mut` and ensure you satisfy its safety preconditions before calling it to avoid undefined behavior: https://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut
+
+error[E0599]: no method named `as_mut_ref` found for raw pointer `*mut u8` in the current scope
+  --> $DIR/suggest-convert-ptr-to-ref.rs:12:15
+   |
+LL |     let _ = t.as_mut_ref();
+   |               ^^^^^^^^^^
+   |
+help: there is a method `as_mut` with a similar name
+   |
+LL -     let _ = t.as_mut_ref();
+LL +     let _ = t.as_mut();
+   |
+
+error[E0599]: no method named `as_ref_mut` found for raw pointer `*mut u8` in the current scope
+  --> $DIR/suggest-convert-ptr-to-ref.rs:13:15
+   |
+LL |     let _ = t.as_ref_mut();
+   |               ^^^^^^^^^^
+   |
+help: there is a method `as_mut` with a similar name
+   |
+LL -     let _ = t.as_ref_mut();
+LL +     let _ = t.as_mut();
+   |
+
+error[E0599]: no method named `make_ascii_lowercase` found for raw pointer `*const u8` in the current scope
+  --> $DIR/suggest-convert-ptr-to-ref.rs:16:7
+   |
+LL |     z.make_ascii_lowercase();
+   |       ^^^^^^^^^^^^^^^^^^^^ method not found in `*const u8`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

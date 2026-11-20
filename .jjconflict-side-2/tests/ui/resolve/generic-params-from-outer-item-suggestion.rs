@@ -1,0 +1,39 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/68373>.
+// Ensure we provide a suggestion to change from `const` to `let`
+// on the generic params from outer item errors.
+
+//@ run-rustfix
+
+#![allow(unused, non_snake_case)]
+
+const fn size_plus_one<T:Sized>() -> usize {
+    //~^ NOTE type parameter from outer item
+    const size: usize = core::mem::size_of::<T>();
+    //~^ ERROR can't use generic parameters from outer item
+    //~| NOTE nested items are independent
+    //~| NOTE a `const` is a separate item
+    //~| NOTE use of generic parameter from outer item
+    //~| NOTE generic parameter used in this inner constant item
+    //~| HELP try using a local `let` binding instead
+    size + 1
+}
+
+struct A;
+
+impl A {
+    //~^ NOTE `Self` type implicitly declared here, by this `impl`
+    const VALUE: u32 = 1;
+
+    fn f() {
+        const K: u32 = Self::VALUE;
+        //~^ ERROR can't use `Self` from outer item
+        //~| NOTE use of `Self` from outer item
+        //~| NOTE `Self` used in this inner constant item
+        //~| NOTE nested items are independent
+        //~| NOTE a `const` is a separate item
+        //~| HELP refer to the type directly here instead
+        //~| HELP try using a local `let` binding instead
+    }
+}
+
+fn main() {}

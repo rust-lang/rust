@@ -1,0 +1,8 @@
+error: 3 positional arguments in format string, but there is 1 argument
+  --> $DIR/issue-75307.rs:2:15
+   |
+LL |     format!(r"{}{}{}", named_arg=1);
+   |               ^^^^^^             -
+
+error: aborting due to 1 previous error
+

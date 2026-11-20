@@ -1,0 +1,10 @@
+error: expected `;`, found `}`
+  --> $DIR/suggest-semicolon-for-fn-in-extern-block.rs:6:11
+   |
+LL |   fn foo()
+   |           ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: aborting due to 1 previous error
+

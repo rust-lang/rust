@@ -1,0 +1,70 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:1:17
+   |
+LL | fn fn_once() -> _ {
+   |                 ^ not allowed in type signatures
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fn_once() -> _ {
+LL + fn fn_once() -> impl FnOnce() {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:13:16
+   |
+LL | fn fn_mut() -> _ {
+   |                ^ not allowed in type signatures
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fn_mut() -> _ {
+LL + fn fn_mut() -> impl FnMut(char) {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-return-closure.rs:33:13
+   |
+LL | fn fun() -> _ {
+   |             ^ not allowed in type signatures
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fun() -> _ {
+LL + fn fun() -> impl Fn() -> i32 {
+   |
+
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/suggest-return-closure.rs:24:9
+   |
+LL |         x.push(c);
+   |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = String::new();
+   |         +++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/suggest-return-closure.rs:24:9
+   |
+LL |     let x = String::new();
+   |         - binding `x` declared here
+...
+LL |     |c| {
+   |     --- value captured here
+LL |         x.push(c);
+   |         ^ borrowed value does not live long enough
+...
+LL | }
+   | -- borrow later used here
+   | |
+   | `x` dropped here while still borrowed
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0121, E0596, E0597.
+For more information about an error, try `rustc --explain E0121`.

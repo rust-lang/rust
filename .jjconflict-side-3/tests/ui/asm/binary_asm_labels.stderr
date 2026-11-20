@@ -1,0 +1,53 @@
+error: avoid using labels containing only the digits `0` and `1` in inline assembly
+  --> $DIR/binary_asm_labels.rs:11:15
+   |
+LL |         asm!("0: jmp 0b");
+   |               ^ use a different label that doesn't start with `0` or `1`
+   |
+   = help: start numbering with `2` instead
+   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+   = note: `#[deny(binary_asm_labels)]` on by default
+
+error: avoid using labels containing only the digits `0` and `1` in inline assembly
+  --> $DIR/binary_asm_labels.rs:12:15
+   |
+LL |         asm!("1: jmp 1b");
+   |               ^ use a different label that doesn't start with `0` or `1`
+   |
+   = help: start numbering with `2` instead
+   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+
+error: avoid using labels containing only the digits `0` and `1` in inline assembly
+  --> $DIR/binary_asm_labels.rs:13:15
+   |
+LL |         asm!("10: jmp 10b");
+   |               ^^ use a different label that doesn't start with `0` or `1`
+   |
+   = help: start numbering with `2` instead
+   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+
+error: avoid using labels containing only the digits `0` and `1` in inline assembly
+  --> $DIR/binary_asm_labels.rs:14:15
+   |
+LL |         asm!("01: jmp 01b");
+   |               ^^ use a different label that doesn't start with `0` or `1`
+   |
+   = help: start numbering with `2` instead
+   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+
+error: avoid using labels containing only the digits `0` and `1` in inline assembly
+  --> $DIR/binary_asm_labels.rs:15:15
+   |
+LL |         asm!("1001101: jmp 1001101b");
+   |               ^^^^^^^ use a different label that doesn't start with `0` or `1`
+   |
+   = help: start numbering with `2` instead
+   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+
+error: aborting due to 5 previous errors
+

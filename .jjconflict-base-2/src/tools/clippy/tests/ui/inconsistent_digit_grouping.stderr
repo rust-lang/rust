@@ -1,0 +1,71 @@
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:25:16
+   |
+LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+   |                ^^^^^^^^ help: consider: `123_456`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
+
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:25:26
+   |
+LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+   |                          ^^^^^^^^^^ help: consider: `12_345_678`
+
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:25:38
+   |
+LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+   |                                      ^^^^^^^^ help: consider: `1_234_567`
+
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:25:48
+   |
+LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+   |                                                ^^^^^^^^^^^^^^ help: consider: `1_234.567_8_f32`
+
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:25:64
+   |
+LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+   |                                                                ^^^^^^^^^^^^^^ help: consider: `1.234_567_8_f32`
+
+error: long literal lacking separators
+  --> tests/ui/inconsistent_digit_grouping.rs:33:13
+   |
+LL |     let _ = 0x100000;
+   |             ^^^^^^^^ help: consider: `0x0010_0000`
+   |
+note: the lint level is defined here
+  --> tests/ui/inconsistent_digit_grouping.rs:2:8
+   |
+LL | #[deny(clippy::unreadable_literal)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: long literal lacking separators
+  --> tests/ui/inconsistent_digit_grouping.rs:35:13
+   |
+LL |     let _ = 0x1000000;
+   |             ^^^^^^^^^ help: consider: `0x0100_0000`
+
+error: long literal lacking separators
+  --> tests/ui/inconsistent_digit_grouping.rs:37:13
+   |
+LL |     let _ = 0x10000000;
+   |             ^^^^^^^^^^ help: consider: `0x1000_0000`
+
+error: long literal lacking separators
+  --> tests/ui/inconsistent_digit_grouping.rs:39:13
+   |
+LL |     let _ = 0x100000000_u64;
+   |             ^^^^^^^^^^^^^^^ help: consider: `0x0001_0000_0000_u64`
+
+error: digits grouped inconsistently by underscores
+  --> tests/ui/inconsistent_digit_grouping.rs:43:18
+   |
+LL |     let _: f32 = 1_23_456.;
+   |                  ^^^^^^^^^ help: consider: `123_456.`
+
+error: aborting due to 10 previous errors
+

@@ -1,0 +1,44 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:5:37
+   |
+LL | fn should_error<T>() where T : Into<&u32> {}
+   |                                     ^ explicit lifetime name needed here
+   |
+help: consider introducing a higher-ranked lifetime here
+   |
+LL | fn should_error<T>() where T : for<'a> Into<&'a u32> {}
+   |                                +++++++       ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:9:20
+   |
+LL |     fn foo<'b, L: X<&'b Nested<K>>>();
+   |                    ^ expected named lifetime parameter
+   |
+note: these named lifetimes are available to use
+  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:8:9
+   |
+LL | trait X<'a, K: 'a> {
+   |         ^^
+LL |     fn foo<'b, L: X<&'b Nested<K>>>();
+   |            ^^
+help: consider using one of the available lifetimes here
+   |
+LL |     fn foo<'b, L: X<'lifetime, &'b Nested<K>>>();
+   |                     ++++++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:13:16
+   |
+LL | fn bar<'b, L: X<&'b Nested<i32>>>(){}
+   |                ^ expected named lifetime parameter
+   |
+help: consider using the `'b` lifetime
+   |
+LL | fn bar<'b, L: X<'b, &'b Nested<i32>>>(){}
+   |                 +++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0637.
+For more information about an error, try `rustc --explain E0106`.

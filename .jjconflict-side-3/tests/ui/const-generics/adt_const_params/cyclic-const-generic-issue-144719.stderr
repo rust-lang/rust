@@ -1,0 +1,19 @@
+error: constant main::{constant#0} cannot be used as pattern
+  --> $DIR/cyclic-const-generic-issue-144719.rs:17:11
+   |
+LL |     foo::<Y>();
+   |           ^
+   |
+   = note: constants whose type references itself cannot be used as patterns
+
+error: constant main::{constant#0} cannot be used as pattern
+  --> $DIR/cyclic-const-generic-issue-144719.rs:17:11
+   |
+LL |     foo::<Y>();
+   |           ^
+   |
+   = note: constants whose type references itself cannot be used as patterns
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

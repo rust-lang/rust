@@ -1,0 +1,25 @@
+error[E0038]: the trait `B` is not dyn compatible
+  --> $DIR/issue-98500.rs:11:14
+   |
+LL | struct S(Box<dyn B>);
+   |              ^^^^^ `B` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/auxiliary/dyn-incompatible.rs:4:8
+   |
+LL |     fn f();
+   |        ^ ...because associated function `f` has no `self` parameter
+LL |     fn f2(self: &Arc<Self>);
+   |        ^^ ...because method `f2`'s `self` parameter cannot be dispatched on
+   |
+  ::: $DIR/issue-98500.rs:5:11
+   |
+LL | pub trait B where
+   |           - this trait is not dyn compatible...
+   = help: consider moving `f` to another trait
+   = help: consider moving `f2` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,11 @@
+error[E0616]: field `0` of struct `field_access_macro::n::Struct` is private
+  --> $DIR/field-access.rs:9:28
+   |
+LL |     let try_field_access = field_access_macro::deny_field_access!(s);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private field
+   |
+   = note: this error originates in the macro `field_access_macro::deny_field_access` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

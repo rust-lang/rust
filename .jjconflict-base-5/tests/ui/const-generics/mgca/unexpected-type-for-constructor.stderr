@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/unexpected-type-for-constructor.rs:7:35
+   |
+LL | const C_INNER: (*const u8, u8) = (None::<u8>, None::<u8>);
+   |                                   ^^^^^^^^^^ expected `*const u8`, found `Option<u8>`
+   |
+   = note: expected raw pointer `*const u8`
+                     found enum `Option<u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/unexpected-type-for-constructor.rs:7:47
+   |
+LL | const C_INNER: (*const u8, u8) = (None::<u8>, None::<u8>);
+   |                                               ^^^^^^^^^^ expected `u8`, found `Option<u8>`
+   |
+   = note: expected type `u8`
+              found enum `Option<u8>`
+
+error: could not evaluate constant pattern
+  --> $DIR/unexpected-type-for-constructor.rs:13:9
+   |
+LL | const C_INNER: (*const u8, u8) = (None::<u8>, None::<u8>);
+   | ------------------------------ constant defined here
+...
+LL |         C_INNER => {}
+   |         ^^^^^^^ could not evaluate constant
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

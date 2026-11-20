@@ -1,0 +1,17 @@
+error: no rules expected keyword `let`
+  --> $DIR/feature-gate-macro.rs:12:15
+   |
+LL |     macro_rules! use_expr {
+   |     --------------------- when calling this macro
+...
+LL |     use_expr!(let 0 = 1);
+   |               ^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr`
+  --> $DIR/feature-gate-macro.rs:5:10
+   |
+LL |         ($e:expr) => {
+   |          ^^^^^^^
+
+error: aborting due to 1 previous error
+

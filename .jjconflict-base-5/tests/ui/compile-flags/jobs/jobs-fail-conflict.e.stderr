@@ -1,0 +1,2 @@
+error: `-Zthreads` cannot be larger than `--jobs`
+

@@ -1,0 +1,10 @@
+error: expected expression, found `let` statement
+  --> $DIR/bad-let-in-destructure.rs:11:4
+   |
+LL |   (let x = 1,) = x;
+   |    ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: aborting due to 1 previous error
+

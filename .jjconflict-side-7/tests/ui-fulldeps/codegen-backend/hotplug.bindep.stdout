@@ -1,0 +1,4 @@
+$TEST_BUILD_DIR/libhotplug.rlib: $DIR/hotplug.rs $TEST_BUILD_DIR/auxiliary/libthe_backend.so
+
+$DIR/hotplug.rs:
+$TEST_BUILD_DIR/auxiliary/libthe_backend.so:

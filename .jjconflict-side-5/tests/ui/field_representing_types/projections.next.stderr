@@ -1,0 +1,32 @@
+error: could not resolve fields of `<<T as Trait>::Assoc as Special>::Assoc`
+  --> $DIR/projections.rs:39:18
+   |
+LL |     _: field_of!(<<T as Trait>::Assoc as Special>::Assoc, field),
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not resolve fields of `<<T as Trait>::Assoc as Special>::Assoc`
+  --> $DIR/projections.rs:45:19
+   |
+LL |     _x: field_of!(<<T as Trait>::Assoc as Special>::Assoc, field),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not resolve fields of `<Struct as Trait>::Assoc`
+  --> $DIR/projections.rs:24:22
+   |
+LL |     let _: field_of!(<Struct as Trait>::Assoc, field);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not resolve fields of `<<T as Trait>::Assoc as Special>::Assoc`
+  --> $DIR/projections.rs:51:22
+   |
+LL |     let _: field_of!(<<T as Trait>::Assoc as Special>::Assoc, field);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not resolve fields of `<<T as Trait>::Assoc as Special>::Assoc`
+  --> $DIR/projections.rs:56:22
+   |
+LL |     let _: field_of!(<<T as Trait>::Assoc as Special>::Assoc, other);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

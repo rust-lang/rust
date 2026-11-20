@@ -1,0 +1,77 @@
+error[E0277]: the trait bound `[u8]: ImplicitTrait` is not satisfied
+  --> $DIR/E0277-4.rs:37:24
+   |
+LL |     ImplicitTrait::foo(x);
+   |     ------------------ ^ the trait `Sized` is not implemented for `[u8]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `[u8]` to implement `ImplicitTrait`
+  --> $DIR/E0277-4.rs:20:9
+   |
+LL | impl<T> ImplicitTrait for T {
+   |      -  ^^^^^^^^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+help: consider borrowing here
+   |
+LL |     ImplicitTrait::foo(&x);
+   |                        +
+LL |     ImplicitTrait::foo(&mut x);
+   |                        ++++
+
+error[E0277]: the trait bound `[u8]: ExplicitTrait` is not satisfied
+  --> $DIR/E0277-4.rs:39:24
+   |
+LL |     ExplicitTrait::foo(x);
+   |     ------------------ ^ the trait `Sized` is not implemented for `[u8]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `[u8]` to implement `ExplicitTrait`
+  --> $DIR/E0277-4.rs:25:16
+   |
+LL | impl<T: Sized> ExplicitTrait for T {
+   |         -----  ^^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+help: consider borrowing here
+   |
+LL |     ExplicitTrait::foo(&x);
+   |                        +
+LL |     ExplicitTrait::foo(&mut x);
+   |                        ++++
+
+error[E0277]: the trait bound `[u8]: UnimplementedTrait` is not satisfied
+  --> $DIR/E0277-4.rs:43:29
+   |
+LL |     UnimplementedTrait::foo(x);
+   |     ----------------------- ^ the trait `UnimplementedTrait` is not implemented for `[u8]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/E0277-4.rs:15:1
+   |
+LL | trait UnimplementedTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `[u8; 0]: DisplayTrait` is not satisfied
+  --> $DIR/E0277-4.rs:48:23
+   |
+LL |     DisplayTrait::foo(x);
+   |     ----------------- ^ the trait `std::fmt::Display` is not implemented for `[u8; 0]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `[u8; 0]` to implement `DisplayTrait`
+  --> $DIR/E0277-4.rs:30:18
+   |
+LL | impl<T: Display> DisplayTrait for T {
+   |         -------  ^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

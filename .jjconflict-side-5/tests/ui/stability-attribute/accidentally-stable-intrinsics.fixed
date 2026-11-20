@@ -1,0 +1,39 @@
+//@ run-rustfix
+#![crate_type = "lib"]
+#![allow(unnecessary_transmutes, unused_imports)]
+#![deny(deprecated)]
+
+extern crate core;
+
+use std::mem::transmute as _;
+//~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+use core::ptr::copy as _;
+//~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+use std::ptr::copy_nonoverlapping as _;
+//~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+use core::ptr::write_bytes as _;
+//~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+
+use core::ptr::{
+    copy as _,
+    //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+    copy_nonoverlapping as _,
+    //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+    write_bytes as _,
+    //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+};
+
+pub fn what() {
+    unsafe {
+        let value = 42_u8;
+        let mut dst = 0;
+        let _ = std::mem::transmute::<u8, i8>(value);
+        //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+        core::ptr::copy(&value, &mut dst, 1);
+        //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+        core::ptr::copy_nonoverlapping(&value, &mut dst, 1);
+        //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+        std::ptr::write_bytes(&mut dst, value, 1)
+        //~^ ERROR use of deprecated import through accidentally stabilized module `intrinsics`
+    }
+}

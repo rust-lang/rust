@@ -1,0 +1,14 @@
+//@ check-pass
+
+#![feature(gca_min_const_items)]
+#![expect(incomplete_features)]
+
+use std::gca;
+
+const N: usize = gca!(2);
+
+trait CollectArray<A> {
+    fn inner_array(&mut self) -> [A; N];
+}
+
+fn main() {}

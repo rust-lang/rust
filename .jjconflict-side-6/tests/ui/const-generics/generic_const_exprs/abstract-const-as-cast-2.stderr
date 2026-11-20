@@ -1,0 +1,35 @@
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-2.rs:7:25
+   |
+LL | struct Foo<const N: u8>([u8; N as usize])
+   |                         ^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     Evaluatable<{N as u128}>:, [(); N as usize]:;
+   |                              +++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-2.rs:13:26
+   |
+LL | struct Foo2<const N: u8>(Evaluatable::<{N as u128}>) where Evaluatable<{N as usize as u128 }>:;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct Foo2<const N: u8>(Evaluatable::<{N as u128}>) where Evaluatable<{N as usize as u128 }>:, [(); {N as u128} as usize]:;
+   |                                                                                               +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-2.rs:17:25
+   |
+LL | struct Bar<const N: u8>([u8; (N + 2) as usize]) where [(); (N + 1) as usize]:;
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct Bar<const N: u8>([u8; (N + 2) as usize]) where [(); (N + 1) as usize]:, [(); (N + 2) as usize]:;
+   |                                                                              +++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+

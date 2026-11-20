@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference-issue-116155.rs:15:23
+   |
+LL |     s.constrain(c);
+   |     -           - this argument has type `{closure@$DIR/point-at-inference-issue-116155.rs:13:13: 13:15}`...
+   |     |
+   |     ... which causes `s` to have type `S<bool>`
+LL |     let _: S<usize> = s;
+   |            --------   ^ expected `S<usize>`, found `S<bool>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `S<usize>`
+              found struct `S<bool>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

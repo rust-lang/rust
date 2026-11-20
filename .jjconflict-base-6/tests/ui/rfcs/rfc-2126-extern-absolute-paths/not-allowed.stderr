@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `alloc`
+  --> $DIR/not-allowed.rs:5:5
+   |
+LL | use alloc;
+   |     ^^^^^ no external crate `alloc`
+   |
+help: consider importing this module instead
+   |
+LL | use std::alloc;
+   |     +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

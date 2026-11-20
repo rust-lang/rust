@@ -1,0 +1,29 @@
+error[E0369]: cannot multiply `bool` by `&mut bool`
+  --> $DIR/nested-assignment-may-be-deref.rs:3:5
+   |
+LL |     if true
+   |        ---- bool
+LL |     *x = true {}
+   |     ^- &mut bool
+   |
+help: you might have meant to write a semicolon here
+   |
+LL |     if true;
+   |            +
+
+error[E0369]: cannot multiply `bool` by `&mut bool`
+  --> $DIR/nested-assignment-may-be-deref.rs:10:5
+   |
+LL |     y = true
+   |         ---- bool
+LL |     *x = true;
+   |     ^- &mut bool
+   |
+help: you might have meant to write a semicolon here
+   |
+LL |     y = true;
+   |             +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

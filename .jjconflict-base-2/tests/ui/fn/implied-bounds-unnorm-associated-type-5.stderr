@@ -1,0 +1,52 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:6:13
+   |
+LL | impl<'a, T> Trait<'a> for T {
+   |      --     ^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |      |
+   |      the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |
+note: ...that is required by this bound
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:1:18
+   |
+LL | trait Trait<'a>: 'a {
+   |                  ^^
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a> for T {
+   |           ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:6:27
+   |
+LL | impl<'a, T> Trait<'a> for T {
+   |      --                   ^ ...so that the type `T` will meet its required lifetime bounds
+   |      |
+   |      the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a> for T {
+   |           ++++
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:22:10
+   |
+LL |     let x = String::from("Hello World!");
+   |         - binding `x` declared here
+LL |     let y = f(&x, ());
+   |               -- borrow of `x` occurs here
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+LL |     println!("{}", y);
+   |                    - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let y = f(&x.clone(), ());
+   |                 ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0309, E0505.
+For more information about an error, try `rustc --explain E0309`.

@@ -1,0 +1,57 @@
+- // MIR for `unique_with_copies` before ReferencePropagation
++ // MIR for `unique_with_copies` after ReferencePropagation
+  
+  fn unique_with_copies() -> () {
+      let mut _0: ();
+      let _1: *mut i32;
+      let mut _2: i32;
+      let _4: ();
+      let mut _5: i32;
+      let _6: ();
+      let mut _7: i32;
+      scope 1 {
+-         debug y => _1;
++         debug y => _3;
+      }
+      scope 2 {
+          debug a => _2;
+          let _3: *mut i32;
+          scope 3 {
+              debug x => _3;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+          StorageLive(_2);
+          _2 = const 0_i32;
+-         StorageLive(_3);
+          _3 = &raw mut _2;
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy (*_3);
+          _4 = opaque::<i32>(move _5) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+-         _1 = copy _3;
+-         StorageDead(_3);
+          StorageDead(_2);
+          StorageLive(_6);
+          StorageLive(_7);
+-         _7 = copy (*_1);
++         _7 = copy (*_3);
+          _6 = opaque::<i32>(move _7) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_7);
+          StorageDead(_6);
+          _0 = const ();
+-         StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,56 @@
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:8:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:13:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:16:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:21:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:24:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:27:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:30:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:33:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: expected one of `(`, `,`, `::`, or `=`, found `-`
+  --> $DIR/statement-attribute-validation.rs:36:16
+   |
+LL |     #[allow(two-words)]
+   |                ^ expected one of `(`, `,`, `::`, or `=`
+
+error: aborting due to 9 previous errors
+

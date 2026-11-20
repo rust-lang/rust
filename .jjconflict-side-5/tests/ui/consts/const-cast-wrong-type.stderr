@@ -1,0 +1,9 @@
+error[E0606]: casting `&[u8; 3]` as `*const i8` is invalid
+  --> $DIR/const-cast-wrong-type.rs:2:22
+   |
+LL | const b: *const i8 = &a as *const i8;
+   |                      ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

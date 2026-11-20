@@ -1,0 +1,56 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RANGE_EXPR
+            CAST_EXPR
+              LITERAL
+                INT_NUMBER "0"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "usize"
+            WHITESPACE " "
+            DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RANGE_EXPR
+            BIN_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              WHITESPACE " "
+              PLUS "+"
+              WHITESPACE " "
+              CAST_EXPR
+                LITERAL
+                  INT_NUMBER "2"
+                WHITESPACE " "
+                AS_KW "as"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "usize"
+            WHITESPACE " "
+            DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

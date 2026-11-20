@@ -1,0 +1,41 @@
+error: cannot find derive macro `OuterTrait` in this scope
+  --> $DIR/derive-of-trait.rs:28:10
+   |
+LL | #[derive(OuterTrait)]
+   |          ^^^^^^^^^^
+   |
+note: `OuterTrait` is a trait, not a derive macro
+  --> $DIR/derive-of-trait.rs:9:5
+   |
+LL |     pub trait OuterTrait {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider implementing `OuterTrait` for your type manually
+
+error: cannot find derive macro `MyTrait` in this scope
+  --> $DIR/derive-of-trait.rs:23:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+   |
+note: `MyTrait` is a trait, not a derive macro
+  --> $DIR/derive-of-trait.rs:8:5
+   |
+LL |     pub trait MyTrait {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = help: consider implementing `MyTrait` for your type manually
+
+error: cannot find derive macro `LocalTrait` in this scope
+  --> $DIR/derive-of-trait.rs:18:10
+   |
+LL | #[derive(LocalTrait)]
+   |          ^^^^^^^^^^
+   |
+note: `LocalTrait` is a trait, not a derive macro
+  --> $DIR/derive-of-trait.rs:14:1
+   |
+LL | trait LocalTrait {}
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: consider implementing `LocalTrait` for your type manually
+
+error: aborting due to 3 previous errors
+

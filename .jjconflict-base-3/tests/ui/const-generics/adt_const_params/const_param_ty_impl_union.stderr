@@ -1,0 +1,14 @@
+error: this trait cannot be derived for unions
+  --> $DIR/const_param_ty_impl_union.rs:18:10
+   |
+LL | #[derive(std::marker::ConstParamTy)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the trait `ConstParamTy` may not be implemented for this type
+  --> $DIR/const_param_ty_impl_union.rs:15:37
+   |
+LL | impl std::marker::ConstParamTy_ for Union {}
+   |                                     ^^^^^ type is not a structure or enumeration
+
+error: aborting due to 2 previous errors
+

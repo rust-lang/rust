@@ -1,0 +1,14 @@
+#![deny(clippy::trait_duplication_in_bounds)]
+#![expect(incomplete_features)]
+#![feature(gca_min_const_items)]
+
+trait AssocConstTrait {
+    #[rustc_always_gca]
+    const ASSOC: usize;
+}
+fn assoc_const_args<T>()
+where
+    T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
+    //~^ trait_duplication_in_bounds
+{
+}

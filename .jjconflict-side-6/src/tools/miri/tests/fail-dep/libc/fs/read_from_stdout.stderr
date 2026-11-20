@@ -1,0 +1,12 @@
+error: unsupported operation: cannot read from stdout
+  --> tests/fail-dep/libc/fs/read_from_stdout.rs:LL:CC
+   |
+LL |         libc::read(1, bytes.as_mut_ptr() as *mut libc::c_void, 512);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

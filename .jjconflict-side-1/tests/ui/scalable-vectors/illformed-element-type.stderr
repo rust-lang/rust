@@ -1,0 +1,122 @@
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:17:1
+   |
+LL | struct TyChar(char);
+   | ^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:21:1
+   |
+LL | struct TyConstPtr(*const u8);
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:25:1
+   |
+LL | struct TyMutPtr(*mut u8);
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:29:1
+   |
+LL | struct TyStruct(Foo);
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:33:1
+   |
+LL | struct TyEnum(Bar);
+   | ^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:37:1
+   |
+LL | struct TyUnion(Baz);
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:41:1
+   |
+LL | struct TyForeign(Qux);
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:45:1
+   |
+LL | struct TyArray([u32; 4]);
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:49:1
+   |
+LL | struct TySlice([u32]);
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:53:1
+   |
+LL | struct TyRef<'a>(&'a u32);
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:57:1
+   |
+LL | struct TyFnPtr(fn(u32) -> u32);
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:61:1
+   |
+LL | struct TyDyn(dyn std::io::Write);
+   | ^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:65:1
+   |
+LL | struct TyNever(!);
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:69:1
+   |
+LL | struct TyTuple((u32, u32));
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: element type of a scalable vector must be a primitive scalar
+  --> $DIR/illformed-element-type.rs:79:1
+   |
+LL | struct TyInvalidAlias(InvalidAlias);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `u*`, `i*`, `f*` and `bool` types are accepted
+
+error: aborting due to 15 previous errors
+

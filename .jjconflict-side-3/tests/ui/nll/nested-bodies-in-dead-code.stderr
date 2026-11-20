@@ -1,0 +1,50 @@
+error: lifetime may not live long enough
+  --> $DIR/nested-bodies-in-dead-code.rs:9:33
+   |
+LL |     |x: &str| -> &'static str { x };
+   |         -                       ^ returning this value requires that `'1` must outlive `'static`
+   |         |
+   |         let's call the lifetime of this reference `'1`
+
+error[E0597]: `temp` does not live long enough
+  --> $DIR/nested-bodies-in-dead-code.rs:14:35
+   |
+LL |             let temp = 1;
+   |                 ---- binding `temp` declared here
+LL |             let p: &'static u32 = &temp;
+   |                    ------------   ^^^^^ borrowed value does not live long enough
+   |                    |
+   |                    type annotation requires that `temp` is borrowed for `'static`
+LL |
+LL |         };
+   |         - `temp` dropped here while still borrowed
+
+error[E0597]: `temp` does not live long enough
+  --> $DIR/nested-bodies-in-dead-code.rs:20:31
+   |
+LL |         let temp = 1;
+   |             ---- binding `temp` declared here
+LL |         let p: &'static u32 = &temp;
+   |                ------------   ^^^^^ borrowed value does not live long enough
+   |                |
+   |                type annotation requires that `temp` is borrowed for `'static`
+LL |
+LL |     };
+   |     - `temp` dropped here while still borrowed
+
+error[E0597]: `temp` does not live long enough
+  --> $DIR/nested-bodies-in-dead-code.rs:25:31
+   |
+LL |         let temp = 1;
+   |             ---- binding `temp` declared here
+LL |         let p: &'static u32 = &temp;
+   |                ------------   ^^^^^ borrowed value does not live long enough
+   |                |
+   |                type annotation requires that `temp` is borrowed for `'static`
+LL |
+LL |     };
+   |     - `temp` dropped here while still borrowed
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

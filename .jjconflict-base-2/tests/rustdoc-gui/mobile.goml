@@ -1,0 +1,19 @@
+// Test various properties of the mobile UI
+go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+set-window-size: (400, 600)
+
+set-font-size: 18
+wait-for: 100 // wait a bit for the resize and the font-size change to be fully taken into account.
+
+assert-property: ("rustdoc-topbar h2", {"offsetHeight": 33})
+
+// On the settings page, the theme buttons should not line-wrap. Instead, they should
+// all be placed as a group on a line below the setting name "Theme."
+go-to: "file://" + |DOC_PATH| + "/settings.html"
+set-window-size: (400, 600)
+// Ignored for now https://github.com/rust-lang/rust/issues/93784.
+// compare-elements-position-near-false: (
+//     "#preferred-light-theme .setting-radio-name",
+//     "#preferred-light-theme .setting-radio",
+//     {"y": 16},
+// )

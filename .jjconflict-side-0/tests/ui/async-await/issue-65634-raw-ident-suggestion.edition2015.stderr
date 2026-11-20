@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:25:13
+   |
+LL |     r#fn {}.r#struct();
+   |             ^^^^^^^^ multiple `r#struct` found
+   |
+note: candidate #1 is defined in an impl of the trait `async` for the type `r#fn`
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:8:5
+   |
+LL |     fn r#struct(&self) {
+   |     ^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `await` for the type `r#fn`
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:14:5
+   |
+LL |     fn r#struct(&self) {
+   |     ^^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     r#fn {}.r#struct();
+LL +     async::r#struct(&r#fn {});
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     r#fn {}.r#struct();
+LL +     await::r#struct(&r#fn {});
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

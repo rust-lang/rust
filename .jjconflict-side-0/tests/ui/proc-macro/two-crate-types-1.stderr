@@ -1,0 +1,4 @@
+error: cannot mix `proc-macro` crate type with others
+
+error: aborting due to 1 previous error
+

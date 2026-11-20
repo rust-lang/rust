@@ -1,0 +1,14 @@
+error[E0733]: recursion in an async fn requires boxing
+  --> $DIR/recursive-async-impl-trait-type.rs:5:1
+   |
+LL | async fn recursive_async_function() -> () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     recursive_async_function().await;
+   |     -------------------------------- recursive call here
+   |
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0733`.

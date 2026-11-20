@@ -1,0 +1,212 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:17:16
+   |
+LL |     foo::<u32>(42_usize);
+   |     ---------- ^^^^^^^^ expected `u32`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `usize` to `u32`
+   |
+LL -     foo::<u32>(42_usize);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:21:16
+   |
+LL |     foo::<u32>(42_u64);
+   |     ---------- ^^^^^^ expected `u32`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u64` to `u32`
+   |
+LL -     foo::<u32>(42_u64);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:26:16
+   |
+LL |     foo::<u32>(42_u16);
+   |     ---------- ^^^^^^ expected `u32`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u16` to `u32`
+   |
+LL -     foo::<u32>(42_u16);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:30:16
+   |
+LL |     foo::<u32>(42_u8);
+   |     ---------- ^^^^^ expected `u32`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u8` to `u32`
+   |
+LL -     foo::<u32>(42_u8);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:34:16
+   |
+LL |     foo::<u32>(42_isize);
+   |     ---------- ^^^^^^^^ expected `u32`, found `isize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `isize` to `u32`
+   |
+LL -     foo::<u32>(42_isize);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:38:16
+   |
+LL |     foo::<u32>(42_i64);
+   |     ---------- ^^^^^^ expected `u32`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i64` to `u32`
+   |
+LL -     foo::<u32>(42_i64);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:42:16
+   |
+LL |     foo::<u32>(42_i32);
+   |     ---------- ^^^^^^ expected `u32`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i32` to `u32`
+   |
+LL -     foo::<u32>(42_i32);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:46:16
+   |
+LL |     foo::<u32>(42_i16);
+   |     ---------- ^^^^^^ expected `u32`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i16` to `u32`
+   |
+LL -     foo::<u32>(42_i16);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:50:16
+   |
+LL |     foo::<u32>(42_i8);
+   |     ---------- ^^^^^ expected `u32`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i8` to `u32`
+   |
+LL -     foo::<u32>(42_i8);
+LL +     foo::<u32>(42_u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:54:16
+   |
+LL |     foo::<u32>(42.0_f64);
+   |     ---------- ^^^^^^^^ expected `u32`, found `f64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `f64` to `u32`
+   |
+LL -     foo::<u32>(42.0_f64);
+LL +     foo::<u32>(42u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-u32.rs:58:16
+   |
+LL |     foo::<u32>(42.0_f32);
+   |     ---------- ^^^^^^^^ expected `u32`, found `f32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-u32.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `f32` to `u32`
+   |
+LL -     foo::<u32>(42.0_f32);
+LL +     foo::<u32>(42u32);
+   |
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

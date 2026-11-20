@@ -1,0 +1,64 @@
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:8:12
+   |
+LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
+   |         - let's call the lifetime of this reference `'1`
+LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
+   |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL - fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
+LL + fn a(v: &[u8]) -> Box<dyn Foo + '_> {
+   |
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |          +++++++
+
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:14:5
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
+   |         - let's call the lifetime of this reference `'1`
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL - fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
+LL + fn b(v: &[u8]) -> Box<dyn Foo + '_> {
+   |
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |          +++++++
+
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:21:5
+   |
+LL | fn c(v: &[u8]) -> Box<dyn Foo> {
+   |         - let's call the lifetime of this reference `'1`
+...
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `v`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                               ++++
+
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:26:5
+   |
+LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
+   |      -- -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 4 previous errors
+

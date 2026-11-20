@@ -1,0 +1,47 @@
+
+running 3 tests
+test $DIR/stdout-and-stderr.rs - (line 17) ... FAILED
+test $DIR/stdout-and-stderr.rs - (line 22) ... FAILED
+test $DIR/stdout-and-stderr.rs - (line 26) ... FAILED
+
+failures:
+
+---- $DIR/stdout-and-stderr.rs - (line 17) stdout ----
+Test executable failed (exit status: 101).
+
+stdout:
+######## from a DOC TEST ########
+
+stderr:
+
+thread 'main' ($TID) panicked at $TMP:7:1:
+assertion `left == right` failed
+  left: "doc"
+ right: "test"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+---- $DIR/stdout-and-stderr.rs - (line 22) stdout ----
+Test executable failed (exit status: 101).
+
+stderr:
+
+thread 'main' ($TID) panicked at $TMP:15:1:
+assertion `left == right` failed
+  left: "doc"
+ right: "test"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+---- $DIR/stdout-and-stderr.rs - (line 26) stdout ----
+Test executable failed (exit status: 1).
+
+
+failures:
+    $DIR/stdout-and-stderr.rs - (line 17)
+    $DIR/stdout-and-stderr.rs - (line 22)
+    $DIR/stdout-and-stderr.rs - (line 26)
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

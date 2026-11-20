@@ -1,0 +1,52 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+       ]
+  --> $DIR/vtable-diamond.rs:22:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+       ]
+  --> $DIR/vtable-diamond.rs:26:1
+   |
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as C>::foo_c),
+       ]
+  --> $DIR/vtable-diamond.rs:30:1
+   |
+LL | impl C for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+           Method(<S as C>::foo_c),
+           TraitVPtr(<S as C>),
+           Method(<S as D>::foo_d),
+       ]
+  --> $DIR/vtable-diamond.rs:34:1
+   |
+LL | impl D for S {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

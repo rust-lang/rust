@@ -1,0 +1,153 @@
+#![deny(clippy::branches_sharing_code)]
+#![allow(clippy::let_and_return)]
+
+enum Mode {
+    Kill,
+    Table,
+    List,
+}
+
+fn kill() {}
+fn table() {}
+fn list() {}
+
+// Every arm ends in `Ok(())`: the shared tail can be hoisted out below the `match`.
+fn shared_tail(mode: Mode) -> Result<(), ()> {
+    //~v branches_sharing_code
+    match mode {
+        Mode::Kill => {
+            kill();
+        },
+        Mode::Table => {
+            table();
+        },
+        Mode::List => {
+            list();
+        },
+    }
+    Ok(())
+}
+
+// Shared tail even though one arm has an early `return`.
+fn shared_tail_with_return(mode: Mode, skip: bool) -> Result<(), ()> {
+    //~v branches_sharing_code
+    match mode {
+        Mode::Kill => {
+            if skip {
+                return Ok(());
+            }
+            kill();
+        },
+        _ => {
+            table();
+        },
+    }
+    Ok(())
+}
+
+// No lint: the trailing expressions differ.
+fn different_tail(mode: Mode) -> Result<u32, ()> {
+    match mode {
+        Mode::Kill => {
+            kill();
+            Ok(1)
+        },
+        Mode::Table => {
+            table();
+            Ok(2)
+        },
+        Mode::List => Ok(3),
+    }
+}
+
+// No lint: the tail references a binding introduced inside the arm.
+fn refs_local(x: Option<i32>) -> i32 {
+    match x {
+        Some(v) => {
+            kill();
+            v
+        },
+        None => {
+            table();
+            0
+        },
+    }
+}
+
+// No lint: the `match` value is bound, so the tail cannot simply be moved after it.
+fn value_used(mode: Mode) -> Result<(), ()> {
+    let res = match mode {
+        Mode::Kill => {
+            kill();
+            Ok(())
+        },
+        _ => {
+            table();
+            Ok(())
+        },
+    };
+    res
+}
+
+struct Guard;
+
+impl Drop for Guard {
+    fn drop(&mut self) {}
+}
+
+// No lint: an arm-local binding has a non-trivial `Drop`. Hoisting the tail would drop the guard
+// before the moved expression runs, changing observable drop order.
+fn arm_local_drop(mode: Mode) -> Result<(), ()> {
+    match mode {
+        Mode::Kill => {
+            let _g = Guard;
+            kill();
+            Ok(())
+        },
+        _ => {
+            table();
+            Ok(())
+        },
+    }
+}
+
+// Comments inside the arm bodies, including right before the shared tail.
+fn comments_in_arm_body(mode: Mode) -> Result<(), ()> {
+    //~v branches_sharing_code
+    match mode {
+        Mode::Kill => {
+            // kill it
+            kill();
+        },
+        Mode::Table => {
+            // table it
+            table();
+        },
+        Mode::List => {
+            list();
+        },
+    }
+    Ok(())
+}
+
+// Comments before the `=>` of each arm.
+fn comments_before_fat_arrow(mode: Mode) -> Result<(), ()> {
+    //~v branches_sharing_code
+    match mode {
+        // killing time
+        Mode::Kill => {
+            kill();
+        },
+        // table time
+        Mode::Table => {
+            table();
+        },
+        // list time
+        Mode::List => {
+            list();
+        },
+    }
+    Ok(())
+}
+
+fn main() {}

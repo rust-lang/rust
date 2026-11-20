@@ -1,0 +1,2 @@
+exported_function_stdcall(6)
+exported_function_fastcall(125)

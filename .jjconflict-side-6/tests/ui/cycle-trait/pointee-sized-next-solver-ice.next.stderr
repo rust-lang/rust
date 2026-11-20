@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `i32: PointeeSized` is not satisfied
+  --> $DIR/pointee-sized-next-solver-ice.rs:19:21
+   |
+LL |     require_trait::<i32>();
+   |                     ^^^ the trait `PointeeSized` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/pointee-sized-next-solver-ice.rs:14:1
+   |
+LL | trait PointeeSized {}
+   | ^^^^^^^^^^^^^^^^^^
+note: required by a bound in `require_trait`
+  --> $DIR/pointee-sized-next-solver-ice.rs:16:21
+   |
+LL | fn require_trait<T: PointeeSized>() {}
+   |                     ^^^^^^^^^^^^ required by this bound in `require_trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

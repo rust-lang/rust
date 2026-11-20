@@ -1,0 +1,191 @@
+// This test checks links colors in sidebar before and after hover.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+
+// This is needed so that the text color is computed.
+show-text: true
+
+define-function: (
+    "check-colors",
+    [
+        theme, struct, struct_hover, struct_hover_background, enum, enum_hover,
+        enum_hover_background, union, union_hover, union_hover_background, trait, trait_hover,
+        trait_hover_background, fn, fn_hover, fn_hover_background, type, type_hover,
+        type_hover_background, keyword, keyword_hover, keyword_hover_background,
+        attribute, attribute_hover, attribute_hover_background,
+    ],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        // Struct
+        assert-css: (
+            ".sidebar .block.struct li:not(.current) a",
+            {"color": |struct|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.struct li:not(.current) a"
+        assert-css: (
+            ".sidebar .block.struct a:hover",
+            {"color": |struct_hover|, "background-color": |struct_hover_background|},
+        )
+        // Enum
+        assert-css: (
+            ".sidebar .block.enum a",
+            {"color": |enum|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.enum a"
+        assert-css: (
+            ".sidebar .block.enum a:hover",
+            {"color": |enum_hover|, "background-color": |enum_hover_background|},
+        )
+        // Union
+        assert-css: (
+            ".sidebar .block.union a",
+            {"color": |union|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.union a"
+        assert-css: (
+            ".sidebar .block.union a:hover",
+            {"color": |union_hover|, "background-color": |union_hover_background|},
+        )
+        // Trait
+        assert-css: (
+            ".sidebar .block.trait a",
+            {"color": |trait|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.trait a"
+        assert-css: (
+            ".sidebar .block.trait a:hover",
+            {"color": |trait_hover|, "background-color": |trait_hover_background|},
+        )
+        // Function
+        assert-css: (
+            ".sidebar .block.fn a",
+            {"color": |fn|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.fn a"
+        assert-css: (
+            ".sidebar .block.fn a:hover",
+            {"color": |fn_hover|, "background-color": |fn_hover_background|},
+        )
+        // Type definition
+        assert-css: (
+            ".sidebar .block.type a",
+            {"color": |type|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.type a"
+        assert-css: (
+            ".sidebar .block.type a:hover",
+            {"color": |type_hover|, "background-color": |type_hover_background|},
+        )
+        // Keyword
+        assert-css: (
+            ".sidebar .block.keyword a",
+            {"color": |keyword|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.keyword a"
+        assert-css: (
+            ".sidebar .block.keyword a:hover",
+            {"color": |keyword_hover|, "background-color": |keyword_hover_background|},
+        )
+        // Attribute
+        assert-css: (
+            ".sidebar .block.attribute a",
+            {"color": |attribute|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.attribute a"
+        assert-css: (
+            ".sidebar .block.attribute a:hover",
+            {"color": |attribute_hover|, "background-color": |attribute_hover_background|},
+        )
+    }
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "struct": "#53b1db",
+        "struct_hover": "#ffb44c",
+        "struct_hover_background": "transparent",
+        "enum": "#53b1db",
+        "enum_hover": "#ffb44c",
+        "enum_hover_background": "transparent",
+        "union": "#53b1db",
+        "union_hover": "#ffb44c",
+        "union_hover_background": "transparent",
+        "trait": "#53b1db",
+        "trait_hover": "#ffb44c",
+        "trait_hover_background": "transparent",
+        "fn": "#53b1db",
+        "fn_hover": "#ffb44c",
+        "fn_hover_background": "transparent",
+        "type": "#53b1db",
+        "type_hover": "#ffb44c",
+        "type_hover_background": "transparent",
+        "keyword": "#53b1db",
+        "keyword_hover": "#ffb44c",
+        "keyword_hover_background": "transparent",
+        "attribute": "#53b1db",
+        "attribute_hover": "#ffb44c",
+        "attribute_hover_background": "transparent",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "struct": "#fdbf35",
+        "struct_hover": "#fdbf35",
+        "struct_hover_background": "#444",
+        "enum": "#fdbf35",
+        "enum_hover": "#fdbf35",
+        "enum_hover_background": "#444",
+        "union": "#fdbf35",
+        "union_hover": "#fdbf35",
+        "union_hover_background": "#444",
+        "trait": "#fdbf35",
+        "trait_hover": "#fdbf35",
+        "trait_hover_background": "#444",
+        "fn": "#fdbf35",
+        "fn_hover": "#fdbf35",
+        "fn_hover_background": "#444",
+        "type": "#fdbf35",
+        "type_hover": "#fdbf35",
+        "type_hover_background": "#444",
+        "keyword": "#fdbf35",
+        "keyword_hover": "#fdbf35",
+        "keyword_hover_background": "#444",
+        "attribute": "#fdbf35",
+        "attribute_hover": "#fdbf35",
+        "attribute_hover_background": "#444",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "struct": "#356da4",
+        "struct_hover": "#356da4",
+        "struct_hover_background": "#fff",
+        "enum": "#356da4",
+        "enum_hover": "#356da4",
+        "enum_hover_background": "#fff",
+        "union": "#356da4",
+        "union_hover": "#356da4",
+        "union_hover_background": "#fff",
+        "trait": "#356da4",
+        "trait_hover": "#356da4",
+        "trait_hover_background": "#fff",
+        "fn": "#356da4",
+        "fn_hover": "#356da4",
+        "fn_hover_background": "#fff",
+        "type": "#356da4",
+        "type_hover": "#356da4",
+        "type_hover_background": "#fff",
+        "keyword": "#356da4",
+        "keyword_hover": "#356da4",
+        "keyword_hover_background": "#fff",
+        "attribute": "#356da4",
+        "attribute_hover": "#356da4",
+        "attribute_hover_background": "#fff",
+    }
+)
