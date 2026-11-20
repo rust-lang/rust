@@ -81,18 +81,21 @@
      */
     function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
-            const settingId = toggle.id;
-            const settingValue = getSettingValue(settingId);
-            if (settingValue !== null) {
-                toggle.checked = settingValue === "true";
-            }
-            toggle.onchange = () => {
-                changeSetting(toggle.id, toggle.checked);
-            };
-        });
         onEachLazy(
-            settingsElement.querySelectorAll("input[type=\"radio\"]"),
+            settingsElement.querySelectorAll(".setting-check input[type=\"checkbox\"]"),
+            toggle => {
+                const settingId = toggle.id;
+                const settingValue = getSettingValue(settingId);
+                if (settingValue !== null) {
+                    toggle.checked = settingValue === "true";
+                }
+                toggle.onchange = () => {
+                    changeSetting(toggle.id, toggle.checked);
+                };
+            },
+        );
+        onEachLazy(
+            settingsElement.querySelectorAll(".setting-radio input[type=\"radio\"]"),
             /** @param {HTMLInputElement} elem */
             elem => {
                 const settingId = elem.name;
@@ -126,17 +129,11 @@
     function buildSettingsPageSections(tabs) {
         let output = "";
 
-        output += "<div class=\"tabs\">";
         for (const [index, tab] of tabs.entries()) {
             output += `\
-                <button class="tab${index === 0 ? " selected" : ""}" data-name="${tab.name}">\
-                    ${tab.name}\
-                </button>`;
-        }
-        output += "</div>";
-        for (const [index, tab] of tabs.entries()) {
-            output += `\
-<div class="setting${index === 0 ? " selected" : ""}" data-name="${tab.name}">`;
+<input type="radio" ${index === 0 ? " checked" : ""} id="setting-tab-${tab.name}" \
+    name="setting-radio"><label for="setting-tab-${tab.name}">${tab.name}</label>
+<div class="content">`;
             for (const setting of tab.settings) {
                 const js_data_name = setting["js_name"];
                 const setting_name = setting["name"];
@@ -287,35 +284,13 @@
 
         // Then we build the DOM.
         const elementKind = isSettingsPage ? "section" : "div";
-        const innerHTML = `<div class="settings">${buildSettingsPageSections(tabs)}</div>`;
+        const innerHTML = `<div class="settings tabs">${buildSettingsPageSections(tabs)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
         if (!isSettingsPage) {
             el.className = "popover";
         }
         el.innerHTML = innerHTML;
-        const selectedClass = "selected";
-        onEachLazy(el.getElementsByClassName("tab"), tab => {
-            tab.onclick = () => {
-                if (tab.classList.contains(selectedClass)) {
-                    return;
-                }
-                const selectedTab = el.querySelector(`.tab.${selectedClass}`);
-                if (selectedTab) {
-                    selectedTab.classList.remove(selectedClass);
-                }
-                const name = tab.getAttribute("data-name");
-                const selected = el.querySelector(`#settings .setting.${selectedClass}`);
-                if (selected) {
-                    selected.classList.remove(selectedClass);
-                }
-                const newSelected = el.querySelector(`#settings .setting[data-name="${name}"]`);
-                if (newSelected) {
-                    newSelected.classList.add(selectedClass);
-                }
-                tab.classList.add(selectedClass);
-            };
-        });
 
         if (isSettingsPage) {
             const mainElem = document.getElementById(MAIN_ID);

@@ -261,12 +261,12 @@ define-function: (
     block {
         call-function: ("switch-theme-and-keep-open", {"theme": |theme|})
 
-        assert-css: ("#settings .tabs > button.tab:not(.selected)", {
+        assert-css: ("#settings .tabs > input:not(:checked) + label", {
             "background-color": |background|,
             "border-bottom": |border_bottom|,
             "border-top": |border_top|,
         })
-        assert-css: ("#settings .tabs > button.tab.selected", {
+        assert-css: ("#settings .tabs > input:checked + label", {
             "background-color": |background_selected|,
             "border-bottom": |border_bottom_selected|,
             "border-top": |border_top_selected|,
@@ -275,8 +275,8 @@ define-function: (
         assert-css: ("#settings::before", {
             "background-color": |background|,
         })
-        move-cursor-to: "#settings .tabs > button.tab:not(.selected)"
-        assert-css: ("#settings .tabs > button.tab:not(.selected):hover", {
+        move-cursor-to: "#settings .tabs > input:not(:checked) + label"
+        assert-css: ("#settings .tabs > input:not(:checked) + label:hover", {
             "background-color": |background_hover|,
             "border-bottom": |border_bottom_hover|,
             "border-top": |border_top_hover|,
@@ -383,7 +383,7 @@ assert-css: (".setting-line", {"margin": |setting_line_margin|})
 
 // We will check that the checkboxes size doesn't change either.
 assert-size: (
-    "#settings .selected label > input[type='checkbox']",
+    "#settings .tabs > input:checked + label + .content label > input[type='checkbox']",
     {"width": 19, "height": 19},
     ALL,
 )
@@ -404,7 +404,7 @@ assert-css: (".setting-radio", {"cursor": "pointer"})
 
 // We ensure that the checkboxes size didn't change.
 assert-size: (
-    "#settings .selected label > input[type='checkbox']",
+    "#settings .tabs > input:checked + label + .content label > input[type='checkbox']",
     {"width": 19, "height": 19},
     ALL,
 )
