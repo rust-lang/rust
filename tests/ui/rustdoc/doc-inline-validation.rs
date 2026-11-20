@@ -47,22 +47,19 @@ pub use std::io;
 pub use std::fs;
 
 // Invalid targets with relevant lint levels
-#[deny(invalid_doc_attributes)]
 #[doc(inline)]
 //~^ ERROR this attribute can only be applied to a `use` item
 pub fn fn_with_inline() {}
 
-#[allow(invalid_doc_attributes)]
 #[doc(inline)]
+//~^ ERROR this attribute can only be applied to a `use` item
 pub fn fn_allowed() {}
 
-#[deny(invalid_doc_attributes)]
 #[doc(no_inline)]
 //~^ ERROR this attribute can only be applied to a `use` item
 pub struct StructWithNoInline;
 
 // Conflict on an invalid target
-#[deny(invalid_doc_attributes)]
 #[doc(inline)]
 //~^ ERROR conflicting doc inlining attributes
 //~| HELP remove one of the conflicting attributes
@@ -73,6 +70,5 @@ pub struct ConflictOnStruct;
 
 // Malformed arguments without extra validation diagnostics
 #[doc(inline = "foo")]
-//~^ WARN didn't expect any arguments here
-//~| WARN this was previously accepted
+//~^ ERROR malformed `doc` attribute input
 pub fn malformed_fn() {}

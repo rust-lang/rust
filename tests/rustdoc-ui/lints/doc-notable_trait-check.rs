@@ -1,5 +1,4 @@
 #![feature(doc_notable_trait)]
-#![deny(invalid_doc_attributes)]
 
 #[doc(notable_trait)]
 trait NoColor {}

@@ -72,6 +72,7 @@ pub(crate) struct DocSearchUnboxInvalid {
     "read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information"
 )]
 pub(crate) struct DocMaskedOnlyExternCrate {
+    #[primary_span]
     #[label("only applicable on `extern crate` items")]
     pub attr_span: Span,
     #[label("not an `extern crate` item")]
@@ -81,6 +82,7 @@ pub(crate) struct DocMaskedOnlyExternCrate {
 #[derive(Diagnostic)]
 #[diag("this attribute cannot be applied to an `extern crate self` item")]
 pub(crate) struct DocMaskedNotExternCrateSelf {
+    #[primary_span]
     #[label("not applicable on `extern crate self` items")]
     pub attr_span: Span,
     #[label("`extern crate self` defined here")]
