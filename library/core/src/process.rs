@@ -3,7 +3,7 @@
 //! Most process-related functionality requires std, but [`crash`] is available
 //! on all targets.
 
-/// Terminates the process in a violent fashion.
+/// Terminates the process in a violent but safe fashion.
 ///
 /// The function will never return and will immediately terminate the current
 /// process in a platform specific "abnormal" manner. As a consequence,
@@ -15,8 +15,14 @@
 /// to match C `abort()` or otherwise perform a "clean" abort. Instead, it emits
 /// code that will crash the process with as little overhead as possible, such
 /// as a "halt and catch fire" style instruction. You should generally prefer
-/// using `abort` instead except where the absolute minimum overhead is
-/// required.
+/// using `abort` or one of the other options mentioned in [Exiting the current
+/// process], unless absolute minimum overhead is required.
+///
+/// While this function provides an abrupt exit, note that it is still a safe
+/// form of crashing—unlike, for example, a segfault caused by a null pointer
+/// dereference.
+///
+/// [Exiting the current process]: ../../std/process/index.html#exiting-the-current-process
 ///
 /// # Platform-specific behavior
 ///
