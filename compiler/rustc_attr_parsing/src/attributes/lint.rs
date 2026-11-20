@@ -37,8 +37,6 @@ impl LintParser {
                 let p = parsers.last()?.meta_item()?;
                 let nv = p.args().as_name_value()?;
                 if !p.path().word_is(sym::reason) {
-                    // FIXME: We should recommend `reason` here
-
                     cx.emit_err(MalformedLintAttributeInput {
                         span: p.span(),
                         help: MalformedLintAttributeInputHelp::Reason {

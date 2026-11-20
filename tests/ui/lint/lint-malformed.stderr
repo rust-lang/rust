@@ -4,7 +4,11 @@ error: malformed `allow` attribute input
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ not the name of a lint
    |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![allow(bar = "baz")]
+LL + #![allow(reason = "baz")]
+   |
 
 error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
@@ -12,26 +16,12 @@ error: malformed `allow` attribute input
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ not the name of a lint
    |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: malformed `allow` attribute input
-  --> $DIR/lint-malformed.rs:2:10
+help: to provide a reason, use `reason = ""`
    |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
+LL - #![allow(bar = "baz")]
+LL + #![allow(reason = "baz")]
    |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: malformed `allow` attribute input
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
-   |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0539]: malformed `deny` attribute input
   --> $DIR/lint-malformed.rs:1:4
@@ -60,18 +50,22 @@ error: malformed `allow` attribute input
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ not the name of a lint
    |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![allow(bar = "baz")]
+LL + #![allow(reason = "baz")]
+   |
 
-error: malformed `allow` attribute input
-  --> $DIR/lint-malformed.rs:2:10
+warning: unused attribute
+  --> $DIR/lint-malformed.rs:2:1
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: attribute `allow` without any lints has no effect
+   = note: requested on the command line with `-W unused-attributes`
 
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0539`.
