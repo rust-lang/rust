@@ -838,6 +838,50 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 };
             }
 
+            sym::type_id_docs => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let attrs = match ty.kind() {
+                    ty::Adt(def, args)
+                        if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                            def.field_representing_type_info(ecx.tcx(), *args) =>
+                    {
+                        match base.kind() {
+                            ty::Adt(base_def, _) => {
+                                let field = &base_def.variants()[variant_idx].fields[field_idx];
+                                Some(field.did)
+                            }
+                            ty::Tuple(_) => None,
+                            _ => {
+                                // only adts and tuples have fields
+                                span_bug!(ecx.cur_span(), "expected adt or tuple type, got {ty}");
+                            }
+                        }
+                    }
+                    ty::Adt(def, _) => Some(def.did()),
+                    _ => None,
+                };
+
+                ecx.write_doc_attributes(dest, attrs)?;
+            }
+
+            sym::type_id_variant_docs => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let var = def.variant(VariantIdx::from_usize(variant_idx)).def_id;
+                    ecx.write_doc_attributes(dest, Some(var))?;
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+            }
+
             sym::type_id_variant_non_exhaustive => {
                 let base = ecx.read_type_id(&args[0])?;
 
