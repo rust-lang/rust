@@ -29,10 +29,15 @@ fn main() {
         .run()
         .assert_stdout_contains("rustc version 1.");
 
-    // Check all object files (including temporary outputs) have a `.comment`
+    // Check codegen object files (including temporary outputs) have a `.comment`
     // section with the expected content.
     rfs::read_dir_entries(cwd(), |f| {
-        if !f.extension().is_some_and(|ext| ext == "o") {
+        // Synthetic linker inputs are not codegen objects and have no `.comment`.
+        let name = f.file_name().unwrap().to_string_lossy();
+        if !f.extension().is_some_and(|ext| ext == "o")
+            || name.contains(".rustc_link_metadata.")
+            || name.contains(".rustc_link_symbols.")
+        {
             return;
         }
 
