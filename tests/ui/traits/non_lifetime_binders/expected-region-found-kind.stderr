@@ -13,6 +13,7 @@ LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
 error[E0221]: ambiguous associated type `As` in bounds of `F`
   --> $DIR/expected-region-found-kind.rs:14:14
    |
+LL | trait E<'e> {
 LL |     type As;
    |     -------
    |     |
@@ -21,6 +22,12 @@ LL |     type As;
 ...
 LL |     T: F<'a, As: E<'a>>,
    |              ^^^^^^^^^ ambiguous associated type `As`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     T: F<'a, As: E<'a>>,
+LL +     T: F<'a> + for<'e> E<'e, As: E<'a>> + E<'a, As: E<'a>>,
+   |
 
 error[E0283]: type annotations needed: cannot satisfy `T: E<'a>`
   --> $DIR/expected-region-found-kind.rs:14:8

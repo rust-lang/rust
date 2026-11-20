@@ -1,6 +1,7 @@
 error[E0191]: the value of the associated type `Bar` in `Foo` must be specified
   --> $DIR/associated-type-cycle.rs:6:22
    |
+LL | trait Foo {
 LL |     type Bar;
    |     -------- `Bar` defined here
 ...

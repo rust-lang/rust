@@ -386,10 +386,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'_>,
+        constraints: &[hir::AssocItemConstraint<'_>],
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         duplicates: Option<&mut FxIndexMap<DefId, Span>>,
         path_span: Span,
         predicate_filter: PredicateFilter,
+        span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
 
@@ -430,6 +432,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint.ident,
                 path_span,
                 Some(constraint),
+                constraints,
+                // Span for `dyn Trait<Assoc = ...>` including `dyn`.
+                tcx.hir_span(tcx.parent_hir_id(hir_ref_id)),
             )?
         };
 
