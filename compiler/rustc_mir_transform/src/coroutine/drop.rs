@@ -1,6 +1,7 @@
 //! Drops and async drops related logic for coroutine transformation pass
 
 use super::*;
+use crate::RequiredConstsVisitor;
 
 // Fix return Poll<Rv>::Pending statement into Poll<()>::Pending for async drop function
 struct FixReturnPendingVisitor<'tcx> {
@@ -250,6 +251,11 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // the phase of the body from analysis.
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
 
+    // The generated drop shim has different MIR from the original coroutine,
+    // so recompute its required constants.
+    body.required_consts = None;
+    RequiredConstsVisitor::compute_required_consts(&mut body);
+
     body
 }
 
@@ -343,6 +349,10 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     if transform.coroutine_kind.is_async_desugaring() {
         transform_async_context(tcx, &mut body);
     }
+    // The generated drop shim has different MIR from the original coroutine,
+    // so recompute its required constants.
+    body.required_consts = None;
+    RequiredConstsVisitor::compute_required_consts(&mut body);
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
         dumper.dump_mir(&body);
@@ -399,6 +409,11 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     if coroutine_kind.is_async_desugaring() {
         transform_async_context(tcx, &mut body);
     }
+
+    // The generated drop shim has different MIR from the original coroutine,
+    // so recompute its required constants.
+    body.required_consts = None;
+    RequiredConstsVisitor::compute_required_consts(&mut body);
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
         dumper.dump_mir(&body);
