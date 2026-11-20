@@ -11,6 +11,8 @@
 
 use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
+use core::byte_str::ByteStr;
+#[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
@@ -677,6 +679,17 @@ impl [u8] {
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
         self.iter().map(|b| b.to_ascii_lowercase()).collect()
+    }
+
+    /// Converts a `Box<[u8]>` into a `Box<ByteStr>` without copying or allocating.
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "byte_str", issue = "134915")]
+    #[inline]
+    pub fn into_boxed_byte_str<A: Allocator>(self: Box<[u8], A>) -> Box<ByteStr, A> {
+        let (raw, alloc) = Box::into_raw_with_allocator(self);
+        // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
+        unsafe { Box::from_raw_in(raw as *mut ByteStr, alloc) }
     }
 }
 

@@ -22,7 +22,7 @@ LL | |     }
    | |_____^ the trait `From<many_froms::W>` is not implemented for `Box<Box<Box<Arc<Box<Rc<many_froms::W>>>>>>`
    |
    = help: the following other types implement trait `From<T>`:
-             `Box<ByteStr>` implements `From<Box<[u8]>>`
+             `Box<ByteStr, A>` implements `From<Box<[u8], A>>`
              `Box<CStr>` implements `From<&CStr>`
              `Box<CStr>` implements `From<&mut CStr>`
              `Box<CStr>` implements `From<CString>`
@@ -42,7 +42,7 @@ LL | |     }
    | |_____^ the trait `From<many_froms_2::W>` is not implemented for `Box<Arc<Rc<Box<Rc<many_froms_2::W>>>>>`
    |
    = help: the following other types implement trait `From<T>`:
-             `Box<ByteStr>` implements `From<Box<[u8]>>`
+             `Box<ByteStr, A>` implements `From<Box<[u8], A>>`
              `Box<CStr>` implements `From<&CStr>`
              `Box<CStr>` implements `From<&mut CStr>`
              `Box<CStr>` implements `From<CString>`
