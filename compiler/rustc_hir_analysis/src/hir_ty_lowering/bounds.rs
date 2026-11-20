@@ -424,7 +424,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Otherwise, we have to walk through the supertraits to find
             // one that does define it.
             self.probe_single_bound_for_assoc_item(
-                || traits::supertraits(tcx, trait_ref),
+                || traits::supertraits(tcx, trait_ref).map(ty::Unnormalized::skip_normalization),
                 AssocItemQSelf::Trait(trait_ref.def_id()),
                 assoc_tag,
                 constraint.ident,
