@@ -1,3 +1,6 @@
+// Ensure that we permit leading where clauses on associated types in traits
+// (for backward compatibility) and lint on them.
+
 //@ check-pass
 //@ run-rustfix
 
@@ -8,8 +11,8 @@ trait Trait {
     type Assoc where u32: Copy;
     // Fine.
     type Assoc2 where u32: Copy, i32: Copy;
-    //
     type Assoc3;
+    type Assoc4;
 }
 
 impl Trait for u32 {
@@ -21,6 +24,9 @@ impl Trait for u32 {
     //~^ WARNING where clause not allowed here
     type Assoc3 where = ();
     //~^ WARNING where clause not allowed here
+    // issue: <https://github.com/rust-lang/rust/issues/153567>
+    type Assoc4 where i32: Copy = () where;
+    //~^ WARNING where clause not allowed here
 }
 
 impl Trait for i32 {
@@ -31,6 +37,7 @@ impl Trait for i32 {
     //~^ WARNING where clause not allowed here
     type Assoc3 where = () where;
     //~^ WARNING where clause not allowed here
+    type Assoc4 = ();
 }
 
 fn main() {}
