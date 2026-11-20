@@ -4538,8 +4538,12 @@ impl<'db> Type<'db> {
     }
 
     // FIXME: Find some way with const params, maybe even lifetimes?
-    pub fn instantiate(&self, args: impl IntoIterator<Item: Borrow<Type<'db>>>) -> Type<'db> {
-        let interner = DbInterner::conjure();
+    pub fn instantiate(
+        &self,
+        db: &'db dyn HirDatabase,
+        args: impl IntoIterator<Item: Borrow<Type<'db>>>,
+    ) -> Type<'db> {
+        let interner = DbInterner::new_no_crate(db);
         let (args, owner) = match self.owner {
             TypeOwnerId::GenericDefId(def) => generic_args_from_tys(interner, def.into(), args),
             TypeOwnerId::BuiltinDeriveImplId(def) => {

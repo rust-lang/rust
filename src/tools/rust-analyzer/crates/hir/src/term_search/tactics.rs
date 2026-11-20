@@ -169,7 +169,7 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                 let param_exprs: Vec<Vec<Expr<'_>>> = fields
                     .into_iter()
                     .map(|field| {
-                        lookup.find(db, &field.ty(db).instantiate(generics.iter().cloned()))
+                        lookup.find(db, &field.ty(db).instantiate(db, generics.iter().cloned()))
                     })
                     .collect::<Option<_>>()?;
 
@@ -215,7 +215,10 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                             .fields(db)
                             .into_iter()
                             .map(|field| {
-                                lookup.find(db, &field.ty(db).instantiate(generics.iter().cloned()))
+                                lookup.find(
+                                    db,
+                                    &field.ty(db).instantiate(db, generics.iter().cloned()),
+                                )
                             })
                             .collect::<Option<_>>()?;
 
@@ -329,7 +332,7 @@ pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
                             })
                             .collect::<Option<_>>()?;
 
-                        let ret_ty = it.ret_type(db).instantiate(generics.iter().cloned());
+                        let ret_ty = it.ret_type(db).instantiate(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
                         if !it.is_visible_from(db, module)
                             || it.is_unsafe_to_call(
@@ -348,7 +351,7 @@ pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
                             .params_without_self(db)
                             .into_iter()
                             .map(|field| {
-                                let ty = &field.ty().instantiate(&generics);
+                                let ty = &field.ty().instantiate(db, &generics);
                                 match ty.is_mutable_reference() {
                                     true => None,
                                     false => lookup.find_autoref(db, ty),
@@ -459,15 +462,18 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
                 return None;
             }
 
-            let ret_ty = it.ret_type(db).instantiate(ty.type_arguments());
+            let ret_ty = it.ret_type(db).instantiate(db, ty.type_arguments());
 
             // Ignore functions that do not change the type
             if ty.instantiate_with_errors().could_unify_with_deeply(db, &ret_ty) {
                 return None;
             }
 
-            let self_ty =
-                it.self_param(db).expect("No self param").ty(db).instantiate(ty.type_arguments());
+            let self_ty = it
+                .self_param(db)
+                .expect("No self param")
+                .ty(db)
+                .instantiate(db, ty.type_arguments());
 
             // Ignore functions that have different self type
             if !self_ty.autoderef(db).any(|s_ty| ty == s_ty) {
@@ -480,7 +486,9 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
             let param_exprs: Vec<Vec<Expr<'_>>> = it
                 .params_without_self(db)
                 .into_iter()
-                .map(|field| lookup.find_autoref(db, &field.ty().instantiate(ty.type_arguments())))
+                .map(|field| {
+                    lookup.find_autoref(db, &field.ty().instantiate(db, ty.type_arguments()))
+                })
                 .collect::<Option<_>>()?;
 
             let generics: Vec<_> = ty.type_arguments().collect();
@@ -654,13 +662,15 @@ pub(super) fn impl_static_method<'a, 'lt, 'db, DB: HirDatabase>(
                 return None;
             }
 
-            let ret_ty = it.ret_type(db).instantiate(ty.type_arguments());
+            let ret_ty = it.ret_type(db).instantiate(db, ty.type_arguments());
 
             // Early exit if some param cannot be filled from lookup
             let param_exprs: Vec<Vec<Expr<'_>>> = it
                 .params_without_self(db)
                 .into_iter()
-                .map(|field| lookup.find_autoref(db, &field.ty().instantiate(ty.type_arguments())))
+                .map(|field| {
+                    lookup.find_autoref(db, &field.ty().instantiate(db, ty.type_arguments()))
+                })
                 .collect::<Option<_>>()?;
 
             // Note that we need special case for 0 param constructors because of multi cartesian
