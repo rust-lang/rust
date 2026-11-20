@@ -11,6 +11,8 @@ cfg_select! {
         use unix as imp;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
+        #[cfg(target_os = "linux")]
+        pub(crate) use unix::cfg_has_statx;
         #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
         #[cfg(not(target_os = "wasi"))]
