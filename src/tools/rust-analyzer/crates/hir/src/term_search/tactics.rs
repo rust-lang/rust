@@ -57,7 +57,7 @@ pub(super) fn trivial<'a, 'lt, 'db, DB: HirDatabase>(
 
         lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
-        ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(expr)
+        ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(expr)
     })
 }
 
@@ -107,7 +107,7 @@ pub(super) fn assoc_const<'a, 'lt, 'db, DB: HirDatabase>(
 
             lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(expr)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(expr)
         })
 }
 
@@ -169,7 +169,7 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                 let param_exprs: Vec<Vec<Expr<'_>>> = fields
                     .into_iter()
                     .map(|field| {
-                        lookup.find(db, &field.ty(db).instantiate(db, generics.iter().cloned()))
+                        lookup.find(&field.ty(db).instantiate(db, generics.iter().cloned()))
                     })
                     .collect::<Option<_>>()?;
 
@@ -215,10 +215,7 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                             .fields(db)
                             .into_iter()
                             .map(|field| {
-                                lookup.find(
-                                    db,
-                                    &field.ty(db).instantiate(db, generics.iter().cloned()),
-                                )
+                                lookup.find(&field.ty(db).instantiate(db, generics.iter().cloned()))
                             })
                             .collect::<Option<_>>()?;
 
@@ -252,7 +249,7 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
             Adt::Union(_) => None,
         })
         .filter_map(|(ty, exprs)| {
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
         })
         .flatten()
 }
@@ -386,7 +383,7 @@ pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
         })
         .flatten()
         .filter_map(|(ty, exprs)| {
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
         })
         .flatten()
 }
@@ -465,7 +462,7 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
             let ret_ty = it.ret_type(db).instantiate(db, ty.type_arguments());
 
             // Ignore functions that do not change the type
-            if ty.instantiate_with_errors().could_unify_with_deeply(db, &ret_ty) {
+            if ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ret_ty) {
                 return None;
             }
 
@@ -480,7 +477,7 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
                 return None;
             }
 
-            let target_type_exprs = lookup.find(db, &ty).expect("Type not in lookup");
+            let target_type_exprs = lookup.find(&ty).expect("Type not in lookup");
 
             // Early exit if some param cannot be filled from lookup
             let param_exprs: Vec<Vec<Expr<'_>>> = it
@@ -510,7 +507,7 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
             Some((ret_ty, fn_exprs))
         })
         .filter_map(|(ty, exprs)| {
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
         })
         .flatten()
 }
@@ -538,7 +535,7 @@ pub(super) fn struct_projection<'a, 'lt, 'db, DB: HirDatabase>(
     lookup
         .new_types(NewTypesKey::StructProjection)
         .into_iter()
-        .map(|ty| (ty.clone(), lookup.find(db, &ty).expect("Expr not in lookup")))
+        .map(|ty| (ty.clone(), lookup.find(&ty).expect("Expr not in lookup")))
         .filter(|_| should_continue())
         .flat_map(move |(ty, targets)| {
             ty.fields(db).into_iter().filter_map(move |(field, filed_ty)| {
@@ -553,7 +550,7 @@ pub(super) fn struct_projection<'a, 'lt, 'db, DB: HirDatabase>(
             })
         })
         .filter_map(|(ty, exprs)| {
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
         })
         .flatten()
 }
@@ -588,7 +585,7 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
     .inspect(|exprs| {
         lookup.insert(exprs.ty(db), std::iter::once(exprs.clone()));
     })
-    .filter(|expr| expr.ty(db).instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal))
+    .filter(|expr| expr.ty(db).instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal))
 }
 
 /// # Impl static method (without self type) tactic
@@ -691,7 +688,7 @@ pub(super) fn impl_static_method<'a, 'lt, 'db, DB: HirDatabase>(
             Some((ret_ty, fn_exprs))
         })
         .filter_map(|(ty, exprs)| {
-            ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
+            ty.instantiate_with_errors(db).could_unify_with_deeply(db, &ctx.goal).then_some(exprs)
         })
         .flatten()
 }
@@ -730,7 +727,7 @@ pub(super) fn make_tuple<'a, 'lt, 'db, DB: HirDatabase>(
 
             // Early exit if some param cannot be filled from lookup
             let param_exprs: Vec<Vec<Expr<'db>>> =
-                ty.type_arguments().map(|field| lookup.find(db, &field)).collect::<Option<_>>()?;
+                ty.type_arguments().map(|field| lookup.find(&field)).collect::<Option<_>>()?;
 
             let exprs: Vec<Expr<'db>> = param_exprs
                 .into_iter()
@@ -751,7 +748,7 @@ pub(super) fn make_tuple<'a, 'lt, 'db, DB: HirDatabase>(
         .flatten()
         .filter_map(|expr| {
             expr.ty(db)
-                .instantiate_with_errors()
+                .instantiate_with_errors(db)
                 .could_unify_with_deeply(db, &ctx.goal)
                 .then_some(expr)
         })

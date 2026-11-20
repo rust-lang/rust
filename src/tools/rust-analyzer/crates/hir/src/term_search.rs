@@ -87,8 +87,9 @@ impl<'db> AlternativeExprs<'db> {
 /// iteration as well as keeping track of which `ScopeDef` items have been used.
 /// Both of them are to speed up the term search by leaving out types / ScopeDefs that likely do
 /// not produce any new results.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct LookupTable<'db> {
+    db: &'db dyn HirDatabase,
     /// All the `Expr`s in "value" produce the type of "key"
     data: FxHashMap<Type<'db>, AlternativeExprs<'db>>,
     /// New types reached since last query by the `NewTypesKey`
@@ -101,20 +102,25 @@ struct LookupTable<'db> {
 
 impl<'db> LookupTable<'db> {
     /// Initialize lookup table
-    fn new(many_threshold: usize, goal: Type<'db>) -> Self {
-        let mut res = Self { many_threshold, ..Default::default() };
-        res.new_types.insert(NewTypesKey::ImplMethod, Vec::new());
-        res.new_types.insert(NewTypesKey::StructProjection, Vec::new());
-        res.types_wishlist.insert(goal);
-        res
+    fn new(db: &'db dyn HirDatabase, many_threshold: usize, goal: Type<'db>) -> Self {
+        Self {
+            db,
+            many_threshold,
+            data: Default::default(),
+            types_wishlist: FxHashSet::from_iter([goal]),
+            new_types: FxHashMap::from_iter([
+                (NewTypesKey::ImplMethod, Vec::new()),
+                (NewTypesKey::StructProjection, Vec::new()),
+            ]),
+        }
     }
 
     /// Find all `Expr`s that unify with the `ty`
-    fn find(&mut self, db: &'db dyn HirDatabase, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
+    fn find(&mut self, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
         let res = self
             .data
             .get_key_value(ty)
-            .or_else(|| self.data.iter().find(|(t, _)| t.could_unify_with_deeply(db, ty)))
+            .or_else(|| self.data.iter().find(|(t, _)| t.could_unify_with_deeply(self.db, ty)))
             .map(|(t, tts)| tts.exprs(t));
 
         if res.is_none() {
@@ -175,7 +181,7 @@ impl<'db> LookupTable<'db> {
     /// transitive. For example `Vec<i32>` and `FxHashSet<i32>` both unify with `Iterator<Item = i32>`,
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type<'db>, exprs: impl Iterator<Item = Expr<'db>>) {
-        let ty = ty.instantiate_with_errors();
+        let ty = ty.instantiate_with_errors(self.db);
         match self.data.get_mut(&ty) {
             Some(it) => {
                 it.extend_with_threshold(self.many_threshold, exprs);
@@ -271,7 +277,8 @@ pub fn term_search<'db, DB: HirDatabase>(ctx: &TermSearchCtx<'_, 'db, DB>) -> Ve
         defs.insert(def);
     });
 
-    let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold, ctx.goal.clone());
+    let mut lookup =
+        LookupTable::new(ctx.sema.db, ctx.config.many_alternatives_threshold, ctx.goal.clone());
     let fuel = std::cell::Cell::new(ctx.config.fuel);
 
     let should_continue = &|| {

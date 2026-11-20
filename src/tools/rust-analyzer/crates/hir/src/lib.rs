@@ -4524,8 +4524,8 @@ impl<'db> Type<'db> {
     }
 
     /// Replace any generic parameters with error types.
-    pub fn instantiate_with_errors(&self) -> Self {
-        let interner = DbInterner::conjure();
+    pub fn instantiate_with_errors(&self, db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
         let krate = self.krate(interner.db());
         let args = match self.owner {
             TypeOwnerId::GenericDefId(def) => GenericArgs::error_for_item(interner, def.into()),
@@ -4600,7 +4600,7 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         rebase_into: &Type<'db>,
     ) -> Type<'db> {
-        self.try_rebase_into(db, rebase_into).unwrap_or_else(|| self.instantiate_with_errors())
+        self.try_rebase_into(db, rebase_into).unwrap_or_else(|| self.instantiate_with_errors(db))
     }
 
     pub fn try_rebase_into_owner(
@@ -4621,7 +4621,8 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         new_owner: GenericDef,
     ) -> Self {
-        self.try_rebase_into_owner(db, new_owner).unwrap_or_else(|| self.instantiate_with_errors())
+        self.try_rebase_into_owner(db, new_owner)
+            .unwrap_or_else(|| self.instantiate_with_errors(db))
     }
 
     pub fn unknown() -> Self {
