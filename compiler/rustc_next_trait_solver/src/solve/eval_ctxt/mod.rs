@@ -1557,6 +1557,7 @@ where
         let alias_const = self.deeply_resolve_ignoring_regions(alias_const);
         let cx = self.cx();
 
+        let features = cx.features_for(alias_const.kind.def_id());
         // FIXME: get rid of this once GCE is removed
         let is_gce = cx.features().generic_const_exprs();
 
@@ -1670,7 +1671,7 @@ where
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if cx.features().gca_const_items() => {
+            None if features.gca_const_items() => {
                 if alias_const.has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
