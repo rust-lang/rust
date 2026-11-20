@@ -73,37 +73,54 @@ pub impl(self) trait TcpStreamExt {
     #[stable(feature = "tcp_quickack", since = "1.89.0")]
     fn quickack(&self) -> io::Result<bool>;
 
-    /// A socket listener will be awakened solely when data arrives.
+    /// Configures the `TCP_DEFER_ACCEPT` option on the socket.
     ///
-    /// The `accept` argument set the maximum delay until the
-    /// data is available to read, reducing the number of short lived
-    /// connections without data to process.
-    /// Contrary to other platforms `SO_ACCEPTFILTER` feature equivalent, there is
-    /// no necessity to set it after the `listen` call.
-    /// Note that the delay is expressed as Duration from user's perspective
-    /// the call rounds it down to the nearest second expressible as a `c_int`.
+    /// This defers accepting an incoming connection that has not yet received data.
+    /// The `timeout` argument specifies a lower bound on the timeout. The actual
+    /// delay may be significantly longer or shorter.
     ///
-    /// See [`man 7 tcp`](https://man7.org/linux/man-pages/man7/tcp.7.html)
+    /// Currently, the standard library rounds the duration down to whole seconds,
+    /// capped at `c_int::MAX` seconds. This may change if the underlying API becomes
+    /// more expressive. Passing [`Duration::ZERO`] disables this option.
+    ///
+    /// This option is useful to limit the number of attempts TCP makes to complete a
+    /// connection, so connections may be dropped if more retransmissions are needed.
+    ///
+    /// Unlike the equivalent `SO_ACCEPTFILTER` option on other platforms, this option
+    /// can be set before or after calling `listen`.
+    ///
+    /// See [`man 7 tcp`](https://man7.org/linux/man-pages/man7/tcp.7.html) for more information.
     ///
     /// # Examples
     ///
-    /// ```no run
+    /// ```no_run
     /// #![feature(tcp_deferaccept)]
-    /// use std::net::TcpStream;
+    /// use std::net::{TcpListener, TcpStream};
+    /// use std::os::fd::OwnedFd;
     /// use std::os::linux::net::TcpStreamExt;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
-    ///         .expect("Couldn't connect to the server...");
-    /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
+    /// # fn main() -> std::io::Result<()> {
+    /// let listener = TcpListener::bind("127.0.0.1:8080")?;
+    /// let socket = TcpStream::from(OwnedFd::from(listener));
+    /// socket.set_defer_accept(Duration::from_secs(1))?;
+    /// let listener = TcpListener::from(OwnedFd::from(socket));
+    ///
+    /// let (stream, addr) = listener.accept()?;
+    /// Ok(())
+    /// # }
     /// ```
     #[unstable(feature = "tcp_deferaccept", issue = "119639")]
     #[cfg(target_os = "linux")]
-    fn set_deferaccept(&self, accept: Duration) -> io::Result<()>;
+    fn set_defer_accept(&self, timeout: Duration) -> io::Result<()>;
 
     /// Gets the accept delay value of the `TCP_DEFER_ACCEPT` option.
     ///
-    /// For more information about this option, see [`TcpStreamExt::set_deferaccept`].
+    /// Returns [`None`] if this option is disabled, or [`Some`] containing the delay
+    /// otherwise. The returned duration may differ from the requested duration due
+    /// to rounding.
+    ///
+    /// For more information about this option, see [`TcpStreamExt::set_defer_accept`].
     ///
     /// # Examples
     ///
@@ -122,12 +139,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///         .expect("Couldn't connect to the server...");
-    /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
-    /// assert_eq!(stream.deferaccept().unwrap(), Duration::from_secs(1u64));
+    /// stream.set_defer_accept(Duration::from_secs(1u64)).expect("set_defer_accept call failed");
+    /// assert_eq!(stream.defer_accept().unwrap(), Some(Duration::from_secs(1u64)));
+    /// stream.set_defer_accept(Duration::ZERO).expect("set_defer_accept call failed");
+    /// assert_eq!(stream.defer_accept().unwrap(), None);
     /// ```
     #[unstable(feature = "tcp_deferaccept", issue = "119639")]
     #[cfg(target_os = "linux")]
-    fn deferaccept(&self) -> io::Result<Duration>;
+    fn defer_accept(&self) -> io::Result<Option<Duration>>;
 }
 
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
@@ -143,12 +162,12 @@ impl TcpStreamExt for net::TcpStream {
     }
 
     #[cfg(target_os = "linux")]
-    fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
-        self.as_inner().as_inner().set_deferaccept(accept)
+    fn set_defer_accept(&self, timeout: Duration) -> io::Result<()> {
+        self.as_inner().as_inner().set_defer_accept(timeout)
     }
 
     #[cfg(target_os = "linux")]
-    fn deferaccept(&self) -> io::Result<Duration> {
-        self.as_inner().as_inner().deferaccept()
+    fn defer_accept(&self) -> io::Result<Option<Duration>> {
+        self.as_inner().as_inner().defer_accept()
     }
 }
