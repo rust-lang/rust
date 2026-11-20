@@ -139,6 +139,9 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         // Use non-zero `import-instr-limit` multiplier for cold callsites.
         add("-import-cold-multiplier=0.1", false);
 
+        // njn: disable debug metadata checking/stripping
+        add("-disable-auto-upgrade-debug-info", false);
+
         if sess.print_llvm_stats() || sess.print_llvm_stats_json().is_some() {
             add("-stats", false);
         }
