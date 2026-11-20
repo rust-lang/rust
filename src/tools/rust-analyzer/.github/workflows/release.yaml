@@ -74,8 +74,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
+    defaults:
+      run:
+        shell: bash
+
     env:
       RA_TARGET: ${{ matrix.target }}
+      CODE_TARGET: ${{ matrix.code-target }}
       ALLOCATOR_FLAG: ${{ matrix.allocator != 'system' && format('--{0}', matrix.allocator) || '' }}
 
     steps:
@@ -83,6 +88,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+          persist-credentials: false
 
       - name: Install target dependencies
         if: ${{ matrix.target == 'arm-unknown-linux-gnueabihf' }}
@@ -108,23 +114,27 @@ jobs:
         run: |
           rustup update --no-self-update stable
           # llvm-tools contain the llvm-profdata tool which is needed for PGO
-          rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
-          rustup target add ${{ matrix.target }}
+          rustup component add rust-src ${MAYBE_LLVM_TOOLS}
+          rustup target add ${RA_TARGET}
+        env:
+          MAYBE_LLVM_TOOLS: ${{ matrix.pgo && 'llvm-tools' || '' }}
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
+        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${ALLOCATOR_FLAG} ${MAYBE_PGO}
+        env:
+          MAYBE_PGO: ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
 
       - name: Package Extension (release)
         if: github.ref == 'refs/heads/release' && matrix.code-target
-        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
+        run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET}
         working-directory: editors/code
 
       - name: Package Extension (nightly)
         if: github.ref != 'refs/heads/release' && matrix.code-target
-        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
+        run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET} --pre-release
         working-directory: editors/code
 
       - if: matrix.target == 'x86_64-unknown-linux-gnu'
@@ -140,13 +150,13 @@ jobs:
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats . -q
+        run: target/${RA_TARGET}/release/rust-analyzer analysis-stats . -q
 
       - name: Run analysis-stats on rust std library
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         env:
           RUSTC_BOOTSTRAP: 1
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
+        run: target/${RA_TARGET}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -175,9 +185,10 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+          persist-credentials: false
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }} --jemalloc
+        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} --jemalloc
 
       - run: npm ci
         working-directory: editors/code
@@ -211,10 +222,11 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+          persist-credentials: false
 
       - name: Set release tag
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/release" ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/release" ]; then
             git fetch --tags
             today=$(date --iso -u)
             last_tag=$(git tag -l "${today}*" | sort -V | tail -n1)
@@ -274,6 +286,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+          persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -286,6 +299,10 @@ jobs:
 
       - name: Publish Extension
         if: github.repository == 'rust-lang/rust-analyzer'
+        env:
+          COMMAND: ${{ matrix.cmd }}
+          MAYBE_PRE_RELEASE: ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
+          AUTHENTICATION: ${{ matrix.authentication }}
         working-directory: ./editors/code
-        run: npx ${{ matrix.cmd }} publish --skip-duplicate ${{ matrix.authentication }} --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
+        run: npx ${COMMAND} publish --skip-duplicate ${AUTHENTICATION} --packagePath ../../dist/rust-analyzer-*.vsix ${MAYBE_PRE_RELEASE}
         timeout-minutes: 2
