@@ -1,0 +1,24 @@
+- // MIR for `nrvo` before CopyProp
++ // MIR for `nrvo` after CopyProp
+  
+  fn nrvo() -> u8 {
+      let mut _0: u8;
+      let _1: u8;
+      scope 1 {
+-         debug y => _1;
++         debug y => _0;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = dummy(const 5_u8) -> [return: bb1, unwind continue];
++         _0 = dummy(const 5_u8) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _0 = copy _1;
+-         StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,39 @@
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:16:9
+   |
+LL |     let x = Some(NotConstDestruct);
+   |         ^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
+error[E0493]: destructor of `(NotConstDestruct,)` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:29:9
+   |
+LL |     let vec_tuple = (NotConstDestruct,);
+   |         ^^^^^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
+error[E0493]: destructor of `Result<NotConstDestruct, NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:37:9
+   |
+LL |     let x: Result<_, NotConstDestruct> = Ok(NotConstDestruct);
+   |         ^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:47:9
+   |
+LL |     let mut tmp = None;
+   |         ^^^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

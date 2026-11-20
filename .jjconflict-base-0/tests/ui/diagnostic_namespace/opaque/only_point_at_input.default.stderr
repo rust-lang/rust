@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `x` in module `blah`
+  --> $DIR/only_point_at_input.rs:17:17
+   |
+LL |     wrap::wrap!(x);
+   |                 ^ not found in `blah`
+
+error[E0425]: cannot find value `x` in module `blah`
+  --> $DIR/only_point_at_input.rs:20:17
+   |
+LL |     local_wrap!(x);
+   |                 ^ not found in `blah`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

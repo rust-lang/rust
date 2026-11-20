@@ -1,0 +1,13 @@
+error: expected one of `!`, `+`, `,`, `::`, or `>`, found `(`
+  --> $DIR/deep-unmatched-angle-brackets.rs:14:63
+   |
+LL |         <f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<>();
+   |                                                               ^ expected one of `!`, `+`, `,`, `::`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |         <f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<>>();
+   |                                                               +
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,115 @@
+error: all match arms end with the same expression
+  --> tests/ui/branches_sharing_code/shared_match_tail.rs:17:5
+   |
+LL | /     match mode {
+LL | |         Mode::Kill => {
+LL | |             kill();
+LL | |             Ok(())
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: the suggestion may need adjustments to preserve drop order or to use the expression result correctly
+note: the lint level is defined here
+  --> tests/ui/branches_sharing_code/shared_match_tail.rs:1:9
+   |
+LL | #![deny(clippy::branches_sharing_code)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider moving the shared expression after the `match`
+   |
+LL ~             kill();
+LL |         },
+LL |         Mode::Table => {
+LL ~             table();
+LL |         },
+LL |         Mode::List => {
+LL ~             list();
+LL |         },
+LL ~     }
+LL +     Ok(())
+   |
+
+error: all match arms end with the same expression
+  --> tests/ui/branches_sharing_code/shared_match_tail.rs:36:5
+   |
+LL | /     match mode {
+LL | |         Mode::Kill => {
+LL | |             if skip {
+LL | |                 return Ok(());
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: the suggestion may need adjustments to preserve drop order or to use the expression result correctly
+help: consider moving the shared expression after the `match`
+   |
+LL ~             kill();
+LL |         },
+LL |         _ => {
+LL ~             table();
+LL |         },
+LL ~     }
+LL +     Ok(())
+   |
+
+error: all match arms end with the same expression
+  --> tests/ui/branches_sharing_code/shared_match_tail.rs:120:5
+   |
+LL | /     match mode {
+LL | |         Mode::Kill => {
+LL | |             // kill it
+LL | |             kill();
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: the suggestion may need adjustments to preserve drop order or to use the expression result correctly
+help: consider moving the shared expression after the `match`
+   |
+LL ~             kill();
+LL |         },
+LL |         Mode::Table => {
+LL |             // table it
+LL ~             table();
+LL |         },
+LL |         Mode::List => {
+LL ~             list();
+LL |         },
+LL ~     }
+LL +     Ok(())
+   |
+
+error: all match arms end with the same expression
+  --> tests/ui/branches_sharing_code/shared_match_tail.rs:143:5
+   |
+LL | /     match mode {
+LL | |         // killing time
+LL | |         Mode::Kill => {
+LL | |             kill();
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: the suggestion may need adjustments to preserve drop order or to use the expression result correctly
+help: consider moving the shared expression after the `match`
+   |
+LL ~             kill();
+LL |         },
+LL |         // table time
+LL |         Mode::Table => {
+LL ~             table();
+LL |         },
+LL |         // list time
+LL |         Mode::List => {
+LL ~             list();
+LL |         },
+LL ~     }
+LL +     Ok(())
+   |
+
+error: aborting due to 4 previous errors
+

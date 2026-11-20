@@ -1,0 +1,11 @@
+error: redundant `const` fn marker in const impl
+  --> $DIR/const-impl-inherent-double-const.rs:8:5
+   |
+LL | const impl Foo {
+   | ----- this declares all associated functions implicitly const
+LL |     fn bar() {}
+LL |     const fn baz() {}
+   |     ^^^^^^ help: remove the `const`
+
+error: aborting due to 1 previous error
+

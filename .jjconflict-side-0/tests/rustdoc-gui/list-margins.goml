@@ -1,0 +1,21 @@
+// This test ensures that the documentation list markers are correctly placed.
+// It also serves as a regression test for <https://github.com/rust-lang/rust/issues/130622>
+// and <https://github.com/rust-lang/rust/issues/161144>
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/long_list/index.html"
+show-text: true
+
+// 0.3em
+assert-css: (".docblock li p:not(last-child)", {"margin-bottom": "4.8px"})
+assert-css: (".docblock li p + p:last-child", {"margin-bottom": "0px"})
+// 0.4em
+assert-css: (".docblock li", {"margin-bottom": "6.4px"})
+
+// check that the list is allowed to overflow
+assert-css: ("details.toggle", {"overflow": "visible"})
+assert-css: (".docblock", {"overflow": "visible"})
+assert-css: (".docblock ol", {"overflow": "visible"})
+assert-css: (".docblock ol li", {"overflow": "visible"})
+store-position: ("main", {"x": main_x})
+store-position: (".docblock ol li::marker", {"x": marker_x})
+assert: |main_x| <= |marker_x|

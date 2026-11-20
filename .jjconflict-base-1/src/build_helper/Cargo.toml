@@ -1,0 +1,13 @@
+[package]
+name = "build_helper"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1", optional = true }
+serde_derive = { version = "1", optional = true }
+
+[features]
+metrics = ["dep:serde", "dep:serde_derive"]

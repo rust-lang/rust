@@ -1,0 +1,29 @@
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:2:14
+   |
+LL |     let x = "\x80";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\x80'`
+   = help: if you want to write a Unicode character, use `'\u{80}'`
+
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:3:14
+   |
+LL |     let y = "\xff";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xff'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/ascii-only-character-escape.rs:4:14
+   |
+LL |     let z = "\xe2";
+   |              ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xe2'`
+   = help: if you want to write a Unicode character, use `'\u{E2}'`
+
+error: aborting due to 3 previous errors
+

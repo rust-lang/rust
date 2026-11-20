@@ -1,0 +1,114 @@
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:3:17
+   |
+LL | fn a(i: i32) -> i32 {}
+   |    -            ^^^ expected `i32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `i`
+   |
+LL | fn a(i: i32) -> i32 { i }
+   |                       +
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:7:46
+   |
+LL |       let s: String = if let Some(s) = opt_str {
+   |  ______________________________________________^
+LL | |
+LL | |     } else {
+   | |_____^ expected `String`, found `()`
+   |
+help: consider returning the local binding `s`
+   |
+LL |     let s: String = if let Some(s) = opt_str {
+LL ~         s
+LL ~
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:14:11
+   |
+LL | fn c() -> Option<i32> {
+   |    -      ^^^^^^^^^^^ expected `Option<i32>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Option<i32>`
+           found unit type `()`
+help: consider returning the local binding `x`
+   |
+LL ~     let x = Some(1);
+LL +     x
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:20:46
+   |
+LL |       let s: String = if let Some(s) = opt_str {
+   |  ______________________________________________^
+LL | |
+LL | |     } else {
+   | |_____^ expected `String`, found `()`
+   |
+help: consider returning the local binding `s`
+   |
+LL |     let s: String = if let Some(s) = opt_str {
+LL ~         s
+LL ~
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/return-bindings.rs:30:9
+   |
+LL |        let s = if let Some(s) = opt_str {
+   |  ______________-                        -
+   | | ______________________________________|
+LL | ||     } else {
+   | ||_____- expected because of this
+LL | |          String::new()
+   | |          ^^^^^^^^^^^^^ expected `()`, found `String`
+LL | |
+LL | |      };
+   | |______- `if` and `else` have incompatible types
+   |
+help: consider returning the local binding `s`
+   |
+LL |     let s = if let Some(s) = opt_str {
+LL ~         s
+LL ~     } else {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:37:20
+   |
+LL |         Some(s) => {}
+   |                    ^^ expected `String`, found `()`
+   |
+help: consider returning the local binding `s`
+   |
+LL |         Some(s) => { s }
+   |                      +
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/return-bindings.rs:46:17
+   |
+LL |       let s = match opt_str {
+   |  _____________-
+LL | |         Some(s) => {}
+   | |                    -- this is found to be of type `()`
+LL | |         None => String::new(),
+   | |                 ^^^^^^^^^^^^^ expected `()`, found `String`
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+help: consider returning the local binding `s`
+   |
+LL |         Some(s) => { s }
+   |                      +
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,55 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:22:5
+   |
+LL |     s.transmute_inherent(&mut 42)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   |     |                         |
+   |     |                         temporary value created here
+   |     returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing local variable `four`
+  --> $DIR/wf-misc-methods-issue-28609.rs:36:5
+   |
+LL |     s.bomb = Some(&four);
+   |                   ----- `four` is borrowed here
+LL |     &s
+   |     ^^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing local variable `four`
+  --> $DIR/wf-misc-methods-issue-28609.rs:43:5
+   |
+LL |     s.bomb = Some(&four);
+   |                   ----- `four` is borrowed here
+LL |     &*s
+   |     ^^^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:53:5
+   |
+LL |     s << &mut 3
+   |     ^^^^^^^^^^-
+   |     |         |
+   |     |         temporary value created here
+   |     returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:58:5
+   |
+LL |     s.shl(&mut 3)
+   |     ^^^^^^^^^^^-^
+   |     |          |
+   |     |          temporary value created here
+   |     returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:63:5
+   |
+LL |     S2::shl(s, &mut 3)
+   |     ^^^^^^^^^^^^^^^^-^
+   |     |               |
+   |     |               temporary value created here
+   |     returns a value referencing data owned by the current function
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

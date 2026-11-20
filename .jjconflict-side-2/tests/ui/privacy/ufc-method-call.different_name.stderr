@@ -1,0 +1,14 @@
+error[E0599]: no associated function or constant named `foo` found for struct `Foo<B>` in the current scope
+  --> $DIR/ufc-method-call.rs:27:27
+   |
+LL |     pub struct Foo<T>(T);
+   |     ----------------- associated function or constant `foo` not found for this struct
+...
+LL |     test::Foo::<test::B>::foo();
+   |                           ^^^ associated function or constant not found in `Foo<B>`
+   |
+   = note: the associated function or constant was found for `Foo<A>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,38 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch-issue-45727.rs:6:24
+   |
+LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
+   |                        ^^^^ -------- found signature defined here
+   |                        |
+   |                        expected due to this
+   |
+   = note: expected closure signature `for<'a> fn(&'a {integer}) -> _`
+              found closure signature `fn(i32) -> _`
+note: required by a bound in `find`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider adjusting the signature so it borrows its argument
+   |
+LL |     let _ = (-10..=10).find(|x: &i32| x.signum() == 0);
+   |                                 +
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch-issue-45727.rs:9:24
+   |
+LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
+   |                        ^^^^ ----------- found signature defined here
+   |                        |
+   |                        expected due to this
+   |
+   = note: expected closure signature `for<'a> fn(&'a {integer}) -> _`
+              found closure signature `fn(&&&i32) -> _`
+note: required by a bound in `find`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider adjusting the signature so it does not borrow its argument
+   |
+LL -     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
+LL +     let _ = (-10..=10).find(|x: &i32| x.signum() == 0);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0631`.

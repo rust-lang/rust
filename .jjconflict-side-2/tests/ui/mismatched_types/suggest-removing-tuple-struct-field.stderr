@@ -1,0 +1,41 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-removing-tuple-struct-field.rs:11:13
+   |
+LL |     some_fn(value.0);
+   |     ------- ^^^^^^^ expected `MyWrapper`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/suggest-removing-tuple-struct-field.rs:15:4
+   |
+LL | fn some_fn(wrapped: MyWrapper) {
+   |    ^^^^^^^ ------------------
+help: consider removing the tuple struct field `0`
+   |
+LL -     some_fn(value.0);
+LL +     some_fn(value);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-removing-tuple-struct-field.rs:12:13
+   |
+LL |     some_fn(my_wrapper!(123).0);
+   |     ------- ^^^^^^^^^^^^^^^^^^ expected `MyWrapper`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/suggest-removing-tuple-struct-field.rs:15:4
+   |
+LL | fn some_fn(wrapped: MyWrapper) {
+   |    ^^^^^^^ ------------------
+help: consider removing the tuple struct field `0`
+   |
+LL -     some_fn(my_wrapper!(123).0);
+LL +     some_fn(my_wrapper!(123));
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,15 @@
+warning: unused coroutine that must be used
+  --> $DIR/yield-in-args-rev.rs:13:18
+   |
+LL |       #[coroutine] || {
+   |  __________________^
+LL | |         let b = true;
+LL | |         foo(yield, &b);
+LL | |     };
+   | |_____^
+   |
+   = note: coroutines are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

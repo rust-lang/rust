@@ -1,0 +1,21 @@
+error[E0758]: unterminated block comment
+  --> $DIR/unterminated-nested-comment.rs:1:1
+   |
+LL |   /*
+   |   ^-
+   |   |
+   |  _unterminated block comment
+   | |
+LL | | /* */
+LL | | /*
+   | | --
+   | | |
+   | | ...as last nested comment starts here, maybe you want to close this instead?
+LL | | */
+   | |_--^
+   |   |
+   |   ...and last nested comment terminates here.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0758`.

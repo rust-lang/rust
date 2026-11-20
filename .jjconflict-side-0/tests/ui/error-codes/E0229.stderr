@@ -1,0 +1,64 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/E0229.rs:13:25
+   |
+LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+   |                         ^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+LL + fn baz<I>(x: &<I as Foo>::A) {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/E0229.rs:13:25
+   |
+LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+   |                         ^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL - fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+LL + fn baz<I>(x: &<I as Foo>::A) {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/E0229.rs:13:25
+   |
+LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+   |                         ^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL - fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+LL + fn baz<I>(x: &<I as Foo>::A) {}
+   |
+
+error[E0277]: the trait bound `I: Foo` is not satisfied
+  --> $DIR/E0229.rs:13:15
+   |
+LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `I`
+   |
+help: consider restricting type parameter `I` with trait `Foo`
+   |
+LL | fn baz<I: Foo>(x: &<I as Foo<A = Bar>>::A) {}
+   |         +++++
+
+error[E0277]: the trait bound `I: Foo` is not satisfied
+  --> $DIR/E0229.rs:13:14
+   |
+LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `I`
+   |
+help: consider restricting type parameter `I` with trait `Foo`
+   |
+LL | fn baz<I: Foo>(x: &<I as Foo<A = Bar>>::A) {}
+   |         +++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0229, E0277.
+For more information about an error, try `rustc --explain E0229`.

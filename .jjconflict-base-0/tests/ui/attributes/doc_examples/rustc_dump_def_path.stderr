@@ -1,0 +1,20 @@
+error: def-path(main)
+ --> $DIR/rustc_dump_def_path.rs:7:1
+  |
+7 | #[rustc_dump_def_path]
+  | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(a::b::c::d)
+  --> $DIR/rustc_dump_def_path.rs:20:13
+   |
+20 |             #[rustc_dump_def_path]
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(main::{closure#0}::Foo)
+  --> $DIR/rustc_dump_def_path.rs:11:13
+   |
+11 |             #[rustc_dump_def_path]
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

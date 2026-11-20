@@ -1,0 +1,105 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:34:24
+   |
+LL | impl LocalTraitOne for fmt::Display {}
+   |                        ^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl LocalTraitOne for dyn fmt::Display {}
+   |                        +++
+help: alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `fmt::Display`
+   |
+LL - impl LocalTraitOne for fmt::Display {}
+LL + impl<T: fmt::Display> LocalTraitOne for T {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:40:24
+   |
+LL | impl LocalTraitOne for fmt::Display + Send {}
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl LocalTraitOne for dyn fmt::Display + Send {}
+   |                        +++
+help: alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `fmt::Display + Send`
+   |
+LL - impl LocalTraitOne for fmt::Display + Send {}
+LL + impl<T: fmt::Display + Send> LocalTraitOne for T {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:13:24
+   |
+LL | impl LocalTraitTwo for LocalTraitOne {}
+   |                        ^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl LocalTraitTwo for dyn LocalTraitOne {}
+   |                        +++
+help: alternatively use a blanket implementation to implement `LocalTraitTwo` for all types that also implement `LocalTraitOne`
+   |
+LL - impl LocalTraitTwo for LocalTraitOne {}
+LL + impl<T: LocalTraitOne> LocalTraitTwo for T {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:46:29
+   |
+LL | impl<E> GenericTrait<E> for LocalTraitOne {}
+   |                             ^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl<E> GenericTrait<E> for dyn LocalTraitOne {}
+   |                             +++
+help: alternatively use a blanket implementation to implement `GenericTrait<E>` for all types that also implement `LocalTraitOne`
+   |
+LL - impl<E> GenericTrait<E> for LocalTraitOne {}
+LL + impl<E, T: LocalTraitOne> GenericTrait<E> for T {}
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:18:23
+   |
+LL | impl fmt::Display for LocalTraitOne {
+   |                       ^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl fmt::Display for dyn LocalTraitOne {
+   |                       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
+   |
+LL | impl fmt::Display for LocalTraitTwo + Send {
+   |                       ^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl fmt::Display for dyn LocalTraitTwo + Send {
+   |                       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:53:35
+   |
+LL | impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
+   |                                   ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl<T, E> GenericTraitTwo<E> for dyn GenericTrait<T> {}
+   |                                   +++
+help: alternatively use a blanket implementation to implement `GenericTraitTwo<E>` for all types that also implement `GenericTrait<T>`
+   |
+LL - impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
+LL + impl<T, E, U: GenericTrait<T>> GenericTraitTwo<E> for U {}
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

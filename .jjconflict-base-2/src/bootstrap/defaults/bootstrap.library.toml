@@ -1,0 +1,21 @@
+# These defaults are meant for contributors to the standard library and documentation.
+[build]
+bench-stage = 1
+test-stage = 1
+
+[rust]
+# This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
+incremental = true
+# Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
+lto = "off"
+# When building the standard library, you almost never want to build the compiler itself.
+#
+# If compiler-affecting directories are not modified, use precompiled rustc to speed up
+# library development by skipping compiler builds.
+# FIXME: download-rustc is currently broken: https://github.com/rust-lang/rust/issues/142505
+download-rustc = false
+
+[llvm]
+# Will download LLVM from CI if available on your platform.
+# If you intend to modify `src/llvm-project`, use `"if-unchanged"` or `false` instead.
+download-ci-llvm = true

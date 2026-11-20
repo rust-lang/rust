@@ -1,0 +1,190 @@
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:6:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         if let Some(_x) = y {
+...  |
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+   |
+   = note: `-D clippy::while-let-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:25:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let Some(_x) = y else { break };
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:38:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         match y {
+...  |
+LL | |         };
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:47:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         let x = match y {
+...  |
+LL | |         let _str = "foo";
+LL | |     }
+   | |_____^ help: try: `while let Some(x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:58:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         let x = match y {
+...  |
+LL | |     }
+   | |_____^ help: try: `while let Some(x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:90:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |         let (e, l) = match "".split_whitespace().next() {
+...  |
+LL | |         let _ = (e, l);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     while let Some(word) = "".split_whitespace().next() {
+LL +         let (e, l) = (word.is_empty(), word.len());
+LL +         ..
+LL +     }
+   |
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:180:9
+   |
+LL | /         loop {
+LL | |
+LL | |             let lt = match (ix.peek(), iy.peek()) {
+LL | |                 (Some(x), Some(y)) => x < y,
+...  |
+LL | |             res.push(if lt { &mut ix } else { &mut iy }.next().unwrap());
+LL | |         }
+   | |_________^
+   |
+help: try
+   |
+LL ~         while let (Some(x), Some(y)) = (ix.peek(), iy.peek()) {
+LL +             let lt = x < y;
+LL +             ..
+LL +         }
+   |
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:195:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let x = if let Some(y) = Some(3) {
+LL | |             y
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     while let Some(y) = Some(3) {
+LL +         let x = y;
+LL +         ..
+LL +     }
+   |
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:207:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let x: u32 = if let Some(y) = Some(3) {
+LL | |             y
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     while let Some(y) = Some(3) {
+LL +         let x: u32 = y;
+LL +         ..
+LL +     }
+   |
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:219:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let x = if let Some(x) = Some(3) {
+LL | |             x
+...  |
+LL | |     }
+   | |_____^ help: try: `while let Some(x) = Some(3) { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:231:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let x: u32 = if let Some(x) = Some(3) {
+LL | |             x
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     while let Some(x) = Some(3) {
+LL +         let x: u32 = x;
+LL +         ..
+LL +     }
+   |
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:243:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let x = if let Some(x) = Some(2) {
+LL | |             let t = 1;
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     while let Some(x) = Some(2) {
+LL +         let x = {
+LL +             let t = 1;
+LL +             t + x
+LL +         };
+LL +         ..
+LL +     }
+   |
+
+error: aborting due to 12 previous errors
+

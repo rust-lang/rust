@@ -1,0 +1,18 @@
+error: Undefined Behavior: constructing invalid value of type [bool; 100]: at [0], encountered 0x02, but expected a boolean
+  --> tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
+   |
+LL |         typed_swap_nonoverlapping(a, b);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: stack backtrace:
+           0: invalid_array
+               at tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
+           1: main
+               at tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,29 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/range-2.rs:7:9
+   |
+LL |     let r = {
+   |         - borrow later stored here
+LL |         let a = 42;
+   |             - binding `a` declared here
+LL |         let b = 42;
+LL |         &a..&b
+   |         ^^ borrowed value does not live long enough
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `b` does not live long enough
+  --> $DIR/range-2.rs:7:13
+   |
+LL |     let r = {
+   |         - borrow later stored here
+LL |         let a = 42;
+LL |         let b = 42;
+   |             - binding `b` declared here
+LL |         &a..&b
+   |             ^^ borrowed value does not live long enough
+LL |     };
+   |     - `b` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

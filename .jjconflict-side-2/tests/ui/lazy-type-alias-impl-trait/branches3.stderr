@@ -1,0 +1,47 @@
+error[E0282]: type annotations needed
+  --> $DIR/branches3.rs:9:10
+   |
+LL |         |s| s.len()
+   |          ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |s: /* Type */| s.len()
+   |           ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/branches3.rs:18:10
+   |
+LL |         |s| s.len()
+   |          ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |s: /* Type */| s.len()
+   |           ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/branches3.rs:26:10
+   |
+LL |         |s| s.len()
+   |          ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |s: /* Type */| s.len()
+   |           ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/branches3.rs:33:10
+   |
+LL |         |s| s.len()
+   |          ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |s: /* Type */| s.len()
+   |           ++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

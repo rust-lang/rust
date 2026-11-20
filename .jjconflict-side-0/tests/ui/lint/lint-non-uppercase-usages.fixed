@@ -1,0 +1,44 @@
+// Checks that the `non_upper_case_globals` emits suggestions for usages as well
+// <https://github.com/rust-lang/rust/issues/124061>
+
+//@ check-pass
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+use std::cell::Cell;
+
+const MY_STATIC: u32 = 0;
+//~^ WARN constant `my_static` should have an upper case name
+//~| SUGGESTION MY_STATIC
+
+const LOL: u32 = MY_STATIC + 0;
+//~^ SUGGESTION MY_STATIC
+
+mod my_mod {
+    const INSIDE_MOD: u32 = super::MY_STATIC + 0;
+    //~^ SUGGESTION MY_STATIC
+}
+
+thread_local! {
+    static FOO_FOO: Cell<usize> = unreachable!();
+    //~^ WARN constant `fooFOO` should have an upper case name
+    //~| SUGGESTION FOO_FOO
+}
+
+fn foo<const FOO: u32>() {
+    //~^ WARN const parameter `foo` should have an upper case name
+    //~| SUGGESTION FOO
+    let _a = FOO + 1;
+    //~^ SUGGESTION FOO
+}
+
+fn main() {
+    let _a = crate::MY_STATIC;
+    //~^ SUGGESTION MY_STATIC
+
+    FOO_FOO.set(9);
+    //~^ SUGGESTION FOO_FOO
+    println!("{}", FOO_FOO.get());
+    //~^ SUGGESTION FOO_FOO
+}

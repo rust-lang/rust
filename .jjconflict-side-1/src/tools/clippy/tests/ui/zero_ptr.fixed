@@ -1,0 +1,26 @@
+pub fn foo(_const: *const f32, _mut: *mut i64) {}
+
+fn main() {
+    let _ = std::ptr::null::<usize>();
+    //~^ zero_ptr
+    let _ = std::ptr::null_mut::<f64>();
+    //~^ zero_ptr
+    let _: *const u8 = std::ptr::null();
+    //~^ zero_ptr
+
+    foo(0 as _, 0 as _);
+    foo(std::ptr::null(), std::ptr::null_mut());
+    //~^ zero_ptr
+    //~| zero_ptr
+
+    let z = 0;
+    let _ = z as *const usize; // this is currently not caught
+}
+
+const fn in_const_context() {
+    #[clippy::msrv = "1.23"]
+    let _: *const usize = 0 as *const _;
+    #[clippy::msrv = "1.24"]
+    let _: *const usize = std::ptr::null();
+    //~^ zero_ptr
+}

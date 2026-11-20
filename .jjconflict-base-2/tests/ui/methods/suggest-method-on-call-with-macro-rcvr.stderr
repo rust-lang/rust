@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `len` in this scope
+  --> $DIR/suggest-method-on-call-with-macro-rcvr.rs:4:17
+   |
+LL |     let hello = len(vec![]);
+   |                 ^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `len` on `&Vec<_>`
+   |
+LL -     let hello = len(vec![]);
+LL +     let hello = vec![].len();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

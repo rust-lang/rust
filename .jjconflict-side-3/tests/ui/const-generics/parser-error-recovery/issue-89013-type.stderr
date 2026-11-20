@@ -1,0 +1,8 @@
+error: missing type to the right of `=`
+  --> $DIR/issue-89013-type.rs:9:13
+   |
+LL | impl Foo<N = type 3> for Bar {
+   |             ^---- expected type, found keyword `type`
+
+error: aborting due to 1 previous error
+

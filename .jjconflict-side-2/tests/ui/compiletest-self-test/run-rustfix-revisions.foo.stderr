@@ -1,0 +1,14 @@
+error: unused variable: `x`
+  --> $DIR/run-rustfix-revisions.rs:7:9
+   |
+LL |     let x = 0usize;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/run-rustfix-revisions.rs:4:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

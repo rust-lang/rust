@@ -1,0 +1,114 @@
+error: the `loop_match` attribute cannot be used on crates
+  --> $DIR/invalid-attribute.rs:6:4
+   |
+LL | #![loop_match]
+   |    ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on crates
+  --> $DIR/invalid-attribute.rs:7:4
+   |
+LL | #![const_continue]
+   |    ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on foreign functions
+  --> $DIR/invalid-attribute.rs:10:7
+   |
+LL |     #[loop_match]
+   |       ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on foreign functions
+  --> $DIR/invalid-attribute.rs:11:7
+   |
+LL |     #[const_continue]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on structs
+  --> $DIR/invalid-attribute.rs:15:3
+   |
+LL | #[loop_match]
+   |   ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on structs
+  --> $DIR/invalid-attribute.rs:16:3
+   |
+LL | #[const_continue]
+   |   ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on required trait methods
+  --> $DIR/invalid-attribute.rs:24:7
+   |
+LL |     #[loop_match]
+   |       ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on required trait methods
+  --> $DIR/invalid-attribute.rs:25:7
+   |
+LL |     #[const_continue]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on functions
+  --> $DIR/invalid-attribute.rs:29:3
+   |
+LL | #[loop_match]
+   |   ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on functions
+  --> $DIR/invalid-attribute.rs:30:3
+   |
+LL | #[const_continue]
+   |   ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on closures
+  --> $DIR/invalid-attribute.rs:34:7
+   |
+LL |     #[loop_match]
+   |       ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on closures
+  --> $DIR/invalid-attribute.rs:35:7
+   |
+LL |     #[const_continue]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: the `loop_match` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:39:11
+   |
+LL |         #[loop_match]
+   |           ^^^^^^^^^^
+   |
+   = help: the `loop_match` attribute can only be applied to loops
+
+error: the `const_continue` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:40:11
+   |
+LL |         #[const_continue]
+   |           ^^^^^^^^^^^^^^
+   |
+   = help: the `const_continue` attribute can only be applied to break expressions
+
+error: aborting due to 14 previous errors
+

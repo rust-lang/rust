@@ -1,0 +1,47 @@
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:4:13
+   |
+LL |     let _ = vec!["A", "B", "B"].iter().step_by(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::iterator-step-by-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iterator_step_by_zero)]`
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:7:13
+   |
+LL |     let _ = "XXX".chars().step_by(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:10:13
+   |
+LL |     let _ = (0..1).step_by(0);
+   |             ^^^^^^^^^^^^^^^^^
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:20:13
+   |
+LL |     let _ = (1..).step_by(0);
+   |             ^^^^^^^^^^^^^^^^
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:23:13
+   |
+LL |     let _ = (1..=2).step_by(0);
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:27:13
+   |
+LL |     let _ = x.step_by(0);
+   |             ^^^^^^^^^^^^
+
+error: `Iterator::step_by(0)` will panic at runtime
+  --> tests/ui/iterator_step_by_zero.rs:32:13
+   |
+LL |     let _ = v1.iter().step_by(2 / 3);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

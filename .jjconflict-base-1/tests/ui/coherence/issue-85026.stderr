@@ -1,0 +1,19 @@
+error[E0785]: cannot define inherent `impl` for a dyn auto trait
+  --> $DIR/issue-85026.rs:5:1
+   |
+LL | impl dyn AutoTrait {}
+   | ^^^^^^^^^^^^^^^^^^ impl requires at least one non-auto trait
+   |
+   = note: define and implement a new trait or type instead
+
+error[E0785]: cannot define inherent `impl` for a dyn auto trait
+  --> $DIR/issue-85026.rs:8:1
+   |
+LL | impl dyn Unpin {}
+   | ^^^^^^^^^^^^^^ impl requires at least one non-auto trait
+   |
+   = note: define and implement a new trait or type instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0785`.

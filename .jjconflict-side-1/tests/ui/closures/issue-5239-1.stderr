@@ -1,0 +1,11 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&isize`
+  --> $DIR/issue-5239-1.rs:4:30
+   |
+LL |     let x = |ref x: isize| { x += 1; };
+   |                              -^^^^^
+   |                              |
+   |                              cannot use `+=` on type `&isize`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0368`.

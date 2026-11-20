@@ -1,0 +1,29 @@
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@...}>`, but its trait bounds were not satisfied
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:112:24
+   |
+LL | pub struct Filter<S, F> {
+   | ----------------------- method `countx` not found for this struct because it doesn't satisfy `_: StreamExt`
+...
+LL |     let count = filter.countx();
+   |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
+      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
+      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:98:50
+   |
+LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
+   |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `countx`, perhaps you need to implement it
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:66:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/hrtb-doesnt-borrow-self-2.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

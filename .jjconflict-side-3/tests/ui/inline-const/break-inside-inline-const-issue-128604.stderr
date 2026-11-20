@@ -1,0 +1,51 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:15:9
+   |
+LL |         break;
+   |         ^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:21:13
+   |
+LL |             break;
+   |             ^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:9:13
+   |
+LL |             break;
+   |             ^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~         'block: {
+LL |
+LL ~             break 'block;
+   |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:2:21
+   |
+LL |     let _ = ['a'; { break 2; 1 }];
+   |                     ^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL |     let _ = ['a'; 'block: { break 'block 2; 1 }];
+   |                   +++++++         ++++++
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:27:17
+   |
+LL | const FOO: () = break;
+   |                 ^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-inline-const-issue-128604.rs:30:18
+   |
+LL | static BAR: () = break;
+   |                  ^^^^^ cannot `break` outside of a loop or labeled block
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

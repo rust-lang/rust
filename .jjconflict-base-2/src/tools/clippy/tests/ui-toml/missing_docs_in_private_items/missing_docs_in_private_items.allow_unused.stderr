@@ -1,0 +1,644 @@
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:26:5
+   |
+LL |     f3: u32,
+   |     ^^
+   |
+note: the lint level is defined here
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:8:9
+   |
+LL | #![deny(clippy::missing_docs_in_private_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:60:5
+   |
+LL |     f3: u32,
+   |     ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:77:8
+   |
+LL |     fn f3() {}
+   |        ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:78:11
+   |
+LL |     const C3: u32 = 0;
+   |           ^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:117:4
+   |
+LL | fn fn_crate() {}
+   |    ^^^^^^^^
+
+error: missing documentation for a constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:118:7
+   |
+LL | const CONST_CRATE: u32 = 0;
+   |       ^^^^^^^^^^^
+
+error: missing documentation for a static
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:119:8
+   |
+LL | static STATIC_CRATE: u32 = 0;
+   |        ^^^^^^^^^^^^
+
+error: missing documentation for a type alias
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:120:6
+   |
+LL | type TyAliasCrate = u32;
+   |      ^^^^^^^^^^^^
+
+error: missing documentation for a trait alias
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:121:7
+   |
+LL | trait TraitAliasCrate = Iterator;
+   |       ^^^^^^^^^^^^^^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:122:8
+   |
+LL | struct StructCrate;
+   |        ^^^^^^^^^^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:124:8
+   |
+LL | struct StructFieldCrate {
+   |        ^^^^^^^^^^^^^^^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:125:9
+   |
+LL |     pub f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:128:5
+   |
+LL |     f3: u32,
+   |     ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:138:8
+   |
+LL | struct StructTupleCrate(u32, pub u32);
+   |        ^^^^^^^^^^^^^^^^
+
+error: missing documentation for an enum
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:140:6
+   |
+LL | enum EnumCrate {
+   |      ^^^^^^^^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:141:5
+   |
+LL |     V1,
+   |     ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:142:5
+   |
+LL |     V2(u32),
+   |     ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:144:5
+   |
+LL |     V3 {
+   |     ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:145:9
+   |
+LL |         f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:155:9
+   |
+LL |         f1: u32,
+   |         ^^
+
+error: missing documentation for a union
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:161:7
+   |
+LL | union UnionCrate {
+   |       ^^^^^^^^^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:162:9
+   |
+LL |     pub f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:165:5
+   |
+LL |     f3: u32,
+   |     ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:176:12
+   |
+LL |     pub fn f1() {}
+   |            ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:177:15
+   |
+LL |     pub const C1: u32 = 0;
+   |               ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:182:8
+   |
+LL |     fn f3() {}
+   |        ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:183:11
+   |
+LL |     const C3: u32 = 0;
+   |           ^^
+
+error: missing documentation for a trait
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:190:7
+   |
+LL | trait TraitCrate {
+   |       ^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:191:8
+   |
+LL |     fn f1();
+   |        ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:192:8
+   |
+LL |     fn f2() {}
+   |        ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:193:11
+   |
+LL |     const C1: u32;
+   |           ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:194:11
+   |
+LL |     const C2: u32 = 0;
+   |           ^^
+
+error: missing documentation for an associated type
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:195:10
+   |
+LL |     type T1;
+   |          ^^
+
+error: missing documentation for a macro
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:216:14
+   |
+LL | macro_rules! mac_rules_crate {
+   |              ^^^^^^^^^^^^^^^
+
+error: missing documentation for a macro
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:220:7
+   |
+LL | macro mac_crate {
+   |       ^^^^^^^^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:238:9
+   |
+LL |     pub f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:241:5
+   |
+LL |     f3: u32,
+   |     ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:255:5
+   |
+LL |     V1,
+   |     ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:256:5
+   |
+LL |     V2(u32),
+   |     ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:258:5
+   |
+LL |     V3 {
+   |     ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:259:9
+   |
+LL |         f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:269:9
+   |
+LL |         f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:276:9
+   |
+LL |     pub f1: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:279:5
+   |
+LL |     f3: u32,
+   |     ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:290:12
+   |
+LL |     pub fn f1() {}
+   |            ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:291:15
+   |
+LL |     pub const C1: u32 = 0;
+   |               ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:296:8
+   |
+LL |     fn f3() {}
+   |        ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:297:11
+   |
+LL |     const C3: u32 = 0;
+   |           ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:305:8
+   |
+LL |     fn f1();
+   |        ^^
+
+error: missing documentation for an associated function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:306:8
+   |
+LL |     fn f2() {}
+   |        ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:307:11
+   |
+LL |     const C1: u32;
+   |           ^^
+
+error: missing documentation for an associated constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:308:11
+   |
+LL |     const C2: u32 = 0;
+   |           ^^
+
+error: missing documentation for an associated type
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:309:10
+   |
+LL |     type T1;
+   |          ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:541:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:567:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:588:8
+   |
+LL |     fn f3() {}
+   |        ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:591:12
+   |
+LL |     struct S3 {
+   |            ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:592:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:595:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for an enum
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:600:10
+   |
+LL |     enum E3 {
+   |          ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:602:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:603:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:609:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:614:11
+   |
+LL |     const C3: u32 = 0;
+   |           ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:620:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:623:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:630:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:631:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:637:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a module
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:647:5
+   |
+LL | mod mod_crate {
+   |     ^^^^^^^^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:648:12
+   |
+LL |     pub fn f1() {}
+   |            ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:651:16
+   |
+LL |     pub struct S1 {
+   |                ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:652:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:655:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for an enum
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:660:14
+   |
+LL |     pub enum E1 {
+   |              ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:662:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:663:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:669:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:674:15
+   |
+LL |     pub const C1: u32 = 0;
+   |               ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:680:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:683:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:690:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:691:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:697:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:705:8
+   |
+LL |     fn f3() {}
+   |        ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:708:12
+   |
+LL |     struct S3 {
+   |            ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:709:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:712:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for an enum
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:717:10
+   |
+LL |     enum E3 {
+   |          ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:719:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:720:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:726:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a constant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:731:11
+   |
+LL |     const C3: u32 = 0;
+   |           ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:737:13
+   |
+LL |         pub f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:740:9
+   |
+LL |         f3: u32,
+   |         ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:747:9
+   |
+LL |         V1 {
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:748:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:754:13
+   |
+LL |             f1: u32,
+   |             ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1061:9
+   |
+LL |         f2: u32,
+   |         ^^
+
+error: missing documentation for a field
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1062:20
+   |
+LL |         pub(crate) f3: u32,
+   |                    ^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1069:23
+   |
+LL |         pub(crate) fn f2() {}
+   |                       ^^
+
+error: missing documentation for an enum
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1072:18
+   |
+LL |         pub enum E1 {
+   |                  ^^
+
+error: missing documentation for a variant
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1074:13
+   |
+LL |             V2,
+   |             ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1077:20
+   |
+LL |         pub struct S2;
+   |                    ^^
+
+error: missing documentation for a function
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1096:18
+   |
+LL |         $(pub fn f2() {})
+   |                  ^^
+
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_in_private_items/missing_docs_in_private_items.rs:1165:20
+   |
+LL |         pub struct VisFromOutside;
+   |                    ^^^^^^^^^^^^^^
+
+error: aborting due to 106 previous errors
+

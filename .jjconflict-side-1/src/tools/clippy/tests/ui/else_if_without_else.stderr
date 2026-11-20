@@ -1,0 +1,56 @@
+error: `if` expression with an `else if`, but without a final `else`
+  --> tests/ui/else_if_without_else.rs:51:12
+   |
+LL |       } else if bla2() {
+   |  ____________^
+LL | |
+LL | |
+LL | |         println!("else if");
+LL | |     }
+   | |_____^
+   |
+   = help: add an `else` block here
+   = note: `-D clippy::else-if-without-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::else_if_without_else)]`
+
+error: `if` expression with an `else if`, but without a final `else`
+  --> tests/ui/else_if_without_else.rs:61:12
+   |
+LL |       } else if bla3() {
+   |  ____________^
+LL | |
+LL | |
+LL | |         println!("else if 2");
+LL | |     }
+   | |_____^
+   |
+   = help: add an `else` block here
+
+error: `if` expression with an `else if`, but without a final `else`
+  --> tests/ui/else_if_without_else.rs:89:12
+   |
+LL |       } else if bla5() {
+   |  ____________^
+LL | |
+LL | |
+LL | |         println!("else if 4");
+LL | |     }
+   | |_____^
+   |
+   = help: add an `else` block here
+
+error: `if` expression with an `else if`, but without a final `else`
+  --> tests/ui/else_if_without_else.rs:120:16
+   |
+LL |           } else if bla5() {
+   |  ________________^
+LL | |
+LL | |
+LL | |             println!("else if 4");
+LL | |         }
+   | |_________^
+   |
+   = help: add an `else` block here
+
+error: aborting due to 4 previous errors
+

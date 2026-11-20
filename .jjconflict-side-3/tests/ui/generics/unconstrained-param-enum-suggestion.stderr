@@ -1,0 +1,18 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-param-enum-suggestion.rs:12:6
+   |
+LL | impl<T> TypeTreeValueIter<Type> {
+   |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `TypeTreeValueIter` type and use it in the type definition
+   |
+LL ~ enum TypeTreeValueIter<T, T> {
+LL |     A(T),
+LL | }
+LL |
+LL ~ impl<T> TypeTreeValueIter<Type, T> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

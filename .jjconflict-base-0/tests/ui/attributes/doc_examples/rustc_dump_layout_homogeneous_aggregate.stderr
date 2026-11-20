@@ -1,0 +1,8 @@
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Integer, size: Size(1 bytes) }))
+ --> $DIR/rustc_dump_layout_homogeneous_aggregate.rs:8:1
+  |
+8 | struct Struct {
+  | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

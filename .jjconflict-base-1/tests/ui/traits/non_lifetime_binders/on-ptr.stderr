@@ -1,0 +1,8 @@
+error: late-bound type parameter not allowed on function pointer types
+  --> $DIR/on-ptr.rs:5:17
+   |
+LL | fn foo() -> for<T> fn(T) {
+   |                 ^
+
+error: aborting due to 1 previous error
+

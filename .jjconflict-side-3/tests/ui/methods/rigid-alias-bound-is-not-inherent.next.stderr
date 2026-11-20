@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/rigid-alias-bound-is-not-inherent.rs:42:7
+   |
+LL |     x.method();
+   |       ^^^^^^ multiple `method` found
+   |
+note: candidate #1 is defined in the trait `Trait1`
+  --> $DIR/rigid-alias-bound-is-not-inherent.rs:21:5
+   |
+LL |     fn method(&self) {
+   |     ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Trait2` for the type `T`
+  --> $DIR/rigid-alias-bound-is-not-inherent.rs:27:5
+   |
+LL |     fn method(&self) {
+   |     ^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     x.method();
+LL +     Trait1::method(&x);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     x.method();
+LL +     Trait2::method(&x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,28 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/ice-on-shadowing-std-with-attr.rs:8:1
+   |
+LL | extern crate core as std;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find `collections` in `std`
+  --> $DIR/ice-on-shadowing-std-with-attr.rs:10:14
+   |
+LL |     use std::collections::hash_map::HashMap;
+   |              ^^^^^^^^^^^ could not find `collections` in `std`
+
+error[E0432]: unresolved import `std::vec`
+  --> $DIR/ice-on-shadowing-std-with-attr.rs:11:14
+   |
+LL |     use std::vec::IntoIter;
+   |              ^^^ could not find `vec` in `std`
+
+error: cannot find attribute `foobar` in this scope
+  --> $DIR/ice-on-shadowing-std-with-attr.rs:7:3
+   |
+LL | #[foobar]
+   |   ^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

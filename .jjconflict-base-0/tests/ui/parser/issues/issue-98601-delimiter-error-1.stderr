@@ -1,0 +1,16 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-98601-delimiter-error-1.rs:7:1
+   |
+LL | fn foo() {
+   |          - this delimiter might not be properly closed...
+LL |     match 0 {
+LL |       _ => {}
+   |            -- block is empty, you might have not meant to close it
+...
+LL |     }
+   |     - ...as it matches this but it has different indentation
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Overlap` for type `str`
+  --> $DIR/ambiguity-causes-canonical-state-ice-2.rs:18:1
+   |
+LL | impl<T: ToOwned<Owned = i8> + ?Sized> Overlap for T {}
+   | --------------------------------------------------- first implementation here
+LL | impl Overlap for str {}
+   | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `str`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

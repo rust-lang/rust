@@ -1,0 +1,29 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:6:23
+   |
+LL | fn main() {
+   | --------- this is not `async`
+LL |     async { let (); }.await;
+   |                       ^^^^^ only allowed inside `async` functions and blocks
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:10:7
+   |
+LL | fn main() {
+   | --------- this is not `async`
+...
+LL |     }.await;
+   |       ^^^^^ only allowed inside `async` functions and blocks
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:12:16
+   |
+LL | fn main() {
+   | --------- this is not `async`
+...
+LL |     (|_| 2333).await;
+   |                ^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0728`.

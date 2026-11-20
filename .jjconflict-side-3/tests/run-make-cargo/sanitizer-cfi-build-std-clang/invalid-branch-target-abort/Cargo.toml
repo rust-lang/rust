@@ -1,0 +1,4 @@
+[package]
+name = "invalid-branch-target-abort"
+version = "0.1.0"
+edition = "2021"

@@ -1,0 +1,23 @@
+error[E0277]: pointers cannot be reliably compared during const eval
+  --> $DIR/const_raw_ptr_ops.rs:7:26
+   |
+LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: trait `PartialEq` is implemented but not `const`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error[E0277]: pointers cannot be reliably compared during const eval
+  --> $DIR/const_raw_ptr_ops.rs:9:27
+   |
+LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: trait `PartialEq` is implemented but not `const`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

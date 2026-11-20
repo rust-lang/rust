@@ -1,0 +1,41 @@
+error: unexpected `self` parameter in function
+  --> $DIR/error-recovery-mismatch.rs:12:29
+   |
+LL |     fn fold<T>(&self, _: T, &self._) {}
+   |                             ^^^^^ must be the first parameter of an associated function
+
+error: expected one of `)` or `,`, found `.`
+  --> $DIR/error-recovery-mismatch.rs:12:34
+   |
+LL |     fn fold<T>(&self, _: T, &self._) {}
+   |                                  ^
+   |                                  |
+   |                                  expected one of `)` or `,`
+   |                                  help: missing `,`
+
+error[E0415]: identifier `self` is bound more than once in this parameter list
+  --> $DIR/error-recovery-mismatch.rs:12:30
+   |
+LL |     fn fold<T>(&self, _: T, &self._) {}
+   |                              ^^^^ used as parameter more than once
+
+warning: anonymous parameters are deprecated and will be removed in the next edition
+  --> $DIR/error-recovery-mismatch.rs:12:35
+   |
+LL |     fn fold<T>(&self, _: T, &self._) {}
+   |                                   ^ help: try naming the parameter or explicitly ignoring it: `_: _`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
+   = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
+  --> $DIR/error-recovery-mismatch.rs:12:35
+   |
+LL |     fn fold<T>(&self, _: T, &self._) {}
+   |                                   ^ not allowed in type signatures
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0121, E0415.
+For more information about an error, try `rustc --explain E0121`.

@@ -1,0 +1,19 @@
+error[E0597]: `ticking` does not live long enough
+  --> $DIR/issue-26656.rs:40:35
+   |
+LL |     let (mut zook, ticking);
+   |                    ------- binding `ticking` declared here
+...
+LL |     zook.button = B::BigRedButton(&ticking);
+   |                                   ^^^^^^^^ borrowed value does not live long enough
+LL | }
+   | -
+   | |
+   | `ticking` dropped here while still borrowed
+   | borrow might be used here, when `zook` is dropped and runs the `Drop` code for type `Zook`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

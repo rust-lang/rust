@@ -1,0 +1,6 @@
+{
+  "arch": "x86_64",
+  "data-layout": "e-m:e-i64:16:32:64",
+  "llvm-target": "x86_64-unknown-unknown-gnu",
+  "target-pointer-width": 64
+}

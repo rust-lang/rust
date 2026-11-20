@@ -1,0 +1,225 @@
+// This test case tests the incremental compilation hash (ICH) implementation
+// for `loop` loops.
+
+// The general pattern followed here is: Change one thing between rev1 and rev2
+// and make sure that the hash has changed, then change nothing between rev2 and
+// rev3 and make sure that the hash has not changed.
+
+//@ revisions: bpass1 bpass2 bpass3 bpass4 bpass5 bpass6
+//@ compile-flags: -Z query-dep-graph -O
+//@ [bpass1]compile-flags: -Zincremental-ignore-spans
+//@ [bpass2]compile-flags: -Zincremental-ignore-spans
+//@ [bpass3]compile-flags: -Zincremental-ignore-spans
+//@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
+
+#![allow(warnings)]
+#![feature(rustc_attrs)]
+#![crate_type="rlib"]
+
+
+// Change loop body
+#[cfg(any(bpass1,bpass4))]
+pub fn change_loop_body() {
+    let mut _x = 0;
+    loop {
+        _x = 1;
+        break;
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
+pub fn change_loop_body() {
+    let mut _x = 0;
+    loop {
+        _x = 2;
+        break;
+    }
+}
+
+
+
+// Add break
+#[cfg(any(bpass1,bpass4))]
+pub fn add_break() {
+    let mut _x = 0;
+    loop {
+        _x = 1;
+        //----
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass6")]
+pub fn add_break() {
+    let mut _x = 0;
+    loop {
+        _x = 1;
+        break;
+    }
+}
+
+
+
+// Add loop label
+#[cfg(any(bpass1,bpass4))]
+pub fn add_loop_label() {
+    let mut _x = 0;
+    /*---*/ loop {
+        _x = 1;
+        break;
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner")]
+#[rustc_clean(cfg="bpass6")]
+pub fn add_loop_label() {
+    let mut _x = 0;
+    'label: loop {
+        _x = 1;
+        break;
+    }
+}
+
+
+
+// Add loop label to break
+#[cfg(any(bpass1,bpass4))]
+pub fn add_loop_label_to_break() {
+    let mut _x = 0;
+    'label: loop {
+        _x = 1;
+        break       ;
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner")]
+#[rustc_clean(cfg="bpass6")]
+pub fn add_loop_label_to_break() {
+    let mut _x = 0;
+    'label: loop {
+        _x = 1;
+        break 'label;
+    }
+}
+
+
+
+// Change break label
+#[cfg(any(bpass1,bpass4))]
+pub fn change_break_label() {
+    let mut _x = 0;
+    'outer: loop {
+        'inner: loop {
+            _x = 1;
+            break 'inner;
+        }
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass6")]
+pub fn change_break_label() {
+    let mut _x = 0;
+    'outer: loop {
+        'inner: loop {
+            _x = 1;
+            break 'outer;
+        }
+    }
+}
+
+
+
+// Add loop label to continue
+#[cfg(any(bpass1,bpass4))]
+pub fn add_loop_label_to_continue() {
+    let mut _x = 0;
+    'label: loop {
+        _x = 1;
+        continue       ;
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
+pub fn add_loop_label_to_continue() {
+    let mut _x = 0;
+    'label: loop {
+        _x = 1;
+        continue 'label;
+    }
+}
+
+
+
+// Change continue label
+#[cfg(any(bpass1,bpass4))]
+pub fn change_continue_label() {
+    let mut _x = 0;
+    'outer: loop {
+        'inner: loop {
+            _x = 1;
+            continue 'inner;
+        }
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
+pub fn change_continue_label() {
+    let mut _x = 0;
+    'outer: loop {
+        'inner: loop {
+            _x = 1;
+            continue 'outer;
+        }
+    }
+}
+
+
+
+// Change continue to break
+#[cfg(any(bpass1,bpass4))]
+pub fn change_continue_to_break() {
+    let mut _x = 0;
+    loop {
+        _x = 1;
+        continue;
+    }
+}
+
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="hir_owner, typeck_root, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="hir_owner, typeck_root, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
+pub fn change_continue_to_break() {
+    let mut _x = 0;
+    loop {
+        _x = 1;
+        break   ;
+    }
+}

@@ -1,0 +1,37 @@
+error[E0599]: no method named `x` found for struct `Pin<&S>` in the current scope
+  --> $DIR/arbitrary_self_type_mut_difference.rs:11:18
+   |
+LL |     Pin::new(&S).x();
+   |                  ^
+   |
+note: method is available for `Pin<&mut S>`
+  --> $DIR/arbitrary_self_type_mut_difference.rs:6:5
+   |
+LL |     fn x(self: Pin<&mut Self>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there is a method `y` with a similar name
+   |
+LL -     Pin::new(&S).x();
+LL +     Pin::new(&S).y();
+   |
+
+error[E0599]: no method named `y` found for struct `Pin<&mut S>` in the current scope
+  --> $DIR/arbitrary_self_type_mut_difference.rs:12:22
+   |
+LL |     Pin::new(&mut S).y();
+   |                      ^
+   |
+note: method is available for `Pin<&S>`
+  --> $DIR/arbitrary_self_type_mut_difference.rs:7:5
+   |
+LL |     fn y(self: Pin<&Self>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: there is a method `x` with a similar name
+   |
+LL -     Pin::new(&mut S).y();
+LL +     Pin::new(&mut S).x();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

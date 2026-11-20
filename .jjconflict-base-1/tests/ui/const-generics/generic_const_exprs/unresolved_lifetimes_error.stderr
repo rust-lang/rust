@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/unresolved_lifetimes_error.rs:5:13
+   |
+LL |     let a: &'a ();
+   |             ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn foo<'a>() -> [(); {
+   |       ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

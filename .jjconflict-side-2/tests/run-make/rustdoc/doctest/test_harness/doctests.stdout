@@ -1,0 +1,64 @@
+
+running 2 tests
+test doctests.rs - (line 15) ... FAILED
+test doctests.rs - (line 4) ... FAILED
+
+failures:
+
+---- doctests.rs - (line 15) stdout ----
+Test executable failed ($STATUS).
+
+stdout:
+
+running 2 tests
+test bad ... FAILED
+test good ... ok
+
+failures:
+
+---- bad stdout ----
+
+thread 'bad' ($TID) panicked at doctests.rs:4:5:
+assertion failed: false
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    bad
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+
+---- doctests.rs - (line 4) stdout ----
+Test executable failed ($STATUS).
+
+stdout:
+
+running 2 tests
+test ill ... FAILED
+test well ... ok
+
+failures:
+
+---- ill stdout ----
+
+thread 'ill' ($TID) panicked at doctests.rs:9:6:
+assertion failed: false
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ill
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+
+
+failures:
+    doctests.rs - (line 15)
+    doctests.rs - (line 4)
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

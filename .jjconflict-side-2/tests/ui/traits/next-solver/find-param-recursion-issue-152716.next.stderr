@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
+  --> $DIR/find-param-recursion-issue-152716.rs:19:9
+   |
+LL |     (): Trait<<T as Proj<'static>>::Assoc>
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,0 +1,20 @@
+error[E0277]: `[(); _]` is not a future
+  --> $DIR/unresolved-ct-var.rs:6:45
+   |
+LL |         let s = std::array::from_fn(|_| ()).await;
+   |                 --------------------------- ^^^^^ `[(); _]` is not a future
+   |                 |
+   |                 this call returns `[(); _]`
+   |
+   = help: the trait `Future` is not implemented for `[(); _]`
+   = note: [(); _] must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `[(); _]` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -         let s = std::array::from_fn(|_| ()).await;
+LL +         let s = std::array::from_fn(|_| ());
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

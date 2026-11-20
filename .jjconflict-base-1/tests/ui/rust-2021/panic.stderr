@@ -1,0 +1,101 @@
+error: format argument must be a string literal
+  --> $DIR/panic.rs:4:26
+   |
+LL |     debug_assert!(false, 123);
+   |                          ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     debug_assert!(false, "{}", 123);
+   |                          +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:6:20
+   |
+LL |     assert!(false, 123);
+   |                    ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     assert!(false, "{}", 123);
+   |                    +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:8:12
+   |
+LL |     panic!(false, 123);
+   |            ^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     panic!("{} {}", false, 123);
+   |            ++++++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:11:31
+   |
+LL |     std::debug_assert!(false, 123);
+   |                               ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     std::debug_assert!(false, "{}", 123);
+   |                               +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:13:25
+   |
+LL |     std::assert!(false, 123);
+   |                         ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     std::assert!(false, "{}", 123);
+   |                         +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:15:17
+   |
+LL |     std::panic!(false, 123);
+   |                 ^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     std::panic!("{} {}", false, 123);
+   |                 ++++++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:18:32
+   |
+LL |     core::debug_assert!(false, 123);
+   |                                ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     core::debug_assert!(false, "{}", 123);
+   |                                +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:20:26
+   |
+LL |     core::assert!(false, 123);
+   |                          ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     core::assert!(false, "{}", 123);
+   |                          +++++
+
+error: format argument must be a string literal
+  --> $DIR/panic.rs:22:18
+   |
+LL |     core::panic!(false, 123);
+   |                  ^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     core::panic!("{} {}", false, 123);
+   |                  ++++++++
+
+error: aborting due to 9 previous errors
+

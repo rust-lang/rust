@@ -1,0 +1,5 @@
+bin
+lib
+proc-macro
+rlib
+staticlib

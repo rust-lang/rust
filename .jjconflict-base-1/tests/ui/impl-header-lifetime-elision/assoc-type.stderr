@@ -1,0 +1,49 @@
+error: missing lifetime in associated type
+  --> $DIR/assoc-type.rs:11:19
+   |
+LL |     type Output = &i32;
+   |                   ^ this lifetime must come from the implemented type
+   |
+   = note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+help: add a lifetime to the impl block and use it in the self type and associated type
+   |
+LL ~ impl<'a> MyTrait for &'a i32 {
+LL ~     type Output = &'a i32;
+   |
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/assoc-type.rs:16:20
+   |
+LL |     type Output = &'_ i32;
+   |                    ^^ `'_` is a reserved lifetime name
+
+error: missing lifetime in associated type
+  --> $DIR/assoc-type.rs:21:19
+   |
+LL | impl<'a> MyTrait for &f64 {
+   |     ---- there is a named lifetime specified on the impl block you could use
+LL |     type Output = &f64;
+   |                   ^ this lifetime must come from the implemented type
+   |
+   = note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+help: consider using the lifetime from the impl block
+   |
+LL |     type Output = &'a f64;
+   |                    ++
+
+error: missing lifetime in associated type
+  --> $DIR/assoc-type.rs:29:19
+   |
+LL |     type Output = &f64;
+   |                   ^ this lifetime must come from the implemented type
+   |
+   = note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+help: add a lifetime to the impl block and use it in the trait and associated type
+   |
+LL ~ impl<'a> OtherTrait<'a> for f64 {
+LL ~     type Output = &'a f64;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

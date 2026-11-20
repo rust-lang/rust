@@ -1,0 +1,17 @@
+error[E0601]: `main` function not found in crate `main_in_submodule`
+  --> $DIR/main-in-submodule.rs:5:2
+   |
+LL | }
+   |  ^ the main function must be defined at the crate level (in `$DIR/main-in-submodule.rs`)
+   |
+note: here is a function named `main`
+  --> $DIR/main-in-submodule.rs:4:5
+   |
+LL |     fn main() { }
+   |     ^^^^^^^^^
+   = note: you have one or more functions named `main` not defined at the crate level
+   = help: consider moving the `main` function definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0601`.

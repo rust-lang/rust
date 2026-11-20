@@ -1,0 +1,14 @@
+error: explicit impls for the `Unpin` trait are not permitted for structurally pinned types
+  --> $DIR/impl-unpin.rs:14:5
+   |
+LL |     impl Unpin for Foo {}
+   |     ^^^^^^^^^^^^^^^^^^ impl of `Unpin` not allowed
+   |
+help: `Foo` is structurally pinned because it is marked as `#[pin_v2]`
+  --> $DIR/impl-unpin.rs:7:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,4 @@
+warning: building proc macro crate with `panic=abort` or `panic=immediate-abort` may crash the compiler should the proc-macro panic
+
+warning: 1 warning emitted
+

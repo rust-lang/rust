@@ -1,0 +1,24 @@
+warning: struct `Foo` is never constructed
+  --> $DIR/skipped-ref-pats-issue-125058.rs:7:8
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused closure that must be used
+  --> $DIR/skipped-ref-pats-issue-125058.rs:11:5
+   |
+LL | /     || {
+LL | |
+LL | |         if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
+LL | |             let _: u32 = x;
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+   = note: closures are lazy and do nothing unless called
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: 2 warnings emitted
+

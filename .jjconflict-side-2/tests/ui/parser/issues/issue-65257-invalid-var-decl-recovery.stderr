@@ -1,0 +1,81 @@
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:2:5
+   |
+LL |     auto n = 0;
+   |     ^^^^
+   |
+help: write `let` instead of `auto` to introduce a new variable
+   |
+LL -     auto n = 0;
+LL +     let n = 0;
+   |
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:4:5
+   |
+LL |     auto m;
+   |     ^^^^
+   |
+help: write `let` instead of `auto` to introduce a new variable
+   |
+LL -     auto m;
+LL +     let m;
+   |
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:8:5
+   |
+LL |     var n = 0;
+   |     ^^^
+   |
+help: write `let` instead of `var` to introduce a new variable
+   |
+LL -     var n = 0;
+LL +     let n = 0;
+   |
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:10:5
+   |
+LL |     var m;
+   |     ^^^
+   |
+help: write `let` instead of `var` to introduce a new variable
+   |
+LL -     var m;
+LL +     let m;
+   |
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:14:5
+   |
+LL |     mut n = 0;
+   |     ^^^
+   |
+help: missing keyword
+   |
+LL |     let mut n = 0;
+   |     +++
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:16:5
+   |
+LL |     mut var;
+   |     ^^^
+   |
+help: missing keyword
+   |
+LL |     let mut var;
+   |     +++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-65257-invalid-var-decl-recovery.rs:20:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

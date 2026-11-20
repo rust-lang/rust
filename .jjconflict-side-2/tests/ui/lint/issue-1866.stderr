@@ -1,0 +1,19 @@
+warning: `rust_task_is_unwinding` redeclared with a different signature
+  --> $DIR/issue-1866.rs:22:13
+   |
+LL |             pub fn rust_task_is_unwinding(rt: *const rust_task) -> bool;
+   |             ------------------------------------------------------------ `rust_task_is_unwinding` previously declared here
+...
+LL |             pub fn rust_task_is_unwinding(rt: *const rust_task) -> bool;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(*const usize) -> bool`
+              found `unsafe extern "C" fn(*const bool) -> bool`
+note: the lint level is defined here
+  --> $DIR/issue-1866.rs:4:9
+   |
+LL | #![warn(clashing_extern_declarations)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

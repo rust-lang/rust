@@ -1,0 +1,16 @@
+error: constant of non-structural type `EnumSet<Enum8>` in a pattern
+  --> $DIR/issue-72896-non-partial-eq-const.rs:19:9
+   |
+LL | enum Enum8 { }
+   | ---------- must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL | const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
+   | ------------------------------- constant defined here
+...
+LL |         CONST_SET => { /* ok */ }
+   |         ^^^^^^^^^ constant of non-structural type
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

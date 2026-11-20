@@ -1,0 +1,16 @@
+warning: unused `Result` that must be used
+  --> $DIR/must-use-in-macro-55516.rs:9:5
+   |
+LL |     write!(&mut example, "{}", 42);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+   = note: `-W unused-must-use` implied by `-W unused`
+   = help: to override `-W unused` add `#[allow(unused_must_use)]`
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = write!(&mut example, "{}", 42);
+   |     +++++++
+
+warning: 1 warning emitted
+

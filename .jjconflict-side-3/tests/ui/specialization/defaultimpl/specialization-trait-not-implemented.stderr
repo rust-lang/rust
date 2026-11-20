@@ -1,0 +1,19 @@
+error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
+  --> $DIR/specialization-trait-not-implemented.rs:22:29
+   |
+LL | struct MyStruct;
+   | --------------- method `foo_one` not found for this struct
+...
+LL |     println!("{}", MyStruct.foo_one());
+   |                             ^^^^^^^ method not found in `MyStruct`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo_one`, perhaps you need to implement it
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,35 @@
+error: `foo @` is not allowed in a tuple
+  --> $DIR/issue-74702.rs:2:10
+   |
+LL |     let (foo @ ..,) = (0, 0);
+   |          ^^^^^^^^ this is only allowed in slice patterns
+   |
+   = help: remove this and bind each tuple field independently
+help: if you don't need to use the contents of foo, discard the tuple's remaining fields
+   |
+LL -     let (foo @ ..,) = (0, 0);
+LL +     let (..,) = (0, 0);
+   |
+
+error: `..` patterns are not allowed here
+  --> $DIR/issue-74702.rs:2:16
+   |
+LL |     let (foo @ ..,) = (0, 0);
+   |                ^^
+   |
+   = note: only allowed in tuple, tuple struct, and slice patterns
+
+error[E0308]: mismatched types
+  --> $DIR/issue-74702.rs:2:9
+   |
+LL |     let (foo @ ..,) = (0, 0);
+   |         ^^^^^^^^^^^   ------ this expression has type `({integer}, {integer})`
+   |         |
+   |         expected a tuple with 2 elements, found one with 1 element
+   |
+   = note: expected tuple `({integer}, {integer})`
+              found tuple `(_,)`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

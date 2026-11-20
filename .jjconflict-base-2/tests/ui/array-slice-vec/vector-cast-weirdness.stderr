@@ -1,0 +1,21 @@
+error[E0606]: casting `&[u8; 2]` as `*mut u8` is invalid
+  --> $DIR/vector-cast-weirdness.rs:19:23
+   |
+LL |     let p1: *mut u8 = &x1.y as *mut _;
+   |                       ^^^^^^^^^^^^^^^
+
+error[E0606]: casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
+  --> $DIR/vector-cast-weirdness.rs:22:28
+   |
+LL |     let t1: *mut [u8; 2] = &x1.y as *mut _;
+   |                            ^^^^^^^^^^^^^^^
+
+error[E0606]: casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
+  --> $DIR/vector-cast-weirdness.rs:25:28
+   |
+LL |     let t1: *mut [u8; 2] = &x1.y as *mut [u8; 2];
+   |                            ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0606`.

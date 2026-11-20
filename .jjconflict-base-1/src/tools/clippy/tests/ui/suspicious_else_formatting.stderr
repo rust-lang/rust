@@ -1,0 +1,93 @@
+error: this looks like an `else {..}` but the `else` is missing
+  --> tests/ui/suspicious_else_formatting.rs:22:6
+   |
+LL |     } {
+   |      ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the next block
+   = note: `-D clippy::possible-missing-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::possible_missing_else)]`
+
+error: this looks like an `else if` but the `else` is missing
+  --> tests/ui/suspicious_else_formatting.rs:27:6
+   |
+LL |     } if foo() {
+   |      ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> tests/ui/suspicious_else_formatting.rs:35:10
+   |
+LL |         } if foo() {
+   |          ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> tests/ui/suspicious_else_formatting.rs:44:10
+   |
+LL |         } if foo() {
+   |          ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:54:6
+   |
+LL |       } else
+   |  ______^
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_else_formatting)]`
+
+error: this is an `else if` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:67:6
+   |
+LL |       } else
+   |  ______^
+LL | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:73:6
+   |
+LL |       }
+   |  ______^
+LL | |     else
+LL | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:101:6
+   |
+LL |       }
+   |  ______^
+LL | |
+LL | |     else
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:109:6
+   |
+LL |       }
+   |  ______^
+LL | |     else
+LL | |
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: aborting due to 9 previous errors
+

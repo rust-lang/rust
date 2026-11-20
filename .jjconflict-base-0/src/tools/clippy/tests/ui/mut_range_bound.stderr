@@ -1,0 +1,60 @@
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:8:9
+   |
+LL |         m = 5;
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+   = note: `-D clippy::mut-range-bound` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_range_bound)]`
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:16:9
+   |
+LL |         m *= 2;
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:25:9
+   |
+LL |         m = 5;
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:28:9
+   |
+LL |         n = 7;
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:43:22
+   |
+LL |         let n = &mut m;
+   |                      ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:78:9
+   |
+LL |         m = 2;
+   |         ^
+   |
+   = note: the range of the loop is unchanged
+
+error: attempt to mutate range bound within loop
+  --> tests/ui/mut_range_bound.rs:90:13
+   |
+LL |             n = 1;
+   |             ^
+   |
+   = note: the range of the loop is unchanged
+
+error: aborting due to 7 previous errors
+

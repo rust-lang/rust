@@ -1,0 +1,81 @@
+warning: named argument `_x` is not used by name
+  --> $DIR/issue-98466.rs:7:26
+   |
+LL |     println!("_x is {}", _x = 5);
+   |                     --   ^^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `_x` by position
+   |
+   = note: `#[warn(named_arguments_used_positionally)]` on by default
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("_x is {_x}", _x = 5);
+   |                      ++
+
+warning: named argument `y` is not used by name
+  --> $DIR/issue-98466.rs:10:26
+   |
+LL |     println!("_x is {}", y = _x);
+   |                     --   ^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `y` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("_x is {y}", y = _x);
+   |                      +
+
+warning: named argument `y` is not used by name
+  --> $DIR/issue-98466.rs:13:83
+   |
+LL |     println!("first positional arg {}, second positional arg {}, _x is {}", 1, 2, y = _x);
+   |                                                                        --         ^ this named argument is referred to by position in formatting string
+   |                                                                        |
+   |                                                                        this formatting argument uses named argument `y` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("first positional arg {}, second positional arg {}, _x is {y}", 1, 2, y = _x);
+   |                                                                         +
+
+warning: named argument `_x` is not used by name
+  --> $DIR/issue-98466.rs:19:34
+   |
+LL |     let _f = format!("_x is {}", _x = 5);
+   |                             --   ^^ this named argument is referred to by position in formatting string
+   |                             |
+   |                             this formatting argument uses named argument `_x` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     let _f = format!("_x is {_x}", _x = 5);
+   |                              ++
+
+warning: named argument `y` is not used by name
+  --> $DIR/issue-98466.rs:22:34
+   |
+LL |     let _f = format!("_x is {}", y = _x);
+   |                             --   ^ this named argument is referred to by position in formatting string
+   |                             |
+   |                             this formatting argument uses named argument `y` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     let _f = format!("_x is {y}", y = _x);
+   |                              +
+
+warning: named argument `y` is not used by name
+  --> $DIR/issue-98466.rs:25:91
+   |
+LL |     let _f = format!("first positional arg {}, second positional arg {}, _x is {}", 1, 2, y = _x);
+   |                                                                                --         ^ this named argument is referred to by position in formatting string
+   |                                                                                |
+   |                                                                                this formatting argument uses named argument `y` by position
+   |
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     let _f = format!("first positional arg {}, second positional arg {}, _x is {y}", 1, 2, y = _x);
+   |                                                                                 +
+
+warning: 6 warnings emitted
+

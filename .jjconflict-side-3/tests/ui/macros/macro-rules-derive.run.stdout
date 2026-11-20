@@ -1,0 +1,17 @@
+MyExportedDerive: body="struct _S1;"
+MyExportedDerive: body="struct _Twice1;"
+MyExportedDerive: body="struct _Twice1;"
+MyExportedDerive!("")
+MyExportedDerive!("invoked, arguments")
+MyExportedDerive: body="struct _S2;"
+MyExportedDerive: body="struct _Twice2;"
+MyExportedDerive: body="struct _Twice2;"
+MyExportedDerive!("")
+MyExportedDerive!("invoked, arguments")
+MyLocalDerive: body="struct _S3;"
+MyLocalDerive: body="struct _Twice3;"
+MyLocalDerive: body="struct _Twice3;"
+MyLocalDerive!("")
+MyLocalDerive!("invoked, arguments")
+MyGlobalType::name(): MyGlobalType
+MyLocalType::name(): MyLocalType

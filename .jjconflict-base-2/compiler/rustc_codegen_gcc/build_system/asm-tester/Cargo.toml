@@ -1,0 +1,13 @@
+[package]
+name = "asm-tester"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+compiletest_rs = "0.11.2"
+
+[[bin]]
+name = "asm-tester"
+path = "src/main.rs"
+
+[workspace]

@@ -163,16 +163,6 @@ help: surround the struct literal with parentheses
 LL |         if FOO == (<T as Trait>::Out { x: one() }) {}
    |                   +                              +
 
-error[E0658]: usage of qualified paths in this context is experimental
-  --> $DIR/struct-literals-in-invalid-places.rs:66:19
-   |
-LL |         if FOO == <T as Trait>::Out { x: one() } {}
-   |                   ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
-   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0277]: `bool` is not an iterator
   --> $DIR/struct-literals-in-invalid-places.rs:9:14
    |
@@ -228,7 +218,7 @@ help: use parentheses to call this closure
 LL |     while (|| Foo { x: 3 }.hi())() {
    |           +                    +++
 
-error: aborting due to 21 previous errors
+error: aborting due to 20 previous errors
 
-Some errors have detailed explanations: E0277, E0308, E0533, E0658.
+Some errors have detailed explanations: E0277, E0308, E0533.
 For more information about an error, try `rustc --explain E0277`.

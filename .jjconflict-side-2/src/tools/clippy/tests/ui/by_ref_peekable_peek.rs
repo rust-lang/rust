@@ -1,0 +1,55 @@
+#![warn(clippy::by_ref_peekable_peek)]
+
+struct S;
+
+impl S {
+    fn by_ref(&mut self) -> impl Iterator<Item = i32> {
+        std::iter::empty()
+    }
+}
+
+macro_rules! mac {
+    ($x:expr) => {
+        $x.by_ref().peekable().peek()
+    };
+}
+
+fn with_non_clone_parameter(i: &mut impl Iterator<Item = i32>) {
+    // This won't suggest `.clone().next().as_ref()` as `i` is not `Clone`
+    let _: Option<&i32> = i.by_ref().peekable().peek();
+    //~^ by_ref_peekable_peek
+}
+
+fn with_cloneable_local_iterator(a: Vec<i32>) {
+    let mut i = a.into_iter();
+    let _: Option<&i32> = i.by_ref().peekable().peek();
+    //~^ by_ref_peekable_peek
+}
+
+fn with_cloneable_local_iterator_from_macro() {
+    macro_rules! mac {
+        () => {
+            [1, 2, 3].into_iter()
+        };
+    }
+    let mut i = mac!();
+    let _: Option<&i32> = i.by_ref().peekable().peek();
+    //~^ by_ref_peekable_peek
+}
+
+fn main() {
+    let mut iter = [1, 2, 3].into_iter();
+    let _: Option<&i32> = iter.by_ref().peekable().peek();
+    //~^ by_ref_peekable_peek
+    #[expect(clippy::needless_borrow)]
+    #[allow(clippy::unnecessary_mut_passed)] // For the `.clone().next().as_ref()` suggestion
+    let _: Option<&i32> = (&mut iter).by_ref().peekable().peek();
+    //~^ by_ref_peekable_peek
+
+    // Do not lint if `by_ref()` is not the one on `Iterator`
+    let _: Option<&i32> = S.by_ref().peekable().peek();
+
+    // Do not lint if coming from a macro, as we cannot ensure
+    // that all uses of `.by_ref()` will be `Iterator::by_ref()`.
+    let _: Option<&i32> = mac!(iter);
+}

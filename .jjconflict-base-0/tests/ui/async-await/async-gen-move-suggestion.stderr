@@ -1,0 +1,47 @@
+error[E0373]: async gen block may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/async-gen-move-suggestion.rs:17:5
+   |
+LL |     async gen {
+   |     ^^^^^^^^^ may outlive borrowed value `x`
+LL |         x.clear();
+   |         - `x` is borrowed here
+   |
+note: async gen block is returned here
+  --> $DIR/async-gen-move-suggestion.rs:17:5
+   |
+LL | /     async gen {
+LL | |         x.clear();
+LL | |         for x in 3..6 { yield x }
+LL | |     }
+   | |_____^
+help: to force the async gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     async gen move {
+   |               ++++
+
+error[E0373]: async gen block may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/async-gen-move-suggestion.rs:27:5
+   |
+LL | /     async // Just to check that whitespace characters are correctly handled
+LL | |     gen {
+   | |_______^ may outlive borrowed value `x`
+LL |           x.clear();
+   |           - `x` is borrowed here
+   |
+note: async gen block is returned here
+  --> $DIR/async-gen-move-suggestion.rs:27:5
+   |
+LL | /     async // Just to check that whitespace characters are correctly handled
+LL | |     gen {
+LL | |         x.clear();
+LL | |         for x in 3..6 { yield x }
+LL | |     }
+   | |_____^
+help: to force the async gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     gen move {
+   |         ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0373`.

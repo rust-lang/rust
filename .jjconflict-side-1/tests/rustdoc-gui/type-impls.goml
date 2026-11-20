@@ -1,0 +1,86 @@
+// The goal of this test is to check that the inlined type alias impls, generated with JS,
+// have the same display than the "local" ones.
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeOtherTypeWithMethodsAndInlining.html"
+
+// method directly on type alias
+wait-for: "//*[@id='method.some_other_method_directly']"
+
+// methods on foo
+assert: "//*[@id='method.as_ref']"
+assert: "//*[@id='method.must_use']"
+assert: "//*[@id='method.warning1']"
+assert: "//*[@id='method.warning2']"
+
+// sidebar items
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.must_use']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.some_other_method_directly']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.warning1']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.warning2']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#impl-AsRef%3Cstr%3E-for-Foo']"
+
+// sorting
+assert-text: (".block.method li:nth-child(1)", 'must_use')
+assert-text: (".block.method li:nth-child(2)", 'some_other_method_directly')
+assert-text: (".block.method li:nth-child(3)", 'warning1')
+assert-text: (".block.method li:nth-child(4)", 'warning2')
+
+// Now try trait implementation merging and duplicate renumbering
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeOtherTypeWithMethodsAndInliningAndTraits.html"
+
+// method directly on type alias
+assert: "//*[@id='method.as_ref']"
+assert-count: ("//*[@id='method.as_ref']", 1)
+// method on underlying type
+assert: "//*[@id='method.as_ref-1']"
+
+// sidebar items
+assert-count: (
+    "//*[@class='sidebar-elems']//h3/a[@href='#trait-implementations']",
+    1
+)
+assert-text: ("//*[@class='sidebar-elems']//li/a[@href='#impl-AsRef%3Cstr%3E-for-UnderlyingFooBarBaz']", "AsRef<str>")
+assert-text: (
+    "//*[@class='sidebar-elems']//li/a[@href='#impl-AsRef%3Cu8%3E-for-UnderlyingFooBarBaz']",
+    "AsRef<u8>"
+)
+assert-count: ("#trait-implementations-list", 1)
+assert-count: ("#trait-implementations-list > details", 2)
+// Both links point at the underlying trait
+store-property: ("//*[@id='method.as_ref']//a[@class='fn']", {"href": href})
+assert-property: ("//*[@id='method.as_ref-1']//a[@class='fn']", {"href": |href|})
+// Both links have a self-anchor
+assert: "//*[@id='method.as_ref']//a[@class='anchor'][@href='#method.as_ref']"
+assert: "//*[@id='method.as_ref-1']//a[@class='anchor'][@href='#method.as_ref-1']"
+
+///////////////////////////////////////////////////////////////////////////
+// Now, if JavaScript is disabled, only the first method will be present //
+///////////////////////////////////////////////////////////////////////////
+javascript: false
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeOtherTypeWithMethodsAndInlining.html"
+
+// method directly on type alias
+wait-for: "//*[@id='method.some_other_method_directly']"
+
+// methods on foo
+assert-false: "//*[@id='method.must_use']"
+assert-false: "//*[@id='method.warning1']"
+assert-false: "//*[@id='method.warning2']"
+
+// Now try trait implementation merging and duplicate renumbering
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeOtherTypeWithMethodsAndInliningAndTraits.html"
+
+// methods directly on type alias
+assert: "//*[@id='method.as_ref']"
+assert-count: ("//*[@id='method.as_ref']", 1)
+// method on target type
+assert-false: "//*[@id='method.as_ref-1']"
+
+// sidebar items
+assert-count: (
+    "//*[@class='sidebar-elems']//h3/a[@href='#trait-implementations']",
+    1
+)
+assert-false: "//a[@href='#impl-AsRef%3Cstr%3E-for-UnderlyingFooBarBaz']"
+assert: "//a[@href='#impl-AsRef%3Cu8%3E-for-UnderlyingFooBarBaz']"
+assert-count: ("#trait-implementations-list", 1)
+assert-count: ("#trait-implementations-list > details", 1)

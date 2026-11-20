@@ -1,0 +1,120 @@
+<svg width="1306px" height="866px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { fill: #000000 }
+    .fg-bright-blue { fill: #5555FF }
+    .fg-bright-cyan { fill: #55FFFF }
+    .fg-bright-green { fill: #55FF55 }
+    .fg-bright-red { fill: #FF5555 }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-bright-red bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:3:34</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> fn short(foo_bar: &amp;Vec&lt;&amp;i32&gt;) -&gt; &amp;i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                   </tspan><tspan class="fg-bright-blue bold">----------</tspan><tspan>     </tspan><tspan class="fg-bright-red bold">^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">expected named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from</tspan>
+</tspan>
+    <tspan x="10px" y="154px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider introducing a named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="190px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">| </tspan><tspan>fn short</tspan><tspan class="fg-bright-green">&lt;'a&gt;</tspan><tspan>(foo_bar: &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>Vec&lt;&amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32&gt;) -&gt; &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="208px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         </tspan><tspan class="fg-bright-green">++++</tspan><tspan>           </tspan><tspan class="fg-bright-green">++</tspan><tspan>      </tspan><tspan class="fg-bright-green">++</tspan><tspan>           </tspan><tspan class="fg-bright-green">++</tspan>
+</tspan>
+    <tspan x="10px" y="226px">
+</tspan>
+    <tspan x="10px" y="244px"><tspan class="fg-bright-red bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
+</tspan>
+    <tspan x="10px" y="262px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:10:6</tspan>
+</tspan>
+    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="298px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     foo_bar: &amp;Vec&lt;&amp;i32&gt;,</tspan>
+</tspan>
+    <tspan x="10px" y="316px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>              </tspan><tspan class="fg-bright-blue bold">----------</tspan>
+</tspan>
+    <tspan x="10px" y="334px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     something_very_long_so_that_the_line_will_wrap_around__________: i32,</tspan>
+</tspan>
+    <tspan x="10px" y="352px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> ) -&gt; &amp;i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="370px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>      </tspan><tspan class="fg-bright-red bold">^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">expected named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="388px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="406px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from</tspan>
+</tspan>
+    <tspan x="10px" y="424px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider introducing a named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="442px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="460px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">~ </tspan><tspan>fn long</tspan><tspan class="fg-bright-green">&lt;'a&gt;</tspan><tspan>(</tspan>
+</tspan>
+    <tspan x="10px" y="478px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">~ </tspan><tspan>    foo_bar: &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>Vec&lt;&amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32&gt;,</tspan>
+</tspan>
+    <tspan x="10px" y="496px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     something_very_long_so_that_the_line_will_wrap_around__________: i32,</tspan>
+</tspan>
+    <tspan x="10px" y="514px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">~ </tspan><tspan>) -&gt; &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="532px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="550px">
+</tspan>
+    <tspan x="10px" y="568px"><tspan class="fg-bright-red bold">error[E0106]</tspan><tspan class="bold">: missing lifetime specifier</tspan>
+</tspan>
+    <tspan x="10px" y="586px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-multipart-suggestion.rs:15:29</tspan>
+</tspan>
+    <tspan x="10px" y="604px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="622px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     foo_bar: &amp;Vec&lt;&amp;i32&gt;) -&gt; &amp;i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="640px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>              </tspan><tspan class="fg-bright-blue bold">----------</tspan><tspan>     </tspan><tspan class="fg-bright-red bold">^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">expected named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="658px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="676px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: this function's return type contains a borrowed value, but the signature does not say which one of `foo_bar`'s 2 lifetimes it is borrowed from</tspan>
+</tspan>
+    <tspan x="10px" y="694px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider introducing a named lifetime parameter</tspan>
+</tspan>
+    <tspan x="10px" y="712px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="730px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">~ </tspan><tspan>fn long2</tspan><tspan class="fg-bright-green">&lt;'a&gt;</tspan><tspan>(</tspan>
+</tspan>
+    <tspan x="10px" y="748px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">~ </tspan><tspan>    foo_bar: &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>Vec&lt;&amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32&gt;) -&gt; &amp;</tspan><tspan class="fg-bright-green">'a </tspan><tspan>i32 {</tspan>
+</tspan>
+    <tspan x="10px" y="766px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="784px">
+</tspan>
+    <tspan x="10px" y="802px"><tspan class="fg-bright-red bold">error</tspan><tspan class="bold">: aborting due to 3 previous errors</tspan>
+</tspan>
+    <tspan x="10px" y="820px">
+</tspan>
+    <tspan x="10px" y="838px"><tspan class="bold">For more information about this error, try `rustc --explain E0106`.</tspan>
+</tspan>
+    <tspan x="10px" y="856px">
+</tspan>
+  </text>
+
+</svg>

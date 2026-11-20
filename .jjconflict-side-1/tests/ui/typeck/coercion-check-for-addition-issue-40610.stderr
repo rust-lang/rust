@@ -1,0 +1,11 @@
+error[E0369]: cannot add `()` to `()`
+  --> $DIR/coercion-check-for-addition-issue-40610.rs:4:8
+   |
+LL |     () + f(&[1.0]);
+   |     -- ^ --------- ()
+   |     |
+   |     ()
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

@@ -1,0 +1,22 @@
+error[E0576]: cannot find associated type `Assoc` in trait `Trait`
+  --> $DIR/ident-from-macro-expansion.rs:17:29
+   |
+LL |         <() as Trait>::$id
+   |                        --- due to this macro variable
+...
+LL |     let x: fully_qualified!(Assoc);
+   |                             ^^^^^ not found in `Trait`
+
+error[E0220]: associated type `Assoc` not found for `T`
+  --> $DIR/ident-from-macro-expansion.rs:19:31
+   |
+LL |         T::$id
+   |            --- due to this macro variable
+...
+LL |     let x: type_dependent!(T, Assoc);
+   |                               ^^^^^ associated type `Assoc` not found
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0220, E0576.
+For more information about an error, try `rustc --explain E0220`.

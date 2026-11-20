@@ -1,0 +1,23 @@
+error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
+  --> tests/ui/iter_nth_zero.rs:18:14
+   |
+LL |     let _x = s.iter().nth(0);
+   |              ^^^^^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `s.iter().next()`
+   |
+   = note: `-D clippy::iter-nth-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_nth_zero)]`
+
+error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
+  --> tests/ui/iter_nth_zero.rs:24:14
+   |
+LL |     let _y = iter.nth(0);
+   |              ^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `iter.next()`
+
+error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
+  --> tests/ui/iter_nth_zero.rs:30:22
+   |
+LL |     let _unwrapped = iter2.nth(0).unwrap();
+   |                      ^^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `iter2.next()`
+
+error: aborting due to 3 previous errors
+

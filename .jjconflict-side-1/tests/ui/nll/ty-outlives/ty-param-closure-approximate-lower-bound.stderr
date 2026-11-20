@@ -1,0 +1,65 @@
+note: external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:24:24
+   |
+LL |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^
+   |
+   = note: defining type: generic::<T>::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
+   = note: number of external vids: 2
+   = note: where T: '?1
+
+note: no external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:22:1
+   |
+LL | fn generic<T>(value: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: generic::<T>
+
+note: external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
+   |
+LL |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^
+   |
+   = note: defining type: generic_fail::<T>::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
+               (),
+           ]
+   = note: late-bound region is '?3
+   = note: late-bound region is '?4
+   = note: late-bound region is '?2
+   = note: number of external vids: 3
+   = note: where T: '?1
+
+note: no external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:28:1
+   |
+LL | fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: generic_fail::<T>
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:31
+   |
+LL | fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     twice(cell, value, |a, b| invoke(a, b));
+   |                               ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn generic_fail<'a, T: 'a>(cell: Cell<&'a ()>, value: T) {
+   |                      ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.
