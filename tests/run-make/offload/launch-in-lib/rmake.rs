@@ -7,27 +7,7 @@ use run_make_support::{rfs, rustc};
 
 fn main() {
     rfs::create_dir("host");
-    rfs::create_dir("host-metadata");
     rfs::create_dir("device");
-
-    rustc()
-        .input("launch.rs")
-        .arg("-Zunstable-options")
-        .arg("-Zoffload=HostMetadata=launch.manifest")
-        .arg("-Csymbol-mangling-version=v0")
-        .out_dir("host-metadata")
-        .run();
-
-    rustc()
-        .input("launch.rs")
-        .cfg("device")
-        .arg("-Zunstable-options")
-        .arg("-Zoffload=Device=launch.manifest")
-        .arg("-Csymbol-mangling-version=v0")
-        .arg("-Ccodegen-units=1")
-        .emit("link,obj")
-        .out_dir("device")
-        .run();
 
     rustc()
         .input("launch.rs")
@@ -38,10 +18,21 @@ fn main() {
         .run();
 
     rustc()
+        .input("launch.rs")
+        .cfg("device")
+        .arg("-Zunstable-options")
+        .arg("-Zoffload=Device=host/launch.roffload")
+        .arg("-Csymbol-mangling-version=v0")
+        .arg("-Ccodegen-units=1")
+        .emit("link,obj")
+        .out_dir("device")
+        .run();
+
+    rustc()
         .input("main.rs")
         .extern_("launch", "host/liblaunch.rlib")
         .arg("-Zunstable-options")
-        .arg("-Zoffload=HostMetadata=main.manifest")
+        .arg("-Zoffload=HostMetadata=host/main.roffload")
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .run();
@@ -51,7 +42,7 @@ fn main() {
         .cfg("device")
         .extern_("launch", "device/liblaunch.rlib")
         .arg("-Zunstable-options")
-        .arg("-Zoffload=Device=main.manifest")
+        .arg("-Zoffload=Device=host/main.roffload")
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .emit("obj")

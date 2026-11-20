@@ -3060,7 +3060,7 @@ fn linker_with_args(
         link_output_kind,
     );
 
-    if sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, config::Offload::Host(_))) {
+    if sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, config::Offload::Host)) {
         cmd.link_dylib_by_name("omptarget", false, true);
         cmd.link_dylib_by_name("omp", false, true);
         cmd.link_args(["-z", "nostart-stop-gc"]);

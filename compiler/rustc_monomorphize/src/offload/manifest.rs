@@ -10,14 +10,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, LOCAL_CRATE, StableCrateId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mono::MonoItem;
+use rustc_middle::mono::{MonoItem, MonoItemPartitions};
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, Pos, Span, SpanDecoder, SpanEncoder, Symbol, SyntaxContext,
-    bug,
 };
 
 pub(crate) struct OffloadManifestEncoder<'a, 'tcx> {
@@ -389,16 +388,11 @@ pub(crate) fn write_manifest<'tcx>(
     encoder.finish()
 }
 
-/// Write out the offload host-metadata manifest for `mono_items`. No-op unless
-/// the session was invoked with `-Zoffload=HostMetadata=<path>`.
-pub fn write_host_metadata_offload_manifest<'tcx>(tcx: TyCtxt<'tcx>) {
-    let Some(path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
-        if let rustc_session::config::Offload::HostMetadata(p) = o { Some(p) } else { None }
-    }) else {
-        bug!("HostMetadata path not found; caller should have checked");
-    };
-
-    let partitions = tcx.collect_and_partition_mono_items(());
+pub fn pick_kernels_and_write_manifest<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    partitions: MonoItemPartitions<'tcx>,
+    path: &std::path::Path,
+) {
     let mono_items: Vec<MonoItem<'_>> = partitions
         .codegen_units
         .iter()
@@ -425,9 +419,9 @@ pub fn write_host_metadata_offload_manifest<'tcx>(tcx: TyCtxt<'tcx>) {
         })
         .collect();
 
-    if let Err(e) = write_manifest(std::path::Path::new(path), tcx, &instances) {
+    if let Err(e) = write_manifest(path, tcx, &instances) {
         tcx.dcx().emit_fatal(crate::diagnostics::OffloadManifestWriteError {
-            path: path.clone(),
+            path: path.to_string_lossy().into_owned(),
             err: e.to_string(),
         });
     }
