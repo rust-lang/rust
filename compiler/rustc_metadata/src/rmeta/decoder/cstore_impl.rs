@@ -331,6 +331,11 @@ provide! { tcx, def_id, other, cdata,
     attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
+    cannot_unwind => {
+        // The answers are one bit per `DefIndex`, cut off after the last proven item; an index
+        // past the end has no proof, which is the value we want.
+        cdata.root.cannot_unwind.decode((cdata, tcx)).contains_loose(def_id.index.as_u32())
+    }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }
