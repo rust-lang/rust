@@ -9,10 +9,10 @@ LL |     Foo.uwu();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `uwu`, perhaps you need to implement it
-  --> $DIR/unused-trait-with-method-err.rs:7:5
+  --> $DIR/unused-trait-with-method-err.rs:7:15
    |
 LL |     pub trait Bar {
-   |     ^^^^^^^^^^^^^
+   |               ^^^
 LL |         fn uwu(&self) {}
    |
 

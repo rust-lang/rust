@@ -9,15 +9,15 @@ LL |     Qux.foo();
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: candidate #1 is defined in the trait `Foo`
-  --> $DIR/method-ambiguity-no-rcvr.rs:4:5
+  --> $DIR/method-ambiguity-no-rcvr.rs:4:8
    |
 LL |     fn foo();
-   |     ^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `FooBar`
-  --> $DIR/method-ambiguity-no-rcvr.rs:8:5
+  --> $DIR/method-ambiguity-no-rcvr.rs:8:8
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^
+   |        ^^^
 help: disambiguate the associated function for candidate #1
    |
 LL -     Qux.foo();

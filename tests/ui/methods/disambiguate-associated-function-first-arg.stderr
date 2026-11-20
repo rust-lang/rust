@@ -9,20 +9,20 @@ LL |     _a.new(1);
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: candidate #1 is defined in the trait `M`
-  --> $DIR/disambiguate-associated-function-first-arg.rs:10:5
+  --> $DIR/disambiguate-associated-function-first-arg.rs:10:8
    |
 LL |     fn new(_a: i32);
-   |     ^^^^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `N`
-  --> $DIR/disambiguate-associated-function-first-arg.rs:17:5
+  --> $DIR/disambiguate-associated-function-first-arg.rs:17:8
    |
 LL |     fn new(_a: Self, _b: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #3 is defined in the trait `O`
-  --> $DIR/disambiguate-associated-function-first-arg.rs:24:5
+  --> $DIR/disambiguate-associated-function-first-arg.rs:24:8
    |
 LL |     fn new(_a: Self, _b: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^
 help: disambiguate the associated function for candidate #1
    |
 LL -     _a.new(1);
@@ -46,15 +46,15 @@ LL |     S.f();
    |       ^ multiple `f` found
    |
 note: candidate #1 is defined in an impl of the trait `TraitA` for the type `T`
-  --> $DIR/disambiguate-associated-function-first-arg.rs:40:5
+  --> $DIR/disambiguate-associated-function-first-arg.rs:40:8
    |
 LL |     fn f(self) {}
-   |     ^^^^^^^^^^
+   |        ^
 note: candidate #2 is defined in an impl of the trait `TraitB` for the type `T`
-  --> $DIR/disambiguate-associated-function-first-arg.rs:43:5
+  --> $DIR/disambiguate-associated-function-first-arg.rs:43:8
    |
 LL |     fn f(self) {}
-   |     ^^^^^^^^^^
+   |        ^
 help: disambiguate the method for candidate #1
    |
 LL -     S.f();

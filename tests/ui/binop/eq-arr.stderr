@@ -7,10 +7,10 @@ LL |     let eq = xs == [X, X, X];
    |              [X; 3]
    |
 note: an implementation of `PartialEq` might be missing for `X`
-  --> $DIR/eq-arr.rs:2:5
+  --> $DIR/eq-arr.rs:2:12
    |
 LL |     struct X;
-   |     ^^^^^^^^ must implement `PartialEq`
+   |            ^ must implement `PartialEq`
 help: consider annotating `X` with `#[derive(PartialEq)]`
    |
 LL +     #[derive(PartialEq)]

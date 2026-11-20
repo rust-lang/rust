@@ -4,10 +4,10 @@ error[E0624]: method `nap` is private
 LL |   nyan.nap();
    |        ^^^ private method
    |
-  ::: $DIR/auxiliary/cci_class_5.rs:8:9
+  ::: $DIR/auxiliary/cci_class_5.rs:8:12
    |
 LL |         fn nap(&self) {}
-   |         ------------- private method defined here
+   |            --- private method defined here
 
 error: aborting due to 1 previous error
 

@@ -12,10 +12,10 @@ LL |     arc2.bar();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `bar`, perhaps you need to implement it
-  --> $DIR/fn-help-with-err.rs:5:1
+  --> $DIR/fn-help-with-err.rs:5:7
    |
 LL | trait Bar {
-   | ^^^^^^^^^
+   |       ^^^
 LL |
 LL |     fn bar(&self) {}
    |

@@ -6,10 +6,10 @@ LL |     STRUCT.method();
    |
    = help: use `with` or `try_with` to access thread local storage
 note: the method `method` exists on the type `Struct<u32>`
-  --> $DIR/inner_type2.rs:6:5
+  --> $DIR/inner_type2.rs:6:12
    |
 LL |     pub fn method(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^
 
 error[E0599]: no method named `method` found for union `MaybeUninit<T>` in the current scope
   --> $DIR/inner_type2.rs:23:10
@@ -19,10 +19,10 @@ LL |     item.method();
    |
    = help: if this `MaybeUninit<Struct<u32>>` has been initialized, use one of the `assume_init` methods to access the inner value
 note: the method `method` exists on the type `Struct<u32>`
-  --> $DIR/inner_type2.rs:6:5
+  --> $DIR/inner_type2.rs:6:12
    |
 LL |     pub fn method(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^
 
 error: aborting due to 2 previous errors
 

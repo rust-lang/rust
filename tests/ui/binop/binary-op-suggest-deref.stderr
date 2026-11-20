@@ -266,10 +266,10 @@ LL |     _ = Foo == &&0;
    |         Foo
    |
 note: an implementation of `PartialEq<&&{integer}>` might be missing for `Foo`
-  --> $DIR/binary-op-suggest-deref.rs:57:5
+  --> $DIR/binary-op-suggest-deref.rs:57:12
    |
 LL |     struct Foo;
-   |     ^^^^^^^^^^ must implement `PartialEq<&&{integer}>`
+   |            ^^^ must implement `PartialEq<&&{integer}>`
 
 error[E0277]: can't compare `&String` with `str`
   --> $DIR/binary-op-suggest-deref.rs:69:20

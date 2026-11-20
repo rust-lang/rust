@@ -8,10 +8,10 @@ LL |     assert_eq!(vec1, vec2);
    |     Vec<Foo>
    |
 note: an implementation of `PartialEq` might be missing for `Foo`
-  --> $DIR/eq-vec.rs:3:5
+  --> $DIR/eq-vec.rs:3:10
    |
 LL |     enum Foo {
-   |     ^^^^^^^^ must implement `PartialEq`
+   |          ^^^ must implement `PartialEq`
 help: consider annotating `Foo` with `#[derive(PartialEq)]`
    |
 LL +     #[derive(PartialEq)]

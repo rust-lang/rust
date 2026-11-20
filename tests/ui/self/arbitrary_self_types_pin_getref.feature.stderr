@@ -5,10 +5,10 @@ LL |     let _ = pinned_a.get_ref();
    |                      ^^^^^^^ multiple `get_ref` found
    |
 note: candidate #1 is defined in an impl for the type `A`
-  --> $DIR/arbitrary_self_types_pin_getref.rs:17:5
+  --> $DIR/arbitrary_self_types_pin_getref.rs:17:8
    |
 LL |     fn get_ref(self: &Pin<&A>) {}  // note &Pin
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
    = note: candidate #2 is defined in an impl for the type `Pin<&'a T>`
 
 error: aborting due to 1 previous error
