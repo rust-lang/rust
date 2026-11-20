@@ -139,6 +139,12 @@ impl QueryKey for LocalDefId {
     }
 }
 
+impl QueryKey for &[LocalDefId] {
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl QueryKey for DefId {
     type Cache<V> = DefIdCache<V>;
     type LocalQueryKey = LocalDefId;
