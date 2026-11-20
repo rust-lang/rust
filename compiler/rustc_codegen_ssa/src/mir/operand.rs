@@ -902,23 +902,26 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
     }
 
     /// Replaces the current immediate value at the offset `offset`
-    /// with the value `imm`. A value must already be present.
+    /// with the value `val`. A value must already be present.
     ///
     /// This is used along with [`Self::from_existing`] to perform in-place updates
-    /// of any operand.
-    pub(super) fn update_imm(&mut self, offset: Size, imm: V) {
+    /// of any operand. Unlike `insert_imm`, this allows vector types to be inserted.
+    pub(super) fn replace(&mut self, offset: Size, rep: V) {
         let is_zero_offset = offset == Size::ZERO;
         match &mut self.val {
             OperandValueBuilder::Immediate(val @ Either::Left(_)) if is_zero_offset => {
-                *val = Either::Left(imm);
+                *val = Either::Left(rep);
             }
             OperandValueBuilder::Pair(fst @ Either::Left(_), _) if is_zero_offset => {
-                *fst = Either::Left(imm);
+                *fst = Either::Left(rep);
             }
             OperandValueBuilder::Pair(_, snd @ Either::Left(_)) if !is_zero_offset => {
-                *snd = Either::Left(imm);
+                *snd = Either::Left(rep);
             }
-            _ => bug!("Tried to update {imm:?} at offset {offset:?} of {self:?}"),
+            OperandValueBuilder::Vector(val @ Either::Left(_)) if is_zero_offset => {
+                *val = Either::Left(rep);
+            }
+            _ => bug!("Tried to update {rep:?} at offset {offset:?} of {self:?}"),
         }
     }
 
