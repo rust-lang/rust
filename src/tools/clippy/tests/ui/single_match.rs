@@ -535,3 +535,30 @@ mod issue16579 {
         //~^^^^ single_match
     }
 }
+
+fn issue16826() {
+    let i = 2;
+    match i == 1 {
+        true => {
+            println!("{i}")
+        },
+        false => (),
+    }
+    //~^^^^^^ single_match
+
+    match i == 1 {
+        false => {
+            println!("{i}")
+        },
+        true => (),
+    }
+    //~^^^^^^ single_match
+
+    match i {
+        1 => {
+            println!("{i}")
+        },
+        _ => (),
+    }
+    //~^^^^^^ single_match
+}
