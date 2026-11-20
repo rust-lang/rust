@@ -139,7 +139,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // right now, we limit this to just gca_const_items.
         //
         // See: https://github.com/rust-lang/project-const-generics/issues/105
-        let const_value = if self.tcx.features().gca_const_items()
+        let (normalized_value, eval_alias) = if self.tcx.features().gca_const_items()
             || alias_const.kind.is_direct_const(self.tcx)
         {
             let Ok(normalize) = self
@@ -150,17 +150,36 @@ impl<'tcx> ConstToPat<'tcx> {
                 return self.mk_err(err, ty);
             };
 
-            let ty::ConstKind::Value(value) = normalize.kind() else {
-                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
-                return self.mk_err(err, ty);
-            };
+            match normalize.kind() {
+                ty::ConstKind::Value(value) => (Some(value), None),
+                ty::ConstKind::Alias(_, normalized_alias)
+                    if !matches!(
+                        normalized_alias.kind,
+                        ty::AliasConstKind::InherentSelf { .. }
+                    ) && !normalized_alias.kind.is_direct_const(self.tcx)
+                        && !normalized_alias.args.has_non_region_infer()
+                        && (normalized_alias.args.has_non_region_param()
+                            || normalized_alias.args.has_non_region_placeholders()) =>
+                {
+                    (None, Some(normalized_alias))
+                }
+                _ => {
+                    let err =
+                        self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                    return self.mk_err(err, ty);
+                }
+            }
+        } else {
+            (None, Some(alias_const))
+        };
+        let const_value = if let Some(value) = normalized_value {
             value
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
             let valtree = match self.tcx.const_eval_resolve_for_typeck(
                 self.typing_env,
-                alias_const,
+                eval_alias.unwrap(),
                 self.span,
             ) {
                 Ok(Ok(c)) => c,
