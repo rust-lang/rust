@@ -28,17 +28,17 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::type_map::TypeMap;
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
-use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
+use super::{CodegenUnitDebugContext, btf};
 use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, create_DIArray, wide_pointer_kind};
 use crate::debuginfo::{DIBuilderExt, dwarf_const};
 use crate::llvm::debuginfo::{
-    DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
-    DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags,
+    DILexicalBlock, DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm::{self, FromGeneric, Value};
 
@@ -1043,6 +1043,38 @@ fn build_field_di_node<'ll, 'tcx>(
         offset,
         flags,
         type_di_node,
+        None,
+    )
+}
+
+/// Like [`build_field_di_node`], for a field defined in source as `field`, so that its
+/// `#[btf_decl_tag]` and `#[btf_type_tag]` attributes are applied.
+fn build_adt_field_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    owner: &'ll DIScope,
+    name: &str,
+    layout: TyAndLayout<'tcx>,
+    offset: Size,
+    flags: DIFlags,
+    field: &ty::FieldDef,
+) -> &'ll DIType {
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, Some(field.did))
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
+    create_member_type(
+        cx,
+        owner,
+        name,
+        file_metadata,
+        line_number,
+        layout,
+        offset,
+        flags,
+        btf::tagged_type_di_node(cx, btf::type_tags(cx.tcx, field.did), layout.ty, DUMMY_SP),
+        btf::decl_tag_annotations(cx, btf::decl_tags(cx.tcx, field.did)),
     )
 }
 
@@ -1056,9 +1088,10 @@ fn create_member_type<'ll, 'tcx>(
     offset: Size,
     flags: DIFlags,
     type_di_node: &'ll DIType,
+    annotations: Option<&'ll DIArray>,
 ) -> &'ll DIType {
     unsafe {
-        llvm::LLVMDIBuilderCreateMemberType(
+        llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
             owner,
             name.as_ptr(),
@@ -1070,6 +1103,7 @@ fn create_member_type<'ll, 'tcx>(
             offset.bits(),
             flags,
             type_di_node,
+            annotations,
         )
     }
 }
@@ -1133,7 +1167,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 
     type_map::build_type_with_children(
         cx,
-        type_map::stub(
+        type_map::stub_with_annotations(
             cx,
             Stub::Struct,
             unique_type_id,
@@ -1142,6 +1176,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
             visibility_di_flags(cx, adt_def.did(), adt_def.did()),
+            btf::decl_tag_annotations(cx, btf::decl_tags(cx.tcx, adt_def.did())),
         ),
         // Fields:
         |cx, owner| {
@@ -1158,20 +1193,14 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         Cow::Borrowed(f.name.as_str())
                     };
                     let field_layout = struct_type_and_layout.field(cx, i);
-                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
-                        Some(f.did)
-                    } else {
-                        None
-                    };
-                    build_field_di_node(
+                    build_adt_field_di_node(
                         cx,
                         owner,
                         &field_name[..],
                         field_layout,
                         struct_type_and_layout.fields.offset(i),
                         visibility_di_flags(cx, f.did, adt_def.did()),
-                        type_di_node(cx, field_layout.ty),
-                        def_id,
+                        f,
                     )
                 })
                 .collect()
@@ -1430,7 +1459,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
 
     type_map::build_type_with_children(
         cx,
-        type_map::stub(
+        type_map::stub_with_annotations(
             cx,
             Stub::Union,
             unique_type_id,
@@ -1439,6 +1468,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
+            btf::decl_tag_annotations(cx, btf::decl_tags(cx.tcx, union_def_id)),
         ),
         // Fields:
         |cx, owner| {
@@ -1448,20 +1478,14 @@ fn build_union_type_di_node<'ll, 'tcx>(
                 .enumerate()
                 .map(|(i, f)| {
                     let field_layout = union_ty_and_layout.field(cx, i);
-                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
-                        Some(f.did)
-                    } else {
-                        None
-                    };
-                    build_field_di_node(
+                    build_adt_field_di_node(
                         cx,
                         owner,
                         f.name.as_str(),
                         field_layout,
                         Size::ZERO,
                         DIFlags::FlagZero,
-                        type_di_node(cx, field_layout.ty),
-                        def_id,
+                        f,
                     )
                 })
                 .collect()
@@ -1539,7 +1563,8 @@ pub(crate) fn build_global_var_di_node<'ll>(
         return;
     }
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
-    let type_di_node = type_di_node(cx, variable_type);
+    let type_di_node =
+        btf::tagged_type_di_node(cx, btf::type_tags(tcx, def_id), variable_type, DUMMY_SP);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();
     let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;
@@ -1560,6 +1585,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
         global, // (value)
         None,   // (decl)
         Some(global_align),
+        btf::decl_tag_annotations(cx, btf::decl_tags(tcx, def_id)),
     );
 }
 
@@ -1865,6 +1891,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         vtable, // (value)
         None,   // (decl)
         None::<Align>,
+        None, // (annotations)
     );
 }
 

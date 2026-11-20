@@ -85,6 +85,8 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::allow_internal_unsafe,
     sym::allow_internal_unstable,
     sym::automatically_derived,
+    sym::btf_decl_tag,
+    sym::btf_type_tag,
     sym::cfg,
     sym::cfg_attr,
     sym::cfi_encoding,

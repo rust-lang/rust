@@ -1841,23 +1841,6 @@ unsafe extern "C" {
         IsUnsigned: llvm::Bool,
     ) -> &'ll Metadata;
 
-    pub(crate) fn LLVMDIBuilderCreateUnionType<'ll>(
-        Builder: &DIBuilder<'ll>,
-        Scope: Option<&'ll Metadata>,
-        Name: *const c_uchar, // See "PTR_LEN_STR".
-        NameLen: size_t,
-        File: &'ll Metadata,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        Elements: *const Option<&'ll Metadata>,
-        NumElements: c_uint,
-        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
-        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
-        UniqueIdLen: size_t,
-    ) -> &'ll Metadata;
-
     pub(crate) fn LLVMDIBuilderCreateArrayType<'ll>(
         Builder: &DIBuilder<'ll>,
         Size: u64,
@@ -1884,39 +1867,6 @@ unsafe extern "C" {
         AddressSpace: c_uint, // (optional DWARF address space; default is 0)
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-    ) -> &'ll Metadata;
-
-    pub(crate) fn LLVMDIBuilderCreateStructType<'ll>(
-        Builder: &DIBuilder<'ll>,
-        Scope: Option<&'ll Metadata>,
-        Name: *const c_uchar, // See "PTR_LEN_STR".
-        NameLen: size_t,
-        File: &'ll Metadata,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        DerivedFrom: Option<&'ll Metadata>,
-        Elements: *const Option<&'ll Metadata>,
-        NumElements: c_uint,
-        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
-        VTableHolder: Option<&'ll Metadata>,
-        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
-        UniqueIdLen: size_t,
-    ) -> &'ll Metadata;
-
-    pub(crate) fn LLVMDIBuilderCreateMemberType<'ll>(
-        Builder: &DIBuilder<'ll>,
-        Scope: &'ll Metadata,
-        Name: *const c_uchar, // See "PTR_LEN_STR".
-        NameLen: size_t,
-        File: &'ll Metadata,
-        LineNo: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        OffsetInBits: u64,
-        Flags: DIFlags,
-        Ty: &'ll Metadata,
     ) -> &'ll Metadata;
 
     pub(crate) fn LLVMDIBuilderCreateStaticMemberType<'ll>(
@@ -1969,22 +1919,6 @@ unsafe extern "C" {
         Length: size_t,
     ) -> &'ll Metadata;
 
-    pub(crate) fn LLVMDIBuilderCreateGlobalVariableExpression<'ll>(
-        Builder: &DIBuilder<'ll>,
-        Scope: Option<&'ll Metadata>,
-        Name: *const c_uchar, // See "PTR_LEN_STR".
-        NameLen: size_t,
-        Linkage: *const c_uchar, // See "PTR_LEN_STR".
-        LinkLen: size_t,
-        File: &'ll Metadata,
-        LineNo: c_uint,
-        Ty: &'ll Metadata,
-        LocalToUnit: llvm::Bool,
-        Expr: &'ll Metadata,
-        Decl: Option<&'ll Metadata>,
-        AlignInBits: u32,
-    ) -> &'ll Metadata;
-
     pub(crate) fn LLVMDIBuilderInsertDeclareRecordAtEnd<'ll>(
         Builder: &DIBuilder<'ll>,
         Storage: Value<'ll>,
@@ -2016,18 +1950,6 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'ll Metadata;
 
-    pub(crate) fn LLVMDIBuilderCreateParameterVariable<'ll>(
-        Builder: &DIBuilder<'ll>,
-        Scope: &'ll Metadata,
-        Name: *const c_uchar, // See "PTR_LEN_STR".
-        NameLen: size_t,
-        ArgNo: c_uint,
-        File: &'ll Metadata,
-        LineNo: c_uint,
-        Ty: &'ll Metadata,
-        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
-        Flags: DIFlags,
-    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2337,7 +2259,103 @@ unsafe extern "C" {
         MaybeFn: Option<Value<'ll>>,
         TParam: &'ll DIArray,
         Decl: Option<&'ll DIDescriptor>,
+        Annotations: Option<&'ll DIArray>,
     ) -> &'ll DISubprogram;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreatePointerType<'a>(
+        Builder: &DIBuilder<'a>,
+        PointeeTy: &'a DIType,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a DIType;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreateMemberType<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a DIScope,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        OffsetInBits: u64,
+        Flags: DIFlags,
+        Ty: &'a DIType,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a DIType;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreateStructType<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: Option<&'a DIScope>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        Elements: &'a DIArray,
+        VTableHolder: Option<&'a DIType>,
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a DIType;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreateUnionType<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: Option<&'a DIScope>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        Elements: &'a DIArray,
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a DIType;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreateGlobalVariableExpression<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: Option<&'a Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        Linkage: *const c_uchar, // See "PTR_LEN_STR".
+        LinkLen: size_t,
+        File: &'a Metadata,
+        LineNo: c_uint,
+        Ty: &'a Metadata,
+        LocalToUnit: bool,
+        Expr: &'a Metadata,
+        Decl: Option<&'a Metadata>,
+        AlignInBits: u32,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a Metadata;
+
+    /// The LLVM-C equivalent cannot attach `annotations:` (BTF tags).
+    pub(crate) fn LLVMRustDIBuilderCreateParameterVariable<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        ArgNo: c_uint,
+        File: &'a Metadata,
+        LineNo: c_uint,
+        Ty: &'a Metadata,
+        AlwaysPreserve: bool,
+        Flags: DIFlags,
+        Annotations: Option<&'a DIArray>,
+    ) -> &'a Metadata;
 
     /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateMethod<'a>(

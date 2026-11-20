@@ -12,8 +12,10 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_middle::middle::codegen_fn_attrs::BtfTags;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
@@ -32,7 +34,7 @@ use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
@@ -42,6 +44,7 @@ use crate::llvm::debuginfo::{
 };
 use crate::llvm::{self, Value};
 
+mod btf;
 mod di_builder;
 mod dwarf_const;
 mod gdb;
@@ -58,6 +61,10 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
+    /// BTF tags of the parameters of functions some of whose parameters are tagged, keyed by the
+    /// function's `DISubprogram`. `create_dbg_var` only gets the scope, so this is how it finds
+    /// the parameter's tags.
+    btf_tagged_params: RefCell<FxHashMap<&'ll DIScope, &'tcx [BtfTags<'tcx>]>>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
@@ -111,6 +118,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
+            btf_tagged_params: Default::default(),
         }
     }
 
@@ -140,8 +148,12 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata =
-            create_subroutine_type(self, &get_function_signature(self, fn_abi, span));
+        let tagged_params = btf::tagged_params(tcx, instance);
+
+        let function_type_metadata = create_subroutine_type(
+            self,
+            &get_function_signature(self, fn_abi, span, tagged_params),
+        );
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -210,7 +222,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             )
         });
 
-        return unsafe {
+        let subprogram = unsafe {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
@@ -227,13 +239,21 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 maybe_definition_llfn,
                 template_parameters,
                 decl,
+                btf::decl_tag_annotations(self.cx, btf::decl_tags(tcx, def_id)),
             )
         };
+
+        if let Some(params) = tagged_params {
+            debug_context(self).btf_tagged_params.borrow_mut().insert(subprogram, params);
+        }
+
+        return subprogram;
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
             span: Span,
+            tagged_params: Option<&'tcx [BtfTags<'tcx>]>,
         ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
                 return vec![];
@@ -279,6 +299,15 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         .iter()
                         .map(|arg| Some(spanned_type_di_node(cx, arg.layout.ty, span))),
                 );
+            }
+
+            // The BTF `FUNC_PROTO` of a function is derived from this subroutine type, so tagged
+            // pointer parameters have to show up here and not just on the parameter variables.
+            if let Some(params) = tagged_params {
+                for (i, (param, arg)) in iter::zip(params, &fn_abi.args).enumerate() {
+                    signature[i + 1] =
+                        Some(btf::tagged_type_di_node(cx, param.type_tags, arg.layout.ty, span));
+                }
             }
 
             signature
@@ -437,7 +466,19 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let type_metadata = spanned_type_di_node(self, variable_type, span);
+        let tagged_param = match variable_kind {
+            ArgumentVariable(arg_index) => debug_context(self)
+                .btf_tagged_params
+                .borrow()
+                .get(&scope_metadata)
+                .and_then(|params| params.get(arg_index.checked_sub(1)?).copied()),
+            LocalVariable => None,
+        };
+
+        let type_metadata = match tagged_param {
+            Some(param) => btf::tagged_type_di_node(self, param.type_tags, variable_type, span),
+            None => spanned_type_di_node(self, variable_type, span),
+        };
 
         let align = self.align_of(variable_type);
 
@@ -445,7 +486,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         match variable_kind {
             ArgumentVariable(arg_index) => unsafe {
-                llvm::LLVMDIBuilderCreateParameterVariable(
+                llvm::LLVMRustDIBuilderCreateParameterVariable(
                     DIB(self),
                     scope_metadata,
                     name.as_ptr(),
@@ -454,8 +495,10 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     file_metadata,
                     loc.line,
                     type_metadata,
-                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                    true, // (preserve descriptor during optimizations)
                     DIFlags::FlagZero,
+                    tagged_param
+                        .and_then(|param| btf::decl_tag_annotations(self.cx, param.decl_tags)),
                 )
             },
             LocalVariable => unsafe {
