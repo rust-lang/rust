@@ -56,9 +56,9 @@ fn bar() {
     // Don't suggest dereferencing with types that can't be compared
     struct Foo;
     _ = &&0 == Foo;
-    //~^ERROR can't compare `&&{integer}` with `Foo` [E0277]
+    //~^ ERROR: can't compare `&&{integer}` with `Foo` [E0277]
     _ = Foo == &&0;
-    //~^ERROR binary operation `==` cannot be applied to type `Foo` [E0369]
+    //~^ ERROR: can't compare `Foo` to `&&{integer}` [E0369]
 }
 
 fn baz() {

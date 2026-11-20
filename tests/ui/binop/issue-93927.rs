@@ -11,8 +11,7 @@ where
 }
 
 fn cond<T: PartialEq>(val: MyType<T>) -> bool {
-    val == val
-    //~^ ERROR binary operation `==` cannot be applied to type `MyType<T>`
+    val == val //~ ERROR: can't compare `MyType<T>`
 }
 
 fn main() {

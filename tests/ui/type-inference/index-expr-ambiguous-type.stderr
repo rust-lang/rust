@@ -29,7 +29,7 @@ LL -     let _foo = [1, 2, 3][bad_idx.into()];
 LL +     let _foo = [1, 2, 3][<u8 as Into<T>>::into(bad_idx)];
    |
 
-error[E0369]: cannot add `_` to `bool`
+error[E0369]: can't add `_` to `bool`
   --> $DIR/index-expr-ambiguous-type.rs:32:21
    |
 LL |     let _foo = true + [1, 2, 3][bad_idx.into()];
@@ -38,7 +38,7 @@ LL |     let _foo = true + [1, 2, 3][bad_idx.into()];
    |                bool
 
 error[E0284]: type annotations needed
-  --> $DIR/index-expr-ambiguous-type.rs:38:21
+  --> $DIR/index-expr-ambiguous-type.rs:37:21
    |
 LL |     let _foo = 0u64 + [1i32, 2, 3][bad_idx.into()];
    |                     ^ cannot infer type
@@ -49,7 +49,7 @@ LL |     let _foo = 0u64 + [1i32, 2, 3][bad_idx.into()];
            - impl Add<&u64> for u64;
 
 error[E0284]: type annotations needed
-  --> $DIR/index-expr-ambiguous-type.rs:44:38
+  --> $DIR/index-expr-ambiguous-type.rs:43:38
    |
 LL |     let _foo = 1u32 << [0u8][bad_idx.into()];
    |                                      ^^^^ cannot infer type
@@ -58,7 +58,7 @@ LL |     let _foo = 1u32 << [0u8][bad_idx.into()];
    = note: cannot satisfy `u32: Shl<_>`
 
 error[E0283]: type annotations needed
-  --> $DIR/index-expr-ambiguous-type.rs:50:45
+  --> $DIR/index-expr-ambiguous-type.rs:49:45
    |
 LL |     let _foo = String::new() + [""][bad_idx.into()];
    |                                             ^^^^

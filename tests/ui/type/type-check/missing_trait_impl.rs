@@ -2,7 +2,7 @@ fn main() {
 }
 
 fn foo<T>(x: T, y: T) {
-    let z = x + y; //~ ERROR cannot add `T` to `T`
+    let z = x + y; //~ ERROR can't add `T`
 }
 
 fn bar<T>(x: T) {

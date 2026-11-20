@@ -1,4 +1,4 @@
-error[E0369]: cannot add `&str` to `&str`
+error[E0369]: can't add `&str`
    ╭▸ $DIR/non-1-width-unicode-multiline-label.rs:8:237
    │
 LL │ … 👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
@@ -13,7 +13,7 @@ help: create an owned `String` from a string reference
 LL │     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun.to_owned() + " really fun!";
    ╰╴                                                                                                                                                                                                                                                                                                                                                                                                                                               +++++++++++
 
-error[E0369]: cannot add `&str` to `&str`
+error[E0369]: can't add `&str`
    ╭▸ $DIR/non-1-width-unicode-multiline-label.rs:10:384
    │
 LL │ … 👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
@@ -28,7 +28,7 @@ help: create an owned `String` from a string reference
 LL │     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun.to_owned() + " really fun!";
    ╰╴                                                                                                                                                                                                                                                                                                                                                                                                                                               +++++++++++
 
-error[E0369]: cannot add `&str` to `&str`
+error[E0369]: can't add `&str`
    ╭▸ $DIR/non-1-width-unicode-multiline-label.rs:12:260
    │
 LL │ …࿄࿅࿆࿇࿈࿉࿊࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun + " really fun!";
@@ -43,7 +43,7 @@ help: create an owned `String` from a string reference
 LL │     let _ = "ༀ༁༂༃༄༅༆༇༈༉༊་༌།༎༏༐༑༒༓༔༕༖༗༘༙༚༛༜༝༞༟༠༡༢༣༤༥༦༧༨༩༪༫༬༭༮༯༰༱༲༳༴༵༶༷༸༹༺༻༼༽༾༿ཀཁགགྷངཅཆཇ཈ཉཊཋཌཌྷཎཏཐདདྷནཔཕབབྷམཙཚཛཛྷཝཞཟའཡརལཤཥསཧཨཀྵཪཫཬ཭཮཯཰ཱཱཱིིུུྲྀཷླྀཹེཻོཽཾཿ྄ཱྀྀྂྃ྅྆྇ྈྉྊྋྌྍྎྏྐྑྒྒྷྔྕྖྗ྘ྙྚྛྜྜྷྞྟྠྡྡྷྣྤྥྦྦྷྨྩྪྫྫྷྭྮྯྰྱྲླྴྵྶྷྸྐྵྺྻྼ྽྾྿࿀࿁࿂࿃࿄࿅࿆࿇࿈࿉࿊࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun.to_owned() + " really fun!";
    ╰╴                                                                                                                                                                                        +++++++++++
 
-error[E0369]: cannot add `&str` to `&str`
+error[E0369]: can't add `&str`
    ╭▸ $DIR/non-1-width-unicode-multiline-label.rs:14:219
    │
 LL │ …xxxxxxxxxxxxxxxxxxxxxx"; let _a = unicode_is_fun + " really fun!";

@@ -8,7 +8,7 @@ use std::pat::pattern_type;
 #[derive(Clone, Copy, PartialEq)]
 #[repr(transparent)]
 struct Nanoseconds(NanoI32);
-//~^ ERROR: binary operation `==` cannot be applied to type `pattern_type!(i32 is 0..=999999999)`
+//~^ ERROR: can't compare `pattern_type!(i32 is 0..=999999999)`
 
 type NanoI32 = pattern_type!(i32 is 0..=999_999_999);
 

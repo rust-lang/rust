@@ -14,7 +14,7 @@ help: consider introducing lifetime `'missing` here
 LL | pub trait Numoid<'missing>: Sized
    |                 ++++++++++
 
-error[E0369]: cannot add `N` to `&N`
+error[E0369]: can't add `N` to `&N`
   --> $DIR/eval-caching-error-region.rs:19:16
    |
 LL |     let _ = &a + a;

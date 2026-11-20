@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `*const u32`
+error[E0369]: can't add `{integer}` to `*const u32`
   --> $DIR/issue-112252-ptr-arithmetics-help.rs:6:20
    |
 LL |     let _a = _ptr1 + 5;
@@ -12,7 +12,7 @@ LL -     let _a = _ptr1 + 5;
 LL +     let _a = _ptr1.wrapping_add(5);
    |
 
-error[E0369]: cannot subtract `{integer}` from `*const u32`
+error[E0369]: can't subtract `{integer}` from `*const u32`
   --> $DIR/issue-112252-ptr-arithmetics-help.rs:7:20
    |
 LL |     let _b = _ptr1 - 5;
@@ -26,7 +26,7 @@ LL -     let _b = _ptr1 - 5;
 LL +     let _b = _ptr1.wrapping_sub(5);
    |
 
-error[E0369]: cannot subtract `*const u32` from `*const u32`
+error[E0369]: can't subtract `*const u32`
   --> $DIR/issue-112252-ptr-arithmetics-help.rs:8:20
    |
 LL |     let _c = _ptr2 - _ptr1;

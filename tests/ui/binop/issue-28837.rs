@@ -3,33 +3,33 @@ struct A;
 fn main() {
     let a = A;
 
-    a + a; //~ ERROR cannot add `A` to `A`
+    a + a; //~ ERROR: can't add `A`
 
-    a - a; //~ ERROR cannot subtract `A` from `A`
+    a - a; //~ ERROR: can't subtract `A`
 
-    a * a; //~ ERROR cannot multiply `A` by `A`
+    a * a; //~ ERROR: can't multiply `A`
 
-    a / a; //~ ERROR cannot divide `A` by `A`
+    a / a; //~ ERROR: can't divide `A` by `A`
 
-    a % a; //~ ERROR cannot calculate the remainder of `A` divided by `A`
+    a % a; //~ ERROR: can't calculate the remainder of `A` divided by `A`
 
-    a & a; //~ ERROR no implementation for `A & A`
+    a & a; //~ ERROR: no implementation for `A & A`
 
-    a | a; //~ ERROR no implementation for `A | A`
+    a | a; //~ ERROR: no implementation for `A | A`
 
-    a << a; //~ ERROR no implementation for `A << A`
+    a << a; //~ ERROR: no implementation for `A << A`
 
-    a >> a; //~ ERROR no implementation for `A >> A`
+    a >> a; //~ ERROR: no implementation for `A >> A`
 
-    a == a; //~ ERROR binary operation `==` cannot be applied to type `A`
+    a == a; //~ ERROR: can't compare `A`
 
-    a != a; //~ ERROR binary operation `!=` cannot be applied to type `A`
+    a != a; //~ ERROR: can't compare `A`
 
-    a < a; //~ ERROR binary operation `<` cannot be applied to type `A`
+    a < a; //~ ERROR: binary operation `<` can't be applied to type `A`
 
-    a <= a; //~ ERROR binary operation `<=` cannot be applied to type `A`
+    a <= a; //~ ERROR: binary operation `<=` can't be applied to type `A`
 
-    a > a; //~ ERROR binary operation `>` cannot be applied to type `A`
+    a > a; //~ ERROR: binary operation `>` can't be applied to type `A`
 
-    a >= a; //~ ERROR binary operation `>=` cannot be applied to type `A`
+    a >= a; //~ ERROR: binary operation `>=` can't be applied to type `A`
 }

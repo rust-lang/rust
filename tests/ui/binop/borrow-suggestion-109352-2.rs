@@ -16,12 +16,8 @@ fn main() {
     let _ = ref_mut_bar * ref_mut_bar;
 
     // FIXME: we should be able to suggest borrowing both side
-    let _ = owned_bar * owned_bar;
-    //~^ ERROR cannot multiply
-    let _ = ref_bar * ref_bar;
-    //~^ ERROR cannot multiply
-    let _ = ref_bar * ref_mut_bar;
-    //~^ ERROR cannot multiply
-    let _ = ref_mut_bar * ref_bar;
-    //~^ ERROR mismatched types
+    let _ = owned_bar * owned_bar; //~ ERROR: can't multiply
+    let _ = ref_bar * ref_bar; //~ ERROR: can't multiply
+    let _ = ref_bar * ref_mut_bar; //~ ERROR: can't multiply
+    let _ = ref_mut_bar * ref_bar; //~ ERROR: mismatched types
 }

@@ -19,7 +19,7 @@ fn main() {
     //~^ ERROR use of unstable library feature `f16b`
     //~| ERROR use of unstable library feature `f16b`
     let _ = x + x;
-    //~^ ERROR cannot add `f16b` to `f16b`
+    //~^ ERROR can't add `f16b`
 
     let _ = 1u16 as f16b;
     //~^ ERROR use of unstable library feature `f16b`

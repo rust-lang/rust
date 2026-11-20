@@ -6,7 +6,7 @@ LL |     let _: f16b = 1.0;
    |            |
    |            expected due to this
 
-error[E0369]: cannot add `f16b` to `f16b`
+error[E0369]: can't add `f16b`
   --> $DIR/f16b-restrictions.rs:12:15
    |
 LL |     let _ = x + x;

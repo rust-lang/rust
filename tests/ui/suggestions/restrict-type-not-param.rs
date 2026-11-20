@@ -6,7 +6,7 @@ trait Foo {}
 
 fn qux<T>(a: Wrapper<T>, b: T) -> T {
     a + b
-    //~^ ERROR cannot add `T` to `Wrapper<T>`
+    //~^ ERROR: can't add `T` to `Wrapper<T>`
 }
 
 fn main() {}

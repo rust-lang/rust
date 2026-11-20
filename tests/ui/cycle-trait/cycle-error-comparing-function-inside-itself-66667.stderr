@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() {second}`
+error[E0369]: can't compare `fn() {second}` to `{integer}`
   --> $DIR/cycle-error-comparing-function-inside-itself-66667.rs:3:12
    |
 LL |     second == 1
@@ -23,7 +23,7 @@ LL | fn first() {
 LL |     second == 1
    |     ^^^^^^^^^^^ expected `()`, found `bool`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {first}`
+error[E0369]: can't compare `fn() {first}` to `{integer}`
   --> $DIR/cycle-error-comparing-function-inside-itself-66667.rs:9:11
    |
 LL |     first == 1
@@ -48,7 +48,7 @@ LL | fn second() {
 LL |     first == 1
    |     ^^^^^^^^^^ expected `()`, found `bool`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {bar}`
+error[E0369]: can't compare `fn() {bar}` to `{integer}`
   --> $DIR/cycle-error-comparing-function-inside-itself-66667.rs:15:9
    |
 LL |     bar == 1

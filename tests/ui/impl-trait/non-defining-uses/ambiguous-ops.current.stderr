@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `impl Sized`
+error[E0369]: can't add `{integer}` to `impl Sized`
   --> $DIR/ambiguous-ops.rs:17:15
    |
 LL |         add() + 1

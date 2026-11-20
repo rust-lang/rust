@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `Foo`
+error[E0369]: can't add `{integer}` to `Foo`
   --> $DIR/recursion3.rs:14:29
    |
 LL |     let x: u32 = foo(false) + 42;
@@ -6,7 +6,7 @@ LL |     let x: u32 = foo(false) + 42;
    |                  |
    |                  Foo
 
-error[E0369]: cannot add `{integer}` to `impl Debug`
+error[E0369]: can't add `{integer}` to `impl Debug`
   --> $DIR/recursion3.rs:22:29
    |
 LL |     let x: u32 = bar(false) + 42;

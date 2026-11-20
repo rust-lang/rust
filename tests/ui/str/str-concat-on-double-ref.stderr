@@ -1,4 +1,4 @@
-error[E0369]: cannot add `&str` to `&String`
+error[E0369]: can't add `&str` to `&String`
   --> $DIR/str-concat-on-double-ref.rs:4:15
    |
 LL |     let c = a + b;

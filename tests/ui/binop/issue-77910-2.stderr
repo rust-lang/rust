@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `for<'a> fn(&'a i32) -> &'a i32 {foo}`
+error[E0369]: can't compare `for<'a> fn(&'a i32) -> &'a i32 {foo}` to `_`
   --> $DIR/issue-77910-2.rs:7:12
    |
 LL |     if foo == y {}

@@ -1,4 +1,4 @@
-error[E0369]: cannot add `A` to `A`
+error[E0369]: can't add `A`
   --> $DIR/issue-28837.rs:6:7
    |
 LL |     a + a;
@@ -14,7 +14,7 @@ LL | struct A;
 note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0369]: cannot subtract `A` from `A`
+error[E0369]: can't subtract `A`
   --> $DIR/issue-28837.rs:8:7
    |
 LL |     a - a;
@@ -30,7 +30,7 @@ LL | struct A;
 note: the trait `Sub` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0369]: cannot multiply `A` by `A`
+error[E0369]: can't multiply `A`
   --> $DIR/issue-28837.rs:10:7
    |
 LL |     a * a;
@@ -46,7 +46,7 @@ LL | struct A;
 note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0369]: cannot divide `A` by `A`
+error[E0369]: can't divide `A` by `A`
   --> $DIR/issue-28837.rs:12:7
    |
 LL |     a / a;
@@ -62,7 +62,7 @@ LL | struct A;
 note: the trait `Div` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0369]: cannot calculate the remainder of `A` divided by `A`
+error[E0369]: can't calculate the remainder of `A` divided by `A`
   --> $DIR/issue-28837.rs:14:7
    |
 LL |     a % a;
@@ -142,7 +142,7 @@ LL | struct A;
 note: the trait `Shr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
-error[E0369]: binary operation `==` cannot be applied to type `A`
+error[E0369]: can't compare `A`
   --> $DIR/issue-28837.rs:24:7
    |
 LL |     a == a;
@@ -161,7 +161,7 @@ LL + #[derive(PartialEq)]
 LL | struct A;
    |
 
-error[E0369]: binary operation `!=` cannot be applied to type `A`
+error[E0369]: can't compare `A`
   --> $DIR/issue-28837.rs:26:7
    |
 LL |     a != a;
@@ -180,7 +180,7 @@ LL + #[derive(PartialEq)]
 LL | struct A;
    |
 
-error[E0369]: binary operation `<` cannot be applied to type `A`
+error[E0369]: binary operation `<` can't be applied to type `A`
   --> $DIR/issue-28837.rs:28:7
    |
 LL |     a < a;
@@ -199,7 +199,7 @@ LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
 
-error[E0369]: binary operation `<=` cannot be applied to type `A`
+error[E0369]: binary operation `<=` can't be applied to type `A`
   --> $DIR/issue-28837.rs:30:7
    |
 LL |     a <= a;
@@ -218,7 +218,7 @@ LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
 
-error[E0369]: binary operation `>` cannot be applied to type `A`
+error[E0369]: binary operation `>` can't be applied to type `A`
   --> $DIR/issue-28837.rs:32:7
    |
 LL |     a > a;
@@ -237,7 +237,7 @@ LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
 
-error[E0369]: binary operation `>=` cannot be applied to type `A`
+error[E0369]: binary operation `>=` can't be applied to type `A`
   --> $DIR/issue-28837.rs:34:7
    |
 LL |     a >= a;

@@ -68,7 +68,7 @@ LL | struct MyPhantomData<T, U>;
    = help: consider removing `U` or referring to it in a field
    = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
 
-error[E0369]: cannot add `{integer}` to `{integer}`
+error[E0369]: can't add `{integer}`
   --> $DIR/lang-item-generic-requirements.rs:50:7
    |
 LL |     r + a;

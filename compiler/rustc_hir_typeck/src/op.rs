@@ -397,20 +397,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Op::BinOp(bin_op) => {
                 use hir::BinOpKind;
                 let message = match bin_op.node {
+                    BinOpKind::Add if lhs_ty_str == rhs_ty_str => {
+                        format!("can't add `{rhs_ty_str}`")
+                    }
+                    BinOpKind::Sub if lhs_ty_str == rhs_ty_str => {
+                        format!("can't subtract `{rhs_ty_str}`")
+                    }
+                    BinOpKind::Mul if lhs_ty_str == rhs_ty_str => {
+                        format!("can't multiply `{lhs_ty_str}`")
+                    }
                     BinOpKind::Add => {
-                        format!("cannot add `{rhs_ty_str}` to `{lhs_ty_str}`")
+                        format!("can't add `{rhs_ty_str}` to `{lhs_ty_str}`")
                     }
                     BinOpKind::Sub => {
-                        format!("cannot subtract `{rhs_ty_str}` from `{lhs_ty_str}`")
+                        format!("can't subtract `{rhs_ty_str}` from `{lhs_ty_str}`")
                     }
                     BinOpKind::Mul => {
-                        format!("cannot multiply `{lhs_ty_str}` by `{rhs_ty_str}`")
+                        format!("can't multiply `{lhs_ty_str}` by `{rhs_ty_str}`")
                     }
                     BinOpKind::Div => {
-                        format!("cannot divide `{lhs_ty_str}` by `{rhs_ty_str}`")
+                        format!("can't divide `{lhs_ty_str}` by `{rhs_ty_str}`")
+                    }
+                    BinOpKind::Eq | BinOpKind::Ne if lhs_ty_str == rhs_ty_str => {
+                        format!("can't compare `{lhs_ty_str}`")
+                    }
+                    BinOpKind::Eq | BinOpKind::Ne => {
+                        format!("can't compare `{lhs_ty_str}` to `{rhs_ty_str}`")
                     }
                     BinOpKind::Rem => format!(
-                        "cannot calculate the remainder of `{lhs_ty_str}` divided by `{rhs_ty_str}`"
+                        "can't calculate the remainder of `{lhs_ty_str}` divided by `{rhs_ty_str}`"
                     ),
                     BinOpKind::BitAnd
                     | BinOpKind::BitXor
@@ -420,8 +435,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "no implementation for `{lhs_ty_str} {} {rhs_ty_str}`",
                         bin_op.node.as_str()
                     ),
+                    _ if lhs_ty_str == rhs_ty_str => format!(
+                        "binary operation `{}` can't be applied to type `{lhs_ty_str}`",
+                        bin_op.node.as_str()
+                    ),
                     _ => format!(
-                        "binary operation `{}` cannot be applied to type `{lhs_ty_str}`",
+                        "no implementation for `{lhs_ty_str} {} {rhs_ty_str}`",
                         bin_op.node.as_str()
                     ),
                 };
