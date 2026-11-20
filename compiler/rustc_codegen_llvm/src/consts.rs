@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_abi::{Align, ExternAbi, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_attr_ir::Linkage;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_codegen_ssa::common;
@@ -13,14 +13,19 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
+use rustc_middle::ptrauth::{PtrauthCDiscriminatorError, ptrauth_c_discriminator_slots};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
+use rustc_session::{PointerAuthDiscrimination, PointerAuthSchema};
 use rustc_span::{Symbol, bug, span_bug};
 use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
-use crate::diagnostics::SymbolAlreadyDefined;
+use crate::diagnostics::{
+    PtrauthCDiscriminatorConflict, PtrauthCDiscriminatorFieldNotSlot,
+    PtrauthCDiscriminatorStaticNotSlot, SymbolAlreadyDefined,
+};
 use crate::llvm::{self, Type, Value, const_ptr_auth};
 use crate::{base, debuginfo};
 
@@ -35,11 +40,15 @@ pub(crate) enum IsInitOrFini {
     Yes,
     No,
 }
+/// `ptrauth_c_slots` are the offsets of the slots marked `#[ptrauth_c_discriminator]`, sorted, with
+/// their discriminators (see `ptrauth_c_discriminator_slots`). A code address in one of them is
+/// signed with that discriminator instead of its function's.
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: &Allocation,
     is_static: IsStatic,
     is_init_fini: IsInitOrFini,
+    ptrauth_c_slots: &[(Size, u16)],
 ) -> Value<'ll> {
     // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
     // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
@@ -119,10 +128,32 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
+        // Function pointers are signed with the discriminator of the function they point to (see
+        // `maybe_sign_fn_ptr`), independently of the type of the field holding them, except in
+        // slots marked `#[ptrauth_c_discriminator(N)]`, which uses the value of `N`. Init/fini
+        // entries use their own schema.
+        let c_slot_schema;
         let schema = if cx.sess().pointer_authentication() {
             match is_init_fini {
                 IsInitOrFini::Yes => cx.sess().pointer_authentication_init_fini(),
-                IsInitOrFini::No => cx.sess().pointer_authentication_functions(),
+                IsInitOrFini::No => {
+                    let c_slot = ptrauth_c_slots
+                        .binary_search_by_key(&Size::from_bytes(offset), |&(offset, _)| offset)
+                        .ok()
+                        .map(|i| ptrauth_c_slots[i].1);
+                    match (cx.sess().pointer_authentication_functions(), c_slot) {
+                        // A slot in C's encoding is signed with the discriminator C uses for it.
+                        (Some(schema), Some(discriminator)) => {
+                            c_slot_schema = PointerAuthSchema {
+                                discrimination_kind: PointerAuthDiscrimination::Constant,
+                                constant_discriminator: discriminator,
+                                ..schema.clone()
+                            };
+                            Some(&c_slot_schema)
+                        }
+                        (schema, _) => schema,
+                    }
+                }
             }
         } else {
             None
@@ -173,7 +204,52 @@ fn codegen_static_initializer<'ll, 'tcx>(
             }
         })
         .unwrap_or(IsInitOrFini::No);
-    Ok((const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini), alloc))
+    let ptrauth_c_slots = ptrauth_c_slots(cx, def_id, &is_in_init_fini);
+    Ok((
+        const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini, &ptrauth_c_slots),
+        alloc,
+    ))
+}
+
+/// The slots of the static `def_id` marked `#[ptrauth_c_discriminator]` (see
+/// `ptrauth_c_discriminator_slots`).
+///
+/// Without function pointer type discrimination, C signs every code address with the same
+/// discriminator as Rust does (0), so the marks change nothing (but are still checked).
+/// Init/fini entries keep the init/fini schema.
+fn ptrauth_c_slots<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    def_id: DefId,
+    is_in_init_fini: &IsInitOrFini,
+) -> Vec<(Size, u16)> {
+    if !cx.sess().pointer_authentication() || matches!(is_in_init_fini, IsInitOrFini::Yes) {
+        return Vec::new();
+    }
+    let slots = match ptrauth_c_discriminator_slots(cx.tcx, def_id) {
+        Ok(slots) => slots,
+        Err(PtrauthCDiscriminatorError::StaticNotSlot { ty }) => {
+            cx.tcx.dcx().emit_err(PtrauthCDiscriminatorStaticNotSlot {
+                span: cx.tcx.def_span(def_id),
+                ty: ty.to_string(),
+            });
+            return Vec::new();
+        }
+        Err(PtrauthCDiscriminatorError::FieldNotSlot { field, ty }) => {
+            cx.tcx.dcx().emit_err(PtrauthCDiscriminatorFieldNotSlot {
+                span: cx.tcx.def_span(field),
+                ty: ty.to_string(),
+            });
+            return Vec::new();
+        }
+        Err(PtrauthCDiscriminatorError::Conflict { offset }) => {
+            cx.tcx.dcx().emit_err(PtrauthCDiscriminatorConflict {
+                span: cx.tcx.def_span(def_id),
+                offset: offset.bytes(),
+            });
+            return Vec::new();
+        }
+    };
+    if cx.sess().pointer_authentication_fn_ptr_type_discrimination() { slots } else { Vec::new() }
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: Value<'ll>, mut align: Align) {
@@ -196,7 +272,8 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        let mut should_sign = false;
+        // The discriminator to sign the address of an `extern_weak` function with (if needed).
+        let mut ptrauth_discriminator = None;
         // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
         // an extern_weak function, otherwise a global with the desired linkage.
         let actual_global = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
@@ -210,12 +287,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             {
                 let fn_sig = sig.with(*header);
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
-                // Decide if the initializer needs to be signed
-                if cx.sess().pointer_authentication_functions().is_some()
-                    && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
-                {
-                    should_sign = true;
-                }
+                // The initializer is called through its function pointer type, if type
+                // discrimination is enabled it is signed with the discriminator calls through that
+                // type authenticate with.
+                ptrauth_discriminator = fn_abi.ptrauth_discriminator;
                 cx.declare_fn(sym, fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
@@ -230,7 +305,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         cx.assume_dso_local(actual_global, true);
 
         // Sign the function pointer that is used to initialize the global
-        let initializer = if should_sign {
+        let initializer = if let Some(discriminator) = ptrauth_discriminator {
             let schema = cx
                 .tcx
                 .sess
@@ -240,7 +315,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             const_ptr_auth(
                 actual_global,
                 schema.key as u32,
-                schema.constant_discriminator as u64,
+                discriminator,
                 None, /* address_diversity */
             )
         } else {
@@ -909,7 +984,7 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Value<'ll> {
         // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
         // same `ConstAllocation`?
-        let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No, &[]);
 
         let gv = self.static_addr_of_impl(cv, alloc.inner().align, kind);
         // static_addr_of_impl returns the bare global variable, which might not be in the default

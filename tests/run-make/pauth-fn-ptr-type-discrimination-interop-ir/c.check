@@ -1,0 +1,22 @@
+// C side, as Clang lowers it under function pointer type discrimination: a code address is signed
+// according to the C type of the slot holding it, and C casts resign.
+
+CHECK-LABEL: define {{.*}}@apply(
+CHECK: "ptrauth"(i32 0, i64 [[BINOP]])
+
+CHECK-LABEL: define {{.*}}@get_sub(
+CHECK: ptrauth (ptr @c_sub, i32 0, i64 [[BINOP]])
+
+CHECK-LABEL: define {{.*}}@lookup(
+CHECK: {{ptrauth \(ptr @c_mul, i32 0\)|@llvm.ptrauth.resign\(.*@c_mul.*, i32 0, i64 0\)}}
+
+CHECK-LABEL: define {{.*}}@invoke_callback(
+CHECK: call i64 @llvm.ptrauth.resign(i64 %{{.*}}, i32 0, i64 [[GENERIC]], i32 0, i64 [[BINOP]])
+CHECK: "ptrauth"(i32 0, i64 [[BINOP]])
+
+CHECK-LABEL: define {{.*}}@get_proc(
+CHECK: {{ptrauth \(ptr @c_sub, i32 0, i64 |@llvm.ptrauth.resign\(.*@c_sub.*, i32 0, i64 }}[[GENERIC]])
+
+CHECK-LABEL: define {{.*}}@call_opaque(
+CHECK: call i64 @llvm.ptrauth.resign(i64 %{{.*}}, i32 0, i64 0, i32 0, i64 [[BINOP]])
+CHECK: "ptrauth"(i32 0, i64 [[BINOP]])

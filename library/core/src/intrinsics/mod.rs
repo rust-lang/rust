@@ -1219,6 +1219,51 @@ pub const unsafe fn slice_get_unchecked<
 #[rustc_intrinsic]
 pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
+/// Converts a code address from the pointer authentication encoding of `Src` to that of `Dst`.
+///
+/// Under function pointer type discrimination, Rust signs a function pointer with the discriminator
+/// of the function it points to (pointee type), and never resigns it when it is reinterpreted. C
+/// (Clang) encodes a code address according to the type of the slot holding it. This intrinsic is
+/// the explicit conversion between those encodings, the Rust equivalent of a C type-cast. It is
+/// intended to be used where a code address crosses into, or out of a C slot that erased its type
+/// (`dlsym`, `void *` user data).
+///
+/// `Src` and `Dst` must each be one of: an `extern "C"`/`"system"` function pointer, a thin raw
+/// pointer, or a pointer-sized integer. Null is passed through unchanged. Without type
+/// discrimination, this is a plain reinterpretation.
+///
+/// # Safety
+///
+/// `src` must be null, or signed according to the encoding of `Src`. Otherwise authentication
+/// fails.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn ptrauth_c_cast<Src, Dst>(src: Src) -> Dst;
+
+/// The discriminator of the function pointer type `F`, as used for `extern "C"` function pointers
+/// under function pointer type discrimination. Matches Clang's
+/// `__builtin_ptrauth_type_discriminator`. Returns 0 for types that are not `extern "C"` function
+/// pointers. Must be evaluated at compile time, e.g. `const { ptrauth_fn_ptr_discriminator::<F>()
+/// }`.
+///
+/// Note that, unlike most intrinsics, this is safe to call; it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_comptime]
+pub fn ptrauth_fn_ptr_discriminator<F>() -> u64;
+
+/// Returns the address of `ptr` with any pointer authentication signature removed, for comparing
+/// and printing code addresses. Without pointer authentication, returns the address unchanged.
+///
+/// `T` must be a thin raw pointer, a function pointer or a pointer-sized integer.
+///
+/// Note that, unlike most intrinsics, this is safe to call; it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub fn ptrauth_strip<T>(ptr: T) -> usize;
+
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
 /// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///

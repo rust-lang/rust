@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use libc::c_uint;
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
+use rustc_abi::{self as abi, HasDataLayout as _};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
 use rustc_crate_store::DllImport;
@@ -13,6 +13,7 @@ use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::ptrauth::{is_ptrauth_signed_abi, ptrauth_signing_discriminator_for};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::{PointerAuthAddressDiscriminator, PointerAuthSchema};
 use rustc_span::bug;
@@ -26,7 +27,7 @@ use crate::llvm::{
 };
 
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     llfn: llvm::Value<'ll>,
     schema: &PointerAuthSchema,
@@ -40,9 +41,8 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     if !matches!(cx.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
         return llfn;
     }
-    // Only C ABI
-    let abi = cx.tcx.fn_sig(def_id).skip_binder().abi();
-    if !matches!(abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
+    // Only supported ABIs
+    if !is_ptrauth_signed_abi(cx.tcx.fn_sig(def_id).skip_binder().abi()) {
         return llfn;
     }
     // Ignore LLVM intrinsics
@@ -53,6 +53,16 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
+    // Under function pointer type discrimination, a function pointer is signed with the
+    // discriminator of the function it points to, whatever type it is later stored as or
+    // reinterpreted as. Reinterpretation is a plain bit copy, and a call authenticates with the
+    // discriminator of the type it is made through, so only calls through a signature that is not
+    // ABI-compatible with the callee fail, and those calls are UB already. Schemas without type
+    // discrimination (e.g. init/fini) keep their constant discriminator.
+    let Some(discriminator) = ptrauth_signing_discriminator_for(cx.tcx, schema, instance) else {
+        return llfn;
+    };
+
     let addr_diversity = match schema.is_address_discriminated {
         PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
         PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
@@ -62,7 +72,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
             Some(unsafe { llvm::LLVMConstIntToPtr(llval, llty) })
         }
     };
-    const_ptr_auth(llfn, schema.key as u32, schema.constant_discriminator as u64, addr_diversity)
+    const_ptr_auth(llfn, schema.key as u32, discriminator as u64, addr_diversity)
 }
 
 /*
@@ -228,7 +238,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
         };
 
-        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No, &[]);
         let alloc = alloc.inner();
 
         let value = match alloc.mutability {

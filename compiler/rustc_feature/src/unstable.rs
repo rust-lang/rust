@@ -706,6 +706,9 @@ declare_features! (
     (unstable, prfchw_target_feature, "1.78.0", Some(150256)),
     /// Allows macro attributes on expressions and statements.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
+    /// Allows `#[ptrauth_c_discriminator(N)]` on fields and statics, to sign the code addresses a
+    /// static holds with the discriminator C uses for their slot.
+    (unstable, ptrauth_c_discriminator, "CURRENT_RUSTC_VERSION", Some(148640)),
     /// Allows the use of raw-dylibs on ELF platforms
     (incomplete, raw_dylib_elf, "1.87.0", Some(135694)),
     /// Allows the `Reborrow` and `CoerceShared` traits.

@@ -1,0 +1,17 @@
+error[E0539]: malformed `ptrauth_c_discriminator` attribute input
+  --> $DIR/ptrauth-c-discriminator-range.rs:7:7
+   |
+LL |     #[ptrauth_c_discriminator(65536)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^-----^
+   |                               |
+   |                               expected an integer literal in the range of 0..=65535
+   |
+help: must be of the form
+   |
+LL -     #[ptrauth_c_discriminator(65536)]
+LL +     #[ptrauth_c_discriminator(discriminator)]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

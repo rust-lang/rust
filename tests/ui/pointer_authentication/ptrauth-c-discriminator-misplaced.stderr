@@ -1,0 +1,22 @@
+error: `#[ptrauth_c_discriminator]` on a static needs a pointer or a pointer-sized integer, or an array of them, not `Pair`
+  --> $DIR/ptrauth-c-discriminator-misplaced.rs:33:1
+   |
+LL | static mut PAIR: Pair = Pair { a: f as *const u8, b: 0 as *const u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: put `#[ptrauth_c_discriminator]` on the fields of `Pair` that hold code addresses instead
+
+error: `#[ptrauth_c_discriminator]` needs a field that is a pointer or a pointer-sized integer, or an array of them, not `u8`
+  --> $DIR/ptrauth-c-discriminator-misplaced.rs:38:5
+   |
+LL |     pub tag: u8,
+   |     ^^^^^^^^^^^
+
+error: fields marked `#[ptrauth_c_discriminator]` with different discriminators overlap at offset 0
+  --> $DIR/ptrauth-c-discriminator-misplaced.rs:54:1
+   |
+LL | static mut OVERLAP: Overlap = Overlap { a: f as *const u8 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
