@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
-    TargetMetadata, TargetOptions,
+    Arch, Cc, CfgAbi, Env, FloatAbi, FramePointer, LinkerFlavor, Lld, Os, PanicStrategy,
+    RelocModel, Target, TargetMetadata, TargetOptions,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./thumbv7a_vex_v5_linker_script.ld");
@@ -23,9 +23,9 @@ pub(crate) fn target() -> Target {
         panic_strategy: PanicStrategy::Abort,
         emit_debug_gdb_scripts: false,
         c_enum_min_bits: Some(8),
-        default_uwtable: true,
         has_thumb_interworking: true,
         link_script: Some(LINKER_SCRIPT.into()),
+        frame_pointer: FramePointer::Always,
         ..Default::default()
     };
     Target {
