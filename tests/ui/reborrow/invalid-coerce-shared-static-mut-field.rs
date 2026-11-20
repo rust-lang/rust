@@ -9,6 +9,7 @@ use std::marker::{CoerceShared, Reborrow};
 
 struct ReorderMut<'a> {
     a: &'static mut u8,
+    //~^ ERROR the trait bound `&'static mut u8: Copy` is not satisfied
     b: &'a mut u16,
 }
 
