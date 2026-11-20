@@ -573,12 +573,13 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     let mut w = "impl".to_owned();
 
     #[derive(Debug, Default)]
-    struct SizednessFound {
+    struct ImplicitFound {
         sized: bool,
         meta_sized: bool,
+        r#move: bool,
     }
 
-    let mut types_with_sizedness_bounds = FxIndexMap::<_, SizednessFound>::default();
+    let mut types_with_implicit_bounds = FxIndexMap::<_, ImplicitFound>::default();
 
     let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
 
@@ -590,7 +591,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
         for ty in args.types() {
             // `PointeeSized` params might have no predicates.
-            types_with_sizedness_bounds.insert(ty, SizednessFound::default());
+            types_with_implicit_bounds.insert(ty, ImplicitFound::default());
         }
     }
 
@@ -608,17 +609,21 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     let sized_trait = tcx.lang_items().sized_trait();
     let meta_sized_trait = tcx.lang_items().meta_sized_trait();
+    let move_trait = tcx.lang_items().move_trait();
 
     for (c, _) in clauses {
         // Accumulate the sizedness bounds for each self ty.
         if let Some(trait_clause) = c.as_trait_clause() {
             let self_ty = trait_clause.self_ty().skip_binder();
-            let sizedness_of = types_with_sizedness_bounds.entry(self_ty).or_default();
+            let sizedness_of = types_with_implicit_bounds.entry(self_ty).or_default();
             if Some(trait_clause.def_id()) == sized_trait {
                 sizedness_of.sized = true;
                 continue;
             } else if Some(trait_clause.def_id()) == meta_sized_trait {
                 sizedness_of.meta_sized = true;
+                continue;
+            }else if Some(trait_clause.def_id()) == move_trait {
+                sizedness_of.r#move = true;
                 continue;
             }
         }
@@ -626,22 +631,34 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
         pretty_clauses.push(c.to_string());
     }
 
-    for (ty, sizedness) in types_with_sizedness_bounds {
+    for (ty, implicit_bound) in types_with_implicit_bounds {
         if !tcx.features().sized_hierarchy() {
-            if sizedness.sized {
+            if implicit_bound.sized {
                 // Maybe a default bound, don't write anything.
             } else {
                 pretty_clauses.push(format!("{ty}: ?Sized"));
             }
         } else {
-            if sizedness.sized {
+            if implicit_bound.sized {
                 // Maybe a default bound, don't write anything.
                 pretty_clauses.push(format!("{ty}: Sized"));
-            } else if sizedness.meta_sized {
+            } else if implicit_bound.meta_sized {
                 pretty_clauses.push(format!("{ty}: MetaSized"));
             } else {
                 pretty_clauses.push(format!("{ty}: PointeeSized"));
             }
+        }
+
+        // Don't mention Move bounds if the feature is off, since essentially everything is assumed
+        // to be Move in that case.
+        //
+        // Note: this may technically give wrong suggestions when you don't enable the feature
+        // but youre dealing with a type or impl block from a dependency that does enable
+        // `#![feature(move_trait)]`. However, its annoying to see these bounds in suggestions
+        // everywhere when you don't even know about the unstable feature. We can rethink this
+        // when we stabilize the move trait I guess.
+        if tcx.features().move_trait() && implicit_bound.r#move {
+            pretty_clauses.push(format!("{ty}: Move"));
         }
     }
 

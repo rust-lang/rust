@@ -4016,6 +4016,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // Check for foreign traits being reachable.
                                 tcx.visible_parent_map(()).get(&def_id).is_some()
                             };
+                            // FIXME(jdonszelmann): Also Move & Metasized?
                             if tcx.is_lang_item(def_id, LangItem::Sized) {
                                 // Check if this is an implicit bound, even in foreign crates.
                                 if tcx
@@ -4343,6 +4344,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a coroutine must have a statically known size");
+            }
+            ObligationCauseCode::MovingMove => {
+                err.note("moved values must be of a type that is `Move`");
             }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
@@ -4699,6 +4703,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // `Sized` may be an explicit or implicit trait bound. If it is
                             // implicit, mention it as such.
                             if let Some(pred) = predicate.as_trait_clause()
+                                // FIXME(jdonszelmann): Also Move & Metasized?
                                 && self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
                                 && self
                                     .tcx

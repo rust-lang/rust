@@ -10,7 +10,7 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
+    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, ExcludeImplicitBounds,
     Interner, MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _,
     TypingMode, Unnormalized, Upcast as _, elaborate,
 };
@@ -205,9 +205,7 @@ where
         //
         // This will trivially make the addition of
         // `Move` backward compatible with trait bounds
-        if !cx.features().move_trait()
-            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
-        {
+        if cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move) {
             return ecx
                 .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
                 .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));
@@ -1428,7 +1426,7 @@ where
             ty::Foreign(..)
                 if self
                     .cx()
-                    .is_implicit_trait(goal.predicate.def_id(), IncludeSizedImplicitBounds::No) =>
+                    .is_implicit_trait(goal.predicate.def_id(), ExcludeImplicitBounds::sized()) =>
             {
                 check_impls()
             }

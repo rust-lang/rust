@@ -199,6 +199,21 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                                 }
                             }
                         }
+                        Some(LangItem::Move) => {
+                            if !goal.predicate.references_error()
+                                && self_ty.has_trivial_move(self.tcx)
+                            {
+                                Outcome::TriviallyHolds
+                            } else {
+                                let predicate =
+                                    self.deeply_resolve_ignoring_regions(goal.predicate);
+                                if implicit_fast_path(self.tcx, predicate, goal.param_env) {
+                                    Outcome::TriviallyHolds
+                                } else {
+                                    Outcome::NoFastPath
+                                }
+                            }
+                        }
                         Some(LangItem::Copy | LangItem::Clone) => {
                             let self_ty = self.deeply_resolve_ignoring_regions(
                                 trait_pred.self_ty().skip_binder(),

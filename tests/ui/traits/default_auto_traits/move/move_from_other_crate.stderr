@@ -1,0 +1,48 @@
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move_from_other_crate.rs:28:26
+   |
+LL |     other::requires_move(x);
+   |     -------------------- ^ the trait `Move` is not implemented for `NotMove`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `NotMove: Move` is not satisfied
+note: required by a bound in `requires_move`
+  --> $DIR/auxiliary/crate_with_non_move_type.rs:11:25
+   |
+LL | pub fn requires_move<T: Move>(m: T) {}
+   |                         ^^^^ required by this bound in `requires_move`
+help: consider borrowing here
+   |
+LL |     other::requires_move(&x);
+   |                          +
+LL |     other::requires_move(&mut x);
+   |                          ++++
+
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move_from_other_crate.rs:14:13
+   |
+LL |     let y = x;
+   |             ^ may not be movable
+   |
+   = help: the nightly-only, unstable trait `Move` is not implemented for `NotMove`
+
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move_from_other_crate.rs:18:9
+   |
+LL |     foo(x);
+   |         ^ may not be movable
+   |
+   = help: the nightly-only, unstable trait `Move` is not implemented for `NotMove`
+
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move_from_other_crate.rs:18:5
+   |
+LL |     foo(x);
+   |     ^^^ may not be movable
+   |
+   = help: the nightly-only, unstable trait `Move` is not implemented for `NotMove`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

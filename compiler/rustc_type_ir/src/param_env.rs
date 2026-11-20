@@ -175,6 +175,9 @@ mod iterator {
         CF: ClauseFilter,
     {
         accessor: CallerBoundsAccessor<I, Iter, CF>,
+        // Sometimes we're "in progress" decompressing a compressed trait ref.
+        // As that happens, set bits in this field slowly get cleared, returning those
+        // trait clauses from the iterator.
         decompression_in_progress: CompressedTraitRefs,
         // self ty of the currently decompression-in-progress trait ref,
         // if applicable.
@@ -232,18 +235,40 @@ mod iterator {
                         {
                             break kind.rebind(trait_clause);
                         }
-                        // If we find a compressed trait clause, and it matches, store it in `self.compressed_elem`
+                        // If we find a compressed trait clause, and it matches, extract which trait clause
+                        // from it to return, or if we can't know, iterate over all the set bits by storing it
+                        // in `self.compressed_elem`.
                         ClauseKind::CompressedTrait(ct)
                             if filter.self_type_filter.allow_self_ty(ct.self_ty.type_at(0))
                                 && filter
                                     .polarity_filter
-                                    .allow_polarity(ClausePolarity::Positive)
-                                && filter
-                                    .trait_filter
-                                    .allow_any_compressed_trait_ref(ct.compressed_trait_refs) =>
+                                    .allow_polarity(ClausePolarity::Positive) =>
                         {
-                            self.decompression_in_progress = ct.compressed_trait_refs;
-                            self.self_ty = Some(ct.self_ty);
+                            match filter
+                                .trait_filter
+                                .allow_any_compressed_trait_ref(ct.compressed_trait_refs)
+                            {
+                                AllowCompressedResult::Iterate => {
+                                    // welp, we don't know upfront what to return, we have to
+                                    // iterate.
+                                    self.decompression_in_progress = ct.compressed_trait_refs;
+                                    self.self_ty = Some(ct.self_ty);
+                                }
+                                // None matches in this compressed clause, we can skip it.
+                                AllowCompressedResult::None => continue,
+                                // Exactly one match in this compressed clause, we can simply return
+                                // it if it matches the output filter
+                                AllowCompressedResult::Exact(def_id) => {
+                                    let res = CompressedTraitRefs::trait_clause_from_def_id(
+                                        cx, ct.self_ty, def_id,
+                                    );
+                                    if filter.output_filter.allow_trait_clause(res) {
+                                        break res;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                            }
                         }
                         _ => continue,
                     }
@@ -655,6 +680,18 @@ mod trait_filter {
     use super::*;
     use crate::CompressedTraitRefs;
 
+    /// Determines whether it's worth iterating over a compressed trait ref
+    /// in the paramenv.
+    pub enum AllowCompressedResult<I: Interner> {
+        /// We don't know which traits are allowed, iterate over all.
+        Iterate,
+        /// Skip the compressed trait ref, none of the contained traits are allowed
+        None,
+        /// We know precisely the id of the allowed trait, we can return without iterating over
+        /// contents.
+        Exact(I::TraitId),
+    }
+
     pub trait TraitFilter<I>
     where
         I: Interner,
@@ -669,7 +706,10 @@ mod trait_filter {
         ) -> Option<I::TraitId>;
         /// returns true if this trait filter *might* allow any
         /// of the traits in `trait_ref` to match.
-        fn allow_any_compressed_trait_ref(&self, trait_ref: CompressedTraitRefs) -> bool;
+        fn allow_any_compressed_trait_ref(
+            &self,
+            trait_ref: CompressedTraitRefs,
+        ) -> AllowCompressedResult<I>;
     }
 
     pub struct NoTraitFilter;
@@ -692,8 +732,11 @@ mod trait_filter {
             Some(cx.require_trait_lang_item(trait_ref.lang_item_from_single_bit()))
         }
 
-        fn allow_any_compressed_trait_ref(&self, _trait_ref: CompressedTraitRefs) -> bool {
-            true
+        fn allow_any_compressed_trait_ref(
+            &self,
+            _trait_ref: CompressedTraitRefs,
+        ) -> AllowCompressedResult<I> {
+            AllowCompressedResult::Iterate
         }
     }
 
@@ -737,15 +780,22 @@ mod trait_filter {
             }
         }
 
-        fn allow_any_compressed_trait_ref(&self, trait_ref: CompressedTraitRefs) -> bool {
+        fn allow_any_compressed_trait_ref(
+            &self,
+            trait_ref: CompressedTraitRefs,
+        ) -> AllowCompressedResult<I> {
             if let Some(target) = self.lang_item_compressed {
                 // only if the given `trait_ref` has the bit set that corresponds to `target`, do we
                 // return true. Otherwise we can skip this compressed trait instantly.
-                trait_ref.contains(target)
+                if trait_ref.contains(target) {
+                    AllowCompressedResult::Exact(self.def_id)
+                } else {
+                    AllowCompressedResult::None
+                }
             } else {
                 // When looking for a normal trait, any compressed clause can never match so we
                 // return false unconditionally.
-                false
+                AllowCompressedResult::None
             }
         }
     }

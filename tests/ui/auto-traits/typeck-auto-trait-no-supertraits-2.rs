@@ -1,7 +1,7 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
-auto trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
+auto trait Magic : Sized + Move where Option<Self> : Magic {} //~ ERROR E0568
 //~^ ERROR E0568
 impl<T:Magic> Magic for T {}
 

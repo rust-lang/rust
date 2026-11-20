@@ -1,7 +1,7 @@
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
-use rustc_middle::ty::{IncludeSizedImplicitBounds, Unnormalized};
+use rustc_middle::ty::{ExcludeImplicitBounds, Unnormalized};
 
 use crate::{LateContext, LateLintPass, LintContext};
 
@@ -50,9 +50,10 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .iter_identity_copied()
                 .map(Unnormalized::skip_norm_wip)
                 .filter_map(|(clause, _)| clause.as_trait_clause())
+                // TODO
                 .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), LangItem::MetaSized))
                 .filter(|pred| {
-                    !cx.tcx.is_implicit_trait(pred.def_id(), IncludeSizedImplicitBounds::No)
+                    !cx.tcx.is_implicit_trait(pred.def_id(), ExcludeImplicitBounds::sized())
                 });
             if direct_super_traits_iter.count() > 1 {
                 cx.emit_span_lint(

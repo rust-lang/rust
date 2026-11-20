@@ -9,7 +9,9 @@ use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
-use rustc_type_ir::{PredicateProxy, TypeFolder, Upcast, VisitorResult, try_visit};
+use rustc_type_ir::{
+    PredicateProxy, TypeFolder, TypeVisitableExt, Upcast, VisitorResult, try_visit,
+};
 
 use super::{GenericArg, GenericArgKind, Pattern};
 use crate::mir::PlaceElem;
@@ -506,6 +508,14 @@ impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
         self.as_clause().map(|clause| clause.kind())
     }
+
+    fn has_vars_bound_at_or_above(&self, binder: rustc_type_ir::DebruijnIndex) -> bool {
+        match self.kind().skip_binder() {
+            // We never compress traits that capture any bound vars
+            ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => false,
+            _ => TypeVisitableExt::has_vars_bound_at_or_above(&self, binder),
+        }
+    }
 }
 
 // FIXME(clause): This is wonky
@@ -568,6 +578,14 @@ impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Clause<'tcx> {
 
     fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
         Some(self.kind())
+    }
+
+    fn has_vars_bound_at_or_above(&self, binder: rustc_type_ir::DebruijnIndex) -> bool {
+        match self.kind().skip_binder() {
+            // We never compress traits that capture any bound vars
+            ty::ClauseKind::CompressedTrait(_) => false,
+            _ => TypeVisitableExt::has_vars_bound_at_or_above(&self, binder),
+        }
     }
 }
 

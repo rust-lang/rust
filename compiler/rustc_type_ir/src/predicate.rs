@@ -794,6 +794,7 @@ bitflags::bitflags! {
         const EQ = 1 << 8;
         const SEND = 1 << 9;
         const SYNC = 1 << 10;
+        const MOVE = 1 << 11;
     }
 }
 
@@ -831,6 +832,7 @@ impl CompressedTraitRefs {
             SolverTraitLangItem::Eq => CompressedTraitRefs::EQ,
             SolverTraitLangItem::Send => CompressedTraitRefs::SEND,
             SolverTraitLangItem::Sync => CompressedTraitRefs::SYNC,
+            SolverTraitLangItem::Move => CompressedTraitRefs::MOVE,
             _ => return None,
         })
     }
@@ -849,6 +851,7 @@ impl CompressedTraitRefs {
             Self::EQ => SolverTraitLangItem::Eq,
             Self::SEND => SolverTraitLangItem::Send,
             Self::SYNC => SolverTraitLangItem::Sync,
+            Self::MOVE => SolverTraitLangItem::Move,
             _ => unreachable!(),
         }
     }
