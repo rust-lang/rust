@@ -21,6 +21,10 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::{assert_approx_eq, check_nondet, ERR_TOLERANCE};
+
 // small hack to make type inference better
 macro_rules! assert_eq {
     ($a:expr, $b:expr $(,$t:tt)* $(,)?) => {{
@@ -44,13 +48,13 @@ impl<T: Copy, const N: usize> Clone for PackedSimd<T, N> {
 
 impl<T: PartialEq + Copy, const N: usize> PartialEq for PackedSimd<T, N> {
     fn eq(&self, other: &Self) -> bool {
-        self.into_array() == other.into_array()
+        self.to_array() == other.to_array()
     }
 }
 
 impl<T: Debug + Copy, const N: usize> Debug for PackedSimd<T, N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&self.into_array(), f)
+        Debug::fmt(&self.to_array(), f)
     }
 }
 
@@ -64,7 +68,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
     fn from_array(a: [T; N]) -> Self {
         Self(a)
     }
-    fn into_array(self) -> [T; N] {
+    fn to_array(self) -> [T; N] {
         // as we have `repr(packed)`, there shouldn't be any padding bytes
         unsafe { std::mem::transmute_copy(&self) }
     }
@@ -1135,6 +1139,73 @@ fn test_simd_ops_non_pow2() {
     assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 }
 
+fn test_algebraic() {
+    use std::intrinsics::simd::{
+        simd_add_algebraic,
+        simd_sub_algebraic,
+        simd_mul_algebraic,
+        simd_div_algebraic,
+        simd_rem_algebraic,
+        simd_reduce_add_algebraic,
+        simd_reduce_mul_algebraic,
+    };
+
+    if !cfg!(miri) {
+        return; // this test does not make sense natively
+    }
+
+    macro_rules! assert_approx_eq_simd {
+        ($a:expr, $b:expr $(,)?) => {
+            let a = $a.to_array();
+            let b = $b.to_array();
+            assert_eq!(a.len(), b.len());
+            for i in 0..a.len() {
+                assert_approx_eq!(a[i], b[i]);
+            }
+        }
+    }
+
+    macro_rules! check_nondet_elementwise {
+        (@check $e:expr, $expected:expr) => {
+            check_nondet(|| {
+                let e = $e;
+                assert_approx_eq_simd!(e, $expected);
+                e
+            });
+        };
+        ($vector:ty, $a:expr, $b:expr) => {
+            check_nondet_elementwise!(@check unsafe { simd_add_algebraic($a, $b) }, unsafe { simd_add($a, $b) });
+            check_nondet_elementwise!(@check unsafe { simd_sub_algebraic($a, $b) }, unsafe { simd_sub($a, $b) });
+            check_nondet_elementwise!(@check unsafe { simd_mul_algebraic($a, $b) }, unsafe { simd_mul($a, $b) });
+            check_nondet_elementwise!(@check unsafe { simd_div_algebraic($a, $b) }, unsafe { simd_div($a, $b) });
+            check_nondet_elementwise!(@check unsafe { simd_rem_algebraic($a, $b) }, unsafe { simd_rem($a, $b) });
+        }
+    }
+
+    macro_rules! check_nondet_reduce {
+        (@check $e:expr, $expected:expr, $len:expr) => {
+            check_nondet(|| {
+                let e = $e;
+                assert_approx_eq!(e, $expected, ($len as i32) * ERR_TOLERANCE);
+                e
+            });
+        };
+        ($vector:ty, $scalar:ty, $a:expr) => {
+            check_nondet_reduce!(@check unsafe { simd_reduce_add_algebraic::<_, $scalar>($a) }, unsafe { simd_reduce_add_ordered::<_, $scalar>($a, -0.0) }, $a.to_array().len());
+            check_nondet_reduce!(@check unsafe { simd_reduce_mul_algebraic::<_, $scalar>($a) }, unsafe { simd_reduce_mul_ordered::<_, $scalar>($a, 1.0) }, $a.to_array().len());
+        }
+    }
+
+    check_nondet_elementwise!(f16, f16x4::from_array([1.0, 2.0, 3.0, 4.0]), f16x4::from_array([5.0, 6.0, 7.0, 8.0]));
+    check_nondet_elementwise!(f32, f32x4::from_array([1.0, 2.0, 3.0, 4.0]), f32x4::from_array([5.0, 6.0, 7.0, 8.0]));
+    check_nondet_elementwise!(f64, f64x4::from_array([1.0, 2.0, 3.0, 4.0]), f64x4::from_array([5.0, 6.0, 7.0, 8.0]));
+    check_nondet_elementwise!(f128, f128x4::from_array([1.0, 2.0, 3.0, 4.0]), f128x4::from_array([5.0, 6.0, 7.0, 8.0]));
+    check_nondet_reduce!(f16, f16, f16x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    check_nondet_reduce!(f32, f32, f32x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    check_nondet_reduce!(f64, f64, f64x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    check_nondet_reduce!(f128, f128, f128x4::from_array([1.0, 2.0, 3.0, 4.0]));
+}
+
 fn main() {
     test_simd_mask();
     #[cfg(any(miri, target_has_reliable_f16_math))]
@@ -1153,4 +1224,5 @@ fn main() {
     test_simd_intrinsics();
     test_simd_float_intrinsics();
     test_simd_masked_loadstore();
+    test_algebraic();
 }
