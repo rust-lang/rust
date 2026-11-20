@@ -851,8 +851,21 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             },
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..) => {}
-            // Only relevant for liveness and unsafeck
-            StatementKind::PlaceMention(..) => {}
+            // Only relevant for liveness and unsafeck,
+            // except for dereferences which must be materialized
+            StatementKind::PlaceMention(place) => {
+                if let Some((dereferenced_place, _)) = place
+                    .iter_projections()
+                    .rfind(|(_, proj)| matches!(proj, ProjectionElem::Deref))
+                {
+                    self.check_if_full_path_is_moved(
+                        location,
+                        InitializationRequiringAction::Use,
+                        (dereferenced_place, span),
+                        state,
+                    );
+                }
+            }
             // Doesn't have any language semantics
             StatementKind::Coverage(..) => {}
             // These do not actually affect borrowck
