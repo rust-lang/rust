@@ -73,6 +73,7 @@ cfg_select! {
             target_os = "wasi",
             target_vendor = "apple",
             target_os = "fuchsia",
+            target_os = "serenity",
         ))]
         pub use unix::sleep_until;
         pub use unix::{
@@ -150,6 +151,7 @@ cfg_select! {
     target_os = "motor",
     target_os = "vexos",
     target_os = "fuchsia",
+    target_os = "serenity",
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

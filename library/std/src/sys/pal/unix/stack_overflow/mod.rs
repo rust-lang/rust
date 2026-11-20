@@ -19,6 +19,7 @@ cfg_select! {
         target_os = "openbsd",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "serenity",
     ) => {
         mod handler_signal;
         mod thread_info;
