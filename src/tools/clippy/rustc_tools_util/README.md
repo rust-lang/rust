@@ -1,3 +1,7 @@
+> [!WARNING]
+> This crate is no longer maintained. Clippy inlined the code that it needed from this crate and then deleted the
+> original source code. <https://github.com/rust-lang/rust-clippy/pull/17574>.
+
 # rustc_tools_util
 
 A small tool to help you generate version information

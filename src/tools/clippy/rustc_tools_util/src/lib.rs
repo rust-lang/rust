@@ -1,3 +1,8 @@
+//! <div class="warning">
+//! This crate is no longer maintained. Clippy inlined the code that it needed from this crate and then deleted the
+//! original source code. <a href="https://github.com/rust-lang/rust-clippy/pull/17574">#17574</a>
+//! </div>
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::str;
@@ -191,7 +196,7 @@ mod test {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 4);
-        assert_eq!(vi.patch, 2);
+        assert_eq!(vi.patch, 3);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
@@ -203,7 +208,7 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.2");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.3");
     }
 
     #[test]
@@ -212,7 +217,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 2 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 3 }"
         );
     }
 }
