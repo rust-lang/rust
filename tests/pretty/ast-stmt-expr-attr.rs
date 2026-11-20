@@ -1,5 +1,7 @@
 //@ pp-exact
 
+#![feature(stmt_expr_attributes)]
+
 fn main() {}
 
 #[cfg(false)]

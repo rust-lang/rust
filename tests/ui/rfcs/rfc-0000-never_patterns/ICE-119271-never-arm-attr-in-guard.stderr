@@ -1,4 +1,4 @@
-error[E0658]: attributes on expressions are experimental
+error[E0658]: ambiguous expression attributes are unstable
   --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:7:16
    |
 LL |             if #[deny(unused_mut)]
