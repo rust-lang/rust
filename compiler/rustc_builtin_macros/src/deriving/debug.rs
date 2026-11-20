@@ -22,12 +22,7 @@ pub(crate) fn expand_derive_debug(
         ast::Mutability::Mut,
     );
 
-    let all_fieldless = match &item.kind {
-        ast::ItemKind::Enum(_, _, def) => {
-            def.variants.len() > 1 && def.variants.iter().all(|v| v.data.fields().is_empty())
-        }
-        _ => false,
-    };
+    let ident = item.kind.ident().unwrap();
 
     let trait_def = TraitDef {
         span,
@@ -38,26 +33,35 @@ pub(crate) fn expand_derive_debug(
         methods: smallvec![MethodDef {
             name: sym::fmt,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: smallvec![(sym::f, fmtr)],
-            has_other_selflike_arg: false,
+            args: thin_vec![cx.param_self_ref(span), cx.param(span, sym::f, fmtr)],
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: Box::new(|cx, span, substr| debug_body(
-                cx,
-                span,
-                substr,
-                item.kind.ident().unwrap()
-            )),
+            body: match &item.kind {
+                _ if cx.sess.opts.unstable_opts.fmt_debug == FmtDebug::None => {
+                    MethodBody::Directly(BlockOrExpr::new_expr(
+                        cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())),
+                    ))
+                }
+                ast::ItemKind::Enum(_, _, def)
+                    if def.variants.len() > 1
+                        && def.variants.iter().all(|v| v.data.fields().is_empty()) =>
+                {
+                    MethodBody::Directly(debug_fieldless_enum(cx, span, def, ident))
+                }
+                _ => MethodBody::SubstructureFunc {
+                    body_func: Box::new(|cx, span, substr| debug_body(cx, span, substr, ident)),
+                    strategy: FieldlessVariantsStrategy::Default,
+                    has_other_selflike_arg: false,
+                },
+            },
         }],
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, all_fieldless);
+    trait_def.expand(cx, item, push);
 }
 
 fn debug_body(
@@ -67,14 +71,10 @@ fn debug_body(
     type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
-    if fmt_detail == FmtDebug::None {
-        return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
-    }
 
     let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        StaticEnum(enum_def) => return debug_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -104,7 +104,7 @@ fn debug_body(
     const CUTOFF: usize = 5;
 
     let len = fields.len();
-    let expr_for_field = |field: FieldInfo, index: usize| -> Box<ast::Expr> {
+    let expr_for_field = |field: FieldInfo<'_>, index: usize| -> Box<ast::Expr> {
         if index < len - 1 {
             field.self_expr
         } else {
@@ -125,15 +125,15 @@ fn debug_body(
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
         let mut args = ThinVec::with_capacity(2 + fields.len());
-        args.extend([fmt]);
+        args.push(fmt);
 
         if is_struct {
             let mut names = String::new();
-            names.push_str(ident.name.as_str());
+            names.push_str(ident.as_str());
 
             for field in fields.iter() {
                 names.push(' ');
-                names.push_str(field.name.unwrap().name.as_str());
+                names.push_str(field.def.ident.unwrap().as_str());
             }
 
             let name_expr = cx.expr_str(span, Symbol::intern(&names));
@@ -152,68 +152,34 @@ fn debug_body(
         // Enough fields that we must use the any-length method.
         let mut names = String::new();
         if is_struct {
-            names.push_str(ident.name.as_str());
+            names.push_str(ident.as_str());
         }
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 names.push(' ');
-                names.push_str(field.name.unwrap().name.as_str());
+                names.push_str(field.def.ident.unwrap().name.as_str());
             }
 
             let field = expr_for_field(field, i);
             value_exprs.push(field);
         }
 
-        // `let names: &'static _ = "StructName field1 field2"`
-        let names_let = is_struct.then(|| {
-            let lt_static = Some(cx.lifetime_static(span));
-            let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            let names_expr = cx.expr_str(span, Symbol::intern(&names));
-            cx.stmt_let_ty(span, false, sym::names, Some(ty_static_ref), names_expr)
-        });
-
-        // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
-        let path_debug = cx.std_path(span, &[sym::fmt, sym::Debug]);
-        let ty_dyn_debug = cx.ty(
-            span,
-            ast::TyKind::TraitObject(
-                thin_vec![cx.trait_bound(path_debug, false)],
-                ast::TraitObjectSyntax::Dyn,
-            ),
-        );
-        let ty_slice = cx.ty(
-            span,
-            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
-        );
-        let values_let = cx.stmt_let_ty(
-            span,
-            false,
-            sym::values,
-            Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
-            cx.expr_array_ref(span, value_exprs),
-        );
-
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)`
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, "StructName field1 field2", &[&&self.field1, &&self.field2])` or
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, "StructName", &[&&self.field1, &&self.field2])`
         let sym_debug = sym::debug_struct_fields_finish;
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
         let args = thin_vec![
             fmt,
-            if is_struct { cx.expr_name(span, sym::names) } else { expr_name() },
-            cx.expr_name(span, sym::values)
+            if is_struct { cx.expr_str(span, Symbol::intern(&names)) } else { expr_name() },
+            cx.expr_array_ref(span, value_exprs),
         ];
 
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let stmts = if is_struct {
-            thin_vec![names_let.unwrap(), values_let]
-        } else {
-            thin_vec![values_let]
-        };
-
-        BlockOrExpr::new_mixed(stmts, Some(expr))
+        BlockOrExpr::new_expr(expr)
     }
 }
 
@@ -319,8 +285,7 @@ fn debug_fieldless_enum_concat_str(
         .map(|(i, v)| {
             let name_offset = concatenated_names.len();
 
-            let name = v.ident.name.as_str();
-            concatenated_names.push_str(name);
+            concatenated_names.push_str(v.ident.as_str());
 
             let is_last = i == def.variants.len() - 1;
             if !is_last {
