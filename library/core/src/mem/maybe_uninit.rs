@@ -750,8 +750,23 @@ impl<T> MaybeUninit<T> {
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that data may indeed be duplicated.
     ///
+    /// As calling this function does not require `T: Send`, you also need to manually
+    /// ensure thread safety. Since `MaybeUninit<T>` is [`Sync`] whenever `T` is [`Sync`],
+    /// a reference to `MaybeUninit<T>` can be sent across threads without requiring
+    /// that `T` is [`Send`]. Calling this method through the reference, now in another thread,
+    /// effectively constitutes a cross-thread transfer of the value, whose type is possibly
+    /// non-[`Send`]. Callers using this function in this cross-thread way must ensure
+    /// that the transfer of the return value and its subsequent use or drop are thread-safe.
+    /// In particular, if a safe abstraction lets this function read generic `T` into another
+    /// thread, the abstraction is required to satisfy a generic condition that ensures the
+    /// soundness of the cross-thread transfer: most simply, `T: Send`; or as a substitute,
+    /// `T: Sync + Copy`. As you can see, despite `impl<T: Sync> Sync for MaybeUninit<T>`,
+    /// `T: Sync` is not primarily relevant to the thread safety of this method.
+    ///
     /// [inv]: #initialization-invariant
     /// [`assume_init`]: MaybeUninit::assume_init
+    /// [`Send`]: crate::marker::Send
+    /// [`Sync`]: crate::marker::Sync
     ///
     /// # Examples
     ///
@@ -759,6 +774,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```rust
     /// use std::mem::MaybeUninit;
+    /// use std::thread;
     ///
     /// let mut x = MaybeUninit::<u32>::uninit();
     /// x.write(13);
@@ -773,12 +789,25 @@ impl<T> MaybeUninit<T> {
     /// // Duplicating a `None` value is okay, so we may read multiple times.
     /// let x2 = unsafe { x.assume_init_read() };
     /// assert_eq!(x1, x2);
+    ///
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
+    /// x.write(vec![0, 1, 2]);
+    /// // Moving the vector to another thread. We may read only once.
+    /// // `Vec<u32>` is `Send`, so this is thread-safe.
+    /// thread::scope(|s| {
+    ///    s.spawn(|| {
+    ///       let v = unsafe { x.assume_init_read() };
+    ///       assert_eq!(v, vec![0, 1, 2]);
+    ///    });
+    /// });
     /// ```
     ///
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
     /// use std::mem::MaybeUninit;
+    /// use std::thread;
+    /// use std::sync::Mutex;
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(Some(vec![0, 1, 2]));
@@ -786,6 +815,19 @@ impl<T> MaybeUninit<T> {
     /// let x2 = unsafe { x.assume_init_read() };
     /// // We now created two copies of the same vector, leading to a double-free ⚠️ when
     /// // they both get dropped!
+    ///
+    /// let mtx = Mutex::new(0u32);
+    /// let x = MaybeUninit::new(mtx.lock().unwrap());
+    /// // Moving the `MutexGuard<'_, u32>: !Send + Sync` to another thread,
+    /// // thread safety not guaranteed here.
+    /// thread::scope(|s| {
+    ///    // This compiles because `MaybeUninit<MutexGuard<'_, u32>>` is `Sync`.
+    ///    s.spawn(|| {
+    ///       let _unused = unsafe { x.assume_init_read() };
+    ///       // `_unused: MutexGuard<'_, u32>` is dropped here, on a different thread
+    ///       // than the one that locked the mutex; this is library-level UB ⚠️!
+    ///   });
+    /// });
     /// ```
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_read", since = "1.75.0")]
