@@ -1,0 +1,8 @@
+error: invalid type parameters for intrinsic `llvm.sqrt.i32`: $LLVM_ERROR
+  --> $DIR/early-check.rs:160:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

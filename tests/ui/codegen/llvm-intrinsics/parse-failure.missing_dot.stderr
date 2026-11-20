@@ -1,0 +1,8 @@
+error: unknown LLVM intrinsic `llvm.ctpop.i32i32`
+  --> $DIR/parse-failure.rs:33:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

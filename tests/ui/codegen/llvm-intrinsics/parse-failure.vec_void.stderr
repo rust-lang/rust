@@ -1,0 +1,8 @@
+error: unknown LLVM intrinsic `llvm.ctpop.v4isVoid`
+  --> $DIR/parse-failure.rs:119:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

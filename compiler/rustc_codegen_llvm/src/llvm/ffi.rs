@@ -877,6 +877,22 @@ unsafe extern "C" {
     pub(crate) type Buffer;
 }
 
+// LLVMRustIntrinsicCheckStatus
+#[repr(u8)]
+#[allow(dead_code)] // Variants constructed by C++.
+pub(crate) enum IntrinsicCheckStatus {
+    Ok = 0,
+    NumParamMismatch = 1,
+    InvalidParam = 2,
+}
+
+// LLVMRustIntrinsicCheckResult
+#[repr(C)]
+pub(crate) struct IntrinsicCheckResult {
+    pub(crate) status: IntrinsicCheckStatus,
+    pub(crate) value: c_uint,
+}
+
 pub(crate) type SelfProfileBeforePassCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 pub(crate) type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
@@ -1195,7 +1211,20 @@ unsafe extern "C" {
         Fn: Value<'ll>,
         NewFn: &mut Option<Value<'ll>>,
     ) -> bool;
-    pub(crate) fn LLVMRustIsTargetIntrinsic(ID: NonZero<c_uint>) -> bool;
+    pub(crate) fn LLVMRustIntrinsicGetBaseName(
+        ID: NonZero<c_uint>,
+        NameLength: &mut size_t,
+    ) -> *const c_char;
+    pub(crate) fn LLVMRustIntrinsicEarlyCheckParams(
+        ID: NonZero<c_uint>,
+        ParamsPtr: *const Type<'_>,
+        ParamsLen: size_t,
+    ) -> IntrinsicCheckResult;
+    pub(crate) fn LLVMRustIntrinsicIsSignatureValid(
+        ID: NonZero<c_uint>,
+        FnTy: Type<'_>,
+        Err: &RustString,
+    ) -> bool;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument<'ll>(Val: Value<'ll>) -> Option<Value<'ll>>;

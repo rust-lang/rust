@@ -1,3 +1,5 @@
+// ignore-tidy-file-filelength
+
 use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
@@ -40,11 +42,14 @@ use crate::builder::gpu_offload::{self, OffloadKernelDims, declare_omp_get_num_d
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::diagnostics::{
-    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
-    OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicInvalidTypeParam,
+    IntrinsicNumParamMismatch, IntrinsicSignatureMismatch, IntrinsicSignatureValidationFailed,
+    IntrinsicWrongArch, OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Value};
+use crate::llvm::{
+    self, Attribute, AttributePlace, IntrinsicCheckStatus, Metadata, Type, TypeKind, Value,
+};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -1055,24 +1060,45 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
-    Some(match rust_arch {
-        Arch::AArch64 | Arch::Arm64EC => "aarch64",
-        Arch::AmdGpu => "amdgcn",
-        Arch::Arm => "arm",
-        Arch::Bpf => "bpf",
-        Arch::Hexagon => "hexagon",
-        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
-        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
-        Arch::Nvptx64 => "nvvm",
-        Arch::PowerPC | Arch::PowerPC64 => "ppc",
-        Arch::RiscV32 | Arch::RiscV64 => "riscv",
-        Arch::S390x => "s390",
-        Arch::SpirV => "spv",
-        Arch::Wasm32 | Arch::Wasm64 => "wasm",
-        Arch::X86 | Arch::X86_64 => "x86",
-        _ => return None, // fallback for unknown archs
-    })
+fn is_valid_intrinsic_for_arch(name: &str, arch: &Arch) -> bool {
+    use Arch::*;
+
+    if matches!(arch, Other(_)) {
+        return true;
+    }
+
+    let Some((prefix, _)) = name[5..].split_once('.') else {
+        return true;
+    };
+
+    let allowed: &[Arch] = match prefix {
+        "aarch64" => &[AArch64, Arm64EC],
+        "amdgcn" => &[AmdGpu],
+        "arm" => &[Arm],
+        "avr" => &[Avr],
+        "bpf" => &[Bpf],
+        "csky" => &[CSky],
+        "hexagon" => &[Hexagon],
+        "loongarch" => &[LoongArch32, LoongArch64],
+        "m68k" => &[M68k],
+        "mips" => &[Mips, Mips32r6, Mips64, Mips64r6],
+        "msp430" => &[Msp430],
+        "nvvm" => &[Nvptx64],
+        "ppc" => &[PowerPC, PowerPC64],
+        "riscv" => &[RiscV32, RiscV64],
+        "s390" => &[S390x],
+        "sparc" => &[Sparc, Sparc64],
+        "spv" => &[SpirV],
+        "wasm" => &[Wasm32, Wasm64],
+        "x86" => &[X86, X86_64],
+        "xtensa" => &[Xtensa],
+        // Known LLVM target prefixes with no built-in `Arch` variant.
+        "dx" | "r600" | "ve" | "xcore" => &[],
+        // Target-independent (or unknown) intrinsic.
+        _ => return true,
+    };
+
+    allowed.contains(arch)
 }
 
 fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<'ll>) -> bool {
@@ -1210,64 +1236,191 @@ fn autocast<'ll>(
     }
 }
 
-fn intrinsic_fn<'ll, 'tcx>(
+fn parse_integer(string: &mut &[u8]) -> Option<u64> {
+    let mut number = 0u64;
+    let mut position = 0;
+    while let Some(&digit @ b'0'..=b'9') = string.get(position) {
+        number = number.checked_mul(10)?.checked_add((digit - b'0') as u64)?;
+        position += 1;
+    }
+
+    // don't allow any leading zeros
+    if position != number.checked_ilog10().unwrap_or(0) as usize + 1 {
+        return None;
+    }
+
+    *string = &string[position..];
+    Some(number)
+}
+
+fn strip_off_prefix(slice: &mut &[u8], prefix: &[u8]) -> bool {
+    slice.strip_prefix(prefix).map(|remainder| *slice = remainder).is_some()
+}
+
+fn demangle_type_str<'ll>(cx: &CodegenCx<'ll, '_>, slice: &mut &[u8]) -> Option<Type<'ll>> {
+    Some(if strip_off_prefix(slice, b"isVoid") {
+        cx.type_void()
+    } else if strip_off_prefix(slice, b"f16") {
+        cx.type_f16()
+    } else if strip_off_prefix(slice, b"bf16") {
+        cx.type_f16b()
+    } else if strip_off_prefix(slice, b"f32") {
+        cx.type_f32()
+    } else if strip_off_prefix(slice, b"f64") {
+        cx.type_f64()
+    } else if strip_off_prefix(slice, b"f80") {
+        cx.type_x87_f80()
+    } else if strip_off_prefix(slice, b"f128") {
+        cx.type_f128()
+    } else if strip_off_prefix(slice, b"ppcf128") {
+        cx.type_ppcf128()
+    } else if strip_off_prefix(slice, b"i") {
+        let width = parse_integer(slice)?;
+        if width == 0 || width > 1 << 23 {
+            // LLVM doesn't allow zero-length integers, and integer width is limited by 2^23
+            return None;
+        }
+        cx.type_ix(width)
+    } else if strip_off_prefix(slice, b"p") {
+        let address_space = parse_integer(slice)?;
+        if address_space >= 1 << 24 {
+            // LLVM allows address spaces up to 2^24 only
+            return None;
+        }
+        cx.type_ptr_ext(AddressSpace(address_space as u32))
+    } else if strip_off_prefix(slice, b"v") {
+        let length = parse_integer(slice)?;
+        if length == 0 || length > u32::MAX as u64 {
+            // LLVM doesn't allow zero-length vectors
+            return None;
+        }
+        let element_type = demangle_type_str(cx, slice)?;
+        if !matches!(
+            cx.type_kind(element_type),
+            TypeKind::Integer
+                | TypeKind::Half
+                | TypeKind::Float
+                | TypeKind::BFloat
+                | TypeKind::Double
+                | TypeKind::X86_FP80
+                | TypeKind::FP128
+                | TypeKind::PPC_FP128
+                | TypeKind::Pointer
+        ) {
+            // LLVM only allows integers, floats and pointers as vector elements
+            return None;
+        }
+        cx.type_vector(element_type, length)
+    } else if strip_off_prefix(slice, b"nxv") {
+        let length = parse_integer(slice)?;
+        if length == 0 || length > u32::MAX as u64 {
+            // LLVM doesn't allow zero-length scalable vectors
+            return None;
+        }
+        let element_type = demangle_type_str(cx, slice)?;
+        if !matches!(
+            cx.type_kind(element_type),
+            TypeKind::Integer
+                | TypeKind::Half
+                | TypeKind::Float
+                | TypeKind::BFloat
+                | TypeKind::Double
+                | TypeKind::X86_FP80
+                | TypeKind::FP128
+                | TypeKind::PPC_FP128
+                | TypeKind::Pointer
+        ) {
+            // LLVM only allows integers, floats and pointers as scalable vector elements
+            return None;
+        }
+        cx.type_scalable_vector(element_type, length)
+    } else if strip_off_prefix(slice, b"a") {
+        let length = parse_integer(slice)?;
+        let element_type = demangle_type_str(cx, slice)?;
+        if matches!(cx.type_kind(element_type), TypeKind::Void | TypeKind::Function) {
+            // LLVM doesn't allow void and function types as array elements
+            return None;
+        }
+        cx.type_array(element_type, length)
+    } else if strip_off_prefix(slice, b"sl_") {
+        let mut elements = Vec::new();
+
+        loop {
+            if let Some(remainder) = slice.strip_prefix(b"s")
+                && !remainder.starts_with(b"_")
+                && !remainder.starts_with(b"l_")
+            {
+                *slice = remainder;
+                break cx.type_struct(&elements);
+            }
+            let element = demangle_type_str(cx, slice)?;
+            if matches!(cx.type_kind(element), TypeKind::Void | TypeKind::Function) {
+                // LLVM doesn't allow void and function types as struct elements
+                return None;
+            }
+            elements.push(element);
+        }
+    } else if strip_off_prefix(slice, b"f_") {
+        let return_type = demangle_type_str(cx, slice)?;
+        if cx.type_kind(return_type) == TypeKind::Function {
+            return None;
+        }
+        let mut arguments = Vec::new();
+
+        loop {
+            if let Some(remainder) = slice.strip_prefix(b"f")
+                && !matches!(remainder.first(), Some(b'0'..=b'9' | b'_'))
+            {
+                *slice = remainder;
+                break cx.type_func(&arguments, return_type);
+            }
+            if strip_off_prefix(slice, b"varargf") {
+                break cx.type_variadic_func(&arguments, return_type);
+            }
+            let arg_type = demangle_type_str(cx, slice)?;
+            if matches!(cx.type_kind(arg_type), TypeKind::Void | TypeKind::Function) {
+                return None;
+            }
+            arguments.push(arg_type);
+        }
+    } else {
+        return None;
+    })
+}
+
+fn lookup_and_demangle<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    name: &[u8],
+) -> Option<(llvm::Intrinsic, Vec<Type<'ll>>)> {
+    let intrinsic = llvm::Intrinsic::lookup(name)?;
+
+    let slice =
+        &mut name.strip_prefix(intrinsic.base_name()).expect("name doesn't start with base name");
+
+    if !intrinsic.is_overloaded() {
+        return slice.is_empty().then_some((intrinsic, Vec::new()));
+    }
+
+    let mut type_params = Vec::new();
+
+    while !slice.is_empty() {
+        if !strip_off_prefix(slice, b".") {
+            return None;
+        }
+
+        type_params.push(demangle_type_str(cx, slice)?);
+    }
+
+    Some((intrinsic, type_params))
+}
+
+fn fallback_intrinsic_fn<'ll, 'tcx>(
     bx: &Builder<'_, 'll, 'tcx>,
     name: &str,
-    rust_return_ty: Type<'ll>,
-    rust_argument_tys: Vec<Type<'ll>>,
-    instance: ty::Instance<'tcx>,
+    rust_fn_ty: Type<'ll>,
+    instance: Instance<'tcx>,
 ) -> Value<'ll> {
     let tcx = bx.tcx;
-
-    let rust_fn_ty = bx.type_func(&rust_argument_tys, rust_return_ty);
-
-    let intrinsic = llvm::Intrinsic::lookup(name.as_bytes());
-
-    if let Some(intrinsic) = intrinsic
-        && intrinsic.is_target_specific()
-    {
-        let (llvm_arch, _) = name[5..].split_once('.').unwrap();
-        let rust_arch = &tcx.sess.target.arch;
-
-        if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
-            && llvm_arch != correct_llvm_arch
-        {
-            tcx.dcx().emit_fatal(IntrinsicWrongArch {
-                name,
-                target_arch: rust_arch.desc(),
-                span: tcx.def_span(instance.def_id()),
-            });
-        }
-    }
-
-    if let Some(intrinsic) = intrinsic
-        && !intrinsic.is_overloaded()
-    {
-        // FIXME: also do this for overloaded intrinsics
-        let llfn = intrinsic.get_declaration(bx.llmod, &[]);
-        let llvm_fn_ty = bx.get_type_of_global(llfn);
-
-        let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
-        let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
-        let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
-
-        let is_correct_signature = !llvm_is_variadic
-            && rust_argument_tys.len() == llvm_argument_tys.len()
-            && iter::once((rust_return_ty, llvm_return_ty))
-                .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
-                .all(|(rust_ty, llvm_ty)| can_autocast(bx, rust_ty, llvm_ty));
-
-        if !is_correct_signature {
-            tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
-                name,
-                llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
-                rust_fn_ty: &format!("{rust_fn_ty:?}"),
-                span: tcx.def_span(instance.def_id()),
-            });
-        }
-
-        return llfn;
-    }
 
     // Function addresses in Rust are never significant, allowing functions to be merged.
     let llfn = declare_raw_fn(
@@ -1279,35 +1432,116 @@ fn intrinsic_fn<'ll, 'tcx>(
         rust_fn_ty,
     );
 
-    if intrinsic.is_none() {
-        let mut new_llfn = None;
-        let can_upgrade = unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn) };
+    let mut new_llfn = None;
+    let can_upgrade = unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn) };
 
-        if !can_upgrade {
-            // This is either plain wrong, or this can be caused by incompatible LLVM versions
-            tcx.dcx().emit_fatal(UnknownIntrinsic { name, span: tcx.def_span(instance.def_id()) });
-        } else if let Some(def_id) = instance.def_id().as_local() {
-            // we can emit diagnostics only for local crates
-            let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    if !can_upgrade {
+        // This is either plain wrong, or this can be caused by incompatible LLVM versions
+        tcx.dcx().emit_fatal(UnknownIntrinsic { name, span: tcx.def_span(instance.def_id()) });
+    } else if let Some(def_id) = instance.def_id().as_local() {
+        // we can emit diagnostics only for local crates
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-            // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
-            let msg = if let Some(new_llfn) = new_llfn {
-                format!(
-                    "using deprecated intrinsic `{name}`, `{}` can be used instead",
-                    str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
-                )
-            } else {
-                format!("using deprecated intrinsic `{name}`")
-            };
+        // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+        let msg = if let Some(new_llfn) = new_llfn {
+            format!(
+                "using deprecated intrinsic `{name}`, `{}` can be used instead",
+                str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+            )
+        } else {
+            format!("using deprecated intrinsic `{name}`")
+        };
 
-            tcx.emit_node_lint(
-                DEPRECATED_LLVM_INTRINSIC,
-                hir_id,
-                rustc_errors::DiagDecorator(|d| {
-                    d.primary_message(msg).span(tcx.hir_span(hir_id));
-                }),
-            );
+        tcx.emit_node_lint(
+            DEPRECATED_LLVM_INTRINSIC,
+            hir_id,
+            rustc_errors::DiagDecorator(|d| {
+                d.primary_message(msg).span(tcx.hir_span(hir_id));
+            }),
+        );
+    }
+
+    llfn
+}
+
+fn intrinsic_fn<'ll, 'tcx>(
+    bx: &Builder<'_, 'll, 'tcx>,
+    name: &str,
+    rust_return_ty: Type<'ll>,
+    rust_argument_tys: Vec<Type<'ll>>,
+    instance: Instance<'tcx>,
+) -> Value<'ll> {
+    let tcx = bx.tcx;
+    let span = || tcx.def_span(instance.def_id());
+
+    let rust_arch = &tcx.sess.target.arch;
+    if !is_valid_intrinsic_for_arch(name, rust_arch) {
+        tcx.dcx().emit_fatal(IntrinsicWrongArch {
+            name,
+            target_arch: rust_arch.desc(),
+            span: span(),
+        });
+    }
+
+    let rust_fn_ty = bx.type_func(&rust_argument_tys, rust_return_ty);
+
+    let (intrinsic, type_params) = match lookup_and_demangle(bx.cx, name.as_bytes()) {
+        Some(parsed) => parsed,
+        None => return fallback_intrinsic_fn(bx, name, rust_fn_ty, instance),
+    };
+
+    let is_overloaded = intrinsic.is_overloaded();
+
+    // For overloaded intrinsics, do a small check to ensure that `get_declaration` won't assert
+    if is_overloaded {
+        let check_result = intrinsic.check_type_params(&type_params);
+        match check_result.status {
+            IntrinsicCheckStatus::NumParamMismatch => {
+                tcx.dcx().emit_fatal(IntrinsicNumParamMismatch {
+                    name,
+                    expected: check_result.value.try_into().unwrap(),
+                    found: type_params.len(),
+                    span: span(),
+                })
+            }
+            IntrinsicCheckStatus::InvalidParam => {
+                let index = check_result.value.try_into().unwrap();
+                tcx.dcx().emit_fatal(IntrinsicInvalidTypeParam {
+                    name,
+                    index,
+                    found: &format!("{:?}", type_params[index]),
+                    span: span(),
+                })
+            }
+            IntrinsicCheckStatus::Ok => {}
         }
+    }
+
+    let llfn = intrinsic.get_declaration(bx.llmod, &type_params);
+    let llvm_fn_ty = bx.get_type_of_global(llfn);
+
+    // now check that the type parameters satisfy all the constraints
+    if is_overloaded && let Err(ref error) = intrinsic.check_signature_validity(llvm_fn_ty) {
+        tcx.dcx().emit_fatal(IntrinsicSignatureValidationFailed { name, error, span: span() })
+    }
+
+    let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
+    let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
+    let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
+
+    let is_correct_signature = !llvm_is_variadic
+        && rust_argument_tys.len() == llvm_argument_tys.len()
+        && iter::once((rust_return_ty, llvm_return_ty))
+            .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
+            .all(|(rust_ty, llvm_ty)| can_autocast(bx, rust_ty, llvm_ty));
+
+    if !is_correct_signature {
+        tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
+            name,
+            llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+            rust_fn_ty: &format!("{rust_fn_ty:?}"),
+            span: span(),
+        });
     }
 
     llfn
