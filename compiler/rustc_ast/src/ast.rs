@@ -3483,100 +3483,116 @@ pub enum AttrKind {
 /// means it can only be added to items that cannot later be observed by other macros.
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum GeneratedAttr {
+    // tidy-alphabetical-start
     AutomaticallyDerived,
-    RustcConstUnstableDerived,
-    Inline,
-    DocHidden,
     CoverageOff,
+    DocHidden,
+    Inline,
+    RustcConstUnstableDerived,
     RustcTestMarker(Symbol),
     RustcTrivialFieldReads,
+    // tidy-alphabetical-end
 }
 
 impl GeneratedAttr {
     pub fn descr(&self) -> String {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => "#[automatically_derived]".into(),
+            GeneratedAttr::CoverageOff => "#[coverage(off)]".into(),
+            GeneratedAttr::DocHidden => "#[doc(hidden)]".into(),
+            GeneratedAttr::Inline => "#[inline]".into(),
             GeneratedAttr::RustcConstUnstableDerived => {
                 "#[rustc_const_unstable(feature = \"derive_const\", issue = \"143874\")]".into()
             }
-            GeneratedAttr::Inline => "#[inline]".into(),
-            GeneratedAttr::DocHidden => "#[doc(hidden)]".into(),
-            GeneratedAttr::CoverageOff => "#[coverage(off)]".into(),
             GeneratedAttr::RustcTestMarker(test_path) => {
                 format!("#[rustc_test_marker = \"{test_path}\"]")
             }
             GeneratedAttr::RustcTrivialFieldReads => "#[rustc_trivial_field_reads]".into(),
+            // tidy-alphabetical-end
         }
     }
     pub fn value_span(&self) -> Option<Span> {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
+            // tidy-alphabetical-end
         }
     }
 
     pub fn is_doc_comment(&self) -> bool {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => false,
-            GeneratedAttr::RustcConstUnstableDerived => false,
-            GeneratedAttr::Inline => false,
-            GeneratedAttr::DocHidden => false,
             GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::Inline => false,
+            GeneratedAttr::RustcConstUnstableDerived => false,
             GeneratedAttr::RustcTestMarker(_) => false,
             GeneratedAttr::RustcTrivialFieldReads => false,
+            // tidy-alphabetical-end
         }
     }
 
     pub fn path(&self) -> &[Symbol] {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
-            GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
-            GeneratedAttr::Inline => &[sym::inline],
-            GeneratedAttr::DocHidden => &[sym::doc],
             GeneratedAttr::CoverageOff => &[sym::coverage],
+            GeneratedAttr::DocHidden => &[sym::doc],
+            GeneratedAttr::Inline => &[sym::inline],
+            GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
             GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
             GeneratedAttr::RustcTrivialFieldReads => &[sym::rustc_trivial_field_reads],
+            // tidy-alphabetical-end
         }
     }
 
     pub fn path_span(&self) -> Option<Span> {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
+            // tidy-alphabetical-end
         }
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
             GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
             GeneratedAttr::RustcTrivialFieldReads => None,
+            // tidy-alphabetical-end
         }
     }
 
     pub fn doc_str_and_fragment_kind(&self) -> Option<!> {
         match self {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
             GeneratedAttr::RustcTestMarker(_) => None,
             GeneratedAttr::RustcTrivialFieldReads => None,
+            // tidy-alphabetical-end
         }
     }
 
