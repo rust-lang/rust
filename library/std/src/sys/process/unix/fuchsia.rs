@@ -16,7 +16,7 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
-        let envp = self.capture_env();
+        let envp = self.capture_env()?;
 
         if self.saw_nul() {
             return Err(io::const_error!(
