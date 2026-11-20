@@ -47,28 +47,28 @@
               scope 6 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
                   let _29: &str;
                   scope 7 (inlined String::as_str) {
-                      let _30: &[u8];
-                      scope 8 (inlined Vec::<u8>::as_slice) {
+                      let _30: *const str;
+                      scope 8 {
+                      }
+                      scope 9 (inlined Vec::<u8>::as_slice) {
                           let _31: *const [u8];
                           let mut _32: *const u8;
                           let mut _33: usize;
-                          scope 9 (inlined Vec::<u8>::as_ptr) {
-                              scope 10 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
-                                  scope 11 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
-                                      scope 12 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                          scope 10 (inlined Vec::<u8>::as_ptr) {
+                              scope 11 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                                  scope 12 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
+                                      scope 13 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
                                           let mut _34: std::ptr::NonNull<u8>;
-                                          scope 13 (inlined NonNull::<u8>::cast::<u8>) {
-                                              scope 14 (inlined NonNull::<u8>::as_ptr) {
+                                          scope 14 (inlined NonNull::<u8>::cast::<u8>) {
+                                              scope 15 (inlined NonNull::<u8>::as_ptr) {
                                               }
                                           }
                                       }
-                                      scope 15 (inlined NonNull::<u8>::as_ptr) {
+                                      scope 16 (inlined NonNull::<u8>::as_ptr) {
                                       }
                                   }
                               }
                           }
-                      }
-                      scope 16 (inlined from_utf8_unchecked) {
                       }
                   }
                   scope 17 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
@@ -119,28 +119,28 @@
               scope 32 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
                   let _49: &str;
                   scope 33 (inlined String::as_str) {
-                      let _50: &[u8];
-                      scope 34 (inlined Vec::<u8>::as_slice) {
+                      let _50: *const str;
+                      scope 34 {
+                      }
+                      scope 35 (inlined Vec::<u8>::as_slice) {
                           let _51: *const [u8];
                           let mut _52: *const u8;
                           let mut _53: usize;
-                          scope 35 (inlined Vec::<u8>::as_ptr) {
-                              scope 36 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
-                                  scope 37 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
-                                      scope 38 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                          scope 36 (inlined Vec::<u8>::as_ptr) {
+                              scope 37 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                                  scope 38 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
+                                      scope 39 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
                                           let mut _54: std::ptr::NonNull<u8>;
-                                          scope 39 (inlined NonNull::<u8>::cast::<u8>) {
-                                              scope 40 (inlined NonNull::<u8>::as_ptr) {
+                                          scope 40 (inlined NonNull::<u8>::cast::<u8>) {
+                                              scope 41 (inlined NonNull::<u8>::as_ptr) {
                                               }
                                           }
                                       }
-                                      scope 41 (inlined NonNull::<u8>::as_ptr) {
+                                      scope 42 (inlined NonNull::<u8>::as_ptr) {
                                       }
                                   }
                               }
                           }
-                      }
-                      scope 42 (inlined from_utf8_unchecked) {
                       }
                   }
                   scope 43 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
@@ -226,7 +226,6 @@
           _27 = no_retag copy (*_8);
           _28 = no_retag copy (*_10);
           StorageLive(_29);
-          StorageLive(_30);
           StorageLive(_31);
           StorageLive(_32);
           StorageLive(_34);
@@ -238,10 +237,11 @@
           _31 = *const [u8] from (copy _32, move _33);
           StorageDead(_33);
           StorageDead(_32);
-          _30 = &(*_31);
-          StorageDead(_31);
-          _29 = copy _30 as &str (Transmute);
+          StorageLive(_30);
+          _30 = copy _31 as *const str (PtrToPtr);
+          _29 = &(*_30);
           StorageDead(_30);
+          StorageDead(_31);
           StorageLive(_36);
           StorageLive(_38);
           _36 = copy _29 as &[u8] (Transmute);
@@ -288,7 +288,6 @@
           _47 = no_retag copy (*_15);
           _48 = no_retag copy (*_17);
           StorageLive(_49);
-          StorageLive(_50);
           StorageLive(_51);
           StorageLive(_52);
           StorageLive(_54);
@@ -300,10 +299,11 @@
           _51 = *const [u8] from (copy _52, move _53);
           StorageDead(_53);
           StorageDead(_52);
-          _50 = &(*_51);
-          StorageDead(_51);
-          _49 = copy _50 as &str (Transmute);
+          StorageLive(_50);
+          _50 = copy _51 as *const str (PtrToPtr);
+          _49 = &(*_50);
           StorageDead(_50);
+          StorageDead(_51);
           StorageLive(_56);
           StorageLive(_58);
           _56 = copy _49 as &[u8] (Transmute);
