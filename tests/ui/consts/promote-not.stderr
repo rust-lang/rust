@@ -272,10 +272,12 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:90:31
    |
 LL |     let _val: &'static _ = &[&TEST_DROP; 1];
-   |               ----------      ^^^^^^^^^    - temporary value is freed at the end of this statement
-   |               |               |
-   |               |               creates a temporary value which is freed while still in use
+   |               ----------      ^^^^^^^^^ creates a temporary value which is freed while still in use
+   |               |
    |               type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:99:26
