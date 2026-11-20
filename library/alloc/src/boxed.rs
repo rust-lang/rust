@@ -763,6 +763,7 @@ impl<T, A: Allocator> Box<T, A> {
         unsafe {
             let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
             let inner = raw.read();
+            drop(Box::from_non_null_in(raw.cast_uninit(), &alloc));
             (inner, alloc)
         }
     }
