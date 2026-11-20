@@ -57,6 +57,6 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     // gather version info
     let _ = rerun_if_git_changes();
-    println!("cargo:rustc-env=GIT_HASH={}", get_commit_hash().unwrap_or_default());
-    println!("cargo:rustc-env=COMMIT_DATE={}", get_commit_date().unwrap_or_default());
+    println!("cargo:rustc-env=GIT_COMMIT_HASH={}", get_commit_hash().unwrap_or_default());
+    println!("cargo:rustc-env=GIT_COMMIT_DATE={}", get_commit_date().unwrap_or_default());
 }
