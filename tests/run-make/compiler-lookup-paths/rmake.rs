@@ -1,3 +1,6 @@
+// On `aarch64-unknown-linux-pauthtest`, rustc links static native libraries dynamically (with a
+// warning), because the target requires dynamic linking.
+//@ ignore-pauthtest
 //@ needs-target-std
 //
 // Since #19941, rustc can accept specifications on its library search paths.
