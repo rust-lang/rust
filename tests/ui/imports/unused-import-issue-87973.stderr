@@ -1,5 +1,5 @@
 error: unused import: `std::fs`
-  --> $DIR/unused-import-issue-87973.rs:8:5
+  --> $DIR/unused-import-issue-87973.rs:9:5
    |
 LL | use std::fs;
    |     ^^^^^^^
