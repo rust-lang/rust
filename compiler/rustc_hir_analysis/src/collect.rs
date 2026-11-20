@@ -35,8 +35,8 @@ use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
-    fold_regions,
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypingMode, Unnormalized, fold_regions,
 };
 use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
@@ -1789,7 +1789,7 @@ fn const_param_default<'tcx>(
     param_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let hir::Node::GenericParam(hir::GenericParam {
-        kind: hir::GenericParamKind::Const { default: Some(ct), .. },
+        kind: hir::GenericParamKind::Const { default: Some(hir_ct), .. },
         ..
     }) = tcx.hir_node_by_def_id(param_def_id)
     else {
@@ -1806,7 +1806,16 @@ fn const_param_default<'tcx>(
 
     let ct = icx
         .lowerer()
-        .lower_const_arg(ct, tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip());
+        .lower_const_arg(hir_ct, tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip());
+
+    let ct = reject_implicit_forward_references_to_param(
+        &icx,
+        param_def_id,
+        ct,
+        hir_ct.span,
+        "const parameter default",
+    );
+
     ty::EarlyBinder::bind(tcx, ct)
 }
 
@@ -1876,5 +1885,78 @@ fn const_of_item<'tcx>(
         Some(ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e)))
     } else {
         Some(ty::EarlyBinder::bind(tcx, ct))
+    }
+}
+
+fn reject_implicit_forward_references_to_param<'tcx, T: ty::TypeFoldable<TyCtxt<'tcx>>>(
+    icx: &ItemCtxt<'tcx>,
+    param_def_id: LocalDefId,
+    t: T,
+    span: Span,
+    subject: &'static str,
+) -> T {
+    if !t.has_param() {
+        return t;
+    }
+    let generics = icx.tcx.generics_of(icx.item_def_id);
+    let index = generics.param_def_id_to_index[&param_def_id.to_def_id()];
+    t.fold_with(&mut RejectImplicitForwardReferencesToParam { icx, index, span, subject })
+}
+
+struct RejectImplicitForwardReferencesToParam<'a, 'tcx> {
+    icx: &'a ItemCtxt<'tcx>,
+    index: u32,
+    span: Span,
+    subject: &'static str,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RejectImplicitForwardReferencesToParam<'_, 'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.icx.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_param() {
+            return ty;
+        }
+        if let ty::Param(param) = ty.kind()
+            && param.index >= self.index
+        {
+            let guar =
+                self.icx.dcx().emit_err(crate::diagnostics::ImplicitForwardReferenceToParam {
+                    span: self.span,
+                    subject: self.subject,
+                    param: param.name,
+                });
+            return Ty::new_error(self.cx(), guar);
+        }
+        ty.super_fold_with(self)
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !ct.has_param() {
+            return ct;
+        }
+        match ct.kind() {
+            // HACK(generic_const_exprs): Never look into GCE anon consts since they inherit all
+            // generic params from the parent (unless they're in a const param default) and so we
+            // would always mistrigger. Of course, that also means not detecting real forward
+            // references but that's been an issue long before PR #161998 (see #106994 or #105238).
+            // Given that GCE will soon be removed in favor *GCA, it's fine to keep ignoring this.
+            ty::ConstKind::Alias(
+                _,
+                ty::AliasConst { kind: ty::AliasConstKind::Anon { .. }, .. },
+            ) => ct,
+            ty::ConstKind::Param(param) if param.index >= self.index => {
+                let guar =
+                    self.icx.dcx().emit_err(crate::diagnostics::ImplicitForwardReferenceToParam {
+                        span: self.span,
+                        subject: self.subject,
+                        param: param.name,
+                    });
+                return ty::Const::new_error(self.cx(), guar);
+            }
+            _ => ct.super_fold_with(self),
+        }
     }
 }

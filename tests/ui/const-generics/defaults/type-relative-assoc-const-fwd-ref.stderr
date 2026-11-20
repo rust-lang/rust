@@ -1,0 +1,8 @@
+error: const parameter default references generic parameter `N` before it is declared
+  --> $DIR/type-relative-assoc-const-fwd-ref.rs:7:45
+   |
+LL | struct Def0<T: Trait<N>, const N: usize = { T::CT }>(T);
+   |                                             ^^^^^ implicitly references parameter `N`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error: type parameter default references generic parameter `T` before it is declared
+  --> $DIR/type-relative-in-ty-param-default-fwd-ref.rs:6:16
+   |
+LL | trait Def0<T = Self::Type> { type Type; }
+   |                ^^^^^^^^^^ implicitly references parameter `T`
+
+error: type parameter default references generic parameter `U` before it is declared
+  --> $DIR/type-relative-in-ty-param-default-fwd-ref.rs:11:30
+   |
+LL | struct Def1<T: Trait<U>, U = T::Type>(T, U);
+   |                              ^^^^^^^ implicitly references parameter `U`
+
+error: type parameter default references generic parameter `V` before it is declared
+  --> $DIR/type-relative-in-ty-param-default-fwd-ref.rs:16:35
+   |
+LL | struct Def2<T: Trait<[V; N]>, U = T::Type, V = (), const N: usize = 0>(T, U, V);
+   |                                   ^^^^^^^ implicitly references parameter `V`
+
+error: type parameter default references generic parameter `N` before it is declared
+  --> $DIR/type-relative-in-ty-param-default-fwd-ref.rs:16:35
+   |
+LL | struct Def2<T: Trait<[V; N]>, U = T::Type, V = (), const N: usize = 0>(T, U, V);
+   |                                   ^^^^^^^ implicitly references parameter `N`
+
+error: aborting due to 4 previous errors
+
