@@ -2788,6 +2788,16 @@ impl Write for Formatter<'_> {
     }
 }
 
+#[stable(feature = "formatter_debug", since = "CURRENT_RUSTC_VERSION")]
+impl Debug for Formatter<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("Formatter")
+            .field("options", &self.options)
+            .field_with("buf", |f| write!(f, "&mut dyn Write"))
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
