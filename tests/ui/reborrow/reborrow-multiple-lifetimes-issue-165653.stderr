@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `*self` as mutable, as it is behind a `&` reference
+  --> $DIR/reborrow-multiple-lifetimes-issue-165653.rs:18:9
+   |
+LL |         *self
+   |         ^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     fn clone(&mut self) -> Self {
+   |               +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.
