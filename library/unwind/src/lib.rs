@@ -171,7 +171,8 @@ unsafe extern "C" {}
     target_os = "linux",
     any(target_env = "gnu", target_env = "uclibc"),
     not(feature = "llvm-libunwind"),
-    not(feature = "system-llvm-libunwind")
+    not(feature = "system-llvm-libunwind"),
+    not(target_vendor = "vega")
 ))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 unsafe extern "C" {}
@@ -180,9 +181,17 @@ unsafe extern "C" {}
     target_os = "linux",
     any(target_env = "gnu", target_env = "uclibc"),
     not(feature = "llvm-libunwind"),
-    feature = "system-llvm-libunwind"
+    feature = "system-llvm-libunwind",
+    not(target_vendor = "vega")
 ))]
 #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+unsafe extern "C" {}
+
+// Vega OS has no shared `libgcc_s` for apps, so it always links LLVM's libunwind
+// statically. With `llvm-libunwind`, that is the in-tree copy (see `libunwind.rs`).
+// Otherwise, such as with `-Zbuild-std`, it is the `libunwind.a` in the Vega sysroot.
+#[cfg(all(target_vendor = "vega", not(feature = "llvm-libunwind")))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 unsafe extern "C" {}
 
 #[cfg(target_os = "redox")]
