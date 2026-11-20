@@ -222,9 +222,7 @@ where
                                 for field_ty in &witness.field_tys {
                                     queue_type(
                                         self,
-                                        EarlyBinder::bind(tcx, field_ty.ty)
-                                            .instantiate(tcx, args)
-                                            .skip_norm_wip(),
+                                        field_ty.ty.instantiate(tcx, args).skip_norm_wip(),
                                     );
                                 }
                             }
