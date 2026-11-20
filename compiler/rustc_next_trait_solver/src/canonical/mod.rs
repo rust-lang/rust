@@ -588,7 +588,37 @@ fn register_region_constraints<D, I>(
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    use rustc_type_ir::TypeVisitableExt as _;
+
     for (constraint, vis) in constraints {
+        let reflexive = if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) =
+            constraint
+            && let ty::GenericArgKind::Type(t) = lhs.kind()
+            && matches!(t.kind(), ty::Coroutine(..))
+            && matches!(rhs.kind(), ty::RePlaceholder(_))
+            && !t.has_infer()
+            && !t.has_escaping_bound_vars()
+        {
+            let mut components = Default::default();
+
+            rustc_type_ir::outlives::push_outlives_components(delegate.cx(), t, &mut components);
+
+            !components.is_empty()
+                && components.iter().all(|component| {
+                    matches!(
+                        component,
+                        rustc_type_ir::outlives::Component::Region(r)
+                            if *r == rhs
+                    )
+                })
+        } else {
+            false
+        };
+
+        if reflexive {
+            continue;
+        }
+
         match constraint {
             ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) => match lhs.kind() {
                 ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, vis, span),

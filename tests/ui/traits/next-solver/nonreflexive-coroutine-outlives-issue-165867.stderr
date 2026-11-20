@@ -1,0 +1,27 @@
+error[E0597]: `data` does not live long enough
+  --> $DIR/nonreflexive-coroutine-outlives-issue-165867.rs:17:17
+   |
+LL |     let data = String::from("borrowed value");
+   |         ---- binding `data` declared here
+LL |     let short = &data;
+   |                 ^^^^^ borrowed value does not live long enough
+...
+LL |     requires_every_lifetime(future);
+   |     ------------------------------- argument requires that `data` is borrowed for `'static`
+LL | }
+   | - `data` dropped here while still borrowed
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/nonreflexive-coroutine-outlives-issue-165867.rs:13:31
+   |
+LL | fn requires_every_lifetime<F: for<'a> CoroutineOutlives<'a>>(_: F) {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/nonreflexive-coroutine-outlives-issue-165867.rs:13:31
+   |
+LL | fn requires_every_lifetime<F: for<'a> CoroutineOutlives<'a>>(_: F) {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
