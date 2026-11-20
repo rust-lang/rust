@@ -390,6 +390,19 @@ where
     U: SomeBound;
 ```
 
+For associated type definitions with a trailing `where Self: 'a` clause, use the following formatting. Prefer the first form if the entire definition fits within the width limit. Otherwise, use the second form if the definition without the `where` clause fits. If neither fits, use the third form:
+
+    type GridItemStyle<'a> = &'a Style where Self: 'a;
+
+    type GridItemStyle<'a> = &'a Style
+    where
+        Self: 'a;
+
+    type GridItemStyle<'a>
+        = &'a Style
+    where
+        Self: 'a;
+
 When there is a `where` clause before the type, format it normally, and break
 after the last clause. Do not indent before the `=` to leave it visually
 distinct from the indented clauses that precede it. If there is additionally a
