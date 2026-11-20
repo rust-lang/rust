@@ -3,6 +3,9 @@
 use super::Utf8Error;
 use crate::intrinsics::const_eval_select;
 
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+mod neon;
+
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
@@ -124,21 +127,43 @@ const fn contains_nonascii(x: usize) -> bool {
 #[inline(always)]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    let mut index = 0;
+    run_utf8_validation_from::<true>(v, 0)
+}
+
+/// Checks UTF-8 in `v[index..]`. Error offsets are relative to `v`.
+/// `index` must be at most `v.len()`, and `v[..index]` must already be valid UTF-8.
+/// With `SIMD`, long inputs continue in `neon::validate` after `neon::SCALAR_LEN` bytes.
+#[inline(always)]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+const fn run_utf8_validation_from<const SIMD: bool>(
+    v: &[u8],
+    mut index: usize,
+) -> Result<(), Utf8Error> {
+    let full = v;
+    // For long inputs, check multibyte characters in a prefix only and continue with SIMD
+    // after it. ASCII is still skipped in all of `full`, since the word loop below is faster
+    // than entering SIMD code for mostly ASCII inputs.
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    let v = if SIMD && full.len() >= neon::SCALAR_LEN + neon::MIN_LEN {
+        full.split_at(neon::SCALAR_LEN).0
+    } else {
+        full
+    };
     let len = v.len();
 
     const USIZE_BYTES: usize = size_of::<usize>();
 
     let ascii_block_size = 2 * USIZE_BYTES;
-    let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
+    let blocks_end =
+        if full.len() >= ascii_block_size { full.len() - ascii_block_size + 1 } else { 0 };
     // Below, we safely fall back to a slower codepath if the offset is `usize::MAX`,
     // so the end-to-end behavior is the same at compiletime and runtime.
     let align = const_eval_select!(
-        @capture { v: &[u8] } -> usize:
+        @capture { full: &[u8] } -> usize:
         if const {
             usize::MAX
         } else {
-            v.as_ptr().align_offset(USIZE_BYTES)
+            full.as_ptr().align_offset(USIZE_BYTES)
         }
     );
 
@@ -155,6 +180,12 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 index += 1;
                 // we needed data, but there was none: error!
                 if index >= len {
+                    // A character crossing the end of the prefix is checked by SIMD.
+                    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+                    if len < full.len() {
+                        index = old_offset;
+                        break;
+                    }
                     err!(None)
                 }
                 v[index]
@@ -220,7 +251,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
             if align != usize::MAX && align.wrapping_sub(index).is_multiple_of(USIZE_BYTES) {
-                let ptr = v.as_ptr();
+                let ptr = full.as_ptr();
                 while index < blocks_end {
                     // SAFETY: since `align - index` and `ascii_block_size` are
                     // multiples of `USIZE_BYTES`, `block = ptr.add(index)` is
@@ -238,13 +269,43 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                     index += ascii_block_size;
                 }
                 // step from the point where the wordwise loop stopped
-                while index < len && v[index] < 128 {
+                while index < full.len() && full[index] < 128 {
                     index += 1;
+                }
+                // Without this, LLVM checks the prefix length and the SIMD condition before
+                // returning, which is noticeable for short ASCII inputs.
+                #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+                if index == full.len() {
+                    return Ok(());
                 }
             } else {
                 index += 1;
             }
         }
+    }
+
+    // Mark the SIMD call as unlikely. Otherwise LLVM keeps `v` in callee-saved registers for
+    // the whole function, and short inputs need a stack frame again.
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    if crate::intrinsics::unlikely(index < full.len()) {
+        // ASCII may run past the prefix. Report an invalid first byte after it directly,
+        // as the scalar loop would, instead of entering SIMD code for it.
+        if utf8_char_width(full[index]) == 0 {
+            return Err(Utf8Error { valid_up_to: index, error_len: Some(1) });
+        }
+        let v = full;
+        return const_eval_select!(
+            @capture { v: &[u8], index: usize } -> Result<(), Utf8Error>:
+            if const {
+                run_utf8_validation_from::<false>(v, index)
+            } else {
+                match neon::validate(v, index) {
+                    (_, u8::MAX) => Ok(()),
+                    (valid_up_to, 0) => Err(Utf8Error { valid_up_to, error_len: None }),
+                    (valid_up_to, n) => Err(Utf8Error { valid_up_to, error_len: Some(n) }),
+                }
+            }
+        );
     }
 
     Ok(())
