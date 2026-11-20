@@ -154,39 +154,29 @@ pub fn test_copy_ref(x: &ExplicitCopy) {
 // CHECK-DAG: ![[#EXPLICIT_RETURN_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE:]]
 // CHECK-DAG: ![[#EXPLICIT_RETURN_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
 
-// CHECK-DAG: ![[#CLONE_COPY_LOC]] = !DILocation({{.*}}scope: ![[#CLONE_COPY_SCOPE:]]
-// CHECK-DAG: ![[#CLONE_COPY_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_copy<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
-// CHECK-DAG: ![[#CLONE_RETURN_LOC]] = !DILocation({{.*}}scope: ![[#CLONE_RETURN_SCOPE:]]
-// CHECK-DAG: ![[#CLONE_RETURN_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#CLONE_COPY_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_COPY_SCOPE]]
+// CHECK-DAG: ![[#CLONE_RETURN_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
-// CHECK-DAG: ![[#ASSIGN_COPY2_LOC]] = !DILocation({{.*}}scope: ![[#ASSIGN_COPY2_SCOPE:]]
-// CHECK-DAG: ![[#ASSIGN_COPY2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#ASSIGN_COPY2_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
 // CHECK-DAG: ![[#INIT_STRUCT_LOC]] = !DILocation({{.*}}scope: ![[#INIT_STRUCT_SCOPE:]]
 // CHECK-DAG: ![[#INIT_STRUCT_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<alloc::string::String,{{ *[0-9]+}}>"
 
-// CHECK-DAG: ![[#TUPLE_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#TUPLE_MOVE_SCOPE:]]
-// CHECK-DAG: ![[#TUPLE_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#TUPLE_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
-// CHECK-DAG: ![[#MIXED_TUPLE_LOC]] = !DILocation({{.*}}scope: ![[#MIXED_TUPLE_SCOPE:]]
-// CHECK-DAG: ![[#MIXED_TUPLE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#MIXED_TUPLE_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
-// CHECK-DAG: ![[#COPY2_LOC]] = !DILocation({{.*}}scope: ![[#COPY2_SCOPE:]]
-// CHECK-DAG: ![[#COPY2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#COPY2_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
 // CHECK-DAG: ![[#ARRAY_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#ARRAY_MOVE_SCOPE:]]
 // CHECK-DAG: ![[#ARRAY_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)alloc::string::String[,;].*}},{{ *[0-9]+}}>"
 
-// CHECK-DAG: ![[#FIELD_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#FIELD_MOVE_SCOPE:]]
-// CHECK-DAG: ![[#FIELD_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
-// CHECK-DAG: ![[#FIELD_MOVE2_LOC]] = !DILocation({{.*}}scope: ![[#FIELD_MOVE2_SCOPE:]]
-// CHECK-DAG: ![[#FIELD_MOVE2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_copy<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#FIELD_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
+// CHECK-DAG: ![[#FIELD_MOVE2_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_COPY_SCOPE]]
 
-// CHECK-DAG: ![[#CALL_CLONE_NONCOPY_LOC]] = !DILocation({{.*}}scope: ![[#CALL_CLONE_NONCOPY_SCOPE:]]
-// CHECK-DAG: ![[#CALL_CLONE_NONCOPY_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#CALL_CLONE_NONCOPY_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
-// CHECK-DAG: ![[#CALL_CLONE_COPY_LOC]] = !DILocation({{.*}}scope: ![[#CALL_CLONE_COPY_SCOPE:]]
-// CHECK-DAG: ![[#CALL_CLONE_COPY_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u64[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#CALL_CLONE_COPY_LOC]] = !DILocation({{.*}}scope: ![[#EXPLICIT_RETURN_SCOPE]]
 
 // CHECK-DAG: ![[#LOCAL_COPY_LOC]] = !DILocation({{.*}}scope: ![[#LOCAL_COPY_SCOPE:]]
 // CHECK-DAG: ![[#LOCAL_COPY_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_copy<integration::ExplicitCopy,{{ *[0-9]+}}>"
