@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Trim start
         if let Some(index) = stack.find("rustc_interface::passes::configure_and_expand") {
             stack = &stack[index..];
-        } else if let Some(index) = stack.find("rustc_interface::passes::analysis") {
+        } else if let Some(index) = stack.find("rustc_interface::passes::full_analysis") {
             stack = &stack[index..];
         } else if let Some(index) = stack.find("rustc_interface::passes::start_codegen") {
             stack = &stack[index..];
