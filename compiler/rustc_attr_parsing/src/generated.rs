@@ -27,6 +27,7 @@ impl GeneratedAttrState {
                 d
             })),
             GeneratedAttr::Inline => AttributeKind::Inline(InlineAttr::Hint, span),
+            GeneratedAttr::PreludeImport => AttributeKind::PreludeImport,
             GeneratedAttr::RustcConstUnstableDerived => AttributeKind::RustcConstStability {
                 stability: PartialConstStability {
                     feature: sym::derive_const,
