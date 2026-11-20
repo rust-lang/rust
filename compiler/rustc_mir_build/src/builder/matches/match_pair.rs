@@ -12,6 +12,70 @@ use crate::builder::matches::{
     FlatPat, MatchPairKind, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
+/// Below this length, an array or slice pattern is compared element by element
+/// rather than as a single aggregate.
+///
+/// For a single short constant, the aggregate comparison is no slower once
+/// optimised, but each aggregate test is a separate comparison that only tells
+/// whether that one constant matched. A match with many short constant arms,
+/// such as every combination of `[bool; 3]`, would turn its decision tree into
+/// a chain of such comparisons, which is markedly slower, especially in debug
+/// builds.
+const AGGREGATE_EQ_MIN_LEN: usize = 4;
+
+/// Whether arrays and slices with this element type may be compared as an aggregate.
+///
+/// The aggregate is compared with the `raw_eq` and `compare_bytes` intrinsics,
+/// which only agree with structural equality when there is no padding and equal
+/// values have equal bytes, so we restrict ourselves to the primitives that
+/// `core::cmp::BytewiseEq` is implemented for.
+fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
+    matches!(element_ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
+}
+
+impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Check if we can use aggregate comparisons for constant array/slice patterns.
+    /// This is not possible in const contexts, because the `compare_bytes`
+    /// intrinsic used for slices is not const-stable yet, nor in `#![no_core]`
+    /// crates that do not define both intrinsics as lang items.
+    ///
+    /// `raw_eq`, which is used for arrays, is already const-stable, but arrays
+    /// and slices are gated together, as allowing one without the other is
+    /// not worth the extra complexity.
+    // FIXME(const_cmp): remove the const context restriction once `const_cmp` stabilises.
+    fn can_use_aggregate_eq(&self) -> bool {
+        let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
+            || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
+        let lang_items = self.tcx.lang_items();
+        !in_const_context && lang_items.raw_eq().is_some() && lang_items.compare_bytes().is_some()
+    }
+
+    /// If the given array or slice pattern node was expanded from a constant
+    /// by `const_to_pat` and an aggregate comparison is both possible and
+    /// worthwhile, returns the original constant value, so that the scrutinee
+    /// can be compared against it as a whole.
+    ///
+    /// Note that this deliberately does not apply to hand-written array or
+    /// slice patterns, which only ever match element by element.
+    fn aggregate_const_value(
+        &self,
+        pattern: &Pat<'tcx>,
+        element_count: usize,
+    ) -> Option<ty::Value<'tcx>> {
+        let value = pattern.extra.as_deref()?.expanded_const_value?;
+        let (ty::Array(element_ty, _) | ty::Slice(element_ty)) = *pattern.ty.kind() else {
+            span_bug!(pattern.span, "expanded constant value on a non-aggregate pattern");
+        };
+        if element_count < AGGREGATE_EQ_MIN_LEN
+            || !is_bytewise_comparable(element_ty)
+            || !self.can_use_aggregate_eq()
+        {
+            return None;
+        }
+        Some(value)
+    }
+}
+
 /// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
 /// of those subpatterns, each paired with a suitably-projected [`PlaceBuilder`].
 fn prefix_slice_suffix<'a, 'tcx>(
@@ -337,11 +401,27 @@ impl<'tcx> InterPat<'tcx> {
                 };
 
                 let mut subpats = vec![];
-                if let Some(array_len) = array_len {
-                    for (subplace, subpat) in
-                        prefix_slice_suffix(&place_builder, Some(array_len), prefix, slice, suffix)
-                    {
-                        subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                let testable_case = if let Some(array_len) = array_len {
+                    // If this pattern was expanded from a constant, compare
+                    // the whole array against that constant at once rather
+                    // than element by element.
+                    if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
+                        debug_assert!(slice.is_none() && suffix.is_empty());
+                        Some(TestableCase::Constant {
+                            value: aggregate_value,
+                            kind: PatConstKind::Aggregate,
+                        })
+                    } else {
+                        for (subplace, subpat) in prefix_slice_suffix(
+                            &place_builder,
+                            Some(array_len),
+                            prefix,
+                            slice,
+                            suffix,
+                        ) {
+                            subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                        }
+                        None
                     }
                 } else {
                     // If the array length couldn't be determined, ignore the
@@ -353,35 +433,73 @@ impl<'tcx> InterPat<'tcx> {
                             pattern.ty
                         ),
                     );
-                }
+                    None
+                };
 
-                InterPatKind::Irrefutable { subpats, binding: None }
+                match testable_case {
+                    Some(testable_case) => {
+                        InterPatKind::Refutable { place: unwrap_place(), testable_case, subpats }
+                    }
+                    None => InterPatKind::Irrefutable { subpats, binding: None },
+                }
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                let mut subpats = vec![];
-                for (subplace, subpat) in
-                    prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
-                {
-                    subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
-                }
-
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // A slice pattern shaped like `[..]` is irrefutable.
-                    // It can match a slice of any length, so no length test is needed.
-                    InterPatKind::Irrefutable { subpats, binding: None }
-                } else {
-                    // Any other shape of slice pattern requires a length test.
-                    // Slice patterns with a `..` subpattern require a minimum
-                    // length; those without `..` require an exact length.
-                    let testable_case = TestableCase::Slice {
-                        len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
-                        op: if slice.is_some() {
-                            SliceLenOp::GreaterOrEqual
-                        } else {
-                            SliceLenOp::Equal
+                // If this pattern was expanded from a constant, compare the
+                // whole slice against that constant at once rather than
+                // element by element. `compare_bytes` only looks at as many
+                // bytes as the constant has, so the aggregate test is nested
+                // under an ordinary length test, whose result can then be
+                // shared with other patterns of the same length.
+                if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
+                    debug_assert!(slice.is_none() && suffix.is_empty());
+                    let aggregate_subpat = InterPat {
+                        kind: InterPatKind::Refutable {
+                            place: unwrap_place(),
+                            testable_case: TestableCase::Constant {
+                                value: aggregate_value,
+                                kind: PatConstKind::Aggregate,
+                            },
+                            subpats: vec![],
                         },
+                        ascriptions: vec![],
+                        pattern_span: pattern.span,
+                        is_never: false,
                     };
-                    InterPatKind::Refutable { place: unwrap_place(), testable_case, subpats }
+                    let testable_case = TestableCase::Slice {
+                        len: u64::try_from(prefix.len()).unwrap(),
+                        op: SliceLenOp::Equal,
+                    };
+                    InterPatKind::Refutable {
+                        place: unwrap_place(),
+                        testable_case,
+                        subpats: vec![aggregate_subpat],
+                    }
+                } else {
+                    let mut subpats = vec![];
+                    for (subplace, subpat) in
+                        prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
+                    {
+                        subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                    }
+
+                    if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                        // A slice pattern shaped like `[..]` is irrefutable.
+                        // It can match a slice of any length, so no length test is needed.
+                        InterPatKind::Irrefutable { subpats, binding: None }
+                    } else {
+                        // Any other shape of slice pattern requires a length test.
+                        // Slice patterns with a `..` subpattern require a minimum
+                        // length; those without `..` require an exact length.
+                        let testable_case = TestableCase::Slice {
+                            len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
+                            op: if slice.is_some() {
+                                SliceLenOp::GreaterOrEqual
+                            } else {
+                                SliceLenOp::Equal
+                            },
+                        };
+                        InterPatKind::Refutable { place: unwrap_place(), testable_case, subpats }
+                    }
                 }
             }
 
