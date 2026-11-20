@@ -38,11 +38,9 @@ async fn test() {
     baz().await; // ok
 }
 
-/* FIXME(guswynn) update this test when async-fn-in-traits works
 trait Doer {
     #[must_use]
     async fn test_trait_method() -> i32;
-    WARNING must_use
     async fn test_other_trait() -> i32;
 }
 
@@ -51,12 +49,12 @@ impl Doer for Wowee {
         1
     }
     #[must_use]
+    //~^  WARN: the `must_use` attribute cannot be used on trait methods in impl blocks [unused_attributes]
+    //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     async fn test_other_trait() -> i32 {
-        WARNING must_use
         1
     }
 }
-*/
 
 fn main() {
 }
