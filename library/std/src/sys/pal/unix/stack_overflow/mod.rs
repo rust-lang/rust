@@ -60,7 +60,7 @@ impl Handler {
             return Handler::null();
         }
 
-        imp::make_handler(false)
+        imp::make_handler()
     }
 
     fn null() -> Handler {

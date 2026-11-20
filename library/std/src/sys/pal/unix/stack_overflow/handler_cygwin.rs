@@ -71,10 +71,8 @@ pub unsafe fn init() {
     reserve_stack();
 }
 
-pub fn make_handler(main_thread: bool) -> super::Handler {
-    if !main_thread {
-        reserve_stack();
-    }
+pub fn make_handler() -> super::Handler {
+    reserve_stack();
     super::Handler::null()
 }
 
