@@ -3441,7 +3441,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMutKey<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap before the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element after the
+    /// current cursor position.
     ///
     /// # Safety
     ///
@@ -3484,7 +3485,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMutKey<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap after the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element before
+    /// the current cursor position.
     ///
     /// # Safety
     ///
@@ -3530,7 +3532,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMutKey<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap before the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element after the
+    /// current cursor position.
     ///
     /// If the inserted key is not greater than the key before the cursor
     /// (if any), or if it not less than the key after the cursor (if any),
@@ -3559,7 +3562,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMutKey<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap after the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element before
+    /// the current cursor position.
     ///
     /// If the inserted key is not greater than the key before the cursor
     /// (if any), or if it not less than the key after the cursor (if any),
@@ -3647,8 +3651,9 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMut<'a, K, V, A> {
     /// Inserts a new key-value pair into the map in the gap that the
     /// cursor is currently pointing to.
     ///
-    /// After the insertion the cursor will be pointing at the gap after the
-    /// newly inserted element.
+    /// After the insertion the cursor will be pointing at the gap before the
+    /// newly inserted element, effectively inserting the new element after the
+    /// current cursor position.
     ///
     /// # Safety
     ///
@@ -3667,7 +3672,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMut<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap after the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element before
+    /// the current cursor position.
     ///
     /// # Safety
     ///
@@ -3686,7 +3692,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMut<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap before the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element after the
+    /// current cursor position.
     ///
     /// If the inserted key is not greater than the key before the cursor
     /// (if any), or if it not less than the key after the cursor (if any),
@@ -3701,7 +3708,8 @@ impl<'a, K: Ord, V, A: AllocatorClone> CursorMut<'a, K, V, A> {
     /// cursor is currently pointing to.
     ///
     /// After the insertion the cursor will be pointing at the gap after the
-    /// newly inserted element.
+    /// newly inserted element, effectively inserting the new element before
+    /// the current cursor position.
     ///
     /// If the inserted key is not greater than the key before the cursor
     /// (if any), or if it not less than the key after the cursor (if any),
