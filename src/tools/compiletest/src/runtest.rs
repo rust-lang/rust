@@ -1631,12 +1631,6 @@ impl<'test> TestCx<'test> {
         aux_path: Option<&Utf8Path>,
         input: Option<String>,
     ) -> ProcRes {
-        let cmdline = {
-            let cmdline = self.make_cmdline(&command, lib_path);
-            self.logv(format_args!("executing {cmdline}"));
-            cmdline
-        };
-
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::piped());
 
         let lint_driver_path =
@@ -1649,6 +1643,9 @@ impl<'test> TestCx<'test> {
                 .chain(aux_path)
                 .chain(lint_driver_path.filter(|_| !self.props.aux.lints.is_empty())),
         );
+
+        let cmdline = format!("{command:?}");
+        self.logv(format_args!("executing {cmdline}"));
 
         let mut child = disable_error_reporting(|| command.spawn())
             .unwrap_or_else(|e| panic!("failed to exec `{command:?}`: {e:?}"));
@@ -2188,23 +2185,6 @@ impl<'test> TestCx<'test> {
                 })
                 .collect(),
             None => Vec::new(),
-        }
-    }
-
-    fn make_cmdline(&self, command: &Command, libpath: &Utf8Path) -> String {
-        use crate::util;
-
-        // Linux and mac don't require adjusting the library search path
-        if cfg!(unix) {
-            format!("{:?}", command)
-        } else {
-            // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
-            // for diagnostic purposes
-            fn lib_path_cmd_prefix(path: &str) -> String {
-                format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
-            }
-
-            format!("{} {:?}", lib_path_cmd_prefix(libpath.as_str()), command)
         }
     }
 

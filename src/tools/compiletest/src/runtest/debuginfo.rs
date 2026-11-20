@@ -208,18 +208,14 @@ impl TestCx<'_> {
                 &["-quiet".as_ref(), "-batch".as_ref(), "-nx".as_ref(), &debugger_script];
 
             let gdb_path = self.config.gdb.as_ref().unwrap();
-            let Output { status, stdout, stderr } = Command::new(&gdb_path)
-                .args(debugger_opts)
-                .output()
-                .unwrap_or_else(|e| panic!("failed to exec `{gdb_path:?}`: {e:?}"));
-            let cmdline = {
-                let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
-                gdb.args(debugger_opts);
-                // FIXME(jieyouxu): don't pass an empty Path
-                let cmdline = self.make_cmdline(&gdb, Utf8Path::new(""));
-                self.logv(format_args!("executing {cmdline}"));
-                cmdline
-            };
+            let mut gdb = Command::new(&gdb_path);
+            gdb.args(debugger_opts);
+
+            let cmdline = format!("{gdb:?}");
+            self.logv(format_args!("executing {cmdline}"));
+
+            let Output { status, stdout, stderr } =
+                gdb.output().unwrap_or_else(|e| panic!("failed to exec `{gdb_path:?}`: {e:?}"));
 
             debugger_run_result = ProcRes {
                 status,
