@@ -901,6 +901,56 @@ macro_rules! uint_impl {
             intrinsics::bitreverse(self as $ActualT) as Self
         }
 
+        /// Repeats the bit pattern in `self` of the least significant `len`
+        /// bits, as many times as fits into [`Self::BITS`].
+        ///
+        /// This method returns `self` if `len` is greater than or equal to
+        /// [`Self::BITS`].
+        ///
+        /// # Panics
+        ///
+        /// This method will panic if `len` is zero.
+        ///
+        /// # Examples
+        ///
+        /// Please note that this example is shared among integer types, which
+        /// is why `u8` is used.
+        ///
+        /// ```
+        /// #![feature(uint_repeat_bits)]
+        ///
+        /// assert_eq!(0b1_u8.repeat_bits(1), 0b1111_1111);
+        /// assert_eq!(0b1110_u8.repeat_bits(2), 0b1010_1010);
+        /// assert_eq!(0b101_u8.repeat_bits(3), 0b01_101_101);
+        /// assert_eq!(0b1100_u8.repeat_bits(4), 0b1100_1100);
+        /// assert_eq!(0b1000_u8.repeat_bits(8), 0b1000);
+        /// ```
+        #[unstable(feature = "uint_repeat_bits", issue = "none")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn repeat_bits(self, len: u32) -> Self {
+            assert!(len > 0, "length of bit pattern must be at least 1");
+
+            if len >= Self::BITS {
+                return self;
+            }
+
+            let mask = (1 << len) - 1;
+            let pattern = self & mask;
+
+            let multiplier = Self::MAX / mask;
+            let rem = Self::BITS % len;
+            let multiplier = if rem == 0 {
+                multiplier
+            } else {
+                (multiplier >> rem) | (1 << (Self::BITS - rem))
+            };
+
+            pattern.wrapping_mul(multiplier)
+        }
+
         /// Converts an integer from big endian to the target's endianness.
         ///
         /// On big endian this is a no-op. On little endian the bytes are
