@@ -387,6 +387,9 @@ impl<'tcx> ConstToPat<'tcx> {
                         .lower_field_values_to_fieldpats(fields.iter().map(|ct| ct.to_value())),
                 }
             }
+            ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::TypeId) => {
+                PatKind::Constant { value }
+            }
             ty::Adt(def, _) => {
                 assert!(!def.is_union()); // Valtree construction would never succeed for unions.
                 PatKind::Leaf {

@@ -119,6 +119,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         // `str` morally acts like a newtype around `[u8]`
         ty::Tuple(inner_tys) => inner_tys.into_iter().collect(),
 
+        ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::TypeId) => return Ok(()),
         ty::Adt(adt, args) if adt.is_enum() || adt.is_struct() => {
             if !tcx.features().adt_const_params() {
                 for variant in adt.variants() {

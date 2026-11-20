@@ -1226,6 +1226,8 @@ enum PatConstKind {
     Float,
     /// Constant string values, tested via string equality.
     String,
+    /// Specifically `core::any::TypeId`.
+    TypeId,
     /// Any other constant-pattern is usually tested via some kind of equality
     /// check. Types that might be encountered here include:
     /// - raw pointers derived from integer values
@@ -1301,10 +1303,10 @@ enum TestKind<'tcx> {
     /// Test whether a `bool` is `true` or `false`.
     If,
 
-    /// Tests the place against a string constant using string equality.
-    StringEq {
+    /// Tests the place against a constant using `PartialEq::eq`.
+    CallPartialEq {
         /// Constant string value to test against.
-        /// Note that this value has type `str` (not `&str`).
+        /// Note that this value is not a reference, so `str`, not `&str`.
         value: ty::Value<'tcx>,
     },
 

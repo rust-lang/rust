@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::LangItem;
 use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -294,6 +295,10 @@ impl<'tcx> InterPat<'tcx> {
                     PatConstKind::Float
                 } else if pat_ty.is_str() {
                     PatConstKind::String
+                } else if let ty::Adt(def, _) = pat_ty.kind()
+                    && cx.tcx.is_lang_item(def.did(), LangItem::TypeId)
+                {
+                    PatConstKind::TypeId
                 } else {
                     // FIXME(Zalathar): This still covers several different
                     // categories (e.g. raw pointer, pattern-type)
