@@ -168,6 +168,8 @@ pub mod c_str;
 pub use core::ffi::VaArgSafe;
 #[stable(feature = "c_variadic", since = "1.99.0")]
 pub use core::ffi::VaList;
+#[unstable(feature = "c_longdouble", issue = "161787")]
+pub use core::ffi::c_longdouble;
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
