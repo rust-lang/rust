@@ -38,6 +38,7 @@ _x.py() {
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -92,6 +93,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
@@ -139,6 +141,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
@@ -186,6 +189,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--all-targets[Check all targets]' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
@@ -234,6 +238,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--all-targets[Check all targets]' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
@@ -286,6 +291,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--fix[]' \
 '--allow-dirty[]' \
 '--allow-staged[]' \
@@ -335,6 +341,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--allow-dirty[Pass \`--allow-dirty\` to \`cargo fix\`, allowing it to run even if the current git checkout has uncommitted changes]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
@@ -382,6 +389,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--check[check formatting instead of applying]' \
 '--all[apply to all appropriate files, not just those that have been modified]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
@@ -430,6 +438,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--open[open the docs in a browser]' \
 '--json[render the documentation in JSON format in addition to the usual HTML format]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
@@ -478,6 +487,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--open[open the docs in a browser]' \
 '--json[render the documentation in JSON format in addition to the usual HTML format]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
@@ -534,6 +544,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--no-fail-fast[run all tests regardless of failure]' \
 '--all-targets[Run all test targets (no doc tests)]' \
 '--doc[Only run doc tests]' \
@@ -601,6 +612,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--no-fail-fast[run all tests regardless of failure]' \
 '--all-targets[Run all test targets (no doc tests)]' \
 '--doc[Only run doc tests]' \
@@ -661,6 +673,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--no-fail-fast[run all tests regardless of failure]' \
 '--all-targets[Run all test targets (no doc tests)]' \
 '--doc[Only run doc tests]' \
@@ -713,6 +726,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -759,6 +773,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--all[Clean the entire build directory (not used by default)]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
@@ -806,6 +821,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -852,6 +868,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -899,6 +916,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -946,6 +964,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -992,6 +1011,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1040,6 +1060,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '--versioned-dirs[Always include version in subdir name]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
@@ -1087,6 +1108,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1147,6 +1169,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1198,6 +1221,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1249,6 +1273,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1300,6 +1325,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1348,6 +1374,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--snapshot-sources=[Copy the sources in a specific subdirectory in the \`build\` directory and compile everything from there. Allow keeping multiple revisions of \`rustc\` around without having to constantly checkout to another version. Intended primarily for benchmarking]:SNAPSHOT_SOURCES:_default' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \

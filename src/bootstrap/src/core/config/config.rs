@@ -354,6 +354,11 @@ pub(crate) struct Config {
     pub wasm_proc_macros: bool,
 
     pub wasm_panic_unwind_default: bool,
+
+    /// Copy the sources in a specific subdirectory in the `build` directory and compile everything
+    /// from there. Allow keeping multiple revisions of `rustc` around without having to constantly
+    /// checkout to another version. Intended primarily for benchmarking.
+    pub snapshot_sources: Option<String>,
 }
 
 impl Config {
@@ -428,6 +433,7 @@ impl Config {
             free_args: flags_free_args,
             ci: flags_ci,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            snapshot_sources: flags_snapshot_sources,
         } = flags;
 
         #[cfg(feature = "tracing")]
@@ -1603,6 +1609,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             sde: build_sde.map(PathBuf::from),
             skip,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            snapshot_sources: flags_snapshot_sources,
             src,
             stage,
             stage0_metadata,
