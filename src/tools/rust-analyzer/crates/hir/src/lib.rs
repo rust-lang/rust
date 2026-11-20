@@ -1530,7 +1530,7 @@ impl Function {
                 // because it has not `CallableDefId`.
                 // FIXME: This does not account for replacing `Self`. Do we really need that?
                 let Some(trait_method) = method.trait_method(db, impl_) else {
-                    return Type::unknown();
+                    return Type::unknown(db);
                 };
                 Function::from(trait_method).ty(db)
             }
@@ -1551,7 +1551,7 @@ impl Function {
                 // because it has not `CallableDefId`.
                 // FIXME: This does not account for replacing `Self`. Do we really need that?
                 let Some(trait_method) = method.trait_method(db, impl_) else {
-                    return Type::unknown();
+                    return Type::unknown(db);
                 };
                 Function::from(trait_method).fn_ptr_type(db)
             }
@@ -4506,7 +4506,7 @@ impl<'db> Type<'db> {
     fn from_value_def(db: &'db dyn HirDatabase, def: impl Into<ValueTyDefId>) -> Self {
         let def = def.into();
         let Some(ty) = db.value_ty(def) else {
-            return Type::unknown();
+            return Type::unknown(db);
         };
         let def = match def {
             ValueTyDefId::ConstId(it) => GenericDefId::ConstId(it),
@@ -4625,12 +4625,9 @@ impl<'db> Type<'db> {
             .unwrap_or_else(|| self.instantiate_with_errors(db))
     }
 
-    pub fn unknown() -> Self {
-        let interner = DbInterner::conjure();
-        Type::no_params(
-            Self::builtin_type_crate(interner.db()),
-            Ty::new_error(interner, ErrorGuaranteed),
-        )
+    pub fn unknown(db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
+        Type::no_params(Self::builtin_type_crate(db), Ty::new_error(interner, ErrorGuaranteed))
     }
 
     pub fn new_slice(db: &'db dyn HirDatabase, ty: Self) -> Self {
