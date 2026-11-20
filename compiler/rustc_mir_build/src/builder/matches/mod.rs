@@ -2797,6 +2797,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
     ) {
+        // Since `super let` bindings are scoped like temporaries, they can end up in the top-level
+        // scope of an `if let` guard. If the guard is lowered multiple times due to an or-pattern,
+        // these bindings should be de-duplicated across them like temporaries are. Otherwise, we'd
+        // need to drop each separate instance of them when leaving the match arm body.
+        // FIXME(super_let): if `super let` statements are replaced by a form that doesn't create
+        // bindings, this can be removed.
+        if self.fixed_temps_scope.is_some()
+            && self.fixed_temps_scope == self.region_scope_tree.var_scope(var_id.0.local_id)
+            && self.var_indices.contains_key(&var_id)
+        {
+            return;
+        }
+
         let tcx = self.tcx;
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
         let local = LocalDecl {
