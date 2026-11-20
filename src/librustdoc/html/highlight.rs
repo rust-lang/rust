@@ -878,7 +878,7 @@ impl Decorations {
             .0
             .iter()
             .flat_map(|(&kind, ranges)| ranges.iter().map(move |&(lo, hi)| ((lo, kind), hi)))
-            .unzip();
+            .collect();
 
         // Sort the sequences in document order.
         starts.sort_by_key(|(lo, _)| *lo);

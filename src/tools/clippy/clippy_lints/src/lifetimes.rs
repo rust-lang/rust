@@ -816,7 +816,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 None
             }
         })
-        .unzip();
+        .collect();
 
     if elidable_lts.is_empty() {
         return;

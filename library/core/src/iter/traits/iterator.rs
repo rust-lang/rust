@@ -3495,6 +3495,11 @@ pub const trait Iterator {
     /// assert_eq!(y, [2, 5]);
     /// assert_eq!(z, [3, 6]);
     /// ```
+    #[deprecated(
+        since = "CURRENT_RUSTC_VERSION",
+        note = "Use `collect` instead",
+        suggestion = "collect"
+    )]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_non_const_trait_method]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB)
@@ -3503,9 +3508,7 @@ pub const trait Iterator {
         FromB: Default + Extend<B>,
         Self: Sized + Iterator<Item = (A, B)>,
     {
-        let mut unzipped: (FromA, FromB) = Default::default();
-        unzipped.extend(self);
-        unzipped
+        self.collect()
     }
 
     /// Creates an iterator which copies all of its elements.

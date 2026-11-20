@@ -516,7 +516,7 @@ fn expand_simple_derive_with_parsed(
                 (param, quote! {invoc_span => #ident2 , })
             }
         })
-        .unzip();
+        .collect();
 
     if constrain_to_trait {
         where_block.extend(info.associated_types.iter().map(|it| {
