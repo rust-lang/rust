@@ -1,6 +1,7 @@
 use crate::array;
 use crate::iter::adapters::SourceIter;
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce};
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
