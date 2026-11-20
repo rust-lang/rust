@@ -36,6 +36,10 @@ cfg_select! {
         mod wasi;
         pub use self::wasi::*;
     }
+    target_os = "web" => {
+        mod web;
+        pub use self::web::*;
+    }
     target_family = "wasm" => {
         mod wasm;
         pub use self::wasm::*;

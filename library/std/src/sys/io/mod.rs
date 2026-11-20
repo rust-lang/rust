@@ -4,7 +4,7 @@ mod error;
 
 mod is_terminal {
     cfg_select! {
-        any(target_family = "unix", target_os = "wasi") => {
+        any(target_family = "unix", target_os = "wasi", target_os = "web") => {
             mod isatty;
             pub use isatty::*;
         }
@@ -49,6 +49,7 @@ pub use error::errno_location;
         ))
     ),
     target_os = "wasi",
+    target_os = "web",
 ))]
 pub use error::set_errno;
 pub use error::{decode_error_kind, errno, format_error, is_interrupted};
