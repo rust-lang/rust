@@ -234,10 +234,10 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::from_str(expr), /* force_no_backtrace */ true);
 }
 
-/// Needed by `non-fmt-panics` lint.
+/// Used by `non-fmt-panics` lint.
 #[inline]
 #[track_caller]
-#[rustc_diagnostic_item = "unreachable_display"]
+#[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint.
 pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
 }
@@ -252,10 +252,10 @@ pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
 }
 
-/// Needed for const-evaluated panics.
+/// Used for const-evaluated panics.
 #[inline]
 #[track_caller]
-#[lang = "panic_display"]
+#[lang = "panic_display"] // Needed for const-evaluated panics.
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
