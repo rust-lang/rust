@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, CodeModel, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, SanitizerSet,
-    Target, TargetMetadata, TargetOptions,
+    StdCrate, StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -11,6 +11,7 @@ pub(crate) fn target() -> Target {
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crate(StdCrate::Alloc)),
         },
         llvm_target: "riscv64".into(),
         pointer_width: 64,

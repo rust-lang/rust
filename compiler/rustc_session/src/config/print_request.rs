@@ -97,6 +97,9 @@ pub enum PrintKind {
     /// Target JSON specification schema.
     TargetSpecJsonSchema,
 
+    /// List of standard library crates supported for a target.
+    TargetStandardLibrarySupport,
+
     /// List of available TLS models for the current backend.
     TlsModels,
 
@@ -144,6 +147,7 @@ impl PrintKind {
             TargetList => "target-list",
             TargetSpecJson => "target-spec-json",
             TargetSpecJsonSchema => "target-spec-json-schema",
+            TargetStandardLibrarySupport => "target-standard-library-support",
             TlsModels => "tls-models",
             WasmProcMacroTuple => "wasm-proc-macro-tuple",
             // tidy-alphabetical-end
@@ -153,9 +157,21 @@ impl PrintKind {
     fn category(self) -> PrintCategory {
         use PrintKind::*;
         match self {
-            TargetList | TargetSpecJsonSchema | AllTargetSpecsJson | TargetSpecJson
-            | TargetCPUs | TargetFeatures | DeploymentTarget | HostTuple | SupportedCrateTypes
-            | Sysroot | TargetLibdir | Cfg | CheckCfg | WasmProcMacroTuple => PrintCategory::Target,
+            TargetList
+            | TargetSpecJsonSchema
+            | AllTargetSpecsJson
+            | TargetSpecJson
+            | TargetCPUs
+            | TargetFeatures
+            | DeploymentTarget
+            | HostTuple
+            | SupportedCrateTypes
+            | Sysroot
+            | TargetLibdir
+            | Cfg
+            | CheckCfg
+            | WasmProcMacroTuple
+            | TargetStandardLibrarySupport => PrintCategory::Target,
 
             BackendHasMnemonic
             | BackendHasZstd
@@ -204,6 +220,7 @@ impl PrintKind {
             SupportedCrateTypes => false,
             TargetSpecJson => false,
             TargetSpecJsonSchema => false,
+            TargetStandardLibrarySupport => false,
             WasmProcMacroTuple => false,
         }
     }

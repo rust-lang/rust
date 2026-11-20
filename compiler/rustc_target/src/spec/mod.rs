@@ -2049,6 +2049,43 @@ pub struct TargetMetadata {
     /// Whether a target has the `std` library. This is usually true for targets running
     /// on an operating system.
     pub std: Option<bool>,
+    /// Determine which standard library crates are supported for a target. See [StdSupport] for
+    /// more details.
+    pub standard_library_support: Option<StdSupport>,
+}
+
+/// Information about standard library support. Was introduced in RFC 3874 (`build-std=always`).
+#[derive(PartialEq, Clone, Debug, schemars::JsonSchema, serde_derive::Deserialize)]
+pub struct StdSupport {
+    /// The standard library crates that can be built for this target
+    /// on a stable toolchain.
+    pub supported: StaticCow<[StdCrate]>,
+    /// The standard library crates that are built by default on this target.
+    ///
+    /// Cannot exceed `supported` level.
+    pub default: StaticCow<[StdCrate]>,
+}
+
+crate::target_spec_enum! {
+    /// An enum representing possible values for the fields of [`StdSupport`].
+    pub enum StdCrate {
+        Core = "core",
+        Alloc = "alloc",
+        Std = "std",
+    }
+
+    parse_error_type = "standard library support";
+}
+
+impl StdSupport {
+    pub fn from_crate(krate: StdCrate) -> StdSupport {
+        let crates: &[_] = match krate {
+            StdCrate::Std => &[StdCrate::Core, StdCrate::Alloc, StdCrate::Std],
+            StdCrate::Core => &[StdCrate::Core, StdCrate::Alloc],
+            StdCrate::Alloc => &[StdCrate::Core],
+        };
+        StdSupport { supported: StaticCow::Borrowed(crates), default: StaticCow::Borrowed(crates) }
+    }
 }
 
 impl Target {
