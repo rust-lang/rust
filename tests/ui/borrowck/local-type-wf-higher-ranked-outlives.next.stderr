@@ -1,0 +1,20 @@
+error: lifetime bound not satisfied
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:12:9
+   |
+LL |     let _value = None::<RequiresTrait<u8>>;
+   |         ^^^^^^
+   |
+note: the lifetime `'b` defined here...
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:9:33
+   |
+LL | struct RequiresTrait<T: for<'a, 'b> Trait<'a, 'b>>(T);
+   |                                 ^^
+note: ...must outlive the lifetime `'a` defined here
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:9:29
+   |
+LL | struct RequiresTrait<T: for<'a, 'b> Trait<'a, 'b>>(T);
+   |                             ^^
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: aborting due to 1 previous error
+

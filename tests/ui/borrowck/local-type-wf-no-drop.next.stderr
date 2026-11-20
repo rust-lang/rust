@@ -1,0 +1,31 @@
+error[E0597]: `text` does not live long enough
+  --> $DIR/local-type-wf-no-drop.rs:15:20
+   |
+LL |     let text = String::from("temporary");
+   |         ---- binding `text` declared here
+LL |     let mut value = RequiresStatic(None);
+LL |     value.0 = Some(&text);
+   |     ---------------^^^^^-
+   |     |              |
+   |     |              borrowed value does not live long enough
+   |     assignment requires that `text` is borrowed for `'static`
+LL |
+LL | }
+   | - `text` dropped here while still borrowed
+
+error[E0597]: `text` does not live long enough
+  --> $DIR/local-type-wf-no-drop.rs:22:20
+   |
+LL |     let text = String::from("temporary");
+   |         ---- binding `text` declared here
+LL |     let mut value = Outlives(fixed, None);
+   |                              ----- this usage requires that `text` is borrowed for `'static`
+LL |     value.1 = Some(&text);
+   |                    ^^^^^ borrowed value does not live long enough
+LL |
+LL | }
+   | - `text` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

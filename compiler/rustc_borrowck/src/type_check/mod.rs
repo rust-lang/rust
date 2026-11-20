@@ -11,6 +11,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -159,6 +160,7 @@ pub(crate) fn type_check<'tcx>(
         constraints: &mut constraints,
         deferred_closure_requirements: &mut deferred_closure_requirements,
         polonius_context,
+        used_locals: DenseBitSet::new_empty(0),
     };
 
     typeck.check_user_type_annotations();
@@ -245,6 +247,7 @@ struct TypeChecker<'a, 'tcx> {
     deferred_closure_requirements: &'a mut DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_context: Option<PoloniusContext<'tcx>>,
+    used_locals: DenseBitSet<Local>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -582,9 +585,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
     }
 
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _location: Location) {
+        if context.is_use() && !context.is_drop() {
+            self.used_locals.insert(local);
+        }
+    }
+
     #[instrument(skip(self, body), level = "debug")]
     fn visit_body(&mut self, body: &Body<'tcx>) {
         debug_assert!(std::ptr::eq(self.body, body));
+
+        let prev_used =
+            mem::replace(&mut self.used_locals, DenseBitSet::new_empty(body.local_decls.len()));
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             self.visit_local_decl(local, local_decl);
@@ -599,6 +611,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             self.visit_terminator(block_data.terminator(), location);
             self.check_iscleanup(block_data);
+        }
+
+        let used_locals = mem::replace(&mut self.used_locals, prev_used);
+        for (local, local_decl) in body.local_decls.iter_enumerated() {
+            if self.body.local_kind(local) == LocalKind::Temp && used_locals.contains(local) {
+                self.prove_clause(
+                    ty::ClauseKind::WellFormed(local_decl.ty.into()),
+                    Locations::All(local_decl.source_info.span),
+                    ConstraintCategory::Boring,
+                );
+            }
         }
     }
 
