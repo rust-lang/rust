@@ -11,16 +11,19 @@
 
 pub mod specialization_graph;
 
+use std::iter;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::COHERENCE_LEAK_CHECK;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::trait_def::EXACT_MATCH_THRESHOLD;
 use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, sym};
 use specialization_graph::GraphExt;
@@ -399,9 +402,26 @@ pub(super) fn specialization_graph_provider(
     let mut trait_impls: Vec<DefId> = all_impls.blanket_impls().to_vec();
     let has_local_blanket_impl =
         all_impls.blanket_impls().iter().any(|impl_def_id| impl_def_id.is_local());
+
+    // Record any exact-match self tys from large buckets in advance. This is an optimization for
+    // ADTs like `Foo<N>` instantiated with many values of `N`.
+    let mut exact_match_self_tys_map = DefIdMap::default();
+
     for (&simplified_self, bucket) in all_impls.non_blanket_impls() {
         if has_local_blanket_impl || bucket.iter().any(|impl_def_id| impl_def_id.is_local()) {
             trait_impls.extend(bucket.iter().copied());
+
+            if bucket.len() >= EXACT_MATCH_THRESHOLD {
+                let exact_match_self_tys =
+                    tcx.trait_impl_exact_match_self_tys((trait_id, simplified_self));
+                assert_eq!(bucket.len(), exact_match_self_tys.len());
+                for (&impl_def_id, &exact_match_self_ty) in iter::zip(bucket, exact_match_self_tys)
+                {
+                    if let Some(exact_match_self_ty) = exact_match_self_ty {
+                        exact_match_self_tys_map.insert(impl_def_id, exact_match_self_ty);
+                    }
+                }
+            }
         } else if cfg!(debug_assertions) {
             // Assert metadata-derived key matches what the overlap checker recomputes.
             for &impl_def_id in bucket {
@@ -428,7 +448,8 @@ pub(super) fn specialization_graph_provider(
     for impl_def_id in trait_impls {
         if let Some(impl_def_id) = impl_def_id.as_local() {
             // This is where impl overlap checking happens:
-            let insert_result = sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode);
+            let insert_result =
+                sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode, &exact_match_self_tys_map);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
                 Err(overlap) => (Some(overlap), None),
