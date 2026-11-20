@@ -25,7 +25,7 @@ enum Enum1 {
 // EMIT_MIR clone_as_copy.clone_as_copy.runtime-optimized.after.mir
 fn clone_as_copy(v: &NestCopy) -> NestCopy {
     // CHECK-LABEL: fn clone_as_copy(
-    // CHECK: let [[DEAD_VAR:_.*]]: &AllCopy;
+    // CHECK: let mut [[DEAD_VAR:_.*]]: &AllCopy;
     // CHECK: bb0: {
     // CHECK-NEXT: DBG: [[DEAD_VAR]] = &((*_1).1: AllCopy)
     // CHECK-NEXT: _0 = copy (*_1);

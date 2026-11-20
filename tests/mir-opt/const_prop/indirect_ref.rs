@@ -70,12 +70,10 @@ pub fn indirect_deref_2(x: &(&i32,), out: fn(i32), clobber: fn()) {
 pub fn indirect_ref_1(x: &(&i32,), out: fn(&i32), clobber: fn()) {
     // CHECK-LABEL: fn indirect_ref_1
     // CHECK: out => [[out:_.*]];
-    // CHECK: [[y1_0:_.*]] = no_retag copy ((*_1).0: &i32);
-    // CHECK: [[reborrow_y1_0:_.*]] = &(*[[y1_0]]);
-    // CHECK: copy [[out]](move [[reborrow_y1_0]]) -> [
-    // CHECK: [[y2_0:_.*]] = no_retag copy ((*_1).0: &i32);
-    // CHECK: [[reborrow_y2_0:_.*]] = &(*[[y2_0]]);
-    // CHECK: copy [[out]](move [[reborrow_y2_0]]) -> [
+    // CHECK: [[y1_0:_.*]] = copy ((*_1).0: &i32);
+    // CHECK: copy [[out]](move [[y1_0]]) -> [
+    // CHECK: [[y2_0:_.*]] = copy ((*_1).0: &i32);
+    // CHECK: copy [[out]](move [[y2_0]]) -> [
     out((*x).0);
     clobber();
     out((*x).0);
@@ -87,13 +85,11 @@ pub fn indirect_ref_2(x: &(&i32,), out: fn(&i32), clobber: fn()) {
     // CHECK-LABEL: fn indirect_ref_2
     // CHECK: out => [[out:_.*]];
     // CHECK: [[y1:_.*]] = copy (*_1);
-    // CHECK: [[y1_0:_.*]] = no_retag copy ([[y1]].0: &i32);
-    // CHECK: [[reborrow_y1_0:_.*]] = &(*[[y1_0]]);
-    // CHECK: copy [[out]](move [[reborrow_y1_0]]) -> [
+    // CHECK: [[y1_0:_.*]] = copy ([[y1]].0: &i32);
+    // CHECK: copy [[out]](move [[y1_0]]) -> [
     // CHECK: [[y2:_.*]] = copy (*_1);
-    // CHECK: [[y2_0:_.*]] = no_retag copy ([[y2]].0: &i32);
-    // CHECK: [[reborrow_y2_0:_.*]] = &(*[[y2_0]]);
-    // CHECK: copy [[out]](move [[reborrow_y2_0]]) -> [
+    // CHECK: [[y2_0:_.*]] = copy ([[y2]].0: &i32);
+    // CHECK: copy [[out]](move [[y2_0]]) -> [
     let y1 = *x;
     out((y1).0);
     clobber();
