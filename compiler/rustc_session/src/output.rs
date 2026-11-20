@@ -1,5 +1,4 @@
 //! Related to out filenames of compilation (e.g. binaries).
-
 use std::path::Path;
 
 use rustc_span::{Span, Symbol};
@@ -85,7 +84,8 @@ pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span
 }
 
 pub fn filename_for_metadata(sess: &Session, outputs: &OutputFilenames) -> OutFileName {
-    let out_filename = outputs.path(OutputType::Metadata);
+    let output_type = sess.opts.output_types.metadata_output_type();
+    let out_filename = outputs.path(output_type);
     if let OutFileName::Real(ref path) = out_filename {
         check_file_is_writeable(path, sess);
     }
