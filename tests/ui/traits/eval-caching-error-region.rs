@@ -16,8 +16,7 @@ where
 // even if candidate assembly can't assemble anything for `&'?0 N: Add<?1>` anyways. This
 // led to an ICE.
 pub fn compute<N: Numoid>(a: N) {
-    let _ = &a + a;
-    //~^ ERROR cannot add `N` to `&N`
+    let _ = &a + a; //~ ERROR can't add `N` to `&N`
 }
 
 fn main() {}

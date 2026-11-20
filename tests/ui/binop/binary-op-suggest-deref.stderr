@@ -257,7 +257,7 @@ LL |     _ = &&0 == Foo;
              i64
            and 8 others
 
-error[E0369]: binary operation `==` cannot be applied to type `Foo`
+error[E0369]: can't compare `Foo` to `&&{integer}`
   --> $DIR/binary-op-suggest-deref.rs:60:13
    |
 LL |     _ = Foo == &&0;

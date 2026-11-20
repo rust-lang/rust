@@ -13,7 +13,6 @@ fn main() {
     // This can't make sense as it would copy the classes
     let i = vec![r(0)];
     let j = vec![r(1)];
-    let k = i + j;
-    //~^ ERROR cannot add `Vec<R>` to `Vec<R>`
+    let k = i + j; //~ ERROR: can't add `Vec<R>`
     println!("{:?}", j);
 }

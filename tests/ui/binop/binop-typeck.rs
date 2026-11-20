@@ -4,5 +4,5 @@ fn main() {
     let x = true;
     let y = 1;
     let z = x + y;
-    //~^ ERROR cannot add `{integer}` to `bool`
+    //~^ ERROR: can't add `{integer}` to `bool`
 }

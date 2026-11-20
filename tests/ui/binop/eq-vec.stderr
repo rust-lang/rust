@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `Vec<Foo>`
+error[E0369]: can't compare `Vec<Foo>`
   --> $DIR/eq-vec.rs:11:5
    |
 LL |     assert_eq!(vec1, vec2);

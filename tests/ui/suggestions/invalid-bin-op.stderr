@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `S<T>`
+error[E0369]: can't compare `S<T>`
   --> $DIR/invalid-bin-op.rs:2:15
    |
 LL |     let _ = s == t;

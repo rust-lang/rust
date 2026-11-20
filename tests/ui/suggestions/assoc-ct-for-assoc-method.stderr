@@ -30,7 +30,7 @@ LL -     let z: i32 = i32::max;
 LL +     let z: i32 = i32::MAX;
    |
 
-error[E0369]: cannot subtract `{integer}` from `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
+error[E0369]: can't subtract `{integer}` from `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
   --> $DIR/assoc-ct-for-assoc-method.rs:22:27
    |
 LL |     let y: i32 = i32::max - 42;

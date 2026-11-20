@@ -10,7 +10,7 @@ fn main() {
 
     let x = f16b::from_bits(0x3f80);
     let _ = x + x;
-    //~^ ERROR cannot add `f16b` to `f16b`
+    //~^ ERROR can't add `f16b`
 
     let _ = 1u16 as f16b;
     //~^ ERROR non-primitive cast

@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `NoCloneOrEq`
+error[E0369]: can't compare `NoCloneOrEq`
   --> $DIR/deriving-no-inner-impl-error-message.rs:5:5
    |
 LL | #[derive(PartialEq)]

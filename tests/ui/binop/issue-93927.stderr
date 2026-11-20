@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `MyType<T>`
+error[E0369]: can't compare `MyType<T>`
   --> $DIR/issue-93927.rs:14:9
    |
 LL |     val == val

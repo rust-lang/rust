@@ -84,7 +84,7 @@ LL |     let x = f16b::from_bits(0x3f80);
    = help: add `#![feature(f16b)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0369]: cannot add `f16b` to `f16b`
+error[E0369]: can't add `f16b`
   --> $DIR/feature-gate-f16b.rs:21:15
    |
 LL |     let _ = x + x;

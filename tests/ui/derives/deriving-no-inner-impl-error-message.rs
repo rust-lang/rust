@@ -2,12 +2,12 @@ struct NoCloneOrEq;
 
 #[derive(PartialEq)]
 struct E {
-    x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+    x: NoCloneOrEq //~ ERROR: can't compare `NoCloneOrEq`
 }
 #[derive(Clone)]
 struct C {
     x: NoCloneOrEq
-    //~^ ERROR `NoCloneOrEq: Clone` is not satisfied
+    //~^ ERROR: `NoCloneOrEq: Clone` is not satisfied
 }
 
 

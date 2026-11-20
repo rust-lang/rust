@@ -4,6 +4,5 @@ fn foo(s: &i32) -> &i32 {
 }
 fn main() {
     let y;
-    if foo == y {}
-    //~^ ERROR binary operation `==` cannot be applied to type
+    if foo == y {} //~ ERROR: can't compare
 }

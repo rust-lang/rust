@@ -11,7 +11,7 @@ LL | union U {
    | ^^^^^^^
    = note: manually `impl Debug for U`
 
-error[E0369]: binary operation `==` cannot be applied to type `U`
+error[E0369]: can't compare `U`
   --> $DIR/union-no-derive-suggestion.rs:22:15
    |
 LL |     let _ = u == U { a: 0 };
@@ -27,7 +27,7 @@ LL | union U {
 note: the trait `PartialEq` must be implemented
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
-error[E0369]: binary operation `<` cannot be applied to type `U`
+error[E0369]: binary operation `<` can't be applied to type `U`
   --> $DIR/union-no-derive-suggestion.rs:25:15
    |
 LL |     let _ = u < U { a: 1 };

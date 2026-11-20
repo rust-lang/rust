@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() -> i32 {a}`
+error[E0369]: can't compare `fn() -> i32 {a}` to `{integer}`
   --> $DIR/binary-operation-error-on-function-70724.rs:7:5
    |
 LL |     assert_eq!(a, 0);

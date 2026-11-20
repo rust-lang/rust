@@ -1,4 +1,4 @@
-error[E0369]: cannot add `()` to `()`
+error[E0369]: can't add `()`
   --> $DIR/for-loop-type-error.rs:4:16
    |
 LL |     let x = () + ();

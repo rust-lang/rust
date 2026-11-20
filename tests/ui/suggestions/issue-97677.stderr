@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `N`
+error[E0369]: can't add `{integer}` to `N`
   --> $DIR/issue-97677.rs:4:7
    |
 LL |     n + 10

@@ -1,4 +1,4 @@
-error[E0369]: cannot add `T` to `Wrapper<T>`
+error[E0369]: can't add `T` to `Wrapper<T>`
   --> $DIR/restrict-type-not-param.rs:8:7
    |
 LL |     a + b

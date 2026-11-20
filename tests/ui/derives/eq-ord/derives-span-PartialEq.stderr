@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `&Error`
+error[E0369]: can't compare `&Error`
   --> $DIR/derives-span-PartialEq.rs:9:9
    |
 LL | #[derive(PartialEq)]
@@ -18,7 +18,7 @@ LL + #[derive(PartialEq)]
 LL | struct Error;
    |
 
-error[E0369]: binary operation `==` cannot be applied to type `&Error`
+error[E0369]: can't compare `&Error`
   --> $DIR/derives-span-PartialEq.rs:16:9
    |
 LL | #[derive(PartialEq)]
@@ -38,7 +38,7 @@ LL + #[derive(PartialEq)]
 LL | struct Error;
    |
 
-error[E0369]: binary operation `==` cannot be applied to type `Error`
+error[E0369]: can't compare `Error`
   --> $DIR/derives-span-PartialEq.rs:21:5
    |
 LL | #[derive(PartialEq)]
@@ -58,7 +58,7 @@ LL + #[derive(PartialEq)]
 LL | struct Error;
    |
 
-error[E0369]: binary operation `==` cannot be applied to type `Error`
+error[E0369]: can't compare `Error`
   --> $DIR/derives-span-PartialEq.rs:26:5
    |
 LL | #[derive(PartialEq)]

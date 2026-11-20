@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `bool` by `&mut bool`
+error[E0369]: can't multiply `bool` by `&mut bool`
   --> $DIR/nested-assignment-may-be-deref.rs:3:5
    |
 LL |     if true
@@ -11,8 +11,8 @@ help: you might have meant to write a semicolon here
 LL |     if true;
    |            +
 
-error[E0369]: cannot multiply `bool` by `&mut bool`
-  --> $DIR/nested-assignment-may-be-deref.rs:10:5
+error[E0369]: can't multiply `bool` by `&mut bool`
+  --> $DIR/nested-assignment-may-be-deref.rs:9:5
    |
 LL |     y = true
    |         ---- bool

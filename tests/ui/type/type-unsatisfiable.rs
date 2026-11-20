@@ -54,6 +54,5 @@ fn main() {
     let hey: Box<dyn Vector2<ScalarType = i32>> = Box::new(Vec2 { x: 1, y: 2 });
     let word: Box<dyn Vector2<ScalarType = i32>> = Box::new(Vec2 { x: 1, y: 2 });
 
-    let bar = *hey - *word;
-    //[usage]~^ ERROR cannot subtract
+    let bar = *hey - *word; //[usage]~ ERROR: can't subtract
 }

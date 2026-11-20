@@ -7,7 +7,7 @@ use std::collections::HashSet;
 pub struct MyStruct {
     pub parameters: HashSet<String, String>,
     //~^ NOTE `String` does not implement `BuildHasher`
-    //~| ERROR binary operation
+    //~| ERROR can't compare `HashSet<String, String>`
     //~| HELP use a HashMap
 }
 

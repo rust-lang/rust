@@ -1,4 +1,4 @@
-error[E0369]: cannot add `()` to `()`
+error[E0369]: can't add `()`
   --> $DIR/coercion-check-for-addition-issue-40610.rs:4:8
    |
 LL |     () + f(&[1.0]);

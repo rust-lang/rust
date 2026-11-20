@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `&str`
+error[E0369]: can't add `{integer}` to `&str`
   --> $DIR/dont-suggest-type-error.rs:2:25
    |
 LL |     const FOO = "hello" + 1;

@@ -1,4 +1,4 @@
-error[E0369]: cannot add `u32` to `pattern_type!(u32 is 1..)`
+error[E0369]: can't add `u32` to `pattern_type!(u32 is 1..)`
   --> $DIR/range_patterns_unusable_math.rs:12:15
    |
 LL |     let x = x + 1_u32;

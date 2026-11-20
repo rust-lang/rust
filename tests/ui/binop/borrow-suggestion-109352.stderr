@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `&mut Foo` by `&Foo`
+error[E0369]: can't multiply `&mut Foo` by `&Foo`
   --> $DIR/borrow-suggestion-109352.rs:21:25
    |
 LL |     let _ = ref_mut_foo * ref_foo;
@@ -12,8 +12,8 @@ help: consider reborrowing this side
 LL |     let _ = &*ref_mut_foo * ref_foo;
    |             ++
 
-error[E0369]: cannot multiply `&mut Foo` by `&mut Foo`
-  --> $DIR/borrow-suggestion-109352.rs:23:25
+error[E0369]: can't multiply `&mut Foo`
+  --> $DIR/borrow-suggestion-109352.rs:22:25
    |
 LL |     let _ = ref_mut_foo * ref_mut_foo;
    |             ----------- ^ ----------- &mut Foo
@@ -26,8 +26,8 @@ help: consider reborrowing both sides
 LL |     let _ = &*ref_mut_foo * &*ref_mut_foo;
    |             ++              ++
 
-error[E0369]: cannot multiply `&mut Foo` by `&Foo`
-  --> $DIR/borrow-suggestion-109352.rs:25:25
+error[E0369]: can't multiply `&mut Foo` by `&Foo`
+  --> $DIR/borrow-suggestion-109352.rs:23:25
    |
 LL |     let _ = ref_mut_foo * &owned_foo;
    |             ----------- ^ ---------- &Foo

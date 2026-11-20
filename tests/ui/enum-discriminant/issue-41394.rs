@@ -1,6 +1,6 @@
 enum Foo {
     A = "" + 1
-    //~^ ERROR cannot add `{integer}` to `&str`
+    //~^ ERROR: can't add `{integer}` to `&str`
 }
 
 enum Bar {

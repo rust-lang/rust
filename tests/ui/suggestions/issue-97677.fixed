@@ -2,7 +2,7 @@
 
 fn add_ten<N: std::ops::Add<i32, Output = N>>(n: N) -> N {
     n + 10
-    //~^ ERROR cannot add `{integer}` to `N`
+    //~^ ERROR: can't add `{integer}` to `N`
 }
 
 fn main() { add_ten(0); }

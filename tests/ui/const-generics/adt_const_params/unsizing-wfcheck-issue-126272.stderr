@@ -71,7 +71,7 @@ LL | struct Bar<T>(T);
    = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
    = note: required for the cast from `&&&'static Bar<(dyn Debug + 'static)>` to `&dyn Debug`
 
-error[E0369]: binary operation `==` cannot be applied to type `&Bar<dyn Debug>`
+error[E0369]: can't compare `&Bar<dyn Debug>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]

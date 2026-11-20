@@ -17,7 +17,7 @@ LL -         let opt_target = cell.borrow();
 LL +         let opt_target = RefCell::<i32>::borrow(&cell);
    |
 
-error[E0369]: binary operation `>` cannot be applied to type `std::sync::MutexGuard<'_, RefCell<i32>>`
+error[E0369]: no implementation for `std::sync::MutexGuard<'_, RefCell<i32>> > {integer}`
   --> $DIR/method-shadowed-by-trait-in-binop.rs:20:29
    |
 LL |         let opt_target = cell.borrow();

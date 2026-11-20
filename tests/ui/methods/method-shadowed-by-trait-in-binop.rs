@@ -17,7 +17,7 @@ impl A {
         //~^ NOTE: method not found in `&std::sync::MutexGuard<'_, RefCell<i32>>`
         //~| NOTE: this returns `&std::sync::MutexGuard<'_, RefCell<i32>>`
         //~| NOTE: you might have meant to call `std::cell::RefCell::<T>::borrow` instead
-        let _ = *opt_target > 1; //~ ERROR: binary operation `>` cannot be applied
+        let _ = *opt_target > 1; //~ ERROR: no implementation for `std::sync::MutexGuard
         //~^ NOTE: std::sync::MutexGuard<'_, RefCell<i32>>
         //~| NOTE: `std::sync::MutexGuard<'_, RefCell<i32>>` does not implement `PartialOrd<{integer}>`
         //~| NOTE: this returns `std::sync::MutexGuard<'_, RefCell<i32>>`

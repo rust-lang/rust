@@ -11,7 +11,7 @@ struct Foo {
     nested: &'static Bar<dyn std::fmt::Debug>,
     //~^ ERROR the size for values
     //~| ERROR the size for values
-    //~| ERROR binary operation `==` cannot
+    //~| ERROR can't compare `&Bar<dyn Debug>`
     //~| ERROR the trait bound `dyn Debug: Eq`
     //~| ERROR the size for values
 }

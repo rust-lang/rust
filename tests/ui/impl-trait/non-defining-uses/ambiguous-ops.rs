@@ -15,7 +15,7 @@ fn mk<T>() -> T {
 fn add() -> impl Sized {
     let unconstrained = if false {
         add() + 1
-        //[current]~^ ERROR cannot add `{integer}` to `impl Sized
+        //[current]~^ ERROR: can't add `{integer}` to `impl Sized`
     } else {
         let with_infer = mk();
         let _ = with_infer + 1;

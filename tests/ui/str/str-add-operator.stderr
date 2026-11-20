@@ -1,4 +1,4 @@
-error[E0369]: cannot add `&str` to `&str`
+error[E0369]: can't add `&str`
   --> $DIR/str-add-operator.rs:5:14
    |
 LL |      let _a = b + ", World!";

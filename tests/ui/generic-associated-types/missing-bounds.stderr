@@ -51,7 +51,7 @@ help: consider further restricting this bound
 LL | impl<B: Add<Output = B>> Add for C<B> {
    |            ++++++++++++
 
-error[E0369]: cannot add `B` to `B`
+error[E0369]: can't add `B`
   --> $DIR/missing-bounds.rs:33:21
    |
 LL |         Self(self.0 + rhs.0)

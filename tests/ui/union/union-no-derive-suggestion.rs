@@ -19,10 +19,10 @@ fn main() {
     println!("{u:?}"); //~ ERROR `U` doesn't implement `Debug`
                        //~| NOTE manually `impl Debug for U`
     // PartialEq
-    let _ = u == U { a: 0 }; //~ ERROR binary operation `==` cannot be applied to type `U`
+    let _ = u == U { a: 0 }; //~ ERROR can't compare `U`
                               //~| NOTE the trait `PartialEq` must be implemented
     // PartialOrd
-    let _ = u < U { a: 1 }; //~ ERROR binary operation `<` cannot be applied to type `U`
+    let _ = u < U { a: 1 }; //~ ERROR binary operation `<` can't be applied to type `U`
                              //~| NOTE the trait `PartialOrd` must be implemented
     // Default
     let _: U = Default::default(); //~ ERROR the trait bound `U: Default` is not satisfied

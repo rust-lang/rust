@@ -1,4 +1,4 @@
-error[E0369]: cannot add `{integer}` to `bool`
+error[E0369]: can't add `{integer}` to `bool`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:42:13
    |
 LL |     a.field + 5;
@@ -22,7 +22,7 @@ LL |         pub field: bool,
 LL |     impl std::ops::Deref for A {
    |     -------------------------- the field was accessed through this `Deref`
 
-error[E0369]: cannot add `{integer}` to `bool`
+error[E0369]: can't add `{integer}` to `bool`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:46:13
    |
 LL |     a.field + 5;

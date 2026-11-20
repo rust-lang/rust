@@ -30,7 +30,7 @@ impl<B: std::ops::Add<Output = B>> Add for D<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0) //~ ERROR cannot add `B` to `B`
+        Self(self.0 + rhs.0) //~ ERROR: can't add `B`
     }
 }
 

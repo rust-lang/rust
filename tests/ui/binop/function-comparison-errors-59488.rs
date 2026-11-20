@@ -13,23 +13,23 @@ enum Foo {
 
 fn main() {
     foo > 12;
-    //~^ ERROR binary operation `>` cannot be applied to type `fn() -> i32 {foo}` [E0369]
-    //~| ERROR mismatched types [E0308]
+    //~^ ERROR: no implementation for `fn() -> i32 {foo} > {integer}` [E0369]
+    //~| ERROR: mismatched types [E0308]
 
     bar > 13;
-    //~^ ERROR binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}` [E0369]
-    //~| ERROR mismatched types [E0308]
+    //~^ ERROR: no implementation for `fn(i64) -> i64 {bar} > {integer}` [E0369]
+    //~| ERROR: mismatched types [E0308]
 
     foo > foo;
-    //~^ ERROR binary operation `>` cannot be applied to type `fn() -> i32 {foo}` [E0369]
+    //~^ ERROR: binary operation `>` can't be applied to type `fn() -> i32 {foo}` [E0369]
 
     foo > bar;
-    //~^ ERROR binary operation `>` cannot be applied to type `fn() -> i32 {foo}` [E0369]
-    //~| ERROR mismatched types [E0308]
+    //~^ ERROR: no implementation for `fn() -> i32 {foo} > fn(i64) -> i64 {bar}` [E0369]
+    //~| ERROR: mismatched types [E0308]
 
     let i = Foo::Bar;
     assert_eq!(Foo::Bar, i);
-    //~^ ERROR binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}` [E0369]
-    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
-    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
+    //~^ ERROR: can't compare `fn(usize) -> Foo {Foo::Bar}` [E0369]
+    //~| ERROR: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
+    //~| ERROR: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
 }

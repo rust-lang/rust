@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `Rc<dyn Fn()>`
+error[E0369]: can't compare `Rc<dyn Fn()>`
   --> $DIR/do-not-suggest-calling-fn-in-derive-macro.rs:5:5
    |
 LL | #[derive(PartialEq)]

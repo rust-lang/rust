@@ -18,7 +18,7 @@ trait MyAdd<'a, T> {}
 //~^^ ERROR: `add` lang item must be applied to a trait with 1 generic argument [E0718]
 
 #[lang = "drop_glue"]
-//~^ ERROR `drop_glue` lang item must be applied to a function with 1 generic
+//~^ ERROR: `drop_glue` lang item must be applied to a function with 1 generic
 fn my_ptr_drop() {}
 
 #[lang = "index"]
@@ -26,19 +26,19 @@ trait MyIndex<'a, T> {}
 //~^^ ERROR: `index` lang item must be applied to a trait with 1 generic argument [E0718]
 
 #[lang = "phantom_data"]
-//~^ ERROR `phantom_data` lang item must be applied to a struct with 1 generic argument
+//~^ ERROR: `phantom_data` lang item must be applied to a struct with 1 generic argument
 struct MyPhantomData<T, U>;
-//~^ ERROR `T` is never used
-//~| ERROR `U` is never used
+//~^ ERROR: `T` is never used
+//~| ERROR: `U` is never used
 
 #[lang = "owned_box"]
-//~^ ERROR `owned_box` lang item must be applied to a struct with at least 1 generic argument
+//~^ ERROR: `owned_box` lang item must be applied to a struct with at least 1 generic argument
 struct Foo;
 
 // When the `start` lang item is missing generics very odd things can happen, especially when
 // it comes to cross-crate monomorphization
 #[lang = "start"]
-//~^ ERROR `start` lang item must be applied to a function with 1 generic argument [E0718]
+//~^ ERROR: `start` lang item must be applied to a function with 1 generic argument [E0718]
 fn start(_: *const u8, _: isize, _: *const *const u8) -> isize {
     0
 }
@@ -47,14 +47,14 @@ fn ice() {
     // Use add
     let r = 5;
     let a = 6;
-    r + a; //~ ERROR cannot add
+    r + a; //~ ERROR: can't add
 
     // Use drop in place
     my_ptr_drop();
 
     // Use index
     let arr = [0; 5];
-    //~^ ERROR requires `copy` lang_item
+    //~^ ERROR: requires `copy` lang_item
     let _ = arr[2];
     //~^ ERROR: cannot index into a value of type `[{integer}; 5]`
 

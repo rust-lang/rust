@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, T1, {integer})`
+error[E0369]: can't compare `(std::io::Error, T1, {integer})`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:8:48
    |
 LL |     (Error::new(ErrorKind::Other, "1"), T1, 1) == (Error::new(ErrorKind::Other, "1"), T1, 2);
@@ -21,7 +21,7 @@ LL + #[derive(PartialEq)]
 LL | struct T1;
    |
 
-error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread)`
+error[E0369]: can't compare `(std::io::Error, Thread)`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:11:9
    |
 LL |     (Error::new(ErrorKind::Other, "2"), thread::current())
@@ -38,7 +38,7 @@ note: `std::io::Error` does not implement `PartialEq`
    |
    = note: `std::io::Error` is defined in another crate
 
-error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread, T1, T2)`
+error[E0369]: can't compare `(std::io::Error, Thread, T1, T2)`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:14:9
    |
 LL |     (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2)
