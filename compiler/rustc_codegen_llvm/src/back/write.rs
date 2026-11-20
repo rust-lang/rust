@@ -809,6 +809,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
             instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.debug_info_for_profiling,
+            config.pseudo_probe_for_profiling,
             llvm_selfprofiler,
             selfprofile_before_pass_callback,
             selfprofile_after_pass_callback,

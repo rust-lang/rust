@@ -1,0 +1,2 @@
+error: option `-Z pseudo-probe-for-profiling` cannot be used with `-C profile-generate` or `-C profile-use`
+

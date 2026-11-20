@@ -81,6 +81,7 @@ pub struct ModuleConfig {
     pub pgo_use: Option<PathBuf>,
     pub pgo_sample_use: Option<PathBuf>,
     pub debug_info_for_profiling: bool,
+    pub pseudo_probe_for_profiling: bool,
     pub instrument_coverage: bool,
 
     pub sanitizer: SanitizerSet,
@@ -183,6 +184,7 @@ impl ModuleConfig {
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
             pgo_sample_use: if_regular!(sess.opts.cg.profile_sample_use.clone(), None),
             debug_info_for_profiling: sess.opts.unstable_opts.debuginfo_for_profiling,
+            pseudo_probe_for_profiling: sess.opts.unstable_opts.pseudo_probe_for_profiling,
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
 
             sanitizer: if_regular!(sess.sanitizers(), SanitizerSet::empty()),
