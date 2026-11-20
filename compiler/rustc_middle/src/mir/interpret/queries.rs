@@ -24,7 +24,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(self, def_id);
         self.const_eval_global_id(typing_env, cid, DUMMY_SP)
     }
 
@@ -40,7 +40,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(self, def_id);
         let inputs = self.erase_and_anonymize_regions(typing_env.as_query_input(cid));
         self.eval_to_allocation_raw(inputs)
     }
