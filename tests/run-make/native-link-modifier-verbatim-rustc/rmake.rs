@@ -1,3 +1,6 @@
+// On `aarch64-unknown-linux-pauthtest`, rustc links static native libraries dynamically (with a
+// warning), because the target requires dynamic linking.
+//@ ignore-pauthtest
 //@ needs-target-std
 //
 // `verbatim` is a native link modifier that forces rustc to only accept libraries with
