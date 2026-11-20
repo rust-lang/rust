@@ -1,13 +1,14 @@
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_middle::mir;
-use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
+use rustc_middle::mir::coverage::BasicCoverageBlock;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{ExpnKind, Span, SyntaxContext};
 
-use crate::coverage::from_mir;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::mappings::MappingsError;
+use crate::coverage::{branch, from_mir};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SpanWithBcb {
@@ -59,8 +60,8 @@ pub(crate) struct ExpnNode {
     /// creating a single code mapping representing an entire child expansion.
     pub(crate) minmax_bcbs: Option<MinMaxBcbs>,
 
-    /// Branch spans (recorded during MIR building) belonging to this expansion.
-    pub(crate) branch_spans: Vec<BranchSpan>,
+    /// Branch spans belonging to this expansion.
+    pub(crate) branch_spans: Vec<branch::BranchSpan>,
 
     /// Hole spans belonging to this expansion, to be carved out from the
     /// code spans during span refinement.
@@ -98,8 +99,9 @@ impl ExpnNode {
 
 /// Extracts raw span/BCB pairs from potentially-different syntax contexts, and
 /// arranges them into an "expansion tree" based on their expansion call-sites.
-pub(crate) fn build_expn_tree(
-    mir_body: &mir::Body<'_>,
+pub(crate) fn build_expn_tree<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> Result<ExpnTree, MappingsError> {
@@ -171,12 +173,12 @@ pub(crate) fn build_expn_tree(
         node.hole_spans.push(hole_span);
     }
 
-    // Associate each branch span (recorded during MIR building) with its
-    // corresponding expansion tree node.
-    if let Some(early_info) = mir_body.coverage_early_info.as_deref() {
-        for branch_span in &early_info.branch_spans {
+    // Associate each branch span with its corresponding expansion tree node.
+    if tcx.sess.instrument_coverage_branch() {
+        let branch_spans = branch::extract_branch_spans(tcx, mir_body, graph);
+        for branch_span in branch_spans {
             if let Some(node) = nodes.get_mut(&branch_span.span.ctxt()) {
-                node.branch_spans.push(BranchSpan::clone(branch_span));
+                node.branch_spans.push(branch_span);
             }
         }
     }
