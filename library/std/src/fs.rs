@@ -2035,16 +2035,14 @@ impl OpenOptions {
 
     /// Sets the option for the append mode.
     ///
-    /// This option, when true, means that writes will append to a file instead
-    /// of overwriting previous contents.
-    /// Note that setting `.write(true).append(true)` has the same effect as
-    /// setting only `.append(true)`.
+    /// This option, when true, means that writes will append to a file instead of overwriting
+    /// previous contents. The `write` setting is ignored when `append` is true, i.e.,
+    /// `.write(true).append(true).open(...)` has the same effect as `.append(true).open(...)`.
     ///
     /// Append mode guarantees that writes will be positioned at the current end of file,
     /// even when there are other processes or threads appending to the same file. This is
-    /// unlike <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`, which
-    /// has a race between seeking and writing during which another writer can write, with
-    /// our `write()` overwriting their data.
+    /// a race-free version of <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`,
+    /// working correctly even if there are concurrent writers.
     ///
     /// Keep in mind that this does not necessarily guarantee that data appended by
     /// different processes or threads does not interleave. The amount of data accepted a
