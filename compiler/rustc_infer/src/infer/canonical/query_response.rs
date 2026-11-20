@@ -262,7 +262,7 @@ impl<'tcx> InferCtxt<'tcx> {
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-    ) -> InferResult<'tcx, R>
+    ) -> InferResult<'tcx, (R, Certainty)>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -324,9 +324,17 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
 
+        let QueryResponse {
+            var_values: _,
+            ref region_constraints,
+            certainty,
+            opaque_types: _,
+            ref value,
+        } = query_response.value;
+
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.constraints.extend(
-            query_response.value.region_constraints.constraints.iter().filter_map(|&r_c| {
+            region_constraints.constraints.iter().filter_map(|&r_c| {
                 let r_c = instantiate_value(self.tcx, &result_args, r_c);
 
                 // Screen out `'a: 'a` or `'a == 'a` cases.
@@ -338,18 +346,15 @@ impl<'tcx> InferCtxt<'tcx> {
         // at once, rather than calling `instantiate_value` repeatedly which may
         // create more universes.
         output_query_region_constraints.assumptions.extend(
-            query_response
-                .value
-                .region_constraints
+            region_constraints
                 .assumptions
                 .iter()
                 .map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)),
         );
 
-        let user_result: R =
-            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
+        let user_result: R = instantiate_value(self.tcx, &result_args, value.clone());
 
-        Ok(InferOk { value: user_result, obligations })
+        Ok(InferOk { value: (user_result, certainty), obligations })
     }
 
     /// Given the original values and the (canonicalized) result from
