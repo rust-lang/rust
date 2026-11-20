@@ -1045,7 +1045,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             };
             let (def_spans, fields, generics) = match self.infcx.tcx.hir_node_by_def_id(def_id) {
                 hir::Node::Item(item) => match item.kind {
-                    hir::ItemKind::Struct(name, generics, data) => {
+                    hir::ItemKind::Struct(name, generics, data, _) => {
                         let (hir::VariantData::Struct { fields, .. }
                         | hir::VariantData::Tuple(fields, ..)) = data
                         else {

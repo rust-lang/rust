@@ -1364,7 +1364,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let tuple_fields = if let Some(parent_id) = parent_item
                     && let node = tcx.hir_node_by_def_id(parent_id)
                     && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::Struct(_, _, hir::VariantData::Tuple(fields, _, _)),
+                        kind: hir::ItemKind::Struct(_, _, hir::VariantData::Tuple(fields, _, _), _),
                         ..
                     }) = node
                 {

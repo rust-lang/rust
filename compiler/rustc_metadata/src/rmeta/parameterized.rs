@@ -127,6 +127,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::Destructor,
+    rustc_middle::ty::DropImpl,
     rustc_middle::ty::Generics,
     rustc_middle::ty::ImplTraitInTraitData,
     rustc_middle::ty::IntrinsicDef,
@@ -236,6 +237,7 @@ trivial_encode_from! {
     rustc_hir::Safety,
     rustc_hir::def::DefKind,
     rustc_middle::ty::Asyncness,
+    rustc_middle::ty::DropImpl,
     // tidy-alphabetical-end
 }
 

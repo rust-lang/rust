@@ -340,6 +340,16 @@ rustc_queries! {
         feedable
     }
 
+    // FIXME(scrabsha): doc :skull: :skull:
+    query drop_impl(key: DefId) -> ty::DropImpl {
+        desc {
+            "wagu wagu",
+        }
+        cache_on_disk
+        separate_provide_extern
+        feedable
+    }
+
     /// Returns the *hidden type* of the opaque type given by `DefId`.
     ///
     /// # Panics
