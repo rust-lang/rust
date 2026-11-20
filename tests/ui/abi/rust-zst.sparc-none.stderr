@@ -1,3 +1,28 @@
+error: layout_of([u8]) = Layout {
+           size: Size(0 bytes),
+           align: $SOME_ALIGN,
+           backend_repr: Memory {
+               sized: false,
+           },
+           fields: Array {
+               stride: Size(1 bytes),
+               count: 0,
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: $SOME_ALIGN,
+           trivial_abi: false,
+           randomization_seed: 3299917640423194882,
+       }
+  --> $DIR/rust-zst.rs:68:1
+   |
+LL | type Slice = [u8];
+   | ^^^^^^^^^^
+
 error: fn_abi_of(pass_rust_zst) = FnAbi {
            args: [
                ArgAbi {
@@ -20,7 +45,7 @@ error: fn_abi_of(pass_rust_zst) = FnAbi {
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
-                           repr_c: false,
+                           trivial_abi: true,
                            randomization_seed: 0,
                        },
                    },
@@ -47,7 +72,7 @@ error: fn_abi_of(pass_rust_zst) = FnAbi {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
-                       repr_c: false,
+                       trivial_abi: true,
                        randomization_seed: 0,
                    },
                },
@@ -63,5 +88,5 @@ error: fn_abi_of(pass_rust_zst) = FnAbi {
 LL | extern "C" fn pass_rust_zst(_: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 

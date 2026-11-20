@@ -480,7 +480,7 @@ where
         size,
         max_repr_align,
         unadjusted_abi_align,
-        repr_c: repr.c(),
+        trivial_abi: size == Size::ZERO && align == Align::ONE && !repr.c(),
         randomization_seed: combined_seed,
     })
 }
@@ -671,7 +671,7 @@ where
         align,
         max_repr_align,
         unadjusted_abi_align,
-        repr_c: repr.c(),
+        trivial_abi: size == Size::ZERO && align == Align::ONE && !repr.c(),
         randomization_seed: combined_seed,
     };
 
