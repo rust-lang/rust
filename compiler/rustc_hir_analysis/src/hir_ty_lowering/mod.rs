@@ -749,10 +749,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
 
-                if let Err(incorrect) = self.incorrect_args {
-                    if incorrect.invalid_args.contains(&(param.index as usize)) {
-                        return param.to_error(tcx);
-                    }
+                if let Err(incorrect) = self.incorrect_args
+                    && incorrect.invalid_args.contains(&(param.index as usize))
+                {
+                    return param.to_error(tcx);
                 }
 
                 let handle_ty_args = |has_default, ty: &hir::Ty<'_>| {
@@ -814,18 +814,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
 
-                if let Err(incorrect) = self.incorrect_args {
-                    if incorrect.invalid_args.contains(&(param.index as usize)) {
-                        return param.to_error(tcx);
-                    }
+                if let Err(incorrect) = self.incorrect_args
+                    && incorrect.invalid_args.contains(&(param.index as usize))
+                {
+                    return param.to_error(tcx);
                 }
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         self.lowerer.re_infer(self.span, RegionInferReason::Param(param)).into()
                     }
-                    GenericParamDefKind::Type { has_default, synthetic } => {
-                        if !infer_args && has_default {
-                            // No type parameter provided, but a default exists.
+                    GenericParamDefKind::Type { synthetic, .. } => {
+                        // No type parameter provided, but a default exists.
+                        if !infer_args && let Some(default) = param.default_value(tcx) {
                             if let Some(prev) =
                                 preceding_args.iter().find_map(|arg| match arg.kind() {
                                     GenericArgKind::Type(ty) => ty.error_reported().err(),
@@ -835,11 +835,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 // Avoid ICE #86756 when type error recovery goes awry.
                                 return Ty::new_error(tcx, prev).into();
                             }
-                            tcx.at(self.span)
-                                .type_of(param.def_id)
-                                .instantiate(tcx, preceding_args)
-                                .skip_norm_wip()
-                                .into()
+                            default.instantiate(tcx, preceding_args).skip_norm_wip().into()
                         } else if self.create_synth_args && synthetic {
                             Ty::new_param(tcx, param.index, param.name).into()
                         } else if infer_args {
@@ -849,7 +845,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             Ty::new_misc_error(tcx).into()
                         }
                     }
-                    GenericParamDefKind::Const { has_default, .. } => {
+                    GenericParamDefKind::Const { .. } => {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)
@@ -858,11 +854,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar).into();
                         }
-                        if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, preceding_args)
-                                .skip_norm_wip()
-                                .into()
+                        if !infer_args && let Some(default) = param.default_value(tcx) {
+                            default.instantiate(tcx, preceding_args).skip_norm_wip().into()
                         } else if infer_args {
                             self.lowerer.ct_infer(Some(param), self.span).into()
                         } else {
