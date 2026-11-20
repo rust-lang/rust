@@ -1,6 +1,6 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::ptr::{self, drop_in_place};
-use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
+use crate::sys::thread_local::abort_on_dtor_unwind;
 
 #[derive(Clone, Copy)]
 enum State {
@@ -52,7 +52,7 @@ impl<T> Storage<T> {
         // SAFETY:
         // The caller guarantees that `self` will be valid until thread destruction.
         unsafe {
-            destructors::register(ptr::from_ref(self).cast_mut().cast(), destroy::<T>);
+            super::destructors::register(ptr::from_ref(self).cast_mut().cast(), destroy::<T>);
         }
 
         self.state.set(State::Alive);
