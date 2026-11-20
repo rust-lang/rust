@@ -716,20 +716,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         } else if !self.expr_in_place(expr.hir_id) {
-            // Suggest call parentheses inside the wrapping parentheses
+            // Land the suggestion inside the user's own wrapping parentheses, not around them.
             let span = if is_wrapped {
                 expr.span.with_lo(after_open).with_hi(before_close)
             } else {
                 expr.span
             };
-            self.suggest_method_call(
-                &mut err,
-                "use parentheses to call the method",
-                field,
-                expr_t,
-                expr,
-                Some(span),
-            );
+            // Where a callable is expected, calling the method only trades this error for a
+            // type mismatch, so suggest a closure that calls it instead.
+            if self.expects_callable_arg(expr) {
+                self.suggest_wrap_method_in_closure(&mut err, field, expr_t, expr, span);
+            } else {
+                self.suggest_method_call(
+                    &mut err,
+                    "use parentheses to call the method",
+                    field,
+                    expr_t,
+                    expr,
+                    Some(span),
+                );
+            }
         } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
             && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
@@ -750,6 +756,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // See `StashKey::GenericInFieldExpr` for more info
         self.dcx().try_steal_replace_and_emit_err(field.span, StashKey::GenericInFieldExpr, err)
+    }
+
+    /// Whether `ty` is a type parameter of `owner` bounded by one of the `Fn` traits.
+    fn is_fn_trait_bounded_param(&self, owner: DefId, ty: Ty<'tcx>) -> bool {
+        // Only a type parameter can appear as the self type of one of `owner`'s own clauses.
+        let ty::Param(_) = ty.kind() else { return false };
+        let preds = self.tcx.explicit_clauses_of(owner).instantiate_identity(self.tcx);
+        preds.into_iter().any(|(clause, _)| {
+            matches!(
+                clause.kind().skip_binder(),
+                ty::ClauseKind::Trait(pred)
+                    if pred.self_ty() == ty && self.tcx.is_fn_trait(pred.def_id())
+            )
+        })
+    }
+
+    /// Whether `expr` is being passed as an argument whose parameter wants a callable.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn expects_callable_arg(&self, expr: &hir::Expr<'tcx>) -> bool {
+        let hir::Node::Expr(parent) = self.tcx.parent_hir_node(expr.hir_id) else { return false };
+        let (def_id, idx) = match parent.kind {
+            ExprKind::Call(callee, args) => {
+                let Some(idx) = args.iter().position(|arg| arg.hir_id == expr.hir_id) else {
+                    return false;
+                };
+                let Some(callee_ty) = self.typeck_results.borrow().node_type_opt(callee.hir_id)
+                else {
+                    return false;
+                };
+                let ty::FnDef(def_id, _) = *self.deeply_resolve_ignoring_regions(callee_ty).kind()
+                else {
+                    // Through a fn pointer or a closure there are no where-clauses to read.
+                    return false;
+                };
+                (def_id, idx)
+            }
+            // The receiver is absent from `args` but present in `inputs()`.
+            ExprKind::MethodCall(_, _, args, _) => {
+                let Some(idx) = args.iter().position(|arg| arg.hir_id == expr.hir_id) else {
+                    return false;
+                };
+                let Some(def_id) =
+                    self.typeck_results.borrow().type_dependent_def_id(parent.hir_id)
+                else {
+                    return false;
+                };
+                (def_id, idx + 1)
+            }
+            _ => return false,
+        };
+
+        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+        sig.inputs().get(idx).is_some_and(|&ty| self.is_fn_trait_bounded_param(def_id, ty))
+    }
+
+    /// Suggests `|args| recv.method(args)` for the uncalled method `expr`. As in
+    /// `suggest_method_call`, the number of arguments is the one the method itself takes.
+    fn suggest_wrap_method_in_closure(
+        &self,
+        err: &mut Diag<'_>,
+        method_name: Ident,
+        self_ty: Ty<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        span: Span,
+    ) {
+        let params = self.method_param_count_for_diagnostic(method_name, self_ty, expr);
+        let args = (0..params).map(|i| format!("arg{i}")).collect::<Vec<_>>().join(", ");
+        err.multipart_suggestion(
+            "consider wrapping the method call in a closure",
+            vec![
+                (span.shrink_to_lo(), format!("|{args}| ")),
+                (span.shrink_to_hi(), format!("({args})")),
+            ],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {
