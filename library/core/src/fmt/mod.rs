@@ -284,7 +284,7 @@ pub enum DebugAsHex {
 ///
 /// `FormattingOptions` is a [`Formatter`] without an attached [`Write`] trait.
 /// It is mainly used to construct `Formatter` instances.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[unstable(feature = "formatting_options", issue = "118117")]
 pub struct FormattingOptions {
     /// Flags, with the following bit fields:
@@ -535,6 +535,49 @@ impl FormattingOptions {
     pub const fn create_formatter<'a>(self, write: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
         Formatter { options: self, buf: write }
     }
+
+    /// Recreate a format specifier like `-<04x` matching these options. Public only for testing.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", issue = "none")]
+    pub fn write_fmt_specifier(&self, f: &mut Formatter<'_>, str_escape: bool) -> Result {
+        let fill = self.get_fill();
+        if fill != ' ' {
+            if str_escape {
+                write!(f, "{}", fill.escape_debug())?;
+            } else {
+                write!(f, "{fill}")?;
+            }
+        }
+        match self.get_align() {
+            Some(Alignment::Left) => write!(f, "<")?,
+            Some(Alignment::Right) => write!(f, ">")?,
+            Some(Alignment::Center) => write!(f, "^")?,
+            None => (),
+        }
+        match self.get_sign() {
+            Some(Sign::Plus) => write!(f, "+")?,
+            Some(Sign::Minus) => write!(f, "-")?,
+            None => (),
+        }
+        if self.get_alternate() {
+            write!(f, "#")?;
+        }
+        if self.get_sign_aware_zero_pad() {
+            write!(f, "0")?;
+        }
+        if let Some(width) = self.get_width() {
+            write!(f, "{width}")?;
+        }
+        if let Some(precision) = self.get_precision() {
+            write!(f, ".{precision}")?;
+        }
+        match self.get_debug_as_hex() {
+            Some(DebugAsHex::Lower) => write!(f, "x")?,
+            Some(DebugAsHex::Upper) => write!(f, "X")?,
+            None => (),
+        }
+        Ok(())
+    }
 }
 
 #[unstable(feature = "formatting_options", issue = "118117")]
@@ -543,6 +586,30 @@ impl Default for FormattingOptions {
     fn default() -> Self {
         // The `#[derive(Default)]` implementation would set `fill` to `\0` instead of space.
         Self::new()
+    }
+}
+
+#[unstable(feature = "formatting_options", issue = "118117")]
+impl Debug for FormattingOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        // `field_with` for optional values so we don't propagate `#` and turn a simple
+        // `Some(1)` into three lines.
+        f.debug_struct("FormattingOptions")
+            .field_with("align", |f| write!(f, "{:?}", self.get_align()))
+            .field("alternate", &self.get_alternate())
+            .field_with("debug_as_hex", |f| write!(f, "{:?}", self.get_debug_as_hex()))
+            .field("fill", &self.get_fill())
+            .field_with("precision", |f| write!(f, "{:?}", self.get_precision()))
+            .field_with("sign", |f| write!(f, "{:?}", self.get_sign()))
+            .field("sign_aware_zero_pad", &self.get_sign_aware_zero_pad())
+            .field_with("width", |f| write!(f, "{:?}", self.get_width()))
+            .field_with("specifier", |f| {
+                f.write_char('"')?;
+                self.write_fmt_specifier(f, true)?;
+                f.write_char('"')?;
+                Ok(())
+            })
+            .finish()
     }
 }
 
