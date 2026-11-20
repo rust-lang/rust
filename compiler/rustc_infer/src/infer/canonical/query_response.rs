@@ -143,12 +143,12 @@ impl<'tcx> InferCtxt<'tcx> {
             TraitErrors::NoErrors => Certainty::Proven,
         };
 
-        let region_obligations = self.take_registered_region_obligations();
+        let type_outlives_constraints = self.take_registered_type_outlives_constraints();
         let region_assumptions = self.take_registered_region_assumptions();
-        debug!(?region_obligations);
+        debug!(?type_outlives_constraints);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                region_obligations,
+                type_outlives_constraints,
                 region_constraints,
                 region_assumptions,
             )
@@ -616,10 +616,10 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// Given the region obligations and constraints scraped from the infcx,
+/// Given the type outlives constraints and region constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
-    outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
+    type_outlives_constraints: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
@@ -654,7 +654,7 @@ pub fn make_query_region_constraints<'tcx>(
                 }
             }
         })
-        .chain(outlives_obligations.into_iter().map(
+        .chain(type_outlives_constraints.into_iter().map(
             |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
                 QueryRegionConstraint {
                     constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),
