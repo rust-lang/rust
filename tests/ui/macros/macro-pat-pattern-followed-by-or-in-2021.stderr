@@ -28,5 +28,15 @@ LL |     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
    |
    = note: allowed there are: `=>`, `,`, `=`, `if`, `if let` or `in`
 
-error: aborting due to 3 previous errors
+error: `$p:pat` is followed by `:`, which is not allowed for `pat` fragments
+  --> $DIR/macro-pat-pattern-followed-by-or-in-2021.rs:17:34
+   |
+LL | macro_rules! pat_colon { ($p:pat :) => {}; }
+   |                           ------ ^ not allowed after `pat` fragments
+   |                           |
+   |                           help: try a `pat_param` fragment specifier instead: `$p:pat_param`
+   |
+   = note: allowed there are: `=>`, `,`, `=`, `if`, `if let` or `in`
+
+error: aborting due to 4 previous errors
 

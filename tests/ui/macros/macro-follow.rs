@@ -8,6 +8,8 @@
 #![allow(unused_macros)]
 
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), MetaVarDecl(Guard), Ident(in)}
+// optional inclusion of `Or` depends on the edition; this is tested separately,
+// in `macro-pat-pattern-followed-by-or.rs` / `macro-pat-pattern-followed-by-or-in-2021.rs`
 macro_rules! follow_pat {
     ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`
     ($p:pat []) => {};       //~ERROR  `$p:pat` is followed by `[`
@@ -26,6 +28,25 @@ macro_rules! follow_pat {
     ($p:pat $t:tt) => {};    //~ERROR `$p:pat` is followed by `$t:tt`
     ($p:pat $i:item) => {};  //~ERROR `$p:pat` is followed by `$i:item`
     ($p:pat $m:meta) => {};  //~ERROR `$p:pat` is followed by `$m:meta`
+}
+// FOLLOW(pat_param) = {FOLLOW(pat), Or, Colon}
+macro_rules! follow_pat_param {
+    ($p:pat_param ()) => {};       //~ERROR `$p:pat_param` is followed by `(`
+    ($p:pat_param []) => {};       //~ERROR `$p:pat_param` is followed by `[`
+    ($p:pat_param {}) => {};       //~ERROR `$p:pat_param` is followed by `{`
+    ($p:pat_param >) => {};        //~ERROR `$p:pat_param` is followed by `>`
+    ($p:pat_param +) => {};        //~ERROR `$p:pat_param` is followed by `+`
+    ($p:pat_param ident) => {};    //~ERROR `$p:pat_param` is followed by `ident`
+    ($p:pat_param $q:pat) => {};   //~ERROR `$p:pat_param` is followed by `$q:pat`
+    ($p:pat_param $e:expr) => {};  //~ERROR `$p:pat_param` is followed by `$e:expr`
+    ($p:pat_param $t:ty) => {};    //~ERROR `$p:pat_param` is followed by `$t:ty`
+    ($p:pat_param $s:stmt) => {};  //~ERROR `$p:pat_param` is followed by `$s:stmt`
+    ($p:pat_param $q:path) => {};  //~ERROR `$p:pat_param` is followed by `$q:path`
+    ($p:pat_param $b:block) => {}; //~ERROR `$p:pat_param` is followed by `$b:block`
+    ($p:pat_param $i:ident) => {}; //~ERROR `$p:pat_param` is followed by `$i:ident`
+    ($p:pat_param $t:tt) => {};    //~ERROR `$p:pat_param` is followed by `$t:tt`
+    ($p:pat_param $i:item) => {};  //~ERROR `$p:pat_param` is followed by `$i:item`
+    ($p:pat_param $m:meta) => {};  //~ERROR `$p:pat_param` is followed by `$m:meta`
 }
 // FOLLOW(expr) = {FatArrow, Comma, Semicolon}
 macro_rules! follow_expr {

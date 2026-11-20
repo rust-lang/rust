@@ -18,7 +18,19 @@ macro_rules! follow_pat {
     ($p:pat if let) => {};
     ($p:pat in) => {};
 }
-// FOLLOW(expr) = {FatArrow, Comma, Semicolon}
+// FOLLOW(pat_param) = {FOLLOW(pat), Colon}
+macro_rules! follow_pat {
+    ($p:pat_param =>) => {};
+    ($p:pat_param ,) => {};
+    ($p:pat_param =) => {};
+    ($p:pat_param |) => {};
+    ($p:pat_param if) => {};
+    ($p:pat_param if let) => {};
+    ($p:pat_param in) => {};
+    ($p:pat_param in) => {};
+    ($p:pat_param :) => {};
+}
+// FOLLOW(e_paramxpr) = {FatArrow, Comma, Semicolon}
 macro_rules! follow_expr {
     ($e:expr =>) => {};
     ($e:expr ,) => {};
