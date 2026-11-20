@@ -723,6 +723,7 @@ define_tables! {
     const_of_item: Table<LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
     live_args_for_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
+    captured_args_for_opaque: Table<LazyValue<DenseBitSet<u32>>>,
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
 }
 

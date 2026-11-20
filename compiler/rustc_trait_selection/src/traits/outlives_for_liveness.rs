@@ -40,6 +40,40 @@ fn param_known_to_outlive<'tcx>(
     })
 }
 
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
+pub(crate) fn captured_args_for_opaque<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> DenseBitSet<u32> {
+    let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    let generics = tcx.generics_of(def_id);
+    let mut live_args = DenseBitSet::new_empty(self_identity_args.len());
+
+    let opaque = ty::OpaqueTypeKey { def_id, args: self_identity_args };
+    for (arg_idx, arg) in opaque.iter_captured_args(tcx) {
+        live_args.insert(arg_idx as u32);
+        if arg_idx < generics.parent_count {
+            continue;
+        }
+        let Some(opaque_region) = arg.as_region() else { continue };
+
+        // The *parent* arg for a captured opaque lifetime is also live (although it is bivariant).
+        match opaque_region.kind() {
+            ty::ReEarlyParam(ebr) => {
+                let region_def_id = generics.param_at(ebr.index as usize, tcx).def_id;
+                let parent_region =
+                    tcx.map_opaque_lifetime_to_parent_lifetime(region_def_id.expect_local());
+                if let ty::ReEarlyParam(ebr) = parent_region.kind() {
+                    live_args.insert(ebr.index);
+                }
+            }
+            _ => panic!("unexpected opaque lifetime `{opaque_region}`"),
+        };
+    }
+
+    live_args
+}
+
 /// For a given alias type, this returns the set of indices into the identity generic args that
 /// are relevant for liveness, that can be inferred from outlives bounds on the
 /// alias itself, and the explicit and implicit outlives clauses of the alias.
@@ -90,9 +124,25 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
         .collect();
     tracing::debug!(?outlives_regions);
 
-    // If there are no outlives bounds, then all (non-bivariant) args are potentially live.
+    // If there are no outlives bounds, then all captured args are potentially live.
     if outlives_regions.is_empty() {
-        return DenseBitSet::new_filled(self_identity_args.len());
+        return match tcx.def_kind(def_id) {
+            DefKind::OpaqueTy => tcx.captured_args_for_opaque(def_id).clone(),
+            DefKind::AssocTy
+                if let Some(ImplTraitInTraitData::Trait { fn_def_id: _, opaque_def_id }) =
+                    tcx.opt_rpitit_info(def_id) =>
+            {
+                tcx.captured_args_for_opaque(opaque_def_id).clone()
+            }
+            DefKind::AssocTy | DefKind::TyAlias => {
+                DenseBitSet::new_filled(self_identity_args.len())
+            }
+            kind => {
+                bug!(
+                    "improper def_kind {kind:?} passed to `live_args_for_alias_from_outlives_bounds`"
+                )
+            }
+        };
     }
 
     // If any of the outlives bounds are `'static`, then we know the alias
@@ -289,6 +339,12 @@ pub(crate) fn live_args_for_opaque_params<'tcx>(
             }
 
             opaque_outlives_args.insert(opaque_arg_idx as u32);
+
+            // Although the parent arg is bivariant, it still participates in
+            // (invariant) outlives relationships.
+            if let ty::ReEarlyParam(ebr) = parent_outlives_region.kind() {
+                opaque_outlives_args.insert(ebr.index as u32);
+            }
         }
 
         result.push((*opaque_outlived_arg_idx, opaque_outlives_args));
@@ -564,11 +620,8 @@ where
 
                 // Skip lifetime parameters that are not captured, since they do
                 // not need to be live.
-                let variances = tcx.opt_alias_variances(kind);
                 for idx in capturable.iter() {
-                    if variances.map(|variances| variances[idx as usize]) != Some(ty::Bivariant) {
-                        args[idx as usize].visit_with(self);
-                    }
+                    args[idx as usize].visit_with(self);
                 }
             }
 

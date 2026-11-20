@@ -2200,6 +2200,17 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    // For each arg of an opaque, returns the set of regions that are captured.
+    // This will be all of type and const args (which are currently always captured),
+    // as well as all self args (which are all regions) and the parent regions they
+    // correspond to. This is slightly different than simply looking variances: there,
+    // *all* parent regions are counted as `Bivariant`, whether or not they are captured.
+    query captured_args_for_opaque(def_id: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
+        arena_cache
+        desc { "computing the captured args of opaque `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// Computes the visibility of the provided `def_id`.
     ///
     /// If the item from the `def_id` doesn't have a visibility, it will panic. For example
