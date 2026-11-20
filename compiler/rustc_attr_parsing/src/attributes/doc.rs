@@ -24,8 +24,8 @@ use crate::diagnostics::{
     DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse, DocKeywordAttributeNotAnonConst,
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
     DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
-    DuplicateNotableTraitColor, ExpectedNoArgs, IllFormedAttributeInput,
-    InvalidNotableTraitAttr, InvalidNotableTraitColor, MalformedDoc,
+    DuplicateNotableTraitColor, IllFormedAttributeInput, InvalidNotableTraitAttr,
+    InvalidNotableTraitColor, MalformedDoc,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -66,11 +66,6 @@ fn check_attr_not_crate_level(
         return false;
     }
     true
-}
-
-// FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
-fn expected_no_args(cx: &mut AcceptContext<'_, '_>, span: Span) {
-    cx.emit_lint(INVALID_DOC_ATTRIBUTES, ExpectedNoArgs, span);
 }
 
 // FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
@@ -267,7 +262,7 @@ impl DocParser {
         match path.word_sym() {
             Some(sym::no_crate_inject) => {
                 if let Err(span) = args.as_no_args() {
-                    expected_no_args(cx, span);
+                    cx.adcx().expected_no_args(span);
                     return;
                 }
 
@@ -386,7 +381,7 @@ impl DocParser {
         inline: DocInline,
     ) {
         if let Err(span) = args.as_no_args() {
-            expected_no_args(cx, span);
+            cx.adcx().expected_no_args(span);
             return;
         }
 
@@ -643,7 +638,7 @@ impl DocParser {
         macro_rules! no_args {
             ($ident: ident) => {{
                 if let Err(span) = args.as_no_args() {
-                    expected_no_args(cx, span);
+                    cx.adcx().expected_no_args(span);
                     return;
                 }
 
@@ -662,7 +657,7 @@ impl DocParser {
         macro_rules! no_args_and_not_crate_level {
             ($ident: ident) => {{
                 if let Err(span) = args.as_no_args() {
-                    expected_no_args(cx, span);
+                    cx.adcx().expected_no_args(span);
                     return;
                 }
                 let span = path.span();
@@ -675,7 +670,7 @@ impl DocParser {
         macro_rules! no_args_and_crate_level {
             ($ident: ident) => {{
                 if let Err(span) = args.as_no_args() {
-                    expected_no_args(cx, span);
+                    cx.adcx().expected_no_args(span);
                     return;
                 }
                 let span = path.span();

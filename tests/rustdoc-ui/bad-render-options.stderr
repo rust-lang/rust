@@ -30,6 +30,14 @@ LL | #![doc(issue_tracker_base_url)]
    |        |
    |        expected this to be of the form `issue_tracker_base_url = "..."`
 
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:24:4
+   |
+LL | #![doc(html_no_source = "asdf")]
+   |    ^^^^^^^^^^^^^^^^^^^--------^
+   |                       |
+   |                       didn't expect any arguments here
+
 error: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:12:27
    |
@@ -67,14 +75,7 @@ LL | #![doc(issue_tracker_base_url = 4)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: didn't expect any arguments here
-  --> $DIR/bad-render-options.rs:24:23
-   |
-LL | #![doc(html_no_source = "asdf")]
-   |                       ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 error: aborting due to 9 previous errors
 
-For more information about this error, try `rustc --explain E0539`.
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

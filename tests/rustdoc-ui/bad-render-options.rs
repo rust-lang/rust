@@ -23,4 +23,3 @@
 //~| WARN
 #![doc(html_no_source = "asdf")]
 //~^ ERROR
-//~| WARN
