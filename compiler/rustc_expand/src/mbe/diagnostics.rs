@@ -374,6 +374,7 @@ pub(super) fn emit_frag_parse_err(
     kind: AstFragmentKind,
     bindings: &[MacroRule],
     matched_rule_bindings: &[MatcherLoc],
+    is_trailing_mac: bool,
 ) -> ErrorGuaranteed {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
@@ -412,7 +413,7 @@ pub(super) fn emit_frag_parse_err(
                      statement",
                 );
 
-                if parser.token == token::Semi
+                if !is_trailing_mac
                     || matches!(parser.token.kind, token::TokenKind::OpenInvisible(_))
                 {
                     e.multipart_suggestion(
