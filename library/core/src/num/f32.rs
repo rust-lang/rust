@@ -34,10 +34,8 @@ use crate::{cfg_select, intrinsics, mem};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::RADIX` in expressions or declare a local ",
-        "`const RADIX: u32 = f32::RADIX` instead of importing this constant"
-    ),
+    note = "use `f32::RADIX` in expressions or declare a local \
+        `const RADIX: u32 = f32::RADIX` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_radix"]
 pub const RADIX: u32 = f32::RADIX;
@@ -58,10 +56,8 @@ pub const RADIX: u32 = f32::RADIX;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MANTISSA_DIGITS` in expressions or declare a local ",
-        "`const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS` instead of importing this constant"
-    ),
+    note = "use `f32::MANTISSA_DIGITS` in expressions or declare a local \
+        `const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_mantissa_dig"]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
@@ -82,10 +78,8 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::DIGITS` in expressions or declare a local ",
-        "`const DIGITS: u32 = f32::DIGITS` instead of importing this constant"
-    ),
+    note = "use `f32::DIGITS` in expressions or declare a local \
+        `const DIGITS: u32 = f32::DIGITS` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_digits"]
 pub const DIGITS: u32 = f32::DIGITS;
@@ -110,10 +104,8 @@ pub const DIGITS: u32 = f32::DIGITS;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::EPSILON` in expressions or declare a local ",
-        "`const EPSILON: f32 = f32::EPSILON` instead of importing this constant"
-    ),
+    note = "use `f32::EPSILON` in expressions or declare a local \
+        `const EPSILON: f32 = f32::EPSILON` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_epsilon"]
 pub const EPSILON: f32 = f32::EPSILON;
@@ -134,10 +126,8 @@ pub const EPSILON: f32 = f32::EPSILON;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MIN` in expressions or declare a local ",
-        "`const MIN: f32 = f32::MIN` instead of importing this constant"
-    ),
+    note = "use `f32::MIN` in expressions or declare a local \
+        `const MIN: f32 = f32::MIN` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_min"]
 pub const MIN: f32 = f32::MIN;
@@ -158,10 +148,8 @@ pub const MIN: f32 = f32::MIN;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MIN_POSITIVE` in expressions or declare a local ",
-        "`const MIN_POSITIVE: f32 = f32::MIN_POSITIVE` instead of importing this constant"
-    ),
+    note = "use `f32::MIN_POSITIVE` in expressions or declare a local \
+        `const MIN_POSITIVE: f32 = f32::MIN_POSITIVE` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_min_positive"]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
@@ -182,10 +170,8 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MAX` in expressions or declare a local ",
-        "`const MAX: f32 = f32::MAX` instead of importing this constant"
-    ),
+    note = "use `f32::MAX` in expressions or declare a local \
+        `const MAX: f32 = f32::MAX` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_max"]
 pub const MAX: f32 = f32::MAX;
@@ -206,10 +192,8 @@ pub const MAX: f32 = f32::MAX;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MIN_EXP` in expressions or declare a local ",
-        "`const MIN_EXP: i32 = f32::MIN_EXP` instead of importing this constant"
-    ),
+    note = "use `f32::MIN_EXP` in expressions or declare a local \
+        `const MIN_EXP: i32 = f32::MIN_EXP` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_min_exp"]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
@@ -230,10 +214,8 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MAX_EXP` in expressions or declare a local ",
-        "`const MAX_EXP: i32 = f32::MAX_EXP` instead of importing this constant"
-    ),
+    note = "use `f32::MAX_EXP` in expressions or declare a local \
+        `const MAX_EXP: i32 = f32::MAX_EXP` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_max_exp"]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
@@ -254,10 +236,8 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MIN_10_EXP` in expressions or declare a local ",
-        "`const MIN_10_EXP: i32 = f32::MIN_10_EXP` instead of importing this constant"
-    ),
+    note = "use `f32::MIN_10_EXP` in expressions or declare a local \
+        `const MIN_10_EXP: i32 = f32::MIN_10_EXP` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_min_10_exp"]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
@@ -278,10 +258,8 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::MAX_10_EXP` in expressions or declare a local ",
-        "`const MAX_10_EXP: i32 = f32::MAX_10_EXP` instead of importing this constant"
-    ),
+    note = "use `f32::MAX_10_EXP` in expressions or declare a local \
+        `const MAX_10_EXP: i32 = f32::MAX_10_EXP` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_max_10_exp"]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
@@ -302,10 +280,8 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::NAN` in expressions or declare a local ",
-        "`const NAN: f32 = f32::NAN` instead of importing this constant"
-    ),
+    note = "use `f32::NAN` in expressions or declare a local \
+        `const NAN: f32 = f32::NAN` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_nan"]
 pub const NAN: f32 = f32::NAN;
@@ -326,10 +302,8 @@ pub const NAN: f32 = f32::NAN;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::INFINITY` in expressions or declare a local ",
-        "`const INFINITY: f32 = f32::INFINITY` instead of importing this constant"
-    ),
+    note = "use `f32::INFINITY` in expressions or declare a local \
+        `const INFINITY: f32 = f32::INFINITY` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_infinity"]
 pub const INFINITY: f32 = f32::INFINITY;
@@ -350,10 +324,8 @@ pub const INFINITY: f32 = f32::INFINITY;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.99.0",
-    note = concat!(
-        "use `f32::NEG_INFINITY` in expressions or declare a local ",
-        "`const NEG_INFINITY: f32 = f32::NEG_INFINITY` instead of importing this constant"
-    ),
+    note = "use `f32::NEG_INFINITY` in expressions or declare a local \
+        `const NEG_INFINITY: f32 = f32::NEG_INFINITY` instead of importing this constant"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_neg_infinity"]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
