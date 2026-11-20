@@ -672,13 +672,14 @@ extern "C" void LLVMRustAppendModuleInlineAsm(
 #endif
 }
 
-template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
-  return (DIT *)(Ref ? unwrap<Metadata>(Ref) : nullptr);
+// A variant of `unwrap<T>(...)` that allows null pointers. Used by some
+// debuginfo builder functions.
+//
+// If the pointer is non-null, LLVM will assert that the downcast succeeds,
+// but only if LLVM assertions are enabled (i.e. not in release builds).
+template <typename DIT> DIT *unwrapDI(LLVMMetadataRef Ref) {
+  return cast_if_present<DIT>(unwrap(Ref));
 }
-
-#define DIDescriptor DIScope
-#define DIArray DINodeArray
-#define unwrapDI unwrapDIPtr
 
 // Statically assert that `LLVMDIFlags` (C) and `DIFlags` (C++) have the same
 // layout, at least for the flags we know about. This isn't guaranteed, but is
@@ -1050,7 +1051,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
       unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags,
-      TParams, unwrapDIPtr<DISubprogram>(Decl));
+      TParams, unwrapDI<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
@@ -1081,7 +1082,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMMetadataRef Discriminator, LLVMMetadataRef Elements,
     const char *UniqueId, size_t UniqueIdLen) {
   return wrap(unwrap(Builder)->createVariantPart(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
       DINodeArray(unwrapDI<MDTuple>(Elements)),
@@ -1098,7 +1099,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
     D = unwrap<llvm::ConstantInt>(Discriminant);
   }
   return wrap(unwrap(Builder)->createVariantMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
       fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
@@ -1109,7 +1110,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     uint64_t SizeInBits, uint32_t AlignInBits, LLVMMetadataRef Elements,
     LLVMMetadataRef ClassTy, bool IsScoped) {
   return wrap(unwrap(Builder)->createEnumerationType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       DINodeArray(unwrapDI<MDTuple>(Elements)), unwrapDI<DIType>(ClassTy),
       /* RunTimeLang */ 0, "", IsScoped));
@@ -1120,8 +1121,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     size_t NameLen, LLVMMetadataRef Ty) {
   bool IsDefault = false; // FIXME: should we ever set this true?
   return wrap(unwrap(Builder)->createTemplateTypeParameter(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIType>(Ty), IsDefault));
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty),
+      IsDefault));
 }
 
 extern "C" void LLVMRustDICompositeTypeReplaceArrays(
@@ -1159,7 +1160,7 @@ LLVMRustDICreateVectorType(LLVMDIBuilderRef Builder, uint64_t Size,
 extern "C" LLVMMetadataRef
 LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
                                              unsigned BD) {
-  DILocation *Loc = unwrapDIPtr<DILocation>(Location);
+  DILocation *Loc = unwrapDI<DILocation>(Location);
   auto NewLoc = Loc->cloneWithBaseDiscriminator(BD);
   return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
 }
