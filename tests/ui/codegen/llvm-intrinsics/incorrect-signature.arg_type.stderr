@@ -1,0 +1,8 @@
+error: intrinsic signature mismatch for `llvm.ctpop.i32`: expected signature `i32 (i32)`, found `i32 (i64)`
+  --> $DIR/incorrect-signature.rs:17:5
+   |
+LL |     fn foo(a: i64) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

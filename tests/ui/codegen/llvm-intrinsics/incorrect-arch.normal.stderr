@@ -1,5 +1,5 @@
 error: intrinsic `llvm.s390.sfpc` cannot be used with target arch `TARGET_ARCH`
-  --> $DIR/incorrect-arch-intrinsic.rs:10:5
+  --> $DIR/incorrect-arch.rs:13:5
    |
 LL |     fn foo(a: i32);
    |     ^^^^^^^^^^^^^^^

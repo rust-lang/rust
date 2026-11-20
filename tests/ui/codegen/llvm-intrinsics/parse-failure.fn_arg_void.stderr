@@ -1,0 +1,8 @@
+error: unknown LLVM intrinsic `llvm.ctpop.f_isVoidisVoidf`
+  --> $DIR/parse-failure.rs:218:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,5 +1,5 @@
-error: unknown LLVM intrinsic `llvm.abcde`
-  --> $DIR/unknown-llvm-intrinsic.rs:8:5
+error: unknown LLVM intrinsic `llvm.trap.i32`
+  --> $DIR/parse-failure.rs:26:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^

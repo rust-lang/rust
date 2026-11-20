@@ -1,0 +1,8 @@
+error: invalid type parameter `i4194305` at position 0 in intrinsic `llvm.aarch64.neon.sqxtn.i4194305`
+  --> $DIR/early-check.rs:82:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
