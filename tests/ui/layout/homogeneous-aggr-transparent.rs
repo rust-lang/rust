@@ -14,7 +14,7 @@ struct Wrapper1<T>(T);
 #[repr(transparent)]
 struct Wrapper2<T>((), Zst, T);
 #[repr(transparent)]
-struct Wrapper3<T>(T, [u8; 0], PhantomData<u64>);
+struct Wrapper3<T>(T, [(); 0], PhantomData<u64>);
 #[repr(transparent)]
 union WrapperUnion<T: Copy> {
     nothing: (),

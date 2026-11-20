@@ -7,14 +7,15 @@ use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagDecorator, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{
-    ALIGNED_FIELDS_IN_PACKED, DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS,
+    ALIGNED_FIELDS_IN_PACKED, DEAD_CODE, NON_ZST_REPR_TRANSPARENT_ARRAY_ELEMENT,
+    UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1813,32 +1814,66 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     /// We call a field "trivial" for `repr(transparent)` purposes if it can be ignored.
     /// IOW, `repr(transparent)` is allowed if there is at most one non-trivial field.
     /// This enum captures all the reasons why a field might not be "trivial".
+    /// All types we consider trivial here must have [trivial ABI].
+    ///
+    /// [trivial ABI]: https://doc.rust-lang.org/nightly/std/primitive.fn.html#abi-compatibility
     enum NonTrivialReason<'tcx> {
         UnknownLayout,
         NonZeroSized,
+        NonZeroSizedElement { element: Ty<'tcx> },
         NonTrivialAlignment,
         PrivateField { inside: Ty<'tcx> },
         NonExhaustive { ty: Ty<'tcx> },
         ReprC { ty: Ty<'tcx> },
+        ContainsClosure { ty: Ty<'tcx> },
     }
     struct NonTrivialFieldInfo<'tcx> {
         span: Span,
         reason: NonTrivialReason<'tcx>,
+        /// True if this is an error, false if this is just a FCW.
+        hard_error: bool,
     }
 
     /// Check if this type is "trivial" for `repr(transparent)`. If not, return the reason why
-    /// and the problematic type.
+    /// and the problematic type. If `only_check_semver` is set, only checks for things that could
+    /// become non-1-ZST in the future (i.e., types where more fields could be added in a
+    /// semver-compatible way). This assumes that `ty` has already been confirmed to be a 1-ZST.
+    // Note that this is currently called with non-1-ZST array element types as the check for those
+    // being a 1-ZST is currently only a FCW.
     fn is_trivial<'tcx>(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
+        only_check_semver: bool,
+        found_fcw: &mut impl FnMut(NonTrivialReason<'tcx>),
     ) -> ControlFlow<NonTrivialReason<'tcx>> {
         // We can encounter projections during traversal, so ensure the type is normalized.
         let ty =
             tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
-            ty::Tuple(list) => list.iter().try_for_each(|t| is_trivial(tcx, typing_env, t)),
-            ty::Array(ty, _) => is_trivial(tcx, typing_env, *ty),
+            // Tuples are always trivial iff they are 1-ZSTs.
+            // They still need to be checked for semver issues.
+            ty::Tuple(list) => {
+                list.iter().try_for_each(|t| is_trivial(tcx, typing_env, t, true, found_fcw))
+            }
+            // Arrays are trivial iff the element type is trivial.
+            ty::Array(ty, _) => {
+                if !only_check_semver {
+                    // Check that the element type is a 1-ZST, which is required for the array to be
+                    // trivial and not checked by the `is_trivial` call below. This is currently a
+                    // FCW.
+                    if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(*ty)) {
+                        if !layout.is_1zst() {
+                            found_fcw(NonTrivialReason::NonZeroSizedElement { element: *ty });
+                        }
+                    } else {
+                        found_fcw(NonTrivialReason::UnknownLayout);
+                    }
+                }
+                is_trivial(tcx, typing_env, *ty, only_check_semver, found_fcw)
+            }
+            // 1-ZST ADTs are trivial iff they are (a) `repr(Rust)`, or (b) `repr(transparent)` with
+            // all fields also being trivial. Fields must always be checked for semver issues.
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
@@ -1851,14 +1886,66 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
                         return ControlFlow::Break(NonTrivialReason::PrivateField { inside: ty });
                     }
                 }
-                if def.repr().c() {
+                if !only_check_semver && !def.repr().rust() && !def.repr().transparent() {
                     return ControlFlow::Break(NonTrivialReason::ReprC { ty });
                 }
-                def.all_fields()
-                    .map(|field| field.ty(tcx, *args).skip_norm_wip())
-                    .try_for_each(|t| is_trivial(tcx, typing_env, t))
+                // Transparent ADTs must have trivial fields, so we fully recurse. For other ADTs we
+                // can switch to `only_check_semver` mode as the ABI is definitely trivial.
+                def.all_fields().map(|field| field.ty(tcx, *args).skip_norm_wip()).try_for_each(
+                    |t| {
+                        is_trivial(
+                            tcx,
+                            typing_env,
+                            t,
+                            only_check_semver || !def.repr().transparent(),
+                            found_fcw,
+                        )
+                    },
+                )
             }
-            _ => ControlFlow::Continue(()),
+            // These types always have trivial ABI.
+            ty::FnDef(..) | ty::Never => ControlFlow::Continue(()),
+            // A closure changing size shouldn't break semver, so disallow closure-like types. Note
+            // that this cannot occur in practice at the moment as these types are all unnameable.
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => {
+                ControlFlow::Break(NonTrivialReason::ContainsClosure { ty })
+            }
+            // Pattern types are trivial iff their underlying type is trivial (shouldn't occur at
+            // the moment as pattern types are currently restricted to integers).
+            ty::Pat(ty, _) => is_trivial(tcx, typing_env, *ty, only_check_semver, found_fcw),
+            ty::UnsafeBinder(bound_ty) => {
+                // Lifetimes do not affect whether a type has trivial ABI.
+                let ty = tcx.instantiate_bound_regions_with_erased((*bound_ty).into());
+                is_trivial(tcx, typing_env, ty, only_check_semver, found_fcw)
+            }
+            // FIXME(scrabsha): View types are still being implemented.
+            ty::View(..) => unimplemented!(),
+
+            // These types are never 1-ZSTs, so this is only reachable due to the array element type
+            // 1-ZST check only being a FCW.
+            // FIXME: Make this `bug!` once the FCW is a hard error.
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnPtr(..) => ControlFlow::Continue(()),
+            // These types are unsized, so this is unreachable.
+            ty::Foreign(..) | ty::Str | ty::Slice(..) | ty::Dynamic(..) => {
+                bug!("unexpected type passed to is_trivial: {ty:?}")
+            }
+            // The layout of `ty` is known, so these cannot occur.
+            ty::Alias(..)
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Error(..) => bug!("unexpected type passed to is_trivial: {ty:?}"),
         }
     }
 
@@ -1883,14 +1970,24 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
                         }
                     }
                 };
-                return Some(NonTrivialFieldInfo { span, reason });
+                return Some(NonTrivialFieldInfo { span, reason, hard_error: true });
             }
             // Recursively check for other things that have to be ruled out.
-            if let Some(reason) = is_trivial(tcx, typing_env, ty).break_value() {
-                return Some(NonTrivialFieldInfo { span, reason });
+            let mut fcw_reason = None;
+            if let Some(reason) = is_trivial(tcx, typing_env, ty, false, &mut |reason| {
+                if fcw_reason.is_none() {
+                    fcw_reason = Some(reason);
+                }
+            })
+            .break_value()
+            {
+                Some(NonTrivialFieldInfo { span, reason, hard_error: true })
+            } else if let Some(reason) = fcw_reason {
+                Some(NonTrivialFieldInfo { span, reason, hard_error: false })
+            } else {
+                // Otherwise,
+                None
             }
-            // Otherwise,
-            None
         })
         .collect::<Vec<_>>();
 
@@ -1902,37 +1999,60 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
             format_args!("transparent {}", adt.descr())
         };
         let ty_span = tcx.def_span(adt.did());
-        let mut diag = tcx.dcx().struct_span_err(
-            ty_span,
-            format!("{desc} needs at most one non-trivial field, but has {count}"),
-        );
-        diag.code(E0690);
-
-        // Label for the type.
-        diag.span_label(ty_span, format!("needs at most one non-trivial field, but has {count}"));
-        // Label for each non-trivial field.
-        for field in non_trivial_fields {
-            let msg = match field.reason {
-                NonTrivialReason::UnknownLayout => {
-                    format!("this field is generic and hence may have non-zero size")
-                }
-                NonTrivialReason::NonZeroSized => format!("this field has non-zero size"),
-                NonTrivialReason::NonTrivialAlignment => format!("this field requires alignment"),
-                NonTrivialReason::PrivateField { inside } => format!(
-                    "this field contains `{inside}`, which has private fields, so it could become non-zero-sized in the future"
+        let message = format!("{desc} needs at most one non-trivial field, but has {count}");
+        let decorate = |diag: &mut Diag<'_>| {
+            // Label for the type.
+            diag.span_label(
+                ty_span,
+                format!("needs at most one non-trivial field, but has {count}"),
+            );
+            // Label for each non-trivial field.
+            for field in &non_trivial_fields {
+                let msg = match field.reason {
+                    NonTrivialReason::UnknownLayout => {
+                        format!("this field is generic and hence may have non-zero size")
+                    }
+                    NonTrivialReason::NonZeroSized => format!("this field has non-zero size"),
+                    NonTrivialReason::NonZeroSizedElement { element } => format!(
+                        "this field contains an array with an element type of `{element}`, which has non-zero size"
+                    ),
+                    NonTrivialReason::NonTrivialAlignment => {
+                        format!("this field requires alignment")
+                    }
+                    NonTrivialReason::PrivateField { inside } => format!(
+                        "this field contains `{inside}`, which has private fields, so it could become non-zero-sized in the future"
+                    ),
+                    NonTrivialReason::NonExhaustive { ty } => format!(
+                        "this field contains `{ty}`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future"
+                    ),
+                    NonTrivialReason::ReprC { ty } => format!(
+                        "this field contains `{ty}`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets"
+                    ),
+                    NonTrivialReason::ContainsClosure { ty } => format!(
+                        "this field contains `{ty}` which is a closure and therefore is not guaranteed to be zero-sized"
+                    ),
+                };
+                diag.span_label(field.span, msg);
+            }
+        };
+        if non_trivial_fields.iter().filter(|field| field.hard_error).count() > 1 {
+            let mut diag = tcx.dcx().struct_span_err(ty_span, message);
+            diag.code(E0690);
+            decorate(&mut diag);
+            diag.emit();
+        } else {
+            tcx.emit_node_span_lint(
+                NON_ZST_REPR_TRANSPARENT_ARRAY_ELEMENT,
+                tcx.local_def_id_to_hir_id(
+                    adt.did().as_local().expect("check_transparent is only called on local types"),
                 ),
-                NonTrivialReason::NonExhaustive { ty } => format!(
-                    "this field contains `{ty}`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future"
-                ),
-                NonTrivialReason::ReprC { ty } => format!(
-                    "this field contains `{ty}`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets"
-                ),
-            };
-            diag.span_label(field.span, msg);
+                ty_span,
+                DiagDecorator(|diag| {
+                    diag.primary_message(message);
+                    decorate(diag);
+                }),
+            );
         }
-
-        diag.emit();
-        return;
     }
 }
 

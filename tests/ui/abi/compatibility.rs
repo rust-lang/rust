@@ -260,7 +260,7 @@ struct TransparentWrapper1<T: ?Sized>(T);
 #[repr(transparent)]
 struct TransparentWrapper2<T: ?Sized>((), Zst, T);
 #[repr(transparent)]
-struct TransparentWrapper3<T>(T, [u8; 0], PhantomData<u64>);
+struct TransparentWrapper3<T>(T, [(ReprC<Zst>,); 0], PhantomData<u64>);
 #[repr(transparent)]
 union TransparentWrapperUnion<T> {
     nothing: (),
