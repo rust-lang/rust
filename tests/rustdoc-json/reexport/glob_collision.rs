@@ -15,12 +15,12 @@ mod m2 {
     pub fn f(_: u8) {}
 }
 
-//@ set m1_use = "$.index[?(@.docs=='m1 re-export')].id"
+//@ set m1_use = "$.index[?(@.docs[0].text=='m1 re-export')].id"
 //@ is "$.index[?(@.inner.use.name=='m1')].inner.use.id" $m1
 //@ is "$.index[?(@.inner.use.name=='m1')].inner.use.is_glob" true
 /// m1 re-export
 pub use m1::*;
-//@ set m2_use = "$.index[?(@.docs=='m2 re-export')].id"
+//@ set m2_use = "$.index[?(@.docs[0].text=='m2 re-export')].id"
 //@ is "$.index[?(@.inner.use.name=='m2')].inner.use.id" $m2
 //@ is "$.index[?(@.inner.use.name=='m2')].inner.use.is_glob" true
 /// m2 re-export

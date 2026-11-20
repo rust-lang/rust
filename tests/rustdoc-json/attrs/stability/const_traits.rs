@@ -29,15 +29,15 @@ impl InherentConstMethodTarget {
 #[rustc_const_unstable(feature = "const_trait_const_feature", issue = "none")]
 pub const trait ConstTrait {
     // This item is *not* usable in a const context, because its parent is const-unstable.
-    //@ is "$.index[?(@.docs=='assoc type inside const trait')].const_stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='assoc type inside const trait')].const_stability.feature" '"const_trait_const_feature"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const trait')].const_stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const trait')].const_stability.feature" '"const_trait_const_feature"'
     /// assoc type inside const trait
     #[stable(feature = "trait_assoc_type_feature", since = "2.1.0")]
     type TraitAssocType;
 
     // This item is also *not* usable in a const context, because its parent is const-unstable.
-    //@ is "$.index[?(@.docs=='method inside const trait')].const_stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='method inside const trait')].const_stability.feature" '"const_trait_const_feature"'
+    //@ is "$.index[?(@.docs[0].text=='method inside const trait')].const_stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='method inside const trait')].const_stability.feature" '"const_trait_const_feature"'
     /// method inside const trait
     #[stable(feature = "trait_method_feature", since = "2.2.0")]
     fn trait_method(&self);
@@ -45,7 +45,7 @@ pub const trait ConstTrait {
     // An associated const can't be const-unstable.
     // It is usable in a const context *regardless* of the fact its parent is const-unstable.
     // See the UI test in `tests/ui/traits/const-traits/associated-const-stability.rs` for proof.
-    //@ is "$.index[?(@.docs=='assoc const inside const trait')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside const trait')].const_stability" null
     /// assoc const inside const trait
     #[stable(feature = "trait_assoc_const_feature", since = "2.3.0")]
     const TRAIT_ASSOC_CONST: usize;
@@ -68,30 +68,30 @@ pub const trait ConstTraitWithUnstableMethod {
     fn unstable_method_without_const_gate(&self);
 }
 
-//@ is "$.index[?(@.docs=='const trait impl')].stability.feature" '"const_trait_impl_feature"'
-//@ is "$.index[?(@.docs=='const trait impl')].stability.level.stable.since" '"3.0.0"'
-//@ is "$.index[?(@.docs=='const trait impl')].const_stability.level" '"unstable"'
-//@ is "$.index[?(@.docs=='const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
+//@ is "$.index[?(@.docs[0].text=='const trait impl')].stability.feature" '"const_trait_impl_feature"'
+//@ is "$.index[?(@.docs[0].text=='const trait impl')].stability.level.stable.since" '"3.0.0"'
+//@ is "$.index[?(@.docs[0].text=='const trait impl')].const_stability.level" '"unstable"'
+//@ is "$.index[?(@.docs[0].text=='const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
 /// const trait impl
 #[stable(feature = "const_trait_impl_feature", since = "3.0.0")]
 #[rustc_const_unstable(feature = "const_trait_impl_const_feature", issue = "none")]
 const impl ConstTrait for ConstTraitTarget {
     // This item is *not* usable in a const context, because its parent is const-unstable.
-    //@ is "$.index[?(@.docs=='assoc type inside const trait impl')].const_stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='assoc type inside const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const trait impl')].const_stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
     /// assoc type inside const trait impl
     type TraitAssocType = usize;
 
     // This item is also *not* usable in a const context, because its parent is const-unstable.
-    //@ is "$.index[?(@.docs=='method inside const trait impl')].const_stability.level" '"unstable"'
-    //@ is "$.index[?(@.docs=='method inside const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
+    //@ is "$.index[?(@.docs[0].text=='method inside const trait impl')].const_stability.level" '"unstable"'
+    //@ is "$.index[?(@.docs[0].text=='method inside const trait impl')].const_stability.feature" '"const_trait_impl_const_feature"'
     /// method inside const trait impl
     fn trait_method(&self) {}
 
     // An associated const can't be const-unstable.
     // It is usable in a const context *regardless* of the fact its parent is const-unstable.
     // See the UI test in `tests/ui/traits/const-traits/associated-const-stability.rs` for proof.
-    //@ is "$.index[?(@.docs=='assoc const inside const trait impl')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside const trait impl')].const_stability" null
     /// assoc const inside const trait impl
     const TRAIT_ASSOC_CONST: usize = 0;
 }
@@ -106,17 +106,17 @@ const impl ConstTrait for ConstTraitTarget {
 #[stable(feature = "const_stable_trait_feature", since = "4.0.0")]
 #[rustc_const_stable(feature = "const_stable_trait_const_feature", since = "4.0.0")]
 pub const trait ConstStableTrait {
-    //@ is "$.index[?(@.docs=='assoc type inside const-stable trait')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const-stable trait')].const_stability" null
     /// assoc type inside const-stable trait
     #[stable(feature = "stable_trait_assoc_type_feature", since = "4.1.0")]
     type StableTraitAssocType;
 
-    //@ is "$.index[?(@.docs=='method inside const-stable trait')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='method inside const-stable trait')].const_stability" null
     /// method inside const-stable trait
     #[stable(feature = "stable_trait_method_feature", since = "4.2.0")]
     fn stable_trait_method(&self);
 
-    //@ is "$.index[?(@.docs=='assoc const inside const-stable trait')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside const-stable trait')].const_stability" null
     /// assoc const inside const-stable trait
     #[stable(feature = "stable_trait_assoc_const_feature", since = "4.3.0")]
     const STABLE_TRAIT_ASSOC_CONST: usize;
@@ -125,23 +125,23 @@ pub const trait ConstStableTrait {
 // The `const impl` is const-stable. We indicate that *once* on the impl itself, but since
 // there are no special cases here (unlike in the const-unstable case with associated consts)
 // we do not duplicate the const-stability to all the associated items so as not to bloat the JSON.
-//@ is "$.index[?(@.docs=='const-stable trait impl')].stability.feature" '"const_stable_trait_impl_feature"'
-//@ is "$.index[?(@.docs=='const-stable trait impl')].stability.level.stable.since" '"5.0.0"'
-//@ is "$.index[?(@.docs=='const-stable trait impl')].const_stability.feature" '"const_stable_trait_impl_const_feature"'
-//@ is "$.index[?(@.docs=='const-stable trait impl')].const_stability.level.stable.since" '"5.0.0"'
+//@ is "$.index[?(@.docs[0].text=='const-stable trait impl')].stability.feature" '"const_stable_trait_impl_feature"'
+//@ is "$.index[?(@.docs[0].text=='const-stable trait impl')].stability.level.stable.since" '"5.0.0"'
+//@ is "$.index[?(@.docs[0].text=='const-stable trait impl')].const_stability.feature" '"const_stable_trait_impl_const_feature"'
+//@ is "$.index[?(@.docs[0].text=='const-stable trait impl')].const_stability.level.stable.since" '"5.0.0"'
 /// const-stable trait impl
 #[stable(feature = "const_stable_trait_impl_feature", since = "5.0.0")]
 #[rustc_const_stable(feature = "const_stable_trait_impl_const_feature", since = "5.0.0")]
 const impl ConstStableTrait for ConstStableTraitTarget {
-    //@ is "$.index[?(@.docs=='assoc type inside const-stable trait impl')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc type inside const-stable trait impl')].const_stability" null
     /// assoc type inside const-stable trait impl
     type StableTraitAssocType = usize;
 
-    //@ is "$.index[?(@.docs=='method inside const-stable trait impl')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='method inside const-stable trait impl')].const_stability" null
     /// method inside const-stable trait impl
     fn stable_trait_method(&self) {}
 
-    //@ is "$.index[?(@.docs=='assoc const inside const-stable trait impl')].const_stability" null
+    //@ is "$.index[?(@.docs[0].text=='assoc const inside const-stable trait impl')].const_stability" null
     /// assoc const inside const-stable trait impl
     const STABLE_TRAIT_ASSOC_CONST: usize = 1;
 }
