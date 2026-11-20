@@ -5120,8 +5120,10 @@ impl<T> [T] {
     ///
     /// # Safety
     ///
-    /// Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
-    /// even if the resulting references are not used.
+    /// - Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
+    ///   even if the resulting references are not used.
+    /// - Calling this method with an index for which `get_disjoint_mut` would return `None`
+    ///   on the same slice is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// # Examples
     ///

@@ -1521,8 +1521,10 @@ impl<T> *const [T] {
     ///
     /// # Safety
     ///
-    /// Calling this method with an [out-of-bounds index] or when `self` is not dereferenceable
-    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - Calling this method with an [out-of-bounds index] or when `self` is not dereferenceable
+    ///   is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - If `index` represents a range, its equivalent half-open range
+    ///   must have a start index no greater than its end index.
     ///
     /// [out-of-bounds index]: #method.add
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
