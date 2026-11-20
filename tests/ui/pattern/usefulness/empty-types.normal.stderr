@@ -36,7 +36,7 @@ LL |     match ref_never {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match ref_never {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -66,7 +66,7 @@ note: `Result<u32, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~     match res_u32_never {
-LL +         Ok(_) => todo!(),
+LL +         Ok(_) => { todo!() }
 LL ~     }
    |
 
@@ -85,7 +85,7 @@ note: `Result<u32, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Err(_) => {},
-LL ~         Ok(1_u32..=u32::MAX) => todo!()
+LL ~         Ok(1_u32..=u32::MAX) => { todo!() }
    |
 
 error[E0005]: refutable pattern in local binding
@@ -154,7 +154,7 @@ note: `Option<Void>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             None => {},
-LL +             Some(_) => todo!()
+LL +             Some(_) => { todo!() }
    |
 
 error: unreachable pattern
@@ -247,7 +247,7 @@ LL |     match *x {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match *x {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -261,7 +261,7 @@ LL |     match *x {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match *x {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -283,7 +283,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~     match *x {
-LL +         Ok(_) | Err(_) => todo!(),
+LL +         Ok(_) | Err(_) => { todo!() }
 LL ~     }
    |
 
@@ -297,7 +297,7 @@ LL |     match *x {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match *x {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -311,7 +311,7 @@ LL |     match slice_never {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match slice_never {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -326,7 +326,7 @@ LL |     match slice_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         [] => {},
-LL +         &[_, ..] => todo!()
+LL +         &[_, ..] => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `&[]`, `&[_]` and `&[_, _]` not covered
@@ -339,7 +339,7 @@ LL |     match slice_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         [_, _, _, ..] => {},
-LL +         &[] | &[_] | &[_, _] => todo!()
+LL +         &[] | &[_] | &[_, _] => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `&[]` and `&[_, ..]` not covered
@@ -353,7 +353,7 @@ LL |     match slice_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         &[..] if false => {},
-LL +         &[] | &[_, ..] => todo!()
+LL +         &[] | &[_, ..] => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: type `[!]` is non-empty
@@ -366,7 +366,7 @@ LL |     match *slice_never {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match *slice_never {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -380,7 +380,7 @@ LL |     match array_0_never {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match array_0_never {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -403,7 +403,7 @@ LL |     match array_0_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         [..] if false => {},
-LL +         [] => todo!()
+LL +         [] => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `&Some(_)` not covered
@@ -422,7 +422,7 @@ note: `Option<!>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &None => {},
-LL +         &Some(_) => todo!()
+LL +         &Some(_) => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
@@ -441,7 +441,7 @@ note: `Option<!>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(_) => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
@@ -460,7 +460,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_) => {},
-LL +         Err(_) => todo!()
+LL +         Err(_) => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
@@ -479,7 +479,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_a) => {},
-LL +         Err(_) => todo!()
+LL +         Err(_) => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
@@ -492,7 +492,7 @@ LL |     match *ref_tuple_half_never {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match *ref_tuple_half_never {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 
@@ -553,7 +553,7 @@ LL |     match ref_never {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &_a if false => {},
-LL +         &_ => todo!()
+LL +         &_ => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
@@ -573,7 +573,7 @@ note: `Result<!, !>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Err(_) => {},
-LL +         Ok(_) => todo!()
+LL +         Ok(_) => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
@@ -592,7 +592,7 @@ note: `Option<Result<!, !>>` defined here
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
-LL +         Some(_) => todo!()
+LL +         Some(_) => { todo!() }
    |
 
 error: aborting due to 42 previous errors
