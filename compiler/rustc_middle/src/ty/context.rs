@@ -2598,6 +2598,41 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// with `cfg(debug_assertions)`, assert that the encoded representation of viewed fields is
+    /// valid for a given ADT, and ICEs if not.
+    pub fn debug_assert_encoded_viewed_fields_compatible(
+        self,
+        base_def: AdtDef<'tcx>,
+        base_args: ty::GenericArgs<'tcx>,
+        fields: Ty<'tcx>,
+    ) {
+        if cfg!(debug_assertions) {
+            let base_ty = Ty::new_adt(self, base_def, base_args);
+
+            let ty::Tuple(fields) = fields.kind() else {
+                bug!("incompatible encoded viewed fields type: {fields:?}");
+            };
+
+            for field in *fields {
+                let frt_args = match field.kind() {
+                    ty::Adt(def, args)
+                        if def.flags().contains(ty::AdtFlags::IS_FIELD_REPRESENTING_TYPE) =>
+                    {
+                        args
+                    }
+                    _ => bug!("malformed encoded viewed field type: {field:?}"),
+                };
+
+                let referred_ty = frt_args[0].as_type().expect("first FRT arg is type");
+
+                assert_eq!(
+                    referred_ty, base_ty,
+                    "viewed field ({referred_ty:?}) does not refer to the base type ({base_ty:?})"
+                );
+            }
+        }
+    }
+
     fn emit_bug_args_compatible(
         self,
         def_id: DefId,
