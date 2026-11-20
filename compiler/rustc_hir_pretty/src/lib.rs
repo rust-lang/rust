@@ -101,7 +101,7 @@ impl<'a> State<'a> {
     /// actual style of the attribute.
     fn print_attribute_as_style(&mut self, attr: &Attribute, style: ast::AttrStyle) {
         match &attr {
-            Attribute::Tool(unparsed) | Attribute::DeriveHelper(unparsed) => {
+            Attribute::Tool { item: unparsed, .. } | Attribute::DeriveHelper(unparsed) => {
                 self.print_attritem_as_style(unparsed, style)
             }
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {

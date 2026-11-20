@@ -313,24 +313,6 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused doc comment")]
-pub(crate) struct BuiltinUnusedDocComment<'a> {
-    pub kind: &'a str,
-    #[label("rustdoc does not generate documentation for {$kind}")]
-    pub label: Span,
-    #[subdiagnostic]
-    pub sub: BuiltinUnusedDocCommentSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum BuiltinUnusedDocCommentSub {
-    #[help("use `//` for a plain comment")]
-    PlainHelp,
-    #[help("use `/* */` for a plain comment")]
-    BlockHelp,
-}
-
-#[derive(Diagnostic)]
 #[diag("const items should never be `#[no_mangle]`")]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
@@ -3259,7 +3241,7 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
         #[suggestion_part(code = "&raw {mutbl} ")]
         left: Span,
         #[suggestion_part(code = "")]
-        right: Span,
+        right: Option<Span>,
         mutbl: &'a str,
     },
     #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]

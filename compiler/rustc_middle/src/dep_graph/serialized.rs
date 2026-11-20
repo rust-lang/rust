@@ -41,16 +41,21 @@
 
 use std::cell::RefCell;
 use std::cmp::max;
+use std::hash::{BuildHasher, BuildHasherDefault};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, OnceLock};
 use std::{iter, mem};
 
+#[cfg(test)]
+mod tests;
+
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal, broadcast};
-use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unhash::Unhasher;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
@@ -165,8 +170,14 @@ struct LazyKindIndex {
     /// Number of nodes of this kind.
     len: u32,
     /// `key_fingerprint -> node index`, built from this kind's range on first
-    /// lookup. Empty kinds (and kinds never looked up) never build a map.
-    map: OnceLock<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    /// lookup. Keys are read from the immutable node array rather than duplicated
+    /// in each table entry. Kinds never looked up never build a map.
+    map: OnceLock<HashTable<SerializedDepNodeIndex>>,
+}
+
+#[inline]
+fn fingerprint_hash(fingerprint: PackedFingerprint) -> u64 {
+    BuildHasherDefault::<Unhasher>::default().hash_one(fingerprint)
 }
 
 impl LazyKindIndex {
@@ -177,19 +188,23 @@ impl LazyKindIndex {
         nodes: &IndexSlice<SerializedDepNodeIndex, DepNode>,
         nodes_by_kind: &[Option<SerializedDepNodeIndex>],
         profiler: &Option<SelfProfilerRef>,
-    ) -> &UnhashMap<PackedFingerprint, SerializedDepNodeIndex> {
+    ) -> &HashTable<SerializedDepNodeIndex> {
         self.map.get_or_init(|| {
             let _prof_timer = profiler
                 .as_ref()
                 .map(|p| p.generic_activity("incr_comp_load_dep_graph_reverse_index"));
             let range = (self.start as usize)..(self.start as usize + self.len as usize);
-            let mut map =
-                UnhashMap::with_capacity_and_hasher(self.len as usize, Default::default());
+            let mut map = HashTable::<SerializedDepNodeIndex>::with_capacity(self.len as usize);
             for &idx in &nodes_by_kind[range] {
                 let idx = idx.expect("counting sort fills every slot of a kind's range");
                 let node = nodes[idx];
                 debug_assert_eq!(node.kind, kind);
-                if map.insert(node.key_fingerprint, idx).is_some()
+                let entry = map.entry(
+                    fingerprint_hash(node.key_fingerprint),
+                    |&index| nodes[index].key_fingerprint == node.key_fingerprint,
+                    |&index| fingerprint_hash(nodes[index].key_fingerprint),
+                );
+                if matches!(&entry, Entry::Occupied(_))
                     // Side effect nodes can legitimately share a fingerprint.
                     && node.kind != DepKind::SideEffect
                 {
@@ -201,6 +216,7 @@ impl LazyKindIndex {
                          DepNode: {node:?}"
                     )
                 }
+                entry.insert(idx);
             }
             map
         })
@@ -244,7 +260,10 @@ impl SerializedDepGraph {
             &self.reverse_index.nodes_by_kind,
             &self.profiler,
         );
-        map.get(&dep_node.key_fingerprint).copied()
+        map.find(fingerprint_hash(dep_node.key_fingerprint), |&index| {
+            self.nodes[index].key_fingerprint == dep_node.key_fingerprint
+        })
+        .copied()
     }
 
     #[inline]

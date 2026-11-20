@@ -299,7 +299,6 @@ impl<R: ?Sized> BufReader<R> {
 impl<R: ?Sized> BufReader<R> {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[allow(missing_docs)]
     pub fn initialized(&self) -> bool {
         self.buf.initialized()
     }

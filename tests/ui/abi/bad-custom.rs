@@ -1,6 +1,8 @@
-//@ edition: 2021
 //@ check-fail
 //@ needs-asm-support
+//@ revisions: edition2015 edition2018
+//@[edition2015] edition: 2015
+//@[edition2018] edition: 2018..
 
 #[unsafe(naked)]
 unsafe extern "custom" fn return_explicit_unit() -> () {
@@ -136,9 +138,11 @@ const unsafe extern "custom" fn no_const_fn() {
     //~^ ERROR inline assembly is not allowed in constant functions
 }
 
+#[cfg(edition2018)]
 async unsafe extern "custom" fn no_async_fn() {
-    //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
-    //~| ERROR functions with the "custom" ABI cannot be `async`
+    //[edition2015]~^ ERROR `async fn` is not permitted in Rust 2015
+    //[edition2018]~^^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
+    //[edition2018]~| ERROR functions with the "custom" ABI cannot be `async`
 }
 
 fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {

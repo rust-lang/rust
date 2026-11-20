@@ -138,7 +138,7 @@ LL - #[optimize(size(x, y, z))]
 LL + #[optimize(speed)]
    |
 
-error: multiple `optimize` attributes
+error: duplicate `optimize` attributes
   --> $DIR/args-checked.rs:21:1
    |
 LL | #[optimize(size(x, y, z))]

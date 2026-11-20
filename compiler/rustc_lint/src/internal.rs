@@ -34,7 +34,7 @@ declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
@@ -73,7 +73,7 @@ declare_tool_lint! {
     pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
     "require explicit opt-in when using potentially unstable methods or functions",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -84,7 +84,7 @@ declare_tool_lint! {
     pub rustc::UNTRACKED_QUERY_INFORMATION,
     Allow,
     "require explicit opt-in when accessing information not tracked by the query system",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY, UNTRACKED_QUERY_INFORMATION]);
@@ -201,7 +201,7 @@ declare_tool_lint! {
     pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
     "usage of `ty::TyKind` outside of the `ty::sty` module",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -210,7 +210,7 @@ declare_tool_lint! {
     pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
     "using `ty::{Ty,TyCtxt}` instead of importing it",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(TyTyKind => [
@@ -347,7 +347,7 @@ declare_tool_lint! {
     pub rustc::NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
     Allow,
     "non-glob import of `rustc_type_ir::inherent`",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -357,7 +357,7 @@ declare_tool_lint! {
     pub rustc::USAGE_OF_TYPE_IR_INHERENT,
     Allow,
     "usage `rustc_type_ir::inherent` outside of trait system",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_tool_lint! {
@@ -370,7 +370,7 @@ declare_tool_lint! {
     pub rustc::USAGE_OF_TYPE_IR_TRAITS,
     Allow,
     "usage `rustc_type_ir`-specific abstraction traits outside of trait system",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 declare_tool_lint! {
     /// The `direct_use_of_rustc_type_ir` lint detects usage of `rustc_type_ir`.
@@ -380,7 +380,7 @@ declare_tool_lint! {
     pub rustc::DIRECT_USE_OF_RUSTC_TYPE_IR,
     Allow,
     "usage `rustc_type_ir` abstraction outside of trait system",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(TypeIr => [
@@ -541,7 +541,7 @@ declare_tool_lint! {
     pub rustc::BAD_OPT_ACCESS,
     Deny,
     "prevent using options by field access when there is a wrapper function",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(BadOptAccess => [BAD_OPT_ACCESS]);
@@ -575,7 +575,7 @@ declare_tool_lint! {
     pub rustc::SYMBOL_INTERN_STRING_LITERAL,
     Allow,
     "Forbid uses of string literals in `Symbol::intern` or `Ident::from_str_and_span`, suggesting preinterning instead",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(SymbolInternStringLiteral => [SYMBOL_INTERN_STRING_LITERAL]);
@@ -617,7 +617,7 @@ declare_tool_lint! {
     pub rustc::IMPLICIT_SYSROOT_CRATE_IMPORT,
     Allow,
     "Forbid uses of non-sysroot crates in `extern crate`",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(ImplicitSysrootCrateImport => [IMPLICIT_SYSROOT_CRATE_IMPORT]);
@@ -651,7 +651,7 @@ declare_tool_lint! {
     pub rustc::BAD_USE_OF_FIND_ATTR,
     Allow,
     "Forbid `AttributeKind::` as a prefix in `find_attr!` macros.",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 declare_lint_pass!(BadUseOfFindAttr => [BAD_USE_OF_FIND_ATTR]);
 
@@ -739,7 +739,7 @@ declare_tool_lint! {
     pub rustc::RUSTC_MUST_MATCH_EXHAUSTIVELY,
     Allow,
     "Forbids matches with wildcards, or if-let matching on enums marked with `#[rustc_must_match_exhaustively]`",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 declare_lint_pass!(RustcMustMatchExhaustively => [RUSTC_MUST_MATCH_EXHAUSTIVELY]);
 
@@ -853,7 +853,7 @@ declare_tool_lint! {
     // This lint is meant to be manually enabled in selected crates (currently only `rustc_type_ir`)
     Allow,
     "Forbid implementing `TypeVisitable` without deriving `GenericTypeVisitable`",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(MissingGenericTypeVisitableDerive => [MISSING_GENERIC_TYPE_VISITABLE_DERIVE]);

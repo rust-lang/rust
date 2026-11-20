@@ -11,6 +11,7 @@ the oldest IBM server CPU supported is therefore POWER6.
 ## Target maintainers
 
 [@Gelbpunkt](https://github.com/Gelbpunkt)
+[@amaanq](https://github.com/amaanq)
 
 ## Requirements
 

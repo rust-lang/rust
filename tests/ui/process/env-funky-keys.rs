@@ -3,7 +3,7 @@
 
 //@ ignore-android segfaults
 //@ ignore-windows
-//@ ignore-wasm32 no execve
+//@ ignore-wasm no execve
 //@ ignore-sgx no execve
 //@ ignore-vxworks no execve
 //@ ignore-fuchsia no 'execve'

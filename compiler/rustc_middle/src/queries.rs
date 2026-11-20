@@ -57,7 +57,8 @@ use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
 use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_crate_store::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+    CrateDepKind, CrateSource, CrateSourceFlags, ExternCrate, ForeignModule, LinkagePreference,
+    NativeLib,
 };
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -2375,6 +2376,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query used_crate_source_flags(_: CrateNum) -> CrateSourceFlags {
+        eval_always
+        desc { "looking at source presence in a crate" }
+        separate_provide_extern
+    }
+
     /// Returns the debugger visualizers defined for this crate.
     /// NOTE: This query has to be marked `eval_always` because it reads data
     ///       directly from disk that is not tracked anywhere else. I.e. it
@@ -2722,7 +2729,7 @@ rustc_queries! {
         desc { "resolving instance `{}`", ty::Instance::new_raw(key.value.0, key.value.1) }
     }
 
-    query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
+    query reveal_opaque_types_in_bounds(key: ty::ParamEnv<'tcx>) -> ty::ParamEnv<'tcx> {
         desc { "revealing opaque types in `{:?}`", key }
     }
 

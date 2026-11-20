@@ -35,7 +35,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    if find_attr!(tcx, def_id, RustcIntrinsic) {
+    if find_attr!(tcx, def_id, RustcIntrinsic { .. }) {
         // Intrinsic fallback bodies are always cross-crate inlineable.
         // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
         // bodies even when the backend would implement something better, we stop
@@ -163,7 +163,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 // cross-crate-inlining. Adding a broad exception for all intrinsics benchmarks well
                 // and seems more sustainable than an ever-growing list of intrinsics to ignore.
                 if let Some((fn_def_id, _)) = func.const_fn_def()
-                    && find_attr!(tcx, fn_def_id, RustcIntrinsic)
+                    && find_attr!(tcx, fn_def_id, RustcIntrinsic { .. })
                 {
                     return;
                 }

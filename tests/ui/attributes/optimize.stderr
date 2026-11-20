@@ -43,7 +43,7 @@ LL |     fn invalid();
    |
    = help: the `optimize` attribute can only be applied to functions with a body
 
-error: multiple `optimize` attributes
+error: duplicate `optimize` attributes
   --> $DIR/optimize.rs:58:1
    |
 LL | #[optimize(speed)]
@@ -55,7 +55,7 @@ note: attribute also specified here
 LL | #[optimize(speed)]
    | ^^^^^^^^^^^^^^^^^^
 
-error: multiple `optimize` attributes
+error: duplicate `optimize` attributes
   --> $DIR/optimize.rs:62:1
    |
 LL | #[optimize(size)]

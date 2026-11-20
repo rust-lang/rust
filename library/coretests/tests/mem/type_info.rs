@@ -57,12 +57,12 @@ fn test_tuples() {
 #[test]
 fn test_structs() {
     const {
-        #[reflection_placeholder::TestStruct]
+        #[reflective_tool::TestStruct]
         struct TestStruct {
-            #[reflection_placeholder::first(1)]
-            #[reflection_placeholder::first(2)]
+            #[reflective_tool::first(1)]
+            #[reflective_tool::first(2)]
             first: u8,
-            #[reflection_placeholder::second]
+            #[reflective_tool::second]
             second: u16,
             reference: &'static u16,
         }
@@ -70,7 +70,7 @@ fn test_structs() {
         let ty_id = TypeId::of::<TestStruct>();
         assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
-        assert!(ty_id.reflected_attrs() == &["#[reflection_placeholder::TestStruct]"]);
+        assert!(ty_id.reflected_attrs() == &["#[reflective_tool::TestStruct]"]);
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 3);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
@@ -78,12 +78,12 @@ fn test_structs() {
         assert!(ty_id.field(0, 0).name() == "first");
         assert!(
             ty_id.field(0, 0).reflected_attrs()
-                == &["#[reflection_placeholder::first(1)]", "#[reflection_placeholder::first(2)]"]
+                == &["#[reflective_tool::first(1)]", "#[reflective_tool::first(2)]"]
         );
         assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
         assert!(ty_id.field(0, 1).offset() == offset_of!(TestStruct, second));
         assert!(ty_id.field(0, 1).name() == "second");
-        assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflection_placeholder::second]"]);
+        assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflective_tool::second]"]);
         assert!(ty_id.field(0, 2).type_id() == TypeId::of::<&u16>());
         assert!(ty_id.field(0, 2).offset() == offset_of!(TestStruct, reference));
         assert!(ty_id.field(0, 2).name() == "reference");
@@ -112,7 +112,7 @@ fn test_structs() {
     }
 
     const {
-        #[reflection_placeholder::a]
+        #[reflective_tool::a]
         struct Generics<'a, T, const C: u64> {
             a: &'a T,
         }
@@ -120,7 +120,7 @@ fn test_structs() {
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.generics().len() == 3);
-        assert!(ty_id.reflected_attrs() == &["#[reflection_placeholder::a]"]);
+        assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
 
         let Generic::Lifetime(_) = ty_id.generics()[0] else { panic!() };
         let Generic::Type(GenericType { ty: generic_ty, .. }) = ty_id.generics()[1] else {
@@ -135,11 +135,11 @@ fn test_structs() {
 #[test]
 fn test_unions() {
     const {
-        #[reflection_placeholder::a]
+        #[reflective_tool::a]
         union TestUnion {
-            #[reflection_placeholder::first]
+            #[reflective_tool::first]
             first: i16,
-            #[reflection_placeholder::second]
+            #[reflective_tool::second]
             second: u16,
         }
 
@@ -147,17 +147,17 @@ fn test_unions() {
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
-        assert!(ty_id.reflected_attrs() == &["#[reflection_placeholder::a]"]);
+        assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.field(0, 0).name() == "first");
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<i16>());
-        assert!(ty_id.field(0, 0).reflected_attrs() == &["#[reflection_placeholder::first]"]);
+        assert!(ty_id.field(0, 0).reflected_attrs() == &["#[reflective_tool::first]"]);
         assert!(ty_id.field(0, 1).name() == "second");
         assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
-        assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflection_placeholder::second]"]);
+        assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflective_tool::second]"]);
     }
 
     const {
-        #[reflection_placeholder::a]
+        #[reflective_tool::a]
         union Generics<'a, T: Copy, const C: u64> {
             a: T,
             z: &'a (),
@@ -165,7 +165,7 @@ fn test_unions() {
 
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
         assert!(ty_id.fields(0) == 2);
-        assert!(ty_id.reflected_attrs() == &["#[reflection_placeholder::a]"]);
+        assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.field(0, 1).offset() == offset_of!(Generics<'static, i32, 1_u64>, a));
         assert!(ty_id.field(0, 1).offset() == offset_of!(Generics<'static, i32, 1_u64>, z));
 
@@ -183,17 +183,17 @@ fn test_unions() {
 #[test]
 fn test_enums() {
     const {
-        #[reflection_placeholder::a]
+        #[reflective_tool::a]
         enum E {
-            #[reflection_placeholder::some]
+            #[reflective_tool::some]
             Some(u32),
-            #[reflection_placeholder::none]
+            #[reflective_tool::none]
             None,
-            #[reflection_placeholder::foomp]
+            #[reflective_tool::foomp]
             #[non_exhaustive]
             Foomp {
                 a: (),
-                #[reflection_placeholder::b]
+                #[reflective_tool::b]
                 b: &'static str,
             },
         }
@@ -201,28 +201,28 @@ fn test_enums() {
         let ty_id = TypeId::of::<E>();
         assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<E>()));
-        assert!(ty_id.reflected_attrs() == &["#[reflection_placeholder::a]"]);
+        assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.variants() == 3);
 
         assert!(ty_id.variant(0).name() == "Some");
-        assert!(ty_id.variant(0).reflected_attrs() == &["#[reflection_placeholder::some]"]);
+        assert!(ty_id.variant(0).reflected_attrs() == &["#[reflective_tool::some]"]);
         assert!(!ty_id.variant(0).non_exhaustive());
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u32>());
 
         assert!(ty_id.variant(1).name() == "None");
-        assert!(ty_id.variant(1).reflected_attrs() == &["#[reflection_placeholder::none]"]);
+        assert!(ty_id.variant(1).reflected_attrs() == &["#[reflective_tool::none]"]);
         assert!(!ty_id.variant(1).non_exhaustive());
         assert!(ty_id.fields(1) == 0);
 
         assert!(ty_id.variant(2).name() == "Foomp");
-        assert!(ty_id.variant(2).reflected_attrs() == &["#[reflection_placeholder::foomp]"]);
+        assert!(ty_id.variant(2).reflected_attrs() == &["#[reflective_tool::foomp]"]);
         assert!(ty_id.variant(2).non_exhaustive());
         assert!(ty_id.fields(2) == 2);
         assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
         assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
         assert!(ty_id.field(2, 1).name() == "b");
-        assert!(ty_id.field(2, 1).reflected_attrs() == &["#[reflection_placeholder::b]"]);
+        assert!(ty_id.field(2, 1).reflected_attrs() == &["#[reflective_tool::b]"]);
 
         assert!(ty_id.generics().is_empty());
     }

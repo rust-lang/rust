@@ -24,7 +24,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "e-m:e-Fn32-i64:64-i128:128-n32:64".into(),
+        data_layout: "e-m:e-Fn32-i64:64-i128:128-n32:64-S128-v256:256:256-v512:512:512".into(),
         arch: Arch::PowerPC64,
         options: TargetOptions { mcount: "_mcount".into(), ..base },
     }

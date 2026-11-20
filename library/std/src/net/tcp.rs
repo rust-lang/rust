@@ -1110,16 +1110,20 @@ impl TcpListener {
         self.0.hop_limit_v6()
     }
 
+    /// Only allow v6 for this socket.
+    ///
+    /// ⚠️: This option can only be set before the socket is bound.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     #[deprecated(since = "1.16.0", note = "this option can only be set before the socket is bound")]
-    #[allow(missing_docs)]
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         self.0.set_only_v6(only_v6)
     }
 
+    /// Checks if this socket only allow v6.
+    ///
+    /// ⚠️: This option can only be set before the socket is bound.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     #[deprecated(since = "1.16.0", note = "this option can only be set before the socket is bound")]
-    #[allow(missing_docs)]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()
     }

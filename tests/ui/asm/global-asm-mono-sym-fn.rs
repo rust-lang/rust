@@ -25,3 +25,5 @@ impl Foo for i32 {
 }
 
 global_asm!(".global main", "main:", "call {}", sym <i32 as Foo>::bar);
+
+//@ reference: asm.operand-type.supported-operands-sym

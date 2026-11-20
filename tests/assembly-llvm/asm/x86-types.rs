@@ -45,7 +45,7 @@ pub unsafe fn sym_static() {
 
 // CHECK-LABEL: const_ptr:
 // CHECK: #APP
-// CHECK: mov al, byte ptr [{{.*}}anon{{.*}}]
+// CHECK: mov al, byte ptr [{{.*}}__unnamed{{.*}}]
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn const_ptr() {

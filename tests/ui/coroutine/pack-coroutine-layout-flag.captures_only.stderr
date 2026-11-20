@@ -1,0 +1,4 @@
+warning: `-Z pack-coroutine-layout=captures-only` is not yet implemented and will be ignored
+
+warning: 1 warning emitted
+

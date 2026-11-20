@@ -1311,7 +1311,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             args: Default::default(),
                             constraints: &[],
                             parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
-                            span: data.span,
+                            span: constraint.ident.span.to(data.span),
                         }
                     } else {
                         let guar = self.emit_bad_parenthesized_trait_in_assoc_ty(data);

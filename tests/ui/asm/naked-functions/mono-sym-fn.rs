@@ -33,3 +33,5 @@ extern "C" fn foo<U: Tr>() {
 fn main() {
     foo::<E<42>>();
 }
+
+//@ reference: asm.operand-type.supported-operands-sym

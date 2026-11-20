@@ -10,11 +10,13 @@ use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, Hash
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
-use rustc_lint_defs::{LintId, RegisteredTools};
+use rustc_lint_defs::Reflectiveness::NonReflective;
+use rustc_lint_defs::{LintId, RegisteredTools, ToolOptions};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
+use crate::attributes::doc_comment::target_check_doc_comment;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
     FinalizeFn, FinalizeOutput, SharedContext,
@@ -326,6 +328,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
         let mut generated_attr_state = GeneratedAttrState::default();
+        let mut has_target_checked_doc_comment = false;
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -340,6 +343,14 @@ impl<'sess> AttributeParser<'sess> {
             let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
+                    target_check_doc_comment(
+                        &self,
+                        attr,
+                        &ast_target,
+                        target_span,
+                        &mut emit_lint,
+                        &mut has_target_checked_doc_comment,
+                    );
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: DocFragmentKind::Sugared(*comment_kind),
@@ -406,6 +417,14 @@ impl<'sess> AttributeParser<'sess> {
                             // emit an error with `AcceptContext`.
                             && let Some(comment) = nv.value_as_str()
                         {
+                            target_check_doc_comment(
+                                &self,
+                                attr,
+                                &ast_target,
+                                target_span,
+                                &mut emit_lint,
+                                &mut false, // always linted
+                            );
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                                 style: attr.style,
                                 kind: DocFragmentKind::Raw(nv.value_span),
@@ -452,7 +471,7 @@ impl<'sess> AttributeParser<'sess> {
                         // we could be here in the `#[lint::attribute_macro] not found` case,
                         // which recovers with a `NonMacroAttr` res.
                         if let Some(tools) = self.attr_tools
-                            && tools.iter().any(|i| i.name == sym::lint)
+                            && tools.iter().any(|(i, _)| i.name == sym::lint)
                         {
                             self.emit_err(diagnostics::UnknownLintHelper {
                                 span: n.item.span,
@@ -489,7 +508,19 @@ impl<'sess> AttributeParser<'sess> {
                         let attr = match attr_path.segments.len() {
                             0 => unreachable!("no path for {attr:?}"),
                             1 => Attribute::DeriveHelper(Box::new(attr)),
-                            _ => Attribute::Tool(Box::new(attr)),
+                            _ => {
+                                if let Some(tools) = self.attr_tools
+                                    && let Some(opts) =
+                                        tools.get(&Ident::with_dummy_span(attr_path.segments[0]))
+                                {
+                                    Attribute::Tool { item: Box::new(attr), opts: opts.clone() }
+                                } else {
+                                    Attribute::Tool {
+                                        item: Box::new(attr),
+                                        opts: ToolOptions { reflectiveness: NonReflective },
+                                    }
+                                }
+                            }
                         };
 
                         attributes.push(attr);

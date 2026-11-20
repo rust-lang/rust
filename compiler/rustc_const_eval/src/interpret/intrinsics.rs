@@ -13,7 +13,7 @@ use rustc_ast::{IntTy, UintTy};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, FloatTy, Intrinsic, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Symbol, bug, kw, span_bug, sym};
 use tracing::trace;
 
@@ -176,7 +176,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
-        let intrinsic_name = self.tcx.item_name(instance.def_id());
+        let intrinsic_name = self.tcx.intrinsic(instance.def_id()).unwrap().name;
+
+        // We only support rustc intrinsics for now.
+        let Intrinsic::Rustc(intrinsic_name) = intrinsic_name else {
+            return interp_ok(false);
+        };
 
         if intrinsic_name.as_str().starts_with("atomic_") {
             return self.eval_atomic_intrinsic(intrinsic_name, instance_args, args, dest, ret);

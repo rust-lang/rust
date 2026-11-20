@@ -1,0 +1,4 @@
+--check
+--files-with-diff
+--config
+hard_tabs=true

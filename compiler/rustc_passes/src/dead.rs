@@ -13,7 +13,7 @@ use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
@@ -860,7 +860,15 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         // necessary for the pattern to match. Those construction sites
         // can't be reached unless the variant is constructed elsewhere.
         let len = self.ignore_variant_stack.len();
-        self.ignore_variant_stack.extend(arm.pat.necessary_variants());
+        let mut seen_variants = DefIdSet::default();
+        arm.pat.each_necessary_variant(|qpath, hir_id| {
+            if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =
+                self.typeck_results().qpath_res(qpath, hir_id)
+                && seen_variants.insert(id)
+            {
+                self.ignore_variant_stack.push(id);
+            }
+        });
         let result = intravisit::walk_arm(self, arm);
         self.ignore_variant_stack.truncate(len);
 
@@ -1019,62 +1027,7 @@ fn maybe_record_as_seed<'tcx>(
     push_into_worklist: &mut impl FnMut(WorkItem),
     unsolved_items: &mut Vec<LocalDefId>,
 ) {
-    let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id);
-    if let Some(comes_from_allow) = allow_dead_code {
-        push_into_worklist(WorkItem {
-            id: owner_id.def_id,
-            propagated: comes_from_allow,
-            own: comes_from_allow,
-            propagated_trivial_usage_site: None,
-        });
-    }
-
     match tcx.def_kind(owner_id) {
-        DefKind::Enum => {
-            if let Some(comes_from_allow) = allow_dead_code {
-                let adt = tcx.adt_def(owner_id);
-                for variant in adt.variants().iter() {
-                    push_into_worklist(WorkItem {
-                        id: variant.def_id.expect_local(),
-                        propagated: comes_from_allow,
-                        own: comes_from_allow,
-                        propagated_trivial_usage_site: None,
-                    });
-                }
-            }
-        }
-        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
-            // As with free constants named `_`, associated constants named `_` are always live.
-            if let hir::Node::ImplItem(impl_item) = tcx.hir_node_by_def_id(owner_id.def_id)
-                && impl_item.is_anon_const()
-            {
-                push_into_worklist(WorkItem {
-                    id: owner_id.def_id,
-                    propagated: ComesFromAllowExpect::No,
-                    own: ComesFromAllowExpect::No,
-                    propagated_trivial_usage_site: None,
-                });
-            }
-
-            if allow_dead_code.is_none() {
-                let parent = tcx.local_parent(owner_id.def_id);
-                match tcx.def_kind(parent) {
-                    DefKind::Impl { of_trait: false } | DefKind::Trait => {}
-                    DefKind::Impl { of_trait: true } => {
-                        // We only care about associated items of traits,
-                        // because they cannot be visited directly,
-                        // so we later mark them as live if their corresponding traits
-                        // or trait items and self types are both live,
-                        // but inherent associated items can be visited and marked directly.
-                        unsolved_items.push(owner_id.def_id);
-                    }
-                    _ => bug!(),
-                }
-            }
-        }
-        DefKind::Impl { of_trait: true } if allow_dead_code.is_none() => {
-            unsolved_items.push(owner_id.def_id);
-        }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
             push_into_worklist(WorkItem {
@@ -1084,18 +1037,58 @@ fn maybe_record_as_seed<'tcx>(
                 propagated_trivial_usage_site: None,
             });
         }
-        DefKind::Const => {
-            if tcx.item_name(owner_id.def_id) == kw::Underscore {
-                // `const _` is always live, as that syntax only exists for the side effects
-                // of type checking and evaluating the constant expression, and marking them
-                // as dead code would defeat that purpose.
-                push_into_worklist(WorkItem {
-                    id: owner_id.def_id,
-                    propagated: ComesFromAllowExpect::No,
-                    own: ComesFromAllowExpect::No,
-                    propagated_trivial_usage_site: None,
-                });
+        DefKind::Const if tcx.item_name(owner_id.def_id) == kw::Underscore => {
+            // `const _` is always live, as that syntax only exists for the side effects
+            // of type checking and evaluating the constant expression, and marking them
+            // as dead code would defeat that purpose.
+            push_into_worklist(WorkItem {
+                id: owner_id.def_id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+                propagated_trivial_usage_site: None,
+            });
+        }
+        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy
+            if let hir::Node::ImplItem(impl_item) = tcx.hir_node_by_def_id(owner_id.def_id)
+                && impl_item.is_anon_const() =>
+        {
+            // As with free constants named `_`, associated constants named `_` are always live.
+            push_into_worklist(WorkItem {
+                id: owner_id.def_id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+                propagated_trivial_usage_site: None,
+            });
+        }
+
+        _ if let Some(comes_from_allow) =
+            has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id) =>
+        {
+            push_into_worklist(WorkItem {
+                id: owner_id.def_id,
+                propagated: comes_from_allow,
+                own: comes_from_allow,
+                propagated_trivial_usage_site: None,
+            });
+        }
+
+        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
+            let parent = tcx.local_parent(owner_id.def_id);
+            match tcx.def_kind(parent) {
+                DefKind::Impl { of_trait: false } | DefKind::Trait => {}
+                DefKind::Impl { of_trait: true } => {
+                    // We only care about associated items of traits,
+                    // because they cannot be visited directly,
+                    // so we later mark them as live if their corresponding traits
+                    // or trait items and self types are both live,
+                    // but inherent associated items can be visited and marked directly.
+                    unsolved_items.push(owner_id.def_id);
+                }
+                _ => bug!(),
             }
+        }
+        DefKind::Impl { of_trait: true } => {
+            unsolved_items.push(owner_id.def_id);
         }
         _ => {}
     }

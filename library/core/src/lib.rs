@@ -343,7 +343,6 @@ pub mod future;
 pub mod task;
 
 /* Heap memory allocator trait */
-#[allow(missing_docs)]
 pub mod alloc;
 
 // note: does not need to be public

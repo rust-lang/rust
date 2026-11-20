@@ -535,7 +535,7 @@ fn get_callee_generic_args_and_args<'tcx>(
 
 /// Returns all caller bounds in the `ParamEnv` of `def_id`.
 fn caller_clauses<'tcx>(cx: &LateContext<'tcx>, def_id: DefId) -> impl Iterator<Item = ty::Clause<'tcx>> {
-    cx.tcx.param_env(def_id).caller_bounds().all_clauses(cx.tcx).iter()
+    cx.tcx.param_env(def_id).caller_bounds().all_clauses_interned(cx.tcx).iter()
 }
 
 /// Returns the `TraitClause`s and `ProjectionClause`s for a function's input type.

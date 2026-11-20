@@ -1,0 +1,106 @@
+name: Diff Check (Common)
+on:
+  workflow_call:
+    inputs:
+      clone_url:
+        description: 'Git url of a rustfmt fork to compare against the latest rustfmt'
+        type: string
+        required: true
+      branch_name:
+        description: 'Name of the feature branch on the forked repo'
+        type: string
+        required: true
+      language_edition:
+        description: 'Rust language `edition` used to parse code'
+        type: string
+        required: true
+      style_edition:
+        description: 'rustfmt `style_edition` used when formatting code.'
+        type: string
+        required: true
+      commit_hash:
+        description: 'Optional commit hash from the feature branch'
+        type: string
+        required: false
+      rustfmt_configs:
+        description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
+        type: string
+        required: false
+      release_channel:
+        description: 'Configure which release channel to use when compiling rustfmt'
+        type: string
+        required: false
+        default: stable
+      result_artifact:
+        description: 'Upload job status as an artifact with the given name (if set)'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  diff_check:
+    name: "Diff Check {Edition ${{ inputs.language_edition }}, Style Edition ${{ inputs.style_edition }}}"
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Build diff_check binary
+      working-directory: ./diff_check
+      run: cargo build --release --locked
+
+    - name: Run Diff Check
+      working-directory: ./diff_check
+      env:
+        DIFF_CHECK_LOG: info
+        GITHUB_EVENT_INPUTS_COMMIT_HASH: ${{ inputs.commit_hash }}
+        GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS: ${{ inputs.rustfmt_configs }}
+        GITHUB_EVENT_INPUTS_CLONE_URL: ${{ inputs.clone_url }}
+        GITHUB_EVENT_INPUTS_BRANCH_NAME: ${{ inputs.branch_name }}
+        GITHUB_EVENT_INPUTS_LANGUAGE_EDITION: ${{ inputs.language_edition }}
+        GITHUB_EVENT_INPUTS_STYLE_EDITION: ${{ inputs.style_edition }}
+        GITHUB_EVENT_INPUTS_RELEASE_CHANNEL: ${{ inputs.release_channel }}
+      shell: bash
+      run: |
+        OPTIONS=()
+
+        if [[ -n "${GITHUB_EVENT_INPUTS_COMMIT_HASH}" ]]; then
+          OPTIONS+=(--commit-hash "${GITHUB_EVENT_INPUTS_COMMIT_HASH}")
+        fi
+
+        if [[ -n "${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS}" ]]; then
+          OPTIONS+=(--rustfmt-config "${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS}")
+        fi
+
+        target/release/diff_check \
+          "${GITHUB_EVENT_INPUTS_CLONE_URL}" \
+          "${GITHUB_EVENT_INPUTS_BRANCH_NAME}" \
+          --edition "${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION}" \
+          --style-edition "${GITHUB_EVENT_INPUTS_STYLE_EDITION}" \
+          --release-channel "${GITHUB_EVENT_INPUTS_RELEASE_CHANNEL}" \
+          "${OPTIONS[@]}"
+
+    # A matrix of reusable workflow jobs give only one combined outcome, so we
+    # need to track outcome of individual matrix jobs.
+    - name: Record result
+      if: ${{ always() && inputs.result_artifact != '' }}
+      env:
+        JOB_STATUS: ${{ job.status }}
+      run: echo "${JOB_STATUS}" > "${RUNNER_TEMP}/result.txt"
+
+    - name: Upload result
+      if: ${{ always() && inputs.result_artifact != '' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.result_artifact }}
+        path: ${{ runner.temp }}/result.txt
+        retention-days: 1
+        # Allow overwriting so that rerunning a matrix job can upload artifact
+        # with same name.
+        overwrite: true

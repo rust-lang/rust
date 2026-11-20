@@ -1,0 +1,105 @@
+name: Diff Check (Preset)
+on:
+  workflow_dispatch:
+    inputs:
+      clone_url:
+        description: 'Git url of a rustfmt fork to compare against the latest rustfmt'
+        required: true
+      branch_name:
+        description: 'Name of the feature branch on the forked repo'
+        required: true
+      commit_hash:
+        description: 'Optional commit hash from the feature branch'
+        required: false
+      rustfmt_configs:
+        description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
+        required: false
+      release_channel:
+        description: 'Configure which release channel to use when compiling rustfmt'
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+          - nightly
+
+permissions:
+  contents: read
+
+jobs:
+  diff_check:
+    name: "Diff Check {Edition ${{ matrix.language_edition }}, Style Edition ${{ matrix.style_edition }}}"
+    strategy:
+      # We want to run each matrix job to conclusion so we get a full table.
+      fail-fast: false
+      # By default, we want to run Diff Check against Edition `{CURRENT - 1,
+      # CURRENT}` x Style Edition `{CURRENT - 1, CURRENT}` as a preset.
+      #
+      # Update the matrix once a new language edition / new style edition is
+      # stable. Keep in sync with "Write summary" step below.
+      matrix:
+        language_edition: ['2021', '2024']
+        style_edition: ['2021', '2024']
+    uses: $/.github/workflows/diff_check_common.yml
+    with:
+      clone_url: ${{ inputs.clone_url }}
+      branch_name: ${{ inputs.branch_name }}
+      commit_hash: ${{ inputs.commit_hash }}
+      language_edition: ${{ matrix.language_edition }}
+      style_edition: ${{ matrix.style_edition }}
+      rustfmt_configs: ${{ inputs.rustfmt_configs }}
+      release_channel: ${{ inputs.release_channel }}
+      result_artifact: diff-check-result-ed${{ matrix.language_edition }}-se${{ matrix.style_edition }}
+
+  summary:
+    name: "Render Diff Check matrix summary"
+    needs: diff_check
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download results
+      # Note that no artifact exists if all matrix jobs were cancelled early.
+      continue-on-error: true
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        pattern: diff-check-result-*
+        path: ${{ runner.temp }}/results
+
+    - name: Write summary
+      env:
+        CLONE_URL: ${{ inputs.clone_url }}
+        BRANCH_NAME: ${{ inputs.branch_name }}
+        COMMIT_HASH: ${{ inputs.commit_hash }}
+        RUSTFMT_CONFIGS: ${{ inputs.rustfmt_configs }}
+        RELEASE_CHANNEL: ${{ inputs.release_channel }}
+      shell: bash
+      run: |
+        results_dir="${RUNNER_TEMP}/results"
+        {
+          echo "## Diff Check (Preset)"
+          echo
+          echo "- Repo: \`${CLONE_URL}\`"
+          echo "- Branch: \`${BRANCH_NAME}\`"
+          echo "- Commit: \`${COMMIT_HASH:-branch tip}\`"
+          echo "- Release channel: \`${RELEASE_CHANNEL}\`"
+          echo "- rustfmt configs: \`${RUSTFMT_CONFIGS:-none}\`"
+          echo
+          echo "| Language Edition | Style Edition | Result |"
+          echo "|---|---|---|"
+          # Keep in sync with the `diff_check` matrix.
+          for language_edition in 2021 2024; do
+            for style in 2021 2024; do
+              file="${results_dir}/diff-check-result-ed${language_edition}-se${style}/result.txt"
+              status=""
+              [[ -f "${file}" ]] && status=$(< "${file}")
+              case "${status}" in
+                success)   result="✅" ;;
+                failure)   result="❌" ;;
+                cancelled) result="CANCELLED" ;;
+                *)         result="NO RESULT" ;;
+              esac
+              echo "| ${language_edition} | ${style} | ${result} |"
+            done
+          done
+        } >> "${GITHUB_STEP_SUMMARY}"
