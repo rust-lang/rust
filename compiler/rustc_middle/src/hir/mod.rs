@@ -12,7 +12,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, Lock, par_fns, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::lints::DelayedLints;
@@ -88,6 +88,38 @@ impl ModuleItems {
             .chain(self.trait_items.iter().map(|id| id.owner_id))
             .chain(self.impl_items.iter().map(|id| id.owner_id))
             .chain(self.foreign_items.iter().map(|id| id.owner_id))
+    }
+
+    pub fn par_owners(
+        &self,
+        f: impl Fn(OwnerId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        let final_res = Lock::new(Ok(()));
+        par_fns(&mut [
+            &mut || {
+                let mut res = self.par_items(|id| f(id.owner_id));
+
+                if self.add_root {
+                    res = res.and(f(CRATE_OWNER_ID));
+                }
+
+                final_res.with_lock(|final_res| *final_res = final_res.and(res));
+            },
+            &mut || {
+                let res = self.par_trait_items(|id| f(id.owner_id));
+                final_res.with_lock(|final_res| *final_res = final_res.and(res));
+            },
+            &mut || {
+                let res = self.par_impl_items(|id| f(id.owner_id));
+                final_res.with_lock(|final_res| *final_res = final_res.and(res));
+            },
+            &mut || {
+                let res = self.par_foreign_items(|id| f(id.owner_id));
+                final_res.with_lock(|final_res| *final_res = final_res.and(res));
+            },
+        ]);
+
+        *final_res.lock()
     }
 
     pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> {
