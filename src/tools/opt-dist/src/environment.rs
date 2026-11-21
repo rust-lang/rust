@@ -119,7 +119,7 @@ impl Environment {
         self.use_bolt
     }
 
-    pub fn link_llvm_dynamically(&self) -> bool {
+    pub fn supports_shared_llvm(&self) -> bool {
         self.shared_llvm
     }
 
