@@ -146,7 +146,7 @@ impl Hash for Ipv4Addr {
 /// # Textual representation
 ///
 /// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
-/// an IPv6 address in text, but in general, each segments is written in hexadecimal
+/// an IPv6 address in text, but in general, each segment is written in hexadecimal
 /// notation, and segments are separated by `:`. For more information, see
 /// [IETF RFC 5952].
 ///
@@ -1667,7 +1667,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), false);
     ///
     /// // Addresses reserved for benchmarking (`2001:2::/48`)
-    /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1,).is_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1).is_global(), false);
     ///
     /// // Addresses reserved for documentation (`2001:db8::/32` and `3fff::/20`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1).is_global(), false);
@@ -1693,7 +1693,7 @@ impl Ipv6Addr {
             || matches!(self.segments(), [0x64, 0xff9b, 1, _, _, _, _, _])
             // Discard-Only Address Block (`100::/64`)
             || matches!(self.segments(), [0x100, 0, 0, 0, _, _, _, _])
-            // Dummy IPv6 Prefix (100:0:0:1::/64)
+            // Dummy IPv6 Prefix (`100:0:0:1::/64`)
             || matches!(self.segments(), [0x100, 0, 0, 1, _, _, _, _])
             // IETF Protocol Assignments (`2001::/23`)
             || (matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b < 0x200)
@@ -1709,7 +1709,7 @@ impl Ipv6Addr {
                     // AS112-v6 (`2001:4:112::/48`)
                     || matches!(self.segments(), [0x2001, 4, 0x112, _, _, _, _, _])
                     // ORCHIDv2 (`2001:20::/28`)
-                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)`
+                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)
                     || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x3F)
                 ))
             // 6to4 (`2002::/16`) – it's not explicitly documented as globally reachable,
