@@ -1063,6 +1063,7 @@ fn mul_add() {
     assert_eq!(f.to_bits(), f32::to_bits(-0.0));
 }
 
+// FIXME(f128): add tests when supported
 fn libm() {
     fn ldexp(a: f64, b: i32) -> f64 {
         extern "C" {
@@ -1687,6 +1688,7 @@ fn test_non_determinism() {
     }
     fn test_operations_f128(a: f128, b: f128) {
         test_operations_f!(a, b);
+        // FIXME(f128): add more operations when supported
     }
 
     test_operations_f16(3., 5.);
