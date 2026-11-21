@@ -83,7 +83,7 @@
   
       bb0: {
 -         StorageLive(_3);
--         _3 = [const 0_u8; 1];
+-         _3 = [const 0_u8];
 -         StorageLive(_4);
 -         StorageLive(_5);
 -         StorageLive(_6);
@@ -103,10 +103,10 @@
           StorageDead(_6);
 -         _4 = &(*_5);
 -         StorageLive(_8);
--         _8 = [const 0_u8; 1];
+-         _8 = [const 0_u8];
 +         (((*_35) as variant#3).1: &[u8]) = &(*_5);
 +         nop;
-+         (((*_35) as variant#3).2: [u8; 1]) = [const 0_u8; 1];
++         (((*_35) as variant#3).2: [u8; 1]) = [const 0_u8];
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
@@ -441,7 +441,7 @@
 + 
 +     bb32: {
 +         nop;
-+         (((*_35) as variant#3).0: [u8; 1]) = [const 0_u8; 1];
++         (((*_35) as variant#3).0: [u8; 1]) = [const 0_u8];
 +         nop;
 +         StorageLive(_5);
 +         StorageLive(_6);
