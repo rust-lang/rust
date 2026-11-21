@@ -1244,7 +1244,7 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-/// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
+
 /// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
