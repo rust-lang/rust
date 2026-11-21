@@ -145,8 +145,9 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // Detect if CPUID.19h available
         if bit::test(extended_features_ecx as usize, 23) {
             let CpuidResult { ebx, .. } = __cpuid(0x19);
-            enable(ebx, 0, Feature::kl);
-            enable(ebx, 2, Feature::widekl);
+            if enable(ebx, 0, Feature::kl) {
+                enable(ebx, 2, Feature::widekl);
+            }
         }
 
         // This detects ABM on AMD CPUs and LZCNT on Intel CPUs.
