@@ -80,7 +80,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
-    let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
+    let extended_proc_info_ecx = if extended_max_basic_leaf >= 0x8000_0001 {
         let CpuidResult { ecx, .. } = __cpuid(0x8000_0001_u32);
         ecx
     } else {
@@ -264,11 +264,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
                     // "Short" versions of AVX512 instructions
                     let avxvnni = enable(extended_features_eax_leaf_1, 4, Feature::avxvnni);
-                    let avxvnniint8 = enable(extended_features_eax_leaf_1, 23, Feature::avxifma);
-                    let avxvnniint16 =
-                        enable(extended_features_edx_leaf_1, 4, Feature::avxvnniint8);
+                    enable(extended_features_eax_leaf_1, 23, Feature::avxifma);
+                    let avxvnniint8 = enable(extended_features_edx_leaf_1, 4, Feature::avxvnniint8);
                     enable(extended_features_edx_leaf_1, 5, Feature::avxneconvert);
-                    enable(extended_features_edx_leaf_1, 10, Feature::avxvnniint16);
+                    let avxvnniint16 =
+                        enable(extended_features_edx_leaf_1, 10, Feature::avxvnniint16);
 
                     enable(extended_features_eax_leaf_1, 0, Feature::sha512);
                     enable(extended_features_eax_leaf_1, 1, Feature::sm3);
