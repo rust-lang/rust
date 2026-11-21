@@ -30,15 +30,6 @@ fn yield_now() {
 }
 
 fn main() {
-    #[cfg(target_os = "linux")]
-    {
-        test_accept_nonblock(|fd, addr, len| unsafe {
-            libc::syscall(libc::SYS_accept4, fd, addr, len, 0 as libc::c_int)
-        });
-        test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
-            libc::syscall(libc::SYS_accept4, fd, addr, len, flags)
-        });
-    }
     test_accept_nonblock(|fd, addr, len| unsafe { libc::accept(fd, addr, len).into() });
     #[cfg(any(
         target_os = "linux",
@@ -50,6 +41,15 @@ fn main() {
     test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
         libc::accept4(fd, addr, len, flags).into()
     });
+    #[cfg(target_os = "linux")]
+    {
+        test_accept_nonblock(|fd, addr, len| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, 0 as libc::c_int)
+        });
+        test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, flags)
+        });
+    }
     test_connect_nonblock();
     test_send_recv_nonblock();
     #[cfg(any(
@@ -80,9 +80,6 @@ fn main() {
 fn test_accept_nonblock(
     accept: fn(libc::c_int, *mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_long,
 ) {
-    let err = net::sockname_ipv4(|storage, len| accept(-1, storage, len)).unwrap_err();
-    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
-
     let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
@@ -109,6 +106,10 @@ fn test_accept_nonblock(
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+
+    // test bad FD
+    let err = net::sockname_ipv4(|storage, len| accept(-1, storage, len)).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
 }
 
 #[cfg(any(
