@@ -52,6 +52,39 @@ use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt, SelectionContext};
 
+/// Suggest casting a `char` operand of an arithmetic operator to the integer it is used with
+pub fn suggest_cast_char_to_int(err: &mut Diag<'_>, char_span: Span, int_ty: Ty<'_>) -> bool {
+    if char_span.from_expansion() {
+        return false;
+    }
+
+    // an unconstrained integer defaults to `u32`, which holds every `char`
+    let target = match int_ty.kind() {
+        ty::Infer(InferTy::IntVar(_)) => "u32".to_owned(),
+        ty::Int(_) | ty::Uint(_) => int_ty.to_string(),
+        _ => return false,
+    };
+    let lossless = matches!(
+        int_ty.kind(),
+        ty::Infer(InferTy::IntVar(_))
+            | ty::Uint(ty::UintTy::U32 | ty::UintTy::U64 | ty::UintTy::U128)
+            | ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128)
+    );
+    let msg = if lossless {
+        format!("you can cast the `char` to a `{target}`, since a `char` always occupies 4 bytes")
+    } else {
+        format!("you can cast the `char` to a `{target}`, truncating the code point")
+    };
+
+    err.span_suggestion_verbose(
+        char_span.shrink_to_hi(),
+        msg,
+        format!(" as {target}"),
+        if lossless { Applicability::MachineApplicable } else { Applicability::MaybeIncorrect },
+    );
+    true
+}
+
 #[derive(Debug)]
 pub enum CoroutineInteriorOrUpvar {
     // span of interior type
@@ -5129,6 +5162,46 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+    }
+
+    /// Suggest casting the `char` operand of an arithmetic operator, as in `output += c`
+    pub(super) fn suggest_binop_char_cast(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
+    ) -> bool {
+        let ObligationCauseCode::BinOp { rhs_hir_id, .. } = obligation.cause.code().peel_derives()
+        else {
+            return false;
+        };
+
+        let lang = self.tcx.lang_items();
+        if ![
+            lang.add_trait(),
+            lang.sub_trait(),
+            lang.mul_trait(),
+            lang.div_trait(),
+            lang.rem_trait(),
+            lang.add_assign_trait(),
+            lang.sub_assign_trait(),
+            lang.mul_assign_trait(),
+            lang.div_assign_trait(),
+            lang.rem_assign_trait(),
+        ]
+        .contains(&Some(trait_pred.def_id()))
+        {
+            return false;
+        }
+
+        let trait_pred = trait_pred.skip_binder();
+        let int_ty = trait_pred.self_ty();
+        if !trait_pred.trait_ref.args.type_at(1).is_char() || !int_ty.is_integral() {
+            return false;
+        }
+
+        let Node::Expr(char_expr) = self.tcx.hir_node(*rhs_hir_id) else { return false };
+        suggest_cast_char_to_int(err, char_expr.span, int_ty)
     }
 
     pub fn can_suggest_derive(

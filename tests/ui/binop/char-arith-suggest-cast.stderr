@@ -1,0 +1,79 @@
+error[E0277]: cannot add-assign `char` to `{integer}`
+  --> $DIR/char-arith-suggest-cast.rs:5:16
+   |
+LL |         output += c;
+   |                ^^ no implementation for `{integer} += char`
+   |
+   = help: the trait `AddAssign<char>` is not implemented for `{integer}`
+help: you can cast the `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL |         output += c as u32;
+   |                     ++++++
+
+error[E0277]: cannot add-assign `char` to `u32`
+  --> $DIR/char-arith-suggest-cast.rs:10:9
+   |
+LL |     sum += 'a';
+   |         ^^ no implementation for `u32 += char`
+   |
+   = help: the trait `AddAssign<char>` is not implemented for `u32`
+help: you can cast the `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL |     sum += 'a' as u32;
+   |                ++++++
+
+error[E0277]: cannot add `char` to `{integer}`
+  --> $DIR/char-arith-suggest-cast.rs:13:15
+   |
+LL |     let _ = 5 + '0';
+   |               ^ no implementation for `{integer} + char`
+   |
+   = help: the trait `Add<char>` is not implemented for `{integer}`
+help: you can cast the `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL |     let _ = 5 + '0' as u32;
+   |                     ++++++
+
+error[E0369]: cannot add `{integer}` to `char`
+  --> $DIR/char-arith-suggest-cast.rs:16:17
+   |
+LL |     let _ = 'a' + 5;
+   |             --- ^ - {integer}
+   |             |
+   |             char
+   |
+help: you can cast the `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL |     let _ = 'a' as u32 + 5;
+   |                 ++++++
+
+error[E0277]: cannot add-assign `char` to `u8`
+  --> $DIR/char-arith-suggest-cast.rs:20:11
+   |
+LL |     small += 'a';
+   |           ^^ no implementation for `u8 += char`
+   |
+   = help: the trait `AddAssign<char>` is not implemented for `u8`
+help: you can cast the `char` to a `u8`, truncating the code point
+   |
+LL |     small += 'a' as u8;
+   |                  +++++
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `char`
+  --> $DIR/char-arith-suggest-cast.rs:24:5
+   |
+LL |     ch += 5;
+   |     --^^^^^
+   |     |
+   |     cannot use `+=` on type `char`
+   |
+help: convert the `char` through an integer
+   |
+LL -     ch += 5;
+LL +     ch = char::from_u32((ch as u32) + 5).unwrap();
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0368, E0369.
+For more information about an error, try `rustc --explain E0277`.

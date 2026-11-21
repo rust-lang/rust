@@ -14,6 +14,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Spanned, Symbol, bug, sym};
+use rustc_trait_selection::error_reporting::traits::suggestions;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
@@ -391,6 +392,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.param_env,
                     );
                     self.note_unmet_impls_on_type(&mut err, &errors, false);
+                    // `char` has no arithmetic assign impls, so the result has to be built
+                    // through an integer. `u32 as char` is not allowed, hence `char::from_u32`.
+                    if lhs_ty.is_char() && rhs_ty.is_integral() {
+                        let op = match assign_op.node {
+                            AssignOpKind::AddAssign => Some("+"),
+                            AssignOpKind::SubAssign => Some("-"),
+                            AssignOpKind::MulAssign => Some("*"),
+                            AssignOpKind::DivAssign => Some("/"),
+                            AssignOpKind::RemAssign => Some("%"),
+                            _ => None,
+                        };
+                        let source_map = self.tcx.sess.source_map();
+                        if let Some(op) = op
+                            && !lhs_expr.span.from_expansion()
+                            && !rhs_expr.span.from_expansion()
+                            && let Ok(lhs) = source_map.span_to_snippet(lhs_expr.span)
+                            && let Ok(rhs) = source_map.span_to_snippet(rhs_expr.span)
+                        {
+                            err.span_suggestion_verbose(
+                                expr.span,
+                                "convert the `char` through an integer",
+                                format!(
+                                    "{lhs} = char::from_u32(({lhs} as u32) {op} {rhs}).unwrap()"
+                                ),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                     (err, None)
                 }
             }
@@ -467,6 +496,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .any(|(ty, _)| is_compatible_after_call(ty, rhs_ty))
                     },
                 );
+                // a `char` on the left has no arithmetic impl to probe, so it lands here
+                // instead of being reported by trait selection as an E0277
+                if lhs_ty.is_char() && rhs_ty.is_integral() {
+                    suggestions::suggest_cast_char_to_int(&mut err, lhs_expr.span, rhs_ty);
+                }
                 (err, output_def_id)
             }
         };
