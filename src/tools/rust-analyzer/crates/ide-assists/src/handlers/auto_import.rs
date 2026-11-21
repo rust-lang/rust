@@ -2093,4 +2093,44 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn carries_cfg_attr_from_macro() {
+        check_assist(
+            auto_import,
+            r#"
+//- /lib.rs crate:std
+pub mod time {
+    pub struct Instant;
+}
+
+//- /main.rs crate:main deps:std
+// comment comment comment comment
+
+macro_rules! m {
+    ($t: path) => {
+        #[cfg(anything)]
+        fn f() -> $t {}
+    };
+}
+
+m! {Instant$0}
+"#,
+            r#"
+// comment comment comment comment
+
+#[cfg(anything)]
+use std::time::Instant;
+
+macro_rules! m {
+    ($t: path) => {
+        #[cfg(anything)]
+        fn f() -> $t {}
+    };
+}
+
+m! {Instant}
+"#,
+        );
+    }
 }
