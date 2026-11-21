@@ -882,6 +882,12 @@ impl<'t> Iterator for TokenStreamIter<'t> {
     }
 }
 
+impl<'t> ExactSizeIterator for TokenStreamIter<'t> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[derive(Clone, Debug)]
 struct TokenTreeCursor {
     stream: TokenStream,
