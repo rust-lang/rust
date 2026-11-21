@@ -105,6 +105,8 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(range_intersect)]
+#![feature(range_into_bounds)]
 #![feature(raw_os_error_ty)]
 #![feature(register_tool)]
 #![feature(rustc_attrs)]
