@@ -1,7 +1,8 @@
-use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_abi::{Align, BackendRepr, CVariadicStatus, FieldIdx, Float, Primitive, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
 
@@ -613,9 +614,77 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 })
             }
 
+            sym::ptr_mask => {
+                OperandValue::Immediate(bx.ptr_mask(args[0].immediate(), args[1].immediate()))
+            }
+
             sym::cold_path => {
                 // This is a no-op. The intrinsic is just a hint to the optimizer.
                 OperandValue::ZeroSized
+            }
+
+            sym::va_arg => {
+                let target = &bx.tcx().sess.target;
+                let stability = target.supports_c_variadic_definitions();
+                if let CVariadicStatus::Unstable { feature } = stability
+                    && !bx.tcx().features().enabled(feature)
+                {
+                    let msg = "C-variadic function definitions on this target are unstable";
+                    feature_err(bx.sess(), feature, span, msg).emit();
+                }
+
+                let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
+                    bug!("the va_arg intrinsic does not support non-scalar types")
+                };
+
+                // We reject types that would never be passed as varargs in C because
+                // they get promoted to a larger type, specifically integers smaller than
+                // c_int and float type smaller than c_double.
+                match scalar.primitive() {
+                    Primitive::Pointer(_) => {
+                        // Pointers are always OK.
+                    }
+                    Primitive::Int(..) => {
+                        let int_width = result_layout.size.bits();
+                        let target_c_int_width = bx.sess().target.options.c_int_width;
+                        if int_width < u64::from(target_c_int_width) {
+                            // Smaller integer types are automatically promototed and `va_arg`
+                            // should not be called on them.
+                            bug!(
+                                "va_arg got i{} but needs at least c_int (an i{})",
+                                int_width,
+                                target_c_int_width
+                            );
+                        }
+                    }
+                    Primitive::Float(Float::F16) => {
+                        bug!("the va_arg intrinsic does not support `f16`")
+                    }
+                    Primitive::Float(Float::F16B) => {
+                        bug!("the va_arg intrinsic does not support `f16b`")
+                    }
+                    Primitive::Float(Float::F32) => {
+                        // c_double is actually f32 on avr.
+                        if bx.sess().target.arch != Arch::Avr {
+                            bug!("the va_arg intrinsic does not support `f32` on this target")
+                        }
+                    }
+                    Primitive::Float(Float::F64) => {
+                        // 64-bit floats are always OK.
+                    }
+                    Primitive::Float(Float::F128) => {
+                        // Supported on some targets, especially where long double is IEEE f128.
+                    }
+                    Primitive::Float(Float::PpcF128) => {
+                        // Supported on powerpc and powerpc64 targets.
+                    }
+                    Primitive::Float(Float::X87F80) => {
+                        // FIXME(x87_f80) we should support this.
+                        bug!("the va_arg intrinsic does not currently support `x87_f80`")
+                    }
+                }
+
+                OperandValue::Immediate(super::va_arg::emit_va_arg(bx, args[0], result_layout))
             }
 
             _ => {

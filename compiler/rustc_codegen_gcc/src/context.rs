@@ -427,10 +427,16 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
+pub struct PhiBuilder<'gcc> {
+    pub(crate) var: LValue<'gcc>,
+    pub(crate) typ: Type<'gcc>,
+}
+
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Function = Function<'gcc>;
     type BasicBlock = Block<'gcc>;
     type Funclet = (); // FIXME(antoyo)
+    type PhiBuilder = PhiBuilder<'gcc>;
 
     type Value = RValue<'gcc>;
     type Type = Type<'gcc>;

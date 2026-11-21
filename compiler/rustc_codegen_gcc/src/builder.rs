@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 use std::ops::Deref;
 
 use gccjit::{
-    BinaryOp, Block, CType, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue,
-    Type, UnaryOp,
+    BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
+    UnaryOp,
 };
 use rustc_abi as abi;
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
@@ -35,9 +35,9 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use crate::abi::FnAbiGccExt;
 use crate::builder;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
-use crate::context::CodegenCx;
 #[cfg(feature = "master")]
 use crate::context::PendingCleanup;
+use crate::context::{CodegenCx, PhiBuilder};
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -510,6 +510,7 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type Function = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Function;
     type BasicBlock = <CodegenCx<'gcc, 'tcx> as BackendTypes>::BasicBlock;
     type Funclet = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Funclet;
+    type PhiBuilder = <CodegenCx<'gcc, 'tcx> as BackendTypes>::PhiBuilder;
 
     type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
     type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
@@ -1262,6 +1263,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         );
     }
 
+    fn ptr_mask(&mut self, ptr: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
+        let usize_type = self.context.new_type::<usize>();
+        let void_ptr_type = self.context.new_type::<*const ()>();
+
+        let addr = self.bitcast(ptr, usize_type);
+        let masked = self.and(addr, mask);
+        self.bitcast(masked, void_ptr_type)
+    }
+
     fn gep(&mut self, stride: Size, ptr: RValue<'gcc>, index: RValue<'gcc>) -> RValue<'gcc> {
         let ptr_type = ptr.get_type();
         // NOTE: we cannot use array indexing here like in inbounds_gep because array indexing is
@@ -1540,12 +1550,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.switch_to_block(after_block);
 
         variable.to_rvalue()
-    }
-
-    fn va_arg(&mut self, list: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
-        let va_list_type = self.context.new_c_type(CType::VaList);
-        let list = self.context.new_cast(self.location, list, va_list_type.make_pointer());
-        self.context.new_va_arg(self.location, list, ty)
     }
 
     #[cfg(feature = "master")]
@@ -1917,6 +1921,27 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn fptosi_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         self.fptoint_sat(true, val, dest_ty)
+    }
+
+    fn start_phi(&mut self, value: RValue<'gcc>) -> PhiBuilder<'gcc> {
+        let typ = value.get_type();
+        let var = self.new_temp(self.llbb().get_function(), self.location, typ);
+        self.assign(var, value);
+        PhiBuilder { var, typ }
+    }
+
+    fn add_phi_input(&mut self, phi: &mut PhiBuilder<'gcc>, value: RValue<'gcc>) {
+        // Multiple GCC types can correspond to the same SSA type (e.g. pointers).
+        let value = if value.get_type() != phi.typ {
+            self.context.new_bitcast(self.location, value, phi.typ)
+        } else {
+            value
+        };
+        self.assign(phi.var, value);
+    }
+
+    fn phi_output(&mut self, phi: PhiBuilder<'gcc>) -> RValue<'gcc> {
+        phi.var.to_rvalue()
     }
 }
 

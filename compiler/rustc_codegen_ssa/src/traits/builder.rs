@@ -71,6 +71,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             Type = Self::Type,
             FunctionSignature = Self::FunctionSignature,
             Funclet = Self::Funclet,
+            PhiBuilder = Self::PhiBuilder,
             DIScope = Self::DIScope,
             DILocation = Self::DILocation,
             DIVariable = Self::DIVariable,
@@ -369,6 +370,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.inbounds_gep(Size::from_bytes(1), ptr, offset)
     }
+    fn ptr_mask(&mut self, ptr: Self::Value, mask: Self::Value) -> Self::Value;
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     /// Produces the same value as [`Self::trunc`] (and defaults to that),
@@ -578,7 +580,6 @@ pub trait BuilderMethods<'a, 'tcx>:
         else_val: Self::Value,
     ) -> Self::Value;
 
-    fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
     fn vector_splat(&mut self, num_elts: u64, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
@@ -685,4 +686,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);
+
+    fn start_phi(&mut self, value: Self::Value) -> Self::PhiBuilder;
+    fn add_phi_input(&mut self, phi: &mut Self::PhiBuilder, value: Self::Value);
+    fn phi_output(&mut self, phi: Self::PhiBuilder) -> Self::Value;
 }
