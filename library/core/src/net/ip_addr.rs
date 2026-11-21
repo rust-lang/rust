@@ -210,7 +210,7 @@ impl Hash for Ipv6Addr {
 ///     Some(Global) => println!("Global scope"),
 ///     Some(s) => {
 ///         let snum = s as u8;
-///         if matches!(0x0 | 0xF, snum) {
+///         if matches!(snum, 0x0 | 0xF) {
 ///             println!("Reserved scope {snum:X}")
 ///         } else {
 ///             println!("Unassigned scope {snum:X}")
