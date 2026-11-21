@@ -199,7 +199,7 @@ jobs:
       - name: Pin MSVC
         if: ${{ contains(matrix.name, 'msvc') }}
         shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
-        run: src\ci\scripts\aarch64-msvc-workaround.ps1
+        run: src\ci\scripts\pin-msvc.ps1
 
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
