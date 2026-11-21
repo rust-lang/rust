@@ -348,17 +348,26 @@ impl UnixSocketFileDescription for UdpSocket {
             return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
             let socket = self.socket.borrow();
-            return ecx.set_ip_socket_option(
+            return ecx.set_ipv4_socket_option(
                 option,
                 value_ptr,
                 value_len,
                 socket2::SockRef::from(&*socket),
             );
+        } else if level == ecx.eval_libc_i32("IPPROTO_IPV6") {
+            let socket = self.socket.borrow();
+            return ecx.set_ipv6_socket_option(
+                option,
+                value_ptr,
+                value_len,
+                socket2::SockRef::from(&*socket),
+                /* supports_multicast */ true,
+            );
         }
 
         throw_unsup_format!(
-            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET and IPPROTO_IP \
-            are allowed"
+            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP and \
+            IPPROTO_IPV6 are allowed"
         );
     }
 
@@ -372,11 +381,18 @@ impl UnixSocketFileDescription for UdpSocket {
             ecx.get_generic_socket_option(option, self)
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
             let socket = self.socket.borrow();
-            ecx.get_ip_socket_option(option, socket2::SockRef::from(&*socket))
+            ecx.get_ipv4_socket_option(option, socket2::SockRef::from(&*socket))
+        } else if level == ecx.eval_libc_i32("IPPROTO_IPV6") {
+            let socket = self.socket.borrow();
+            ecx.get_ipv6_socket_option(
+                option,
+                socket2::SockRef::from(&*socket),
+                /* supports_multicast */ true,
+            )
         } else {
             throw_unsup_format!(
-                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET and IPPROTO_IP \
-                are allowed"
+                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP and \
+                IPPROTO_IPV6 are allowed"
             )
         }
     }

@@ -4,6 +4,7 @@
 
 #![feature(tcp_linger)]
 #![feature(tcp_keepalive)]
+#![feature(ipv6_hop_limit)]
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
@@ -23,6 +24,7 @@ fn main() {
     test_peer_addr();
     test_shutdown();
     test_sockopt_ttl();
+    test_sockopt_ipv6_hop_limit();
     test_sockopt_nodelay();
     test_sockopt_read_timeout();
     test_sockopt_write_timeout();
@@ -201,6 +203,13 @@ fn test_sockopt_ttl() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_ttl(16).unwrap();
     assert_eq!(listener.ttl().unwrap(), 16);
+}
+
+/// Test setting and reading the IPV6 unicast hops socket option.
+fn test_sockopt_ipv6_hop_limit() {
+    let listener = TcpListener::bind("[::1]:0").unwrap();
+    listener.set_hop_limit_v6(25).unwrap();
+    assert_eq!(listener.hop_limit_v6().unwrap(), 25);
 }
 
 /// Test setting and reading the TCP nodelay socket option.

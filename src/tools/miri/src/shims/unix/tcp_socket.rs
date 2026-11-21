@@ -712,11 +712,19 @@ impl UnixSocketFileDescription for TcpSocket {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
             return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
-            return ecx.set_ip_socket_option(
+            return ecx.set_ipv4_socket_option(
                 option,
                 value_ptr,
                 value_len,
                 self.state.borrow().as_socket_ref(),
+            );
+        } else if level == ecx.eval_libc_i32("IPPROTO_IPV6") {
+            return ecx.set_ipv6_socket_option(
+                option,
+                value_ptr,
+                value_len,
+                self.state.borrow().as_socket_ref(),
+                /* supports_multicast */ false,
             );
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
             return ecx.set_tcp_socket_option(
@@ -728,8 +736,8 @@ impl UnixSocketFileDescription for TcpSocket {
         }
 
         throw_unsup_format!(
-            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
-           and IPPROTO_TCP are allowed"
+            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP, \
+           IPPROTO_IPV6 and IPPROTO_TCP are allowed"
         );
     }
 
@@ -742,13 +750,19 @@ impl UnixSocketFileDescription for TcpSocket {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
             ecx.get_generic_socket_option(option, self)
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
-            ecx.get_ip_socket_option(option, self.state.borrow().as_socket_ref())
+            ecx.get_ipv4_socket_option(option, self.state.borrow().as_socket_ref())
+        } else if level == ecx.eval_libc_i32("IPPROTO_IPV6") {
+            ecx.get_ipv6_socket_option(
+                option,
+                self.state.borrow().as_socket_ref(),
+                /* supports_multicast */ false,
+            )
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
             ecx.get_tcp_socket_option(option, self.state.borrow().as_socket_ref())
         } else {
             throw_unsup_format!(
-                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
-               and IPPROTO_TCP are allowed"
+                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP, \
+               IPPROTO_IPV6 and IPPROTO_TCP are allowed"
             )
         }
     }
