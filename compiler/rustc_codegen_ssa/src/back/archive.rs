@@ -311,7 +311,8 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
 }
 
 pub enum AddArchiveKind<'a> {
-    Rlib(&'a mut RmetaLinkCache, /*skip*/ &'a dyn Fn(&str, ArchiveEntryKind) -> bool),
+    Rlib(&'a mut RmetaLinkCache, /*skip*/ &'a dyn Fn(&str, ArchiveEntryKind, usize) -> bool),
+    NativeLib(usize),
     Other,
 }
 
@@ -325,6 +326,8 @@ pub trait ArchiveBuilder {
     fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
     fn add_archive(&mut self, archive: &Path, kind: AddArchiveKind<'_>) -> io::Result<()>;
+
+    fn native_lib_member_positions(&self, library_count: usize) -> Vec<Vec<u32>>;
 
     fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool;
 }
@@ -410,6 +413,8 @@ enum ArchiveEntrySource {
 struct ArchiveEntry {
     source: ArchiveEntrySource,
     kind: ArchiveEntryKind,
+    source_archive_index: Option<usize>,
+    native_lib_indices: Vec<usize>,
 }
 
 impl<'a> ArArchiveBuilder<'a> {
@@ -471,15 +476,27 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         archive_path: &Path,
         mut ar_kind: AddArchiveKind<'_>,
     ) -> io::Result<()> {
-        let mut archive_path = archive_path.to_path_buf();
+        if let Some(source_archive_index) =
+            self.src_archives.iter().position(|archive| archive.0 == archive_path)
+        {
+            if let AddArchiveKind::NativeLib(library_index) = ar_kind {
+                for (_, entry) in &mut self.entries {
+                    if entry.source_archive_index == Some(source_archive_index)
+                        && !entry.native_lib_indices.contains(&library_index)
+                    {
+                        entry.native_lib_indices.push(library_index);
+                    }
+                }
+            }
+            return Ok(());
+        }
+
+        let original_archive_path = archive_path.to_path_buf();
+        let mut archive_path = original_archive_path.clone();
         if self.sess.target.llvm_target.contains("-apple-macosx")
             && let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
         {
             archive_path = new_archive_path
-        }
-
-        if self.src_archives.iter().any(|archive| archive.0 == archive_path) {
-            return Ok(());
         }
 
         let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
@@ -487,7 +504,11 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
         let skip = match &ar_kind {
             AddArchiveKind::Rlib(_, skip) => Some(*skip),
-            AddArchiveKind::Other => None,
+            AddArchiveKind::NativeLib(_) | AddArchiveKind::Other => None,
+        };
+        let native_lib_indices = match ar_kind {
+            AddArchiveKind::NativeLib(library_index) => vec![library_index],
+            AddArchiveKind::Rlib(..) | AddArchiveKind::Other => Vec::new(),
         };
         let metadata_link = match &mut ar_kind {
             AddArchiveKind::Rlib(cache, _) => cache.get_or_insert_with(&archive_path, || {
@@ -498,7 +519,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                     self.sess.target.is_like_aix,
                 )
             }),
-            AddArchiveKind::Other => None,
+            AddArchiveKind::NativeLib(_) | AddArchiveKind::Other => None,
         };
         let archive_index = self.src_archives.len();
 
@@ -515,7 +536,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             }
         }
 
-        for entry in archive.members() {
+        for (position, entry) in archive.members().enumerate() {
             let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             let file_name = String::from_utf8(entry.name().to_vec())
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
@@ -528,7 +549,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                 ArchiveEntryKind::Other
             };
             let drop = match skip {
-                Some(skip) => skip(&file_name, kind),
+                Some(skip) => skip(&file_name, kind, position),
                 None => false,
             };
             if !drop {
@@ -538,11 +559,19 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                 } else {
                     ArchiveEntrySource::Archive { archive_index, file_range: entry.file_range() }
                 };
-                self.entries.push((file_name.into_bytes(), ArchiveEntry { source, kind }));
+                self.entries.push((
+                    file_name.into_bytes(),
+                    ArchiveEntry {
+                        source,
+                        kind,
+                        source_archive_index: Some(archive_index),
+                        native_lib_indices: native_lib_indices.clone(),
+                    },
+                ));
             }
         }
 
-        self.src_archives.push((archive_path, archive_map));
+        self.src_archives.push((original_archive_path, archive_map));
         Ok(())
     }
 
@@ -550,8 +579,24 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
     fn add_file(&mut self, file: &Path, kind: ArchiveEntryKind) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
-            ArchiveEntry { source: ArchiveEntrySource::File(file.to_owned()), kind },
+            ArchiveEntry {
+                source: ArchiveEntrySource::File(file.to_owned()),
+                kind,
+                source_archive_index: None,
+                native_lib_indices: Vec::new(),
+            },
         ));
+    }
+
+    fn native_lib_member_positions(&self, library_count: usize) -> Vec<Vec<u32>> {
+        let mut positions = vec![Vec::new(); library_count];
+        for (position, (_, entry)) in self.entries.iter().enumerate() {
+            let position = u32::try_from(position).unwrap();
+            for &library_index in &entry.native_lib_indices {
+                positions[library_index].push(position);
+            }
+        }
+        positions
     }
 
     /// Combine the provided files, rlibs, and native libraries into a single
