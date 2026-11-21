@@ -16,6 +16,11 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     if layout.size.bytes() >= tcx.data_layout.obj_size_bound() {
         bug!("size is too large, in the following layout:\n{layout:#?}");
     }
+
+    if layout.has_trivial_abi() && !layout.is_1zst() {
+        bug!("non-1-ZST with trivial ABI:\n{layout:#?}")
+    }
+
     // FIXME(#124403): Once `repr_c_enums_larger_than_int` is a hard error, we could assert
     // here that a repr(c) enum discriminant is never larger than a c_int.
 
