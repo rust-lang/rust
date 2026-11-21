@@ -124,7 +124,7 @@ impl Drop for EdgeFrame<'_> {
 }
 
 #[derive(Debug)]
-pub(super) enum DepNodeColor {
+pub enum DepNodeColor {
     Green(DepNodeIndex),
     Red,
     Unknown,
@@ -877,7 +877,7 @@ impl DepGraph {
             .any(|node| node.kind == dep_kind)
     }
 
-    fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
+    pub fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
         if let Some(ref data) = self.data {
             return data.node_color(dep_node);
         }
