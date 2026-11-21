@@ -454,11 +454,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Now we can finally actually evaluate the callee place.
         let callee_arg =
             self.eval_place(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
-        // We allow some transmutes here.
+        // We allow some transmutes here, and we only protect based on the callee's type.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op_allow_transmute(&caller_arg_copy, &callee_arg)?;
+        self.copy_op_for_fn_arg(&caller_arg_copy, &callee_arg)?;
         // If this was an in-place pass, protect the place it comes from for the duration of the call.
         if let FnArg::InPlace(mplace) = caller_arg {
             M::protect_in_place_function_argument(self, mplace)?;
