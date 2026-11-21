@@ -75,7 +75,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         let offset =
                             i64::try_from(ecx.read_scalar(&offset)?.to_int(offset.layout.size)?)
                                 .unwrap();
-                        let ptr = slice.wrapping_signed_offset(offset.strict_mul(scale), &ecx.tcx);
+                        // The address computation wraps around, like on real hardware.
+                        let ptr =
+                            slice.wrapping_signed_offset(offset.wrapping_mul(scale), &ecx.tcx);
                         // Unaligned copy, which is what we want.
                         ecx.mem_copy(
                             ptr,

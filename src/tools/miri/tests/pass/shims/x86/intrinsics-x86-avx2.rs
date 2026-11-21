@@ -632,6 +632,14 @@ unsafe fn test_avx2() {
         // A multiplier of 4 is word-addressing
         let r = _mm_i64gather_epi32::<4>(arr.as_ptr(), _mm_setr_epi64x(0, 16));
         assert_eq_m128i(r, _mm_setr_epi32(0, 16, 0, 0));
+
+        let arr: [i32; 128] = core::array::from_fn(|i| i as i32);
+        // `offset * scale` overflows and wraps around to 16 * 4 and 32 * 4
+        let r = _mm_i64gather_epi32::<4>(
+            arr.as_ptr(),
+            _mm_setr_epi64x(i64::MIN + 16, i64::MIN / 2 + 32),
+        );
+        assert_eq_m128i(r, _mm_setr_epi32(16, 32, 0, 0));
     }
     test_mm_i64gather_epi32();
 
