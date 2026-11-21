@@ -88,3 +88,6 @@ rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
 
 # See comments in `library/windows-sys/Cargo.toml` for why this is patched
 windows-sys = { path = 'windows-sys' }
+
+# XXX: DO NOT MERGE: testing arm64ec fix
+cc = { git = "https://github.com/jieyouxu/cc-rs", branch = "jieyouxu/fix/arm64ec-explicit-machine" }
