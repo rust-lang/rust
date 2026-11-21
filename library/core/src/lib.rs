@@ -110,6 +110,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types_pointers)]
 #![feature(auto_traits)]
+#![feature(cfg_overflow_checks)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_ub_checks)]

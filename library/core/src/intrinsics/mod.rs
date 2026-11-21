@@ -2701,7 +2701,7 @@ pub const fn ub_checks() -> bool {
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn overflow_checks() -> bool {
-    cfg!(debug_assertions)
+    cfg!(overflow_checks)
 }
 
 /// Allocates a block of memory at compile time.
