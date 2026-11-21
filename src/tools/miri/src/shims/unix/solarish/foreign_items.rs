@@ -141,7 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getaddrinfo" => {
                 let [node, service, hints, res] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *libc::addrinfo, **libc::addrinfo) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.getaddrinfo(node, service, hints, res)?;
