@@ -43,5 +43,4 @@ mod mono_item;
 mod type_;
 mod type_of;
 mod typetree;
-mod va_arg;
 mod value;

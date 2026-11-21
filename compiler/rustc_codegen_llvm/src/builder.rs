@@ -27,18 +27,18 @@ use rustc_session::config::OptLevel;
 use rustc_span::{Span, bug};
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
-use crate::common::Funclet;
+use crate::common::{Funclet, PhiBuilder};
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
     ToLlvmBool, Type, TypeKind, Value,
 };
 use crate::type_of::LayoutLlvmExt;
+use crate::{attributes, common};
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -214,6 +214,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
     type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
     type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
     type Funclet = <GenericCx<'ll, CX> as BackendTypes>::Funclet;
+    type PhiBuilder = <GenericCx<'ll, CX> as BackendTypes>::PhiBuilder;
 
     type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
     type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
@@ -394,6 +395,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMReplaceMDNodeOperandWith(loop_meta_val, 0, loop_meta_mdnode);
             }
         }
+    }
+
+    fn br_with_phi<const N: usize>(
+        &mut self,
+        dest: &'ll BasicBlock,
+        phi_builders: [(&mut PhiBuilder<'ll>, Value<'ll>); N],
+    ) {
+        for (builder, value) in phi_builders {
+            builder.values.push(value);
+            builder.blocks.push(self.llbb());
+        }
+        self.br(dest);
     }
 
     fn cond_br(
@@ -959,6 +972,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn ptr_mask(&mut self, ptr: Self::Value, mask: Self::Value) -> Self::Value {
+        self.call_intrinsic("llvm.ptrmask", &[self.val_ty(ptr), self.type_isize()], &[ptr, mask])
+    }
+
     fn gep(&mut self, stride: Size, ptr: Value<'ll>, index: Value<'ll>) -> Value<'ll> {
         self.build_gep(stride, ptr, index, GEPNoWrapFlags::default())
     }
@@ -1222,10 +1239,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         else_val: Value<'ll>,
     ) -> Value<'ll> {
         unsafe { llvm::LLVMBuildSelect(self.llbuilder(), cond, then_val, else_val, UNNAMED) }
-    }
-
-    fn va_arg(&mut self, list: Value<'ll>, ty: Type<'ll>) -> Value<'ll> {
-        unsafe { llvm::LLVMBuildVAArg(self.llbuilder(), list, ty, UNNAMED) }
     }
 
     fn extract_element(&mut self, vec: Value<'ll>, idx: Value<'ll>) -> Value<'ll> {
@@ -1532,6 +1545,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
+
+    fn new_phi(&mut self) -> PhiBuilder<'ll> {
+        PhiBuilder { values: smallvec![], blocks: smallvec![] }
+    }
+
+    fn phi_output(&mut self, phi: PhiBuilder<'ll>) -> Value<'ll> {
+        assert!(!phi.values.is_empty());
+        self.phi(&phi.values, &phi.blocks)
+    }
 }
 
 impl<'ll> Builder<'_, 'll, '_> {
@@ -1643,7 +1665,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.br(header_bb);
 
         let mut header_bx = Self::build(self.cx, header_bb);
-        let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
+        let i = header_bx.phi(&[zero], &[self.llbb()]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
         header_bx.cond_br(keep_going, body_bb, next_bb);
@@ -1677,7 +1699,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.br(header_bb);
 
         let mut header_bx = Self::build(self.cx, header_bb);
-        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+        let current = header_bx.phi(&[start], &[self.llbb()]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
         header_bx.cond_br(keep_going, body_bb, next_bb);
@@ -1873,13 +1895,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
-    pub(crate) fn phi(
-        &mut self,
-        ty: Type<'ll>,
-        vals: &[Value<'ll>],
-        bbs: &[&'ll BasicBlock],
-    ) -> Value<'ll> {
+    pub(crate) fn phi(&mut self, vals: &[Value<'ll>], bbs: &[&'ll BasicBlock]) -> Value<'ll> {
         assert_eq!(vals.len(), bbs.len());
+        let ty = common::val_ty(vals[0]);
         let phi = unsafe { llvm::LLVMBuildPhi(self.llbuilder(), ty, UNNAMED) };
         unsafe {
             llvm::LLVMAddIncoming(phi, vals.as_ptr(), bbs.as_ptr(), vals.len() as c_uint);

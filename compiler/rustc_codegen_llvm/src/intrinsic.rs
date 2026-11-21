@@ -2,10 +2,7 @@ use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
 
-use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
-    Primitive, Size,
-};
+use rustc_abi::{AddressSpace, Align, BackendRepr, HasDataLayout, NumScalableVectors, Size};
 use rustc_attr_ir::find_attr;
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
@@ -23,7 +20,6 @@ use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgs, Instance, Intrinsic, SimdAlign, Ty, TyCtxt};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::{
@@ -46,7 +42,6 @@ use crate::diagnostics::{
 use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::va_arg::emit_va_arg;
 
 impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     fn black_box(&mut self, result: PlaceRef<'tcx, Value<'ll>>, span: Span) {
@@ -114,14 +109,6 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                 // signed-zero ordering non-deterministic.
                 unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
                 call
-            }
-            sym::ptr_mask => {
-                let ptr = args[0].immediate();
-                self.call_intrinsic(
-                    "llvm.ptrmask",
-                    &[self.val_ty(ptr), self.type_isize()],
-                    &[ptr, args[1].immediate()],
-                )
             }
             sym::autodiff => {
                 return codegen_autodiff(self, instance, args, result_layout, result_place);
@@ -198,88 +185,6 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
             ),
             sym::breakpoint | sym::resumable_breakpoint => {
                 self.call_intrinsic("llvm.debugtrap", &[], &[])
-            }
-            sym::va_arg => {
-                let target = &self.cx.tcx.sess.target;
-                let stability = target.supports_c_variadic_definitions();
-                if let CVariadicStatus::Unstable { feature } = stability
-                    && !self.tcx.features().enabled(feature)
-                {
-                    let msg = "C-variadic function definitions on this target are unstable";
-                    feature_err(self.sess(), feature, span, msg).emit();
-                }
-
-                'blk: {
-                    // The backend_repr of x87_f80 is not a scalar, so it needs special-casing.
-                    if result_layout.is_x87_f80(self) {
-                        break 'blk;
-                    }
-
-                    let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
-                        bug!("the va_arg intrinsic does not support non-scalar types")
-                    };
-
-                    // We reject types that would never be passed as varargs in C because
-                    // they get promoted to a larger type, specifically integers smaller than
-                    // c_int and float type smaller than c_double.
-                    match scalar.primitive() {
-                        Primitive::Pointer(_) => {
-                            // Pointers are always OK.
-                        }
-                        Primitive::Bool => {
-                            let target_c_int_width = self.cx().sess().target.options.c_int_width;
-                            if 1 < u64::from(target_c_int_width) {
-                                // Smaller integer types are automatically promototed and `va_arg`
-                                // should not be called on them.
-                                bug!(
-                                    "va_arg got i{} but needs at least c_int (an i{})",
-                                    1,
-                                    target_c_int_width
-                                );
-                            }
-                        }
-                        Primitive::Int(..) => {
-                            let int_width = self.cx().size_of(result_layout.ty).bits();
-                            let target_c_int_width = self.cx().sess().target.options.c_int_width;
-                            if int_width < u64::from(target_c_int_width) {
-                                // Smaller integer types are automatically promototed and `va_arg`
-                                // should not be called on them.
-                                bug!(
-                                    "va_arg got i{} but needs at least c_int (an i{})",
-                                    int_width,
-                                    target_c_int_width
-                                );
-                            }
-                        }
-                        Primitive::Float(Float::F16) => {
-                            bug!("the va_arg intrinsic does not support `f16`")
-                        }
-                        Primitive::Float(Float::F16B) => {
-                            bug!("the va_arg intrinsic does not support `f16b`")
-                        }
-                        Primitive::Float(Float::F32) => {
-                            // c_double is actually f32 on avr.
-                            if self.cx().sess().target.arch != Arch::Avr {
-                                bug!("the va_arg intrinsic does not support `f32` on this target")
-                            }
-                        }
-                        Primitive::Float(Float::F64) => {
-                            // 64-bit floats are always OK.
-                        }
-                        Primitive::Float(Float::F128) => {
-                            // Supported on some targets, especially where long double is IEEE f128.
-                        }
-                        Primitive::Float(Float::PpcF128) => {
-                            // Supported on powerpc and powerpc64 targets.
-                        }
-                        Primitive::Float(Float::X87F80) => {
-                            // The user-facing x87_f80 type is accepted above.
-                            bug!("the va_arg intrinsic does not support `x87_f80_raw`")
-                        }
-                    }
-                }
-
-                emit_va_arg(self, args[0], result_layout)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {

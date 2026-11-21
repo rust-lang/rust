@@ -27,6 +27,7 @@ pub mod place;
 mod retag;
 mod rvalue;
 mod statement;
+mod va_arg;
 
 pub use self::block::{intrinsic_return_struct_fields, store_cast, store_intrinsic_return_struct};
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
