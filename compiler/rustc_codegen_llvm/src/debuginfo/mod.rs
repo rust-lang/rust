@@ -18,9 +18,7 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
-use rustc_span::{
-    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
-};
+use rustc_span::{BytePos, Pos, SourceFile, SourceFileHash, Span, StableSourceFileId, Symbol};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
@@ -53,6 +51,7 @@ mod utils;
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
+    lookup_debug_loc_last_file: RefCell<Arc<SourceFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
     adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
@@ -107,6 +106,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         CodegenUnitDebugContext {
             builder,
             created_files: Default::default(),
+            lookup_debug_loc_last_file: Arc::clone(&sess.source_map().files()[0]).into(),
             type_map: Default::default(),
             adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
@@ -684,17 +684,21 @@ impl<'ll> CodegenCx<'ll, '_> {
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
     // `lookup_char_pos` return the right information instead.
     fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
-        let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
-            Ok(SourceFileAndLine { sf: file, line }) => {
+        let mut file = self.dbg_cx.as_ref().unwrap().lookup_debug_loc_last_file.borrow_mut();
+        if !file.contains(pos) {
+            *file = Arc::clone(&self.sess().source_map().lookup_source_file(pos));
+        }
+        let (file, line, col) = match file.lookup_line(file.relative_position(pos)) {
+            Some(line) => {
                 let line_pos = file.lines()[line];
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
                 let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
 
-                (file, line, col)
+                (Arc::clone(&file), line, col)
             }
-            Err(file) => (file, UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
+            None => (Arc::clone(&file), UNKNOWN_LINE_NUMBER, UNKNOWN_COLUMN_NUMBER),
         };
 
         // For MSVC, omit the column number.
