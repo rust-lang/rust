@@ -1632,12 +1632,6 @@ unsafe extern "C" {
         Else: Value<'ll>,
         Name: *const c_char,
     ) -> Value<'ll>;
-    pub(crate) fn LLVMBuildVAArg<'ll>(
-        B: &Builder<'ll>,
-        list: Value<'ll>,
-        Ty: Type<'ll>,
-        Name: *const c_char,
-    ) -> Value<'ll>;
     pub(crate) fn LLVMBuildExtractElement<'ll>(
         B: &Builder<'ll>,
         VecVal: Value<'ll>,

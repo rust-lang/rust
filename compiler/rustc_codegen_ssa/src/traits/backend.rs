@@ -22,6 +22,7 @@ pub trait BackendTypes {
     type Function: CodegenObject;
     type BasicBlock: Copy;
     type Funclet;
+    type PhiBuilder;
 
     type Value: CodegenObject + PartialEq;
     type Type: CodegenObject + PartialEq;
