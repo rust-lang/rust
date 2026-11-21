@@ -97,3 +97,33 @@ fn build_scoped_tls_threadpool() {
         });
     });
 }
+
+#[test]
+#[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
+fn build_scoped_thread_exit() {
+    use std::mem::DropGuard;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    const NUM_THREADS: usize = 4;
+    static EXITED: AtomicUsize = AtomicUsize::new(0);
+
+    // This makes thread exit slow enough that `build_scoped` returning early is visible.
+    thread_local!(static ON_EXIT: DropGuard<(), fn(())> = DropGuard::new((), |()| {
+        std::thread::sleep(Duration::from_millis(10));
+        EXITED.fetch_add(1, Ordering::SeqCst);
+    }));
+
+    ThreadPoolBuilder::new()
+        .num_threads(NUM_THREADS)
+        .build_scoped(
+            |thread| {
+                ON_EXIT.with(|_| {});
+                thread.run()
+            },
+            |pool| pool.install(|| {}),
+        )
+        .expect("thread pool created");
+    // Make sure `build_scoped` returns before the threads have exited.
+    assert_eq!(EXITED.load(Ordering::SeqCst), 0);
+}
