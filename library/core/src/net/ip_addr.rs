@@ -147,10 +147,11 @@ impl Hash for Ipv4Addr {
 ///
 /// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
 /// an IPv6 address in text, but in general, each segment is written in hexadecimal
-/// notation, and segments are separated by `:`. For more information, see
-/// [IETF RFC 5952].
+/// notation, and segments are separated by `:`. The accepted forms are defined in
+/// [IETF RFC 4291 section 2.2], and the recommended canonical form in [IETF RFC 5952].
 ///
 /// [`FromStr`]: crate::str::FromStr
+/// [IETF RFC 4291 section 2.2]: https://tools.ietf.org/html/rfc4291#section-2.2
 /// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
 ///
 /// # Examples
@@ -1572,9 +1573,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] for the special 'unspecified' address (`::`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// This property is defined in [IETF RFC 4291 section 2.5.2].
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.2
     ///
     /// # Examples
     ///
@@ -1724,9 +1725,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is a unique local address (`fc00::/7`).
     ///
-    /// This property is defined in [IETF RFC 4193].
+    /// This property is defined in [IETF RFC 4193 section 3.1].
     ///
-    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
+    /// [IETF RFC 4193 section 3.1]: https://tools.ietf.org/html/rfc4193#section-3.1
     ///
     /// # Examples
     ///
@@ -1744,10 +1745,10 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
+    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291 section 2.4].
     /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [multicast address]: Ipv6Addr::is_multicast
     ///
     /// # Examples
@@ -1825,10 +1826,10 @@ impl Ipv6Addr {
     /// Returns [`true`] if this is an address reserved for documentation
     /// (`2001:db8::/32` and `3fff::/20`).
     ///
-    /// This property is defined by [IETF RFC 3849] and [IETF RFC 9637].
+    /// This property is defined by [IETF RFC 3849 section 2] and [IETF RFC 9637 section 6].
     ///
-    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
-    /// [IETF RFC 9637]: https://tools.ietf.org/html/rfc9637
+    /// [IETF RFC 3849 section 2]: https://tools.ietf.org/html/rfc3849#section-2
+    /// [IETF RFC 9637 section 6]: https://tools.ietf.org/html/rfc9637#section-6
     ///
     /// # Examples
     ///
@@ -1850,11 +1851,11 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
     ///
-    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
+    /// This property is defined in [IETF RFC 5180 section 8], where it is mistakenly specified as covering the range `2001:0200::/48`.
     /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
     ///
-    /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
-    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
+    /// [IETF RFC 5180 section 8]: https://tools.ietf.org/html/rfc5180#section-8
+    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata/eid1752
     ///
     /// ```
     /// #![feature(ip)]
@@ -1964,9 +1965,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is a multicast address (`ff00::/8`).
     ///
-    /// This property is defined by [IETF RFC 4291].
+    /// This property is defined by [IETF RFC 4291 section 2.7].
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.7]: https://tools.ietf.org/html/rfc4291#section-2.7
     ///
     /// # Examples
     ///
@@ -2172,7 +2173,8 @@ impl Ipv6Addr {
 }
 
 /// Writes an Ipv6Addr, conforming to the canonical style described by
-/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
+/// [RFC 5952 section 4](https://tools.ietf.org/html/rfc5952#section-4). IPv4-mapped addresses
+/// use the mixed notation recommended by [section 5](https://tools.ietf.org/html/rfc5952#section-5).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
