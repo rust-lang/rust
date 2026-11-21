@@ -30,7 +30,7 @@ fn yield_now() {
 }
 
 fn main() {
-    test_accept_nonblock();
+    test_accept_nonblock(|fd, addr, len| unsafe { libc::accept(fd, addr, len).into() });
     #[cfg(any(
         target_os = "linux",
         target_os = "android",
@@ -38,7 +38,18 @@ fn main() {
         target_os = "solaris",
         target_os = "illumos"
     ))]
-    test_accept4_sock_nonblock_opt();
+    test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
+        libc::accept4(fd, addr, len, flags).into()
+    });
+    #[cfg(target_os = "linux")]
+    {
+        test_accept_nonblock(|fd, addr, len| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, 0 as libc::c_int)
+        });
+        test_accept4_sock_nonblock_opt(|fd, addr, len, flags| unsafe {
+            libc::syscall(libc::SYS_accept4, fd, addr, len, flags)
+        });
+    }
     test_connect_nonblock();
     test_send_recv_nonblock();
     #[cfg(any(
@@ -66,7 +77,9 @@ fn main() {
 /// to accept when no incoming connection exists. This also tests that nonblocking server sockets
 /// are still able to accept incoming connections should they already exist before the `accept` or
 /// `accept4` syscall is called.
-fn test_accept_nonblock() {
+fn test_accept_nonblock(
+    accept: fn(libc::c_int, *mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_long,
+) {
     let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
@@ -77,7 +90,7 @@ fn test_accept_nonblock() {
     }
 
     // This should fail as we don't have an incoming connection for this address.
-    let err = net::accept_ipv4(server_sockfd).unwrap_err();
+    let err = net::sockname_ipv4(|storage, len| accept(server_sockfd, storage, len)).unwrap_err();
     // Assert that either EAGAIN or EWOULDBLOCK was returned.
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
 
@@ -87,12 +100,16 @@ fn test_accept_nonblock() {
         // was called before we call the `accept` on the server.
         yield_now();
 
-        net::accept_ipv4(server_sockfd).unwrap();
+        net::sockname_ipv4(|storage, len| accept(server_sockfd, storage, len)).unwrap();
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+
+    // test bad FD
+    let err = net::sockname_ipv4(|storage, len| accept(-1, storage, len)).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
 }
 
 #[cfg(any(
@@ -104,17 +121,25 @@ fn test_accept_nonblock() {
 ))]
 /// Test that calling `accept4` with the SOCK_NONBLOCK flag produces
 /// a non-blocking peer socket.
-fn test_accept4_sock_nonblock_opt() {
+fn test_accept4_sock_nonblock_opt(
+    accept4: fn(
+        libc::c_int,
+        *mut libc::sockaddr,
+        *mut libc::socklen_t,
+        libc::c_int,
+    ) -> libc::c_long,
+) {
     let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        let (peerfd, _) = net::sockname_ipv4(|storage, len| unsafe {
-            libc::accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
+        let (peerfd, _) = net::sockname_ipv4(|storage, len| {
+            accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
         })
         .unwrap();
+        let peerfd = libc::c_int::try_from(peerfd).unwrap();
 
         let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
 
