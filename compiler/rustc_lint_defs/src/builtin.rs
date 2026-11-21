@@ -5513,11 +5513,11 @@ declare_lint! {
     /// Therefore, `repr(C)` enums in Rust require that either all discriminants to fit into a C
     /// `int` or they all fit into an `unsigned int`.
     pub REPR_C_ENUMS_LARGER_THAN_INT,
-    Warn,
+    Deny,
     "repr(C) enums with discriminant values that do not fit into a C int",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124403),
-        report_in_deps: false,
+        report_in_deps: true,
     };
 }
 
