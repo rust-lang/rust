@@ -39,7 +39,7 @@
 //@ gdb-command:whatis fnptr
 //@ gdb-check:type = *mut fn ()
 //@ gdb-command:info functions _yyy
-//@ gdb-check:static fn basic_types_metadata::_yyy();
+//@ gdb-check:static fn basic_types_metadata::_yyy() -> !;
 //@ gdb-command:ptype closure_0
 //@ gdb-check: type = struct basic_types_metadata::main::{closure_env#0}
 //@ gdb-command:ptype closure_1

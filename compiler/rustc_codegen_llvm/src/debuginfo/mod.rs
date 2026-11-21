@@ -242,7 +242,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
 
             // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(if fn_abi.ret.is_ignore() {
+            signature.push(if fn_abi.ret.layout.ty.is_unit() {
                 None
             } else {
                 Some(spanned_type_di_node(cx, fn_abi.ret.layout.ty, span))
