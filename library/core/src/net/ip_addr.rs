@@ -136,9 +136,10 @@ impl Hash for Ipv4Addr {
 /// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
 ///
 /// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
-/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+/// Use [`Ipv6Addr::to_ipv4_mapped`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
+/// [`Ipv6Addr::to_ipv4`] also accepts IPv4-mapped addresses, but additionally converts IPv4-compatible
+/// addresses, including the IPv6 unspecified address `::` (to `0.0.0.0`) and loopback address
+/// `::1` (to `0.0.0.1`).
 ///
 /// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
@@ -2010,7 +2011,7 @@ impl Ipv6Addr {
     /// All addresses *not* starting with `::ffff` will return `None`.
     ///
     /// [`IPv4` address]: Ipv4Addr
-    /// [IPv4-mapped]: Ipv6Addr
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
     /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
