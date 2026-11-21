@@ -1065,13 +1065,6 @@ fn mul_add() {
 }
 
 fn libm() {
-    fn ldexp(a: f64, b: i32) -> f64 {
-        extern "C" {
-            fn ldexp(x: f64, n: i32) -> f64;
-        }
-        unsafe { ldexp(a, b) }
-    }
-
     assert_approx_eq!(25f16.powi(-2), 0.0016f16);
     assert_approx_eq!(25f32.powi(-2), 0.0016f32);
     assert_approx_eq!(23.2f64.powi(2), 538.24f64);
@@ -1205,11 +1198,6 @@ fn libm() {
     assert_approx_eq!(3.0f16.hypot(4.0f16), 5.0f16);
     assert_approx_eq!(3.0f32.hypot(4.0f32), 5.0f32);
     assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
-
-    assert_eq!(ldexp(0.65f64, 3i32), 5.2f64);
-    assert_eq!(ldexp(1.42, 0xFFFF), f64::INFINITY);
-    assert_eq!(ldexp(1.42, -0xFFFF), 0f64);
-    assert_eq!(ldexp(42.0, 0), 42.0);
 
     assert_eq!(0.65f16.scalbn(3i32), 5.2f16);
     assert_eq!(0.65f32.scalbn(3i32), 5.2f32);
