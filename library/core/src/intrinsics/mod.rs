@@ -1507,6 +1507,51 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::fmaf128(a, b, c) }
 }
 
+intrinsic_dispatch_on_type! {
+    /// Calculates `x * 2.0^exp` efficiently.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn scalbn<T: bounds::FloatPrimitive>(x: T, exp: i32) -> T;
+
+    f16 => { libm::scalbnf16(x, exp) }
+    f32 => { libm::scalbnf(x, exp) }
+    f64 => { libm::scalbn(x, exp) }
+    f128 => { libm::scalbnf128(x, exp) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Extracts the unbiased exponent of the input value, ignoring the sign.
+    ///
+    /// This function has the following behavior in edge cases:
+    ///
+    /// * `ilogb(±0.0)` returns `libc::FP_ILOGB0` (either [`i32::MIN`] or [`-i32::MAX`])
+    /// * `ilogb(NaN)` returns `libc::FP_ILOGBNAN` (either [`i32::MIN`] or [`i32::MAX`])
+    /// * `ilogb(±∞)` returns [`i32::MAX`]
+    ///
+    /// When `x` is NaN or zero, the return value is implementation-defined, and may be different
+    /// between const eval and runtime.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn ilogb<T: bounds::FloatPrimitive>(x: T) -> i32;
+
+    f16 => { libm::ilogbf16(x) }
+    f32 => { libm::ilogbf(x) }
+    f64 => { libm::ilogb(x) }
+    f128 => { libm::ilogbf128(x) }
+}
+
 /// Returns `a * b + c`, non-deterministically executing either a fused multiply-add or two
 /// operations with rounding of the intermediate result.
 ///

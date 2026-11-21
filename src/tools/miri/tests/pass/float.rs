@@ -3,6 +3,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(float_erf)]
 #![feature(float_gamma)]
+#![feature(float_exponent_methods)]
 #![feature(core_intrinsics)]
 #![feature(f128)]
 #![feature(f16)]
@@ -1064,13 +1065,6 @@ fn mul_add() {
 }
 
 fn libm() {
-    fn ldexp(a: f64, b: i32) -> f64 {
-        extern "C" {
-            fn ldexp(x: f64, n: i32) -> f64;
-        }
-        unsafe { ldexp(a, b) }
-    }
-
     assert_approx_eq!(25f16.powi(-2), 0.0016f16);
     assert_approx_eq!(25f32.powi(-2), 0.0016f32);
     assert_approx_eq!(23.2f64.powi(2), 538.24f64);
@@ -1205,10 +1199,34 @@ fn libm() {
     assert_approx_eq!(3.0f32.hypot(4.0f32), 5.0f32);
     assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
 
-    assert_eq!(ldexp(0.65f64, 3i32), 5.2f64);
-    assert_eq!(ldexp(1.42, 0xFFFF), f64::INFINITY);
-    assert_eq!(ldexp(1.42, -0xFFFF), 0f64);
-    assert_eq!(ldexp(42.0, 0), 42.0);
+    assert_eq!(0.65f16.scalbn(3i32), 5.2f16);
+    assert_eq!(0.65f32.scalbn(3i32), 5.2f32);
+    assert_eq!(0.65f64.scalbn(3i32), 5.2f64);
+    assert_eq!(1.42f16.scalbn(0xFFFF), f16::INFINITY);
+    assert_eq!(1.42f32.scalbn(0xFFFF), f32::INFINITY);
+    assert_eq!(1.42f64.scalbn(0xFFFF), f64::INFINITY);
+    assert_eq!(1.42f16.scalbn(-0xFFFF), 0f16);
+    assert_eq!(1.42f32.scalbn(-0xFFFF), 0f32);
+    assert_eq!(1.42f64.scalbn(-0xFFFF), 0f64);
+    assert_eq!(42.0f16.scalbn(0), 42.0);
+    assert_eq!(42.0f32.scalbn(0), 42.0);
+    assert_eq!(42.0f64.scalbn(0), 42.0);
+
+    assert_eq!(8.0f16.ilogb(), Some(3));
+    assert_eq!(8.0f32.ilogb(), Some(3));
+    assert_eq!(8.0f64.ilogb(), Some(3));
+    assert_eq!((-8.0f16).ilogb(), Some(3));
+    assert_eq!((-8.0f32).ilogb(), Some(3));
+    assert_eq!((-8.0f64).ilogb(), Some(3));
+    assert_eq!(f16::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(f32::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(f64::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(0.0f16.ilogb(), Some(i32::MIN));
+    assert_eq!(0.0f32.ilogb(), Some(i32::MIN));
+    assert_eq!(0.0f64.ilogb(), Some(i32::MIN));
+    assert_eq!(f16::NAN.ilogb(), None);
+    assert_eq!(f32::NAN.ilogb(), None);
+    assert_eq!(f64::NAN.ilogb(), None);
 
     // Trigonometric functions.
 

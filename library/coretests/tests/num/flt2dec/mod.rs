@@ -8,8 +8,6 @@ use std::{fmt, str};
 
 use Sign::{Minus, MinusPlus};
 
-use crate::num::{ldexp_f32, ldexp_f64};
-
 mod estimator;
 mod strategy {
     mod dragon;
@@ -254,7 +252,7 @@ where
     // 10^2 * 0.31984375
     // 10^2 * 0.32
     // 10^2 * 0.3203125
-    check_shortest!(f(crate::num::ldexp_f16(1.0, 5)) => b"32", 2);
+    check_shortest!(f(1.0f16.scalbn(5)) => b"32", 2);
 
     // 10^5 * 0.65472
     // 10^5 * 0.65504
@@ -269,7 +267,7 @@ where
     // 10^-9 * 0
     // 10^-9 * 0.59604644775390625
     // 10^-8 * 0.11920928955078125
-    let minf16 = crate::num::ldexp_f16(1.0, -24);
+    let minf16 = 1.0f16.scalbn(-24);
     check_shortest!(f(minf16) => b"6", -7);
 }
 
@@ -278,7 +276,7 @@ pub fn f16_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    let minf16 = crate::num::ldexp_f16(1.0, -24);
+    let minf16 = 1.0f16.scalbn(-24);
 
     check_exact!(f(0.1f16)            => b"999755859375     ", -1);
     check_exact!(f(0.5f16)            => b"5                ", 0);
@@ -322,7 +320,7 @@ where
     // 10^8 * 0.3355443
     // 10^8 * 0.33554432
     // 10^8 * 0.33554436
-    check_shortest!(f(ldexp_f32(1.0, 25)) => b"33554432", 8);
+    check_shortest!(f(1.0f32.scalbn(25)) => b"33554432", 8);
 
     // 10^39 * 0.340282326356119256160033759537265639424
     // 10^39 * 0.34028234663852885981170418348451692544
@@ -337,7 +335,7 @@ where
     // 10^-44 * 0
     // 10^-44 * 0.1401298464324817070923729583289916131280...
     // 10^-44 * 0.2802596928649634141847459166579832262560...
-    let minf32 = ldexp_f32(1.0, -149);
+    let minf32 = 1.0f32.scalbn(-149);
     check_shortest!(f(minf32) => b"1", -44);
 }
 
@@ -345,7 +343,7 @@ pub fn f32_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    let minf32 = ldexp_f32(1.0, -149);
+    let minf32 = 1.0f32.scalbn(-149);
 
     check_exact!(f(0.1f32)            => b"100000001490116119384765625             ", 0);
     check_exact!(f(0.5f32)            => b"5                                       ", 0);
@@ -426,7 +424,7 @@ where
     // 10^20 * 0.18446744073709549568
     // 10^20 * 0.18446744073709551616
     // 10^20 * 0.18446744073709555712
-    check_shortest!(f(ldexp_f64(1.0, 64)) => b"18446744073709552", 20);
+    check_shortest!(f(1.0f64.scalbn(64)) => b"18446744073709552", 20);
 
     // pathological case: high = 10^23 (exact). tie breaking should always prefer that.
     // 10^24 * 0.099999999999999974834176
@@ -447,7 +445,7 @@ where
     // 10^-323 * 0
     // 10^-323 * 0.4940656458412465441765687928682213723650...
     // 10^-323 * 0.9881312916824930883531375857364427447301...
-    let minf64 = ldexp_f64(1.0, -1074);
+    let minf64 = 1.0f64.scalbn(-1074);
     check_shortest!(f(minf64) => b"5", -323);
 }
 
@@ -455,7 +453,7 @@ pub fn f64_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    let minf64 = ldexp_f64(1.0, -1074);
+    let minf64 = 1.0f64.scalbn(-1074);
 
     check_exact!(f(0.1f64)            => b"1000000000000000055511151231257827021181", 0);
     check_exact!(f(0.45f64)           => b"4500000000000000111022302462515654042363", 0);
@@ -626,7 +624,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, 1), "65500.0");
         assert_eq!(to_string(f, f16::MAX, Minus, 8), "65500.00000000");
 
-        let minf16 = crate::num::ldexp_f16(1.0, -24);
+        let minf16 = 1.0f16.scalbn(-24);
         assert_eq!(to_string(f, minf16, Minus, 0), "0.00000006");
         assert_eq!(to_string(f, minf16, Minus, 8), "0.00000006");
         assert_eq!(to_string(f, minf16, Minus, 9), "0.000000060");
@@ -638,7 +636,7 @@ where
         assert_eq!(to_string(f, f32::MAX, Minus, 1), format!("34028235{:0>31}.0", ""));
         assert_eq!(to_string(f, f32::MAX, Minus, 8), format!("34028235{:0>31}.00000000", ""));
 
-        let minf32 = ldexp_f32(1.0, -149);
+        let minf32 = 1.0f32.scalbn(-149);
         assert_eq!(to_string(f, minf32, Minus, 0), format!("0.{:0>44}1", ""));
         assert_eq!(to_string(f, minf32, Minus, 45), format!("0.{:0>44}1", ""));
         assert_eq!(to_string(f, minf32, Minus, 46), format!("0.{:0>44}10", ""));
@@ -653,7 +651,7 @@ where
             format!("17976931348623157{:0>292}.00000000", "")
         );
 
-        let minf64 = ldexp_f64(1.0, -1074);
+        let minf64 = 1.0f64.scalbn(-1074);
         assert_eq!(to_string(f, minf64, Minus, 0), format!("0.{:0>323}5", ""));
         assert_eq!(to_string(f, minf64, Minus, 324), format!("0.{:0>323}5", ""));
         assert_eq!(to_string(f, minf64, Minus, 325), format!("0.{:0>323}50", ""));
@@ -748,7 +746,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, (-4, 4), false), "6.55e4");
         assert_eq!(to_string(f, f16::MAX, Minus, (-5, 5), false), "65500");
 
-        let minf16 = crate::num::ldexp_f16(1.0, -24);
+        let minf16 = 1.0f16.scalbn(-24);
         assert_eq!(to_string(f, minf16, Minus, (-2, 2), false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, (-7, 7), false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, (-8, 8), false), "0.00000006");
@@ -760,7 +758,7 @@ where
         assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
         assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
 
-        let minf32 = ldexp_f32(1.0, -149);
+        let minf32 = 1.0f32.scalbn(-149);
         assert_eq!(to_string(f, minf32, Minus, (-4, 16), false), "1e-45");
         assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
         assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
@@ -775,7 +773,7 @@ where
         );
         assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false), "1.7976931348623157e308");
 
-        let minf64 = ldexp_f64(1.0, -1074);
+        let minf64 = 1.0f64.scalbn(-1074);
         assert_eq!(to_string(f, minf64, Minus, (-4, 16), false), "5e-324");
         assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
         assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
@@ -910,7 +908,7 @@ where
         assert_eq!(to_string(f, f16::MAX, Minus, 6, false), "6.55040e4");
         assert_eq!(to_string(f, f16::MAX, Minus, 16, false), "6.550400000000000e4");
 
-        let minf16 = crate::num::ldexp_f16(1.0, -24);
+        let minf16 = 1.0f16.scalbn(-24);
         assert_eq!(to_string(f, minf16, Minus, 1, false), "6e-8");
         assert_eq!(to_string(f, minf16, Minus, 2, false), "6.0e-8");
         assert_eq!(to_string(f, minf16, Minus, 4, false), "5.960e-8");
@@ -932,7 +930,7 @@ where
         "3.402823466385288598117041834845169254400000000000000000000000000e38"
     );
 
-    let minf32 = ldexp_f32(1.0, -149);
+    let minf32 = 1.0f32.scalbn(-149);
     assert_eq!(to_string(f, minf32, Minus, 1, false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, 2, false), "1.4e-45");
     assert_eq!(to_string(f, minf32, Minus, 4, false), "1.401e-45");
@@ -989,7 +987,7 @@ where
     );
 
     // okay, this is becoming tough. fortunately for us, this is almost the worst case.
-    let minf64 = ldexp_f64(1.0, -1074);
+    let minf64 = 1.0f64.scalbn(-1074);
     assert_eq!(to_string(f, minf64, Minus, 1, false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus, 2, false), "4.9e-324");
     assert_eq!(to_string(f, minf64, Minus, 4, false), "4.941e-324");
@@ -1215,7 +1213,7 @@ where
 
     #[cfg(target_has_reliable_f16)]
     {
-        let minf16 = crate::num::ldexp_f16(1.0, -24);
+        let minf16 = 1.0f16.scalbn(-24);
         assert_eq!(to_string(f, minf16, Minus, 0), "0");
         assert_eq!(to_string(f, minf16, Minus, 1), "0.0");
         assert_eq!(to_string(f, minf16, Minus, 2), "0.00");
@@ -1228,7 +1226,7 @@ where
         assert_eq!(to_string(f, minf16, Minus, 32), "0.00000005960464477539062500000000");
     }
 
-    let minf32 = ldexp_f32(1.0, -149);
+    let minf32 = 1.0f32.scalbn(-149);
     assert_eq!(to_string(f, minf32, Minus, 0), "0");
     assert_eq!(to_string(f, minf32, Minus, 1), "0.0");
     assert_eq!(to_string(f, minf32, Minus, 2), "0.00");
@@ -1270,7 +1268,7 @@ where
                 26204144723168738177180919299881250404026184124858368.0000000000"
     );
 
-    let minf64 = ldexp_f64(1.0, -1074);
+    let minf64 = 1.0f64.scalbn(-1074);
     assert_eq!(to_string(f, minf64, Minus, 0), "0");
     assert_eq!(to_string(f, minf64, Minus, 1), "0.0");
     assert_eq!(to_string(f, minf64, Minus, 10), "0.0000000000");
