@@ -5,6 +5,7 @@
 #![feature(io_error_uncategorized)]
 #![feature(dirfd)]
 #![feature(seek_stream_len)]
+#![feature(set_permissions_nofollow)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -66,6 +67,7 @@ fn main() {
     if cfg!(not(windows)) || cfg!(not(miri)) {
         test_append();
         test_fs_set_permissions();
+        test_set_permissions_nofollow();
         test_file_set_permissions();
 
         test_create_new_dangling_symlink();
@@ -904,6 +906,29 @@ fn test_fs_set_permissions() {
     match fs::set_permissions(&file.with_file_name("foo"), p) {
         Ok(..) => panic!("wanted an error"),
         Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_set_permissions_nofollow() {
+    let path = utils::prepare_with_content("miri_test_fs_set_permissions_nofollow.txt", b"hello");
+
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_readonly(true);
+    fs::set_permissions_nofollow(&path, permissions.clone()).unwrap();
+    assert!(fs::metadata(&path).unwrap().permissions().readonly());
+
+    permissions.set_readonly(false);
+    if utils::have_symlink_permission() {
+        let link = utils::prepare("miri_test_fs_set_permissions_nofollow.link");
+        symlink_file(&path, &link).unwrap();
+        // Behavior depends on the host: on Linux, we get an error;
+        // on BSD, it changes the permissions of the link itself.
+        if let Err(err) = fs::set_permissions_nofollow(&link, permissions) {
+            assert_eq!(err.kind(), ErrorKind::Unsupported);
+        }
+        // But either way, the file is still readonly.
+        assert!(fs::metadata(&path).unwrap().permissions().readonly());
+        fs::remove_file(link).unwrap();
     }
 }
 
