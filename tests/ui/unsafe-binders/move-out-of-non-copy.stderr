@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/move-out-of-non-copy.rs:10:13
+error[E0277]: the trait bound `T: Copy` is not satisfied in `T`
+  --> $DIR/move-out-of-non-copy.rs:11:13
    |
 LL | fn id<T>(x: unsafe<> T) -> T {
-   |             ^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |             ^^^^^^^^^^ within `T`, the trait `Copy` is not implemented for `T`
    |
+   = note: required because it appears within the type `T`
 help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | fn id<T: std::marker::Copy>(x: unsafe<> T) -> T {
