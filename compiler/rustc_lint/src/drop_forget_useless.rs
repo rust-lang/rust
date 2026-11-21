@@ -1,6 +1,8 @@
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, ExprKind, Node, StmtKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_span::sym;
 
 use crate::diagnostics::{
@@ -183,7 +185,12 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
-                        DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
+                        DropRefDiag {
+                            fn_path: fn_path(cx, fn_did),
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
                     );
                 }
                 sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
@@ -195,6 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         DROPPING_REFERENCES,
                         expr.span,
                         DropInPlaceRefDiag {
+                            fn_path: fn_path(cx, fn_did),
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
@@ -207,6 +215,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         FORGETTING_REFERENCES,
                         expr.span,
                         ForgetRefDiag {
+                            fn_path: fn_path(cx, fn_did),
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
@@ -218,6 +227,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         DROPPING_COPY_TYPES,
                         expr.span,
                         DropCopyDiag {
+                            fn_path: fn_path(cx, fn_did),
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
@@ -233,6 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         DROPPING_COPY_TYPES,
                         expr.span,
                         DropInPlaceCopyDiag {
+                            fn_path: fn_path(cx, fn_did),
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
@@ -245,6 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         FORGETTING_COPY_TYPES,
                         expr.span,
                         ForgetCopyDiag {
+                            fn_path: fn_path(cx, fn_did),
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
@@ -318,4 +330,10 @@ fn is_single_call_in_arm<'tcx>(
         }
     }
     false
+}
+
+// Name the called function by its path, so that it reads `core::mem::drop` rather than
+// `std::mem::drop` in `no_std` crates.
+fn fn_path(cx: &LateContext<'_>, fn_did: DefId) -> String {
+    with_no_trimmed_paths!(cx.tcx.def_path_str(fn_did))
 }

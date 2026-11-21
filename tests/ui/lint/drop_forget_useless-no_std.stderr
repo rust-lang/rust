@@ -1,0 +1,146 @@
+warning: calls to `core::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:11:5
+   |
+LL |     core::mem::drop(s);
+   |     ^^^^^^^^^^^^^^^^-^
+   |                     |
+   |                     argument has type `&SomeStruct`
+   |
+   = note: `#[warn(dropping_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     core::mem::drop(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:13:5
+   |
+LL |     core::mem::forget(s);
+   |     ^^^^^^^^^^^^^^^^^^-^
+   |                       |
+   |                       argument has type `&SomeStruct`
+   |
+   = note: `#[warn(forgetting_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     core::mem::forget(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:15:5
+   |
+LL |     drop(s);
+   |     ^^^^^-^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:20:5
+   |
+LL |     core::mem::drop(s);
+   |     ^^^^^^^^^^^^^^^^-^
+   |                     |
+   |                     argument has type `SomeStruct`
+   |
+   = note: `#[warn(dropping_copy_types)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     core::mem::drop(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:22:5
+   |
+LL |     core::mem::forget(s);
+   |     ^^^^^^^^^^^^^^^^^^-^
+   |                       |
+   |                       argument has type `SomeStruct`
+   |
+   = note: `#[warn(forgetting_copy_types)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     core::mem::forget(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:24:5
+   |
+LL |     drop(s);
+   |     ^^^^^-^
+   |          |
+   |          argument has type `SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(s);
+LL +     let _ = s;
+   |
+
+warning: calls to `core::ptr::drop_in_place` with a pointer to a reference instead of a pointer to an owned value does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:30:9
+   |
+LL |         core::ptr::drop_in_place(r);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                  |
+   |                                  argument has type `*mut &SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         core::ptr::drop_in_place(r);
+LL +         let _ = r;
+   |
+
+warning: calls to `core::ptr::drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:32:9
+   |
+LL |         core::ptr::drop_in_place(c);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                  |
+   |                                  argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         core::ptr::drop_in_place(c);
+LL +         let _ = c;
+   |
+
+warning: calls to `drop_in_place` with a pointer to a reference instead of a pointer to an owned value does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:34:9
+   |
+LL |         r.drop_in_place();
+   |         -^^^^^^^^^^^^^^^^
+   |         |
+   |         argument has type `*mut &SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         r.drop_in_place();
+LL +         let _ = r;
+   |
+
+warning: calls to `drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/drop_forget_useless-no_std.rs:36:9
+   |
+LL |         c.drop_in_place();
+   |         -^^^^^^^^^^^^^^^^
+   |         |
+   |         argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         c.drop_in_place();
+LL +         let _ = c;
+   |
+
+warning: 10 warnings emitted
+
