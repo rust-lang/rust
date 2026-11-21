@@ -165,12 +165,15 @@ impl<'a> CollectProcMacros<'a> {
 
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        if let ast::ItemKind::MacroDef(..) = item.kind {
-            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
-                self.dcx.emit_err(diagnostics::ExportMacroRules {
-                    span: self.source_map.guess_head_span(item.span),
-                });
-            }
+        if let ast::ItemKind::MacroDef(ident, _) = &item.kind
+            && self.is_proc_macro_crate
+            && let Some(macro_export) = attr::find_by_name(&item.attrs, sym::macro_export)
+        {
+            self.dcx.emit_err(diagnostics::ExportMacroRules {
+                span: self.source_map.guess_head_span(item.span),
+                macro_export_span: macro_export.span,
+                name: ident.name,
+            });
         }
 
         let mut found_attr: Option<&'a ast::Attribute> = None;
