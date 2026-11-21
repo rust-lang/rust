@@ -16,10 +16,9 @@ extern crate rustc_interface;
 extern crate rustc_public;
 extern crate rustc_public_bridge;
 
-use rustc_public::ty::VariantIdx;
+use rustc_public::ty::{IndexedVal, VariantIdx };
 use rustc_public::ty::{ForeignItemKind, RigidTy, Ty};
 use rustc_public::*;
-use rustc_public_bridge::IndexedVal;
 use std::io::Write;
 use std::ops::ControlFlow;
 
