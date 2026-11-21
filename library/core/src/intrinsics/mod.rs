@@ -693,7 +693,7 @@ pub const fn cold_path() {}
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The to-be-stabilized version of this intrinsic is [`core::hint::likely`].
+/// The public version of this intrinsic is [`core::hint::likely`].
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
@@ -715,7 +715,7 @@ pub const fn likely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The to-be-stabilized version of this intrinsic is [`core::hint::unlikely`].
+/// The public version of this intrinsic is [`core::hint::unlikely`].
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
@@ -2920,7 +2920,7 @@ pub fn field_offset<F: crate::field::Field>() -> usize;
 /// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
-/// The to-be-stabilized version of this intrinsic is [`core::mem::variant_count`].
+/// The public version of this intrinsic is [`core::mem::variant_count`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_comptime]
