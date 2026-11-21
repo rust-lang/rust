@@ -50,7 +50,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::{fmt, io};
 
-pub(crate) use rustc_public_bridge::IndexedVal;
+pub use rustc_public_bridge::IndexedVal;
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 use serde::Serialize;
