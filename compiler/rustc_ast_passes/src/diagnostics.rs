@@ -283,7 +283,17 @@ pub(crate) struct AssocFnWithoutBody {
 }
 
 #[derive(Diagnostic)]
-#[diag("associated type in `impl` without body")]
+#[diag("associated type in `impl` without body
+}
+
+#[derive(Diagnostic)]
+#[diag("unexpected `,` in pattern, missing arm?", code = E0000)]
+pub(crate) struct MissingArmComma {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion("try adding an arm", code = " => {{}}", applicability = "machine-applicable")]
+    pub add_arm_sugg: Span,
+}ody")]
 pub(crate) struct AssocTypeWithoutBody {
     #[primary_span]
     pub span: Span,
