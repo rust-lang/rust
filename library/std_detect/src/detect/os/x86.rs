@@ -87,6 +87,18 @@ pub(crate) fn detect_features() -> cache::Initializer {
         0
     };
 
+    // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
+    // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
+    // number(Family 18h).
+    //
+    // For CPUID feature bits, Hygon Dhyana(family 18h) share the same definition with AMD
+    // family 17h.
+    //
+    // Related AMD CPUID specification is https://www.amd.com/system/files/TechDocs/25481.pdf.
+    // Related Hygon kernel patch can be found on
+    // http://lkml.kernel.org/r/5ce86123a7b9dad925ac583d88d2f921040e859b.1538583282.git.puwen@hygon.cn
+    let is_amd_or_hygon = vendor_id == *b"AuthenticAMD" || vendor_id == *b"HygonGenuine";
+
     {
         // borrows value till the end of this scope:
         let mut enable = |r, rb, f| {
@@ -106,7 +118,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 22, Feature::movbe);
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
-        let f16c = enable(proc_info_ecx, 29, Feature::f16c);
         enable(proc_info_ecx, 30, Feature::rdrand);
         enable(extended_features_ebx, 18, Feature::rdseed);
         enable(extended_features_ebx, 19, Feature::adx);
@@ -119,8 +130,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(extended_features_ebx, 29, Feature::sha);
 
         enable(extended_features_ecx, 8, Feature::gfni);
-        enable(extended_features_ecx, 9, Feature::vaes);
-        enable(extended_features_ecx, 10, Feature::vpclmulqdq);
         enable(extended_features_ecx, 27, Feature::movdiri);
         enable(extended_features_ecx, 28, Feature::movdir64b);
 
@@ -149,21 +158,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // internally maps to Feature::abm.
         enable(extended_proc_info_ecx, 5, Feature::lzcnt);
 
-        // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
-        // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
-        // number(Family 18h).
-        //
-        // For CPUID feature bits, Hygon Dhyana(family 18h) share the same definition with AMD
-        // family 17h.
-        //
-        // Related AMD CPUID specification is https://www.amd.com/system/files/TechDocs/25481.pdf.
-        // Related Hygon kernel patch can be found on
-        // http://lkml.kernel.org/r/5ce86123a7b9dad925ac583d88d2f921040e859b.1538583282.git.puwen@hygon.cn
-        if vendor_id == *b"AuthenticAMD" || vendor_id == *b"HygonGenuine" {
+        if is_amd_or_hygon {
             // These features are available on AMD arch CPUs:
             enable(extended_proc_info_ecx, 6, Feature::sse4a);
             enable(extended_proc_info_ecx, 21, Feature::tbm);
-            enable(extended_proc_info_ecx, 11, Feature::xop);
         }
 
         // `XSAVE` and `AVX` support:
@@ -249,12 +247,19 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 }
 
                 if os_avx_support {
-                    // FMA (uses 256-bit wide registers):
+                    // FMA and F16C (use VEX encodings / AVX state):
                     let fma = enable(proc_info_ecx, 12, Feature::fma);
+                    let f16c = enable(proc_info_ecx, 29, Feature::f16c);
 
-                    // And AVX/AVX2:
+                    // AVX/AVX2 and VEX/EVEX crypto extensions:
                     enable(proc_info_ecx, 28, Feature::avx);
                     enable(extended_features_ebx, 5, Feature::avx2);
+                    enable(extended_features_ecx, 9, Feature::vaes);
+                    enable(extended_features_ecx, 10, Feature::vpclmulqdq);
+
+                    if is_amd_or_hygon {
+                        enable(extended_proc_info_ecx, 11, Feature::xop);
+                    }
 
                     // "Short" versions of AVX512 instructions
                     let avxvnni = enable(extended_features_eax_leaf_1, 4, Feature::avxvnni);
