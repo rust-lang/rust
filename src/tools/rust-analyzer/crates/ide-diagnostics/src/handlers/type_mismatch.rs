@@ -198,7 +198,7 @@ fn add_missing_ok_or_some(
 
     let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
 
-    let wrapped_actual_ty = expected_adt.ty(ctx.db()).instantiate([d.actual.clone()]);
+    let wrapped_actual_ty = expected_adt.ty(ctx.db()).instantiate(ctx.db(), [d.actual.clone()]);
 
     if !d.expected.could_unify_with(ctx.db(), &wrapped_actual_ty) {
         return None;
@@ -296,7 +296,7 @@ fn remove_unnecessary_wrapper(
         return None;
     }
 
-    let inner_type = variant.fields(db).first()?.ty(db).instantiate(d.actual.type_arguments());
+    let inner_type = variant.fields(db).first()?.ty(db).instantiate(db, d.actual.type_arguments());
     if !d.expected.could_unify_with(db, &inner_type) {
         return None;
     }
