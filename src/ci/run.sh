@@ -121,12 +121,13 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
   fi
 
-  if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
-  elif [ "$DEPLOY_ALT" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
-  fi
+  # if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
+  #   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+  # elif [ "$DEPLOY_ALT" != "" ]; then
+  #   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
+  #   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+  # fi
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
 
   CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
