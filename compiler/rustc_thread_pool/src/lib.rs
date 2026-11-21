@@ -309,6 +309,8 @@ impl ThreadPoolBuilder {
     /// The threads in this pool will start by calling `wrapper`, which should
     /// do initialization and continue by calling `ThreadBuilder::run()`.
     ///
+    /// Note that this waits for all its threads to exit before returning.
+    ///
     /// [`std::thread::scope`]: https://doc.rust-lang.org/std/thread/fn.scope.html
     ///
     /// # Examples
@@ -345,6 +347,7 @@ impl ThreadPoolBuilder {
         F: FnOnce(&ThreadPool) -> R,
     {
         std::thread::scope(|scope| {
+            let mut handles = Vec::with_capacity(self.num_threads);
             let pool = self
                 .spawn_handler(|thread| {
                     let mut builder = std::thread::Builder::new();
@@ -354,15 +357,25 @@ impl ThreadPoolBuilder {
                     if let Some(size) = thread.stack_size() {
                         builder = builder.stack_size(size);
                     }
-                    builder.spawn_scoped(scope, || wrapper(thread))?;
+                    handles.push(builder.spawn_scoped(scope, || wrapper(thread))?);
                     Ok(())
                 })
                 .build()?;
             let result = unwind::halt_unwinding(|| with_pool(&pool));
             pool.wait_until_stopped();
-            match result {
-                Ok(result) => Ok(result),
-                Err(err) => unwind::resume_unwinding(err),
+
+            let mut worker_panic = None;
+
+            // Make sure we wait for worker threads, including their TLS destructors.
+            for handle in handles {
+                if let Err(err) = handle.join() {
+                    worker_panic.get_or_insert(err);
+                }
+            }
+
+            match (result, worker_panic) {
+                (Ok(result), None) => Ok(result),
+                (Err(err), _) | (Ok(_), Some(err)) => unwind::resume_unwinding(err),
             }
         })
     }
