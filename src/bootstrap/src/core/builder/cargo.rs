@@ -1176,7 +1176,6 @@ impl Builder<'_> {
         // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
         // `try_to_translate_virtual_to_real`.
         let trim_paths = |cargo: &mut BootstrapCommand, ws_remap: &str| {
-            cargo.arg("-Ztrim-paths");
             cargo.arg("--config").arg("profile.release.trim-paths='all'");
             cargo.arg("--config").arg("profile.dev.trim-paths='all'");
             // This is an internal contract with cargo.
