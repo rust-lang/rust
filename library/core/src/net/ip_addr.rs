@@ -1875,21 +1875,25 @@ impl Ipv6Addr {
     ///
     /// The following return false:
     ///
+    /// - multicast addresses
     /// - the loopback address
     /// - the link-local addresses
     /// - unique local addresses
     /// - the unspecified address
-    /// - the address range reserved for documentation
+    /// - the address ranges reserved for documentation
+    /// - the address range reserved for benchmarking
     ///
-    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
+    /// Note that unlike [`is_global`](Ipv6Addr::is_global), this does not exclude other
+    /// special-purpose addresses, such as IPv4-mapped addresses.
     ///
-    /// ```no_rust
-    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
-    /// be supported in new implementations (i.e., new implementations must treat this prefix as
-    /// Global Unicast).
-    /// ```
+    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]:
+    ///
+    /// > The special behavior of \[the site-local unicast\] prefix defined in [RFC3513] must no
+    /// > longer be supported in new implementations (i.e., new implementations must treat this
+    /// > prefix as Global Unicast).
     ///
     /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
+    /// [RFC3513]: https://tools.ietf.org/html/rfc3513
     ///
     /// # Examples
     ///
