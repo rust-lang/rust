@@ -70,8 +70,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let max_len = 32;
                 // See https://illumos.org/man/3C/pthread_setname_np for the error codes.
                 let res = match ecx.pthread_setname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     max_len,
                     /* truncate */ false,
                 )? {
@@ -87,8 +87,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 // See https://illumos.org/man/3C/pthread_getname_np for the error codes.
                 let res = match ecx.pthread_getname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     ecx.read_scalar(len)?,
                     /* truncate */ false,
                 )? {
@@ -141,7 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getaddrinfo" => {
                 let [node, service, hints, res] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *libc::addrinfo, **libc::addrinfo) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.getaddrinfo(node, service, hints, res)?;
@@ -149,7 +149,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getsockopt" => {
                 let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =

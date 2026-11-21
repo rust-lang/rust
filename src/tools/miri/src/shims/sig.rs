@@ -386,7 +386,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                 }
                 VarArgCompatible::CastIntTo { source_is_signed } => {
-                    // Check that the value can be represented in the target type.
+                    // Check that the value can be represented in the target type: when read as
+                    // a signed integer, it must be non-negative.
                     let size = caller_gave.layout.size;
                     let scalar = ecx.read_scalar(caller_gave)?;
                     if scalar.to_int(size)? < 0 {

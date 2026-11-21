@@ -217,15 +217,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     assert_eq!(dest_len, op_len);
 
                     for i in 0..dest_len {
-                        let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
-                        // Use `to_uint` to get a zero-extended `u128`. Those
+                        // Use `read_int` to get a zero-extended `u128`. Those
                         // extra zeros will not affect `count_ones`.
-                        let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
+                        let op = ecx.read_int::<u128>(&ecx.project_index(&op, i)?)?;
+                        let res = op.count_ones();
 
-                        ecx.write_scalar(
-                            Scalar::from_uint(res, op.layout.size),
-                            &ecx.project_index(&dest, i)?,
-                        )?;
+                        ecx.write_int(res, &ecx.project_index(&dest, i)?)?;
                     }
                 }
 

@@ -140,8 +140,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
-        let sec_since_epoch: i64 =
-            ecx.read_scalar(&timep)?.to_int(timep.layout.size)?.try_into().unwrap();
+        let sec_since_epoch: i64 = ecx.read_int::<i64>(&timep)?;
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
@@ -382,15 +381,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         rem: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let ecx = self.eval_context_mut();
-        let clockid_t_size = ecx.libc_ty_layout("clockid_t").size;
 
-        let clock_id = ecx.read_scalar(clock_id)?.to_int(clockid_t_size)?;
+        let clock_id = ecx.read_scalar(clock_id)?.to_i32()?;
         let timespec = ecx.deref_pointer(timespec)?;
         let flags = ecx.read_scalar(flags)?.to_i32()?;
         let _rem = ecx.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
         // The standard lib through sleep_until only needs CLOCK_MONOTONIC
-        if clock_id != ecx.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)? {
+        if clock_id != ecx.eval_libc_i32("CLOCK_MONOTONIC") {
             throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
         }
 
@@ -459,10 +457,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// EINVAL in this case.
     fn read_timespec(&self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
         let ecx = self.eval_context_ref();
+
         let sec_field = ecx.project_field_named(tp, "tv_sec")?;
-        let sec = ecx.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+        let sec = ecx.read_int::<i128>(&sec_field)?;
         let nsec_field = ecx.project_field_named(tp, "tv_nsec")?;
-        let nsec = ecx.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
+        let nsec = ecx.read_int::<i128>(&nsec_field)?;
 
         // tv_sec can be negative; this does not actually return EINVAL natively.
         // Since we cannot represent a negative duration, we just don't support this for now.
@@ -486,15 +485,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// EINVAL in this case.
     fn read_timeval(&self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
         let ecx = self.eval_context_ref();
+
         let sec_field = ecx.project_field_named(tp, "tv_sec")?;
-        let sec = ecx.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
-
+        let sec = ecx.read_int::<i128>(&sec_field)?;
         let usec_field = ecx.project_field_named(tp, "tv_usec")?;
-        let usec = ecx.read_scalar(&usec_field)?.to_int(usec_field.layout.size)?;
+        let usec = ecx.read_int::<i128>(&usec_field)?;
 
+        // tv_sec can be negative; this does not actually return EINVAL natively.
+        // Since we cannot represent a negative duration, we just don't support this for now.
+        if sec < 0 {
+            throw_unsup_format!("timespec with negative tv_sec is not supported");
+        }
         interp_ok(try {
-            // tv_sec must be non-negative.
-            let seconds: u64 = sec.try_into().ok()?;
+            let seconds: u64 = sec.try_into().expect("tv_sec should fit in 64 bits");
             // tv_usec must be non-negative.
             let microseconds: u32 = usec.try_into().ok()?;
             if microseconds >= 1_000_000 {

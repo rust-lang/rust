@@ -11,7 +11,7 @@ use rustc_target::spec::Os;
 
 use crate::*;
 
-pub type TlsKey = u128;
+pub type TlsKey = u64;
 
 #[derive(Clone, Debug)]
 pub struct TlsEntry<'tcx> {
@@ -63,18 +63,17 @@ impl<'tcx> Default for TlsData<'tcx> {
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
     /// `key_size` determines the integer size the key has to fit in.
-    #[expect(clippy::arithmetic_side_effects)]
     pub fn create_tls_key(
         &mut self,
         dtor: Option<(ty::Instance<'tcx>, Span)>,
         key_size: Size,
     ) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
-        self.next_key += 1;
+        self.next_key = self.next_key.strict_add(1);
         self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
-        if new_key > key_size.unsigned_int_max() {
+        if u128::from(new_key) > key_size.unsigned_int_max() {
             throw_unsup_format!("we ran out of TLS key space");
         }
         interp_ok(new_key)

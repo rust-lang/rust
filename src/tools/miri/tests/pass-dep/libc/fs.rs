@@ -2223,6 +2223,56 @@ pub fn check_stat_fields(stat: &libc::stat) {
     let _st_ctime_nsec = stat.st_ctime_nsec;
 }
 
+/// Test reading with an offset.
+fn test_pread<T: From<i32>>(
+    pread: unsafe extern "C" fn(
+        fd: libc::c_int,
+        buf: *mut libc::c_void,
+        count: libc::size_t,
+        offset: T,
+    ) -> libc::ssize_t,
+) {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+
+    let mut buffer = [0u8; 2];
+
+    // Read with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_read = unsafe {
+        errno_result(pread(
+            fd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as libc::size_t,
+            T::from(OFFSET as i32),
+        ))
+        .unwrap() as usize
+    };
+
+    // We should read at least one byte.
+    assert!(bytes_read > 0);
+    // The read should start at the provided byte offset.
+    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+
+    // This should not affect the file position.
+    let data = libc_utils::read_to_end(fd).unwrap();
+    assert_eq!(data, file_contents);
+
+    // Negative offset errors with EINVAL.
+    let err = unsafe {
+        errno_result(pread(
+            fd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as libc::size_t,
+            T::from(-1),
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+}
+
 /// Test vectored reads with multiple buffers.
 fn test_readv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
@@ -2331,38 +2381,69 @@ fn test_preadv() {
     assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
 }
 
-/// Test reading with an offset.
-fn test_pread<T: From<i32>>(
-    pread: unsafe extern "C" fn(
+/// Test writing with an offset.
+fn test_pwrite<T: From<i32>>(
+    pwrite: unsafe extern "C" fn(
         fd: libc::c_int,
-        buf: *mut libc::c_void,
+        buf: *const libc::c_void,
         count: libc::size_t,
         offset: T,
     ) -> libc::ssize_t,
 ) {
-    let file_contents = [1u8, 2, 3, 4, 5, 6];
-    let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
+    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
-    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
 
-    let mut buffer = [0u8; 2];
+    let write_buffer = [1u8, 2, 3, 4, 5, 6];
 
-    // Read with a 2 byte offset.
+    // Write with a 2 byte offset.
     const OFFSET: usize = 2;
-    let bytes_read = unsafe {
-        errno_result(pread(
+    let bytes_written = unsafe {
+        errno_result(pwrite(
             fd,
-            buffer.as_mut_ptr().cast(),
-            buffer.len() as libc::size_t,
+            write_buffer.as_ptr().cast(),
+            write_buffer.len() as libc::size_t,
             T::from(OFFSET as i32),
         ))
         .unwrap() as usize
     };
+    // We should write at least one byte.
+    assert!(bytes_written > 0);
 
-    // We should read at least one byte.
-    assert!(bytes_read > 0);
-    // The read should start at the provided byte offset.
-    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+    // This does not affect the position.
+    let pos = errno_result(unsafe { libc::lseek(fd, 0, libc::SEEK_CUR) }).unwrap();
+    assert_eq!(pos, 0);
+
+    // Negative offset fails wieth EINVAL.
+    let err = unsafe {
+        errno_result(pwrite(
+            fd,
+            write_buffer.as_ptr().cast(),
+            write_buffer.len() as libc::size_t,
+            T::from(-1),
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // Check that the write worked correctly.
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+
+    let mut read_buffer = [0u8; 16];
+    // Read offset + bytes written.
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            (bytes_written + OFFSET) as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    // The write should start at the provided byte offset.
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
 }
 
 /// Test vectored writes with multiple buffers.
@@ -2507,54 +2588,6 @@ fn test_pwritev() {
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
 }
 
-/// Test writing with an offset.
-fn test_pwrite<T: From<i32>>(
-    pwrite: unsafe extern "C" fn(
-        fd: libc::c_int,
-        buf: *const libc::c_void,
-        count: libc::size_t,
-        offset: T,
-    ) -> libc::ssize_t,
-) {
-    let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
-    let cpath = utils::into_c_string(path);
-    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
-
-    let write_buffer = [1u8, 2, 3, 4, 5, 6];
-
-    // Write with a 2 byte offset.
-    const OFFSET: usize = 2;
-    let bytes_written = unsafe {
-        errno_result(pwrite(
-            fd,
-            write_buffer.as_ptr().cast(),
-            write_buffer.len() as libc::size_t,
-            T::from(OFFSET as i32),
-        ))
-        .unwrap() as usize
-    };
-    // We should write at least one byte.
-    assert!(bytes_written > 0);
-
-    // Open the FD again in readonly mode and with an unadvanced pointer.
-    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
-
-    let mut read_buffer = [0u8; 16];
-    // Read offset + bytes written.
-    unsafe {
-        libc_utils::read_exact_generic(
-            read_buffer.as_mut_ptr().cast(),
-            (bytes_written + OFFSET) as libc::size_t,
-            libc_utils::Retry::NoRetry,
-            |buf, count| libc::read(fd, buf, count),
-        )
-        .unwrap()
-    };
-
-    // The write should start at the provided byte offset.
-    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
-}
-
 /// Test repositioning the file offset.
 fn test_lseek<T: From<i32> + From<i8> + Ord + std::fmt::Debug>(
     lseek: unsafe extern "C" fn(fd: libc::c_int, offset: T, whence: libc::c_int) -> T,
@@ -2596,7 +2629,7 @@ fn test_lseek<T: From<i32> + From<i8> + Ord + std::fmt::Debug>(
     let err = errno_result(unsafe { lseek(-1, T::from(2i32), libc::SEEK_SET) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 
-    // invalid offset + SEEK_SET
+    // negative offset + SEEK_SET
     let err = errno_result(unsafe { lseek(fd, T::from(-1i32), libc::SEEK_SET) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
 

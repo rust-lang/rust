@@ -212,8 +212,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_target_usize(thread)?;
-                let stack_addr = Scalar::from_uint(ecx.machine.stack_addr, ecx.pointer_size());
-                ecx.write_scalar(stack_addr, dest)?;
+                ecx.write_int(ecx.machine.stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -222,8 +221,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_target_usize(thread)?;
-                let stack_size = Scalar::from_uint(ecx.machine.stack_size, ecx.pointer_size());
-                ecx.write_scalar(stack_size, dest)?;
+                ecx.write_int(ecx.machine.stack_size, dest)?;
             }
 
             // Threading
@@ -240,10 +238,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // are met, then the name is set and 0 is returned. Otherwise, if
                 // the specified name is lomnger than MAXTHREADNAMESIZE, then
                 // ENAMETOOLONG is returned.
-                let thread = ecx.pthread_self()?;
                 let res = match ecx.pthread_setname_np(
-                    thread,
-                    ecx.read_scalar(name)?,
+                    None,
+                    ecx.read_pointer(name)?,
                     ecx.eval_libc("MAXTHREADNAMESIZE").to_target_usize(ecx)?,
                     /* truncate */ false,
                 )? {
@@ -272,8 +269,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The key part is the strlcpy, which truncates the resulting value,
                 // but always null terminates (except for zero sized buffers).
                 let res = match ecx.pthread_getname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     ecx.read_scalar(len)?,
                     /* truncate */ true,
                 )? {

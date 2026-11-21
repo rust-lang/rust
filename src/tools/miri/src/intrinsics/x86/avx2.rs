@@ -72,9 +72,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
                         let offset = ecx.project_index(&offsets, i)?;
-                        let offset =
-                            i64::try_from(ecx.read_scalar(&offset)?.to_int(offset.layout.size)?)
-                                .unwrap();
+                        let offset = ecx.read_int::<i64>(&offset)?;
                         // The address computation wraps around, like on real hardware.
                         let ptr =
                             slice.wrapping_signed_offset(offset.wrapping_mul(scale), &ecx.tcx);
@@ -91,7 +89,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 for i in actual_len..dest_len {
                     let dest = ecx.project_index(&dest, i)?;
-                    ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
+                    ecx.write_int(0, &dest)?;
                 }
             }
             // Used to implement the _mm256_maddubs_epi16 function.

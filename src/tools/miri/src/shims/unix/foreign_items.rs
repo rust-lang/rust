@@ -17,6 +17,7 @@ use self::shims::unix::solarish::foreign_items as solarish;
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::files::FD_LIMIT;
+use crate::shims::tls::TlsKey;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
@@ -247,7 +248,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(count)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 ecx.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite" => {
@@ -258,7 +259,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(n)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 ecx.write(fd, buf, count, Some(offset), dest)?;
             }
@@ -498,7 +499,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 let whence = ecx.read_scalar(whence)?.to_i32()?;
                 ecx.lseek(fd, offset, whence, dest)?;
             }
@@ -508,7 +509,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let length = ecx.read_scalar(length)?.to_int(length.layout.size)?;
+                let length = ecx.read_int::<i64>(length)?;
                 let result = ecx.ftruncate64(fd, length)?;
                 ecx.write_scalar(result, dest)?;
             }
@@ -559,8 +560,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_scalar(fd)?.to_i32()?;
-                ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
-                ecx.read_scalar(len)?.to_int(len.layout.size)?;
+                ecx.read_int::<i64>(offset)?;
+                ecx.read_int::<i64>(len)?;
                 ecx.read_scalar(advice)?.to_i32()?;
                 // fadvise is only informational, we can ignore it.
                 ecx.write_int(0, dest)?;
@@ -580,9 +581,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 // We don't support platforms which have libc::off_t bigger than 64 bits.
-                let offset =
-                    i64::try_from(ecx.read_scalar(offset)?.to_int(offset.layout.size)?).unwrap();
-                let len = i64::try_from(ecx.read_scalar(len)?.to_int(len.layout.size)?).unwrap();
+                let offset = ecx.read_int::<i64>(offset)?;
+                let len = ecx.read_int::<i64>(len)?;
 
                 let result = ecx.posix_fallocate(fd, offset, len)?;
                 ecx.write_scalar(result, dest)?;
@@ -727,7 +727,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getsockopt" => {
                 let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =
@@ -759,15 +759,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getaddrinfo" => {
                 let [node, service, hints, res] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *libc::addrinfo, **libc::addrinfo) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.getaddrinfo(node, service, hints, res)?;
                 ecx.write_scalar(result, dest)?;
             }
             "freeaddrinfo" => {
-                let [res] = &ecx
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                let [res] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::addrinfo) -> ()),
+                    (link_name, abi, args),
+                )?;
                 ecx.freeaddrinfo(res)?;
             }
 
@@ -811,7 +813,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, usize, i32, i32, i32, libc::off_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let offset = ecx.read_scalar(offset)?.to_int(ecx.libc_ty_layout("off_t").size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 let ptr = ecx.mmap(addr, length, prot, flags, fd, offset)?;
                 ecx.write_scalar(ptr, dest)?;
             }
@@ -921,7 +923,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Create key and write it into the memory where `key_ptr` wants it.
                 let key = ecx.machine.tls.create_tls_key(dtor, key_place.layout.size)?;
-                ecx.write_scalar(Scalar::from_uint(key, key_place.layout.size), &key_place)?;
+                ecx.write_int(key, &key_place)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;
@@ -931,7 +933,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 ecx.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 ecx.write_int(0, dest)?;
@@ -941,7 +943,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 let active_thread = ecx.active_thread();
                 let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
@@ -951,7 +953,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
                 ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
@@ -1237,8 +1239,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn() -> libc::pthread_t),
                     (link_name, abi, args),
                 )?;
-                let res = ecx.pthread_self()?;
-                ecx.write_scalar(res, dest)?;
+                ecx.pthread_self(dest)?;
             }
             "sched_yield" => {
                 let [] =
@@ -1434,10 +1435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let guard_size = ecx.deref_pointer(guard_size)?;
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.page_size, guard_size.layout.size),
-                    &guard_size,
-                )?;
+                ecx.write_int(ecx.machine.page_size, &guard_size)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;
@@ -1454,14 +1452,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let addr_place = ecx.deref_pointer(addr_place)?;
                 let size_place = ecx.deref_pointer(size_place)?;
 
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.stack_addr, ecx.pointer_size()),
-                    &addr_place,
-                )?;
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.stack_size, ecx.pointer_size()),
-                    &size_place,
-                )?;
+                ecx.write_int(ecx.machine.stack_addr, &addr_place)?;
+                ecx.write_int(ecx.machine.stack_size, &size_place)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;

@@ -691,7 +691,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn start_regular_thread(
         &mut self,
-        thread: Option<MPlaceTy<'tcx>>,
         start_routine: Pointer,
         start_abi: ExternAbi,
         func_arg: ImmTy<'tcx>,
@@ -716,14 +715,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &func_arg,
                     new_thread_id,
                 )?,
-        }
-        // Write the current thread-id, switch to the next thread later
-        // to treat this write operation as occurring on the current thread.
-        if let Some(thread_info_place) = thread {
-            ecx.write_scalar(
-                Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
-                &thread_info_place,
-            )?;
         }
 
         // Finally switch to new thread so that we can push the first stackframe.

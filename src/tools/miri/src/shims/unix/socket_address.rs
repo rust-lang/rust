@@ -18,8 +18,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let node_ptr = ecx.read_pointer(node)?;
         let service_ptr = ecx.read_pointer(service)?;
-        let hints_ptr = ecx.read_pointer(hints)?;
-        let res_mplace = ecx.deref_pointer(res)?;
+        let hints_place = ecx.deref_pointer(hints)?;
+        let res_place = ecx.deref_pointer(res)?;
 
         if ecx.ptr_is_null(node_ptr)? {
             // We cannot get an address without the `node` part because
@@ -54,7 +54,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("getaddrinfo: node is not a valid UTF-8 string")
         };
 
-        if ecx.ptr_is_null(hints_ptr)? {
+        if ecx.ptr_is_null(hints_place.ptr())? {
             // The standard library only supports getting TCP address information. The
             // empty hints pointer would allow any socket type so we cannot support it.
             throw_unsup_format!(
@@ -62,17 +62,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )
         }
 
-        let hints_layout = ecx.libc_ty_layout("addrinfo");
-        let hints_mplace = ecx.ptr_to_mplace(hints_ptr, hints_layout);
-
-        let family_field = ecx.project_field_named(&hints_mplace, "ai_family")?;
+        let family_field = ecx.project_field_named(&hints_place, "ai_family")?;
         let family = ecx.read_scalar(&family_field)?;
         if family != Scalar::from_i32(0) {
             // We cannot provide a family hint to the standard library implementation.
             throw_unsup_format!("getaddrinfo: family hints are not supported")
         }
 
-        let socktype_field = ecx.project_field_named(&hints_mplace, "ai_socktype")?;
+        let socktype_field = ecx.project_field_named(&hints_place, "ai_socktype")?;
         let socktype = ecx.read_scalar(&socktype_field)?;
         if socktype != ecx.eval_libc("SOCK_STREAM") {
             // The standard library only supports getting TCP address information.
@@ -81,14 +78,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )
         }
 
-        let protocol_field = ecx.project_field_named(&hints_mplace, "ai_protocol")?;
+        let protocol_field = ecx.project_field_named(&hints_place, "ai_protocol")?;
         let protocol = ecx.read_scalar(&protocol_field)?;
         if protocol != Scalar::from_i32(0) {
             // We cannot provide a protocol hint to the standard library implementation.
             throw_unsup_format!("getaddrinfo: protocol hints are not supported")
         }
 
-        let flags_field = ecx.project_field_named(&hints_mplace, "ai_flags")?;
+        let flags_field = ecx.project_field_named(&hints_place, "ai_flags")?;
         let flags = ecx.read_scalar(&flags_field)?;
         if flags != Scalar::from_i32(0) {
             // We cannot provide any flag hints to the standard library implementation.
@@ -110,34 +107,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let res_ptr = ecx.allocate_address_infos(socket_addrs)?;
 
-        ecx.write_pointer(res_ptr, &res_mplace)?;
+        ecx.write_pointer(res_ptr, &res_place)?;
         interp_ok(Scalar::from_i32(0))
     }
 
     fn freeaddrinfo(&mut self, res: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
-
-        let res_ptr = ecx.read_pointer(res)?;
-
-        ecx.free_address_infos(res_ptr)
-    }
-
-    /// Read a `socklen_t` value. Returns `None` if it does not fit into a `u64`, e.g. if it
-    /// is negative, which is possible on targets where `socklen_t` is signed.
-    fn read_socklen(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Option<u64>> {
-        let ecx = self.eval_context_ref();
-
-        let layout = op.layout();
-        let scalar = ecx.read_scalar(op)?;
-        let len = if layout.backend_repr.is_signed() {
-            u64::try_from(scalar.to_int(layout.size)?).ok()
-        } else {
-            u64::try_from(scalar.to_uint(layout.size)?).ok()
-        };
-        interp_ok(len)
+        let addrinfo_place = ecx.deref_pointer(res)?;
+        ecx.free_address_infos(&addrinfo_place)
     }
 
     /// Attempt to turn an address and length operand into a standard library socket address.
@@ -153,7 +130,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We only support address lengths which can be stored in a u64 since the
         // size of a layout is also stored in a u64.
-        let Some(address_len) = ecx.read_socklen(address_len)? else {
+        let Ok(address_len) = u64::try_from(ecx.read_int::<i128>(address_len)?) else {
             return interp_ok(Err(LibcError("EINVAL")));
         };
         let address = ecx.deref_pointer(address)?;
@@ -172,8 +149,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let family_field = ecx.project_field_named(&address, "sa_family")?;
-        let family_layout = ecx.libc_ty_layout("sa_family_t");
-        let family = ecx.read_scalar(&family_field)?.to_int(family_layout.size)?;
+        let family = ecx.read_int::<i128>(&family_field)?;
 
         // Depending on the family, decide whether it's IPv4 or IPv6 and use specialized layout
         // to extract address and port.
@@ -297,11 +273,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
-        let address_buffer_len: u64 = ecx
-            .read_scalar(address_len_place)?
-            .to_int(address_len_place.layout.size)?
-            .try_into()
-            .unwrap();
+        let address_buffer_len: u64 = ecx.read_int::<u64>(address_len_place)?;
 
         // Check that the buffer indeed has (at least) the given size.
         ecx.check_ptr_access(
@@ -334,10 +306,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
                 // Since the `AF_INET` constant is chosen such that it can safely be converted into
                 // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet = ecx.eval_libc("AF_INET");
-                let address_family =
-                    Scalar::from_int(af_inet.to_int(af_inet.size())?, sin_family_field.layout.size);
-                ecx.write_scalar(address_family, &sin_family_field)?;
+                let af_inet = ecx.eval_libc_i32("AF_INET");
+                ecx.write_int(af_inet, &sin_family_field)?;
 
                 let sin_port_field = ecx.project_field_named(&address_buffer, "sin_port")?;
                 // Write the port in target native endianness bytes as we already converted it
@@ -386,12 +356,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
                 // Since the `AF_INET6` constant is chosen such that it can safely be converted into
                 // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet6 = ecx.eval_libc("AF_INET6");
-                let address_family = Scalar::from_int(
-                    af_inet6.to_int(af_inet6.size())?,
-                    sin6_family_field.layout.size,
-                );
-                ecx.write_scalar(address_family, &sin6_family_field)?;
+                let af_inet6 = ecx.eval_libc_i32("AF_INET6");
+                ecx.write_int(af_inet6, &sin6_family_field)?;
 
                 let sin6_port_field = ecx.project_field_named(&address_buffer, "sin6_port")?;
                 // Write the port in target native endianness bytes as we already converted it
@@ -516,26 +482,23 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Deallocate the linked list of address info structs.
     /// `address_ptr` points to the start from where we deallocate recursively.
-    fn free_address_infos(&mut self, address_ptr: Pointer) -> InterpResult<'tcx> {
+    fn free_address_infos(&mut self, addrinfo_place: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
-        if ecx.ptr_is_null(address_ptr)? {
+        if ecx.ptr_is_null(addrinfo_place.ptr())? {
             // We're at the end of the linked list.
             return interp_ok(());
         }
 
-        let addrinfo_layout = ecx.libc_ty_layout("addrinfo");
-        let addrinfo_mplace = ecx.ptr_to_mplace(address_ptr, addrinfo_layout);
-
-        let addr_field = ecx.project_field_named(&addrinfo_mplace, "ai_addr")?;
+        let addr_field = ecx.project_field_named(addrinfo_place, "ai_addr")?;
         let addr_ptr = ecx.read_pointer(&addr_field)?;
         ecx.deallocate_ptr(addr_ptr, None, MiriMemoryKind::Machine.into())?;
 
-        let next_field = ecx.project_field_named(&addrinfo_mplace, "ai_next")?;
-        let next_ptr = ecx.read_pointer(&next_field)?;
-        ecx.free_address_infos(next_ptr)?;
+        let next_field = ecx.project_field_named(addrinfo_place, "ai_next")?;
+        let next_addrinfo = ecx.deref_pointer(&next_field)?;
+        ecx.free_address_infos(&next_addrinfo)?;
 
-        ecx.deallocate_ptr(address_ptr, None, MiriMemoryKind::SocketAddress.into())?;
+        ecx.deallocate_ptr(addrinfo_place.ptr(), None, MiriMemoryKind::SocketAddress.into())?;
 
         interp_ok(())
     }

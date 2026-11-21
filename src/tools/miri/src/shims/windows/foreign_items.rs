@@ -11,6 +11,7 @@ use rustc_target::spec::Env;
 use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::eval::{ExitType, ProgramExitHandler};
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::tls::TlsKey;
 use crate::shims::windows::*;
 use crate::*;
 
@@ -595,14 +596,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let key = ecx.machine.tls.create_tls_key(None, dest.layout.size)?;
-                ecx.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
+                ecx.write_int(key, dest)?;
             }
             "TlsGetValue" => {
                 let [key] = &ecx.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
@@ -612,7 +613,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
                 ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
@@ -625,7 +626,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 ecx.machine.tls.delete_tls_key(key)?;
 
                 // Return success (`1`).
@@ -652,14 +653,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let key = ecx.machine.tls.create_tls_key(dtor, dest.layout.size)?;
-                ecx.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
+                ecx.write_int(key, dest)?;
             }
             "FlsGetValue" => {
                 let [key] = &ecx.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
@@ -669,7 +670,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
                 ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
@@ -682,7 +683,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
-                let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
+                let key = TlsKey::from(ecx.read_scalar(key)?.to_u32()?);
                 let tls_entry = ecx.machine.tls.delete_tls_key(key)?;
 
                 // FIXME: We should run the destructor here *for all threads*. But that's non-trivial and std doesn't need it so we bail out with an "unsupported" error.
