@@ -55,6 +55,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_openat(libc::openat64);
     test_unlinkat();
+    test_mkdirat();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -714,6 +715,43 @@ fn test_unlinkat() {
     assert_eq!(errno(unlinkat(999, c"file.txt", 0)), libc::EBADF);
     let file = File::create(path.join("file.txt")).unwrap();
     assert_eq!(errno(unlinkat(file.as_raw_fd(), c"file.txt", 0)), libc::ENOTDIR);
+
+    errno_check(unsafe { libc::close(dirfd) });
+}
+
+fn test_mkdirat() {
+    let path = utils::prepare("miri_test_mkdirat");
+    fs::create_dir(&path).unwrap();
+    let cpath = utils::into_c_string(&path);
+    let dirfd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+
+    let mkdirat = |dirfd: libc::c_int, path: &CStr, mode: libc::mode_t| {
+        errno_result(unsafe { libc::mkdirat(dirfd, path.as_ptr(), mode) })
+    };
+    let errno = |res: std::io::Result<libc::c_int>| res.unwrap_err().raw_os_error().unwrap();
+
+    // Make a dir relative to dirfd.
+    assert_eq!(mkdirat(dirfd, c"subdir", 0o777).unwrap(), 0);
+    assert!(path.join("subdir").is_dir());
+    // It already exists; creating it again will fail.
+    assert_eq!(errno(mkdirat(dirfd, c"subdir", 0o777)), libc::EEXIST);
+
+    // Make a dir via its absolute path, can use garbage dirfd.
+    let cdir = utils::into_c_string(path.join("abs_subdir"));
+    assert_eq!(mkdirat(999, &cdir, 0o777).unwrap(), 0);
+    assert!(path.join("abs_subdir").is_dir());
+
+    // With `AT_FDCWD`, a relative path is relative to the working directory, not to an FD.
+    let original_cwd = env::current_dir().unwrap();
+    env::set_current_dir(&path).unwrap();
+    assert_eq!(mkdirat(libc::AT_FDCWD, c"miri_test_mkdirat_cwd", 0o777).unwrap(), 0);
+    assert!(path.join("miri_test_mkdirat_cwd").is_dir());
+    env::set_current_dir(original_cwd).unwrap();
+
+    // A relative path needs a dirfd that is an open directory.
+    assert_eq!(errno(mkdirat(999, c"rel_subdir", 0o777)), libc::EBADF);
+    let file = File::create(path.join("file.txt")).unwrap();
+    assert_eq!(errno(mkdirat(file.as_raw_fd(), c"rel_subdir", 0o777)), libc::ENOTDIR);
 
     errno_check(unsafe { libc::close(dirfd) });
 }

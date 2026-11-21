@@ -871,7 +871,7 @@ fn test_directory_handle() {
         .unwrap_err();
     assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 
-    fs::create_dir(dirname.join("subdir")).unwrap();
+    dir.create_dir("subdir").unwrap();
     let subdir = dir.open_dir("subdir").unwrap();
 
     // Delete subdir.

@@ -32,6 +32,13 @@ fn main() {
         assert_eq!(err.raw_os_error(), Some(libc::EACCES));
     }
 
+    // test `mkdirat`
+    unsafe {
+        let err =
+            errno_result(libc::mkdirat(libc::AT_FDCWD, c"foo_dir".as_ptr(), 0o777)).unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EACCES));
+    }
+
     // test `stat`
     let err = fs::metadata("foo.txt").unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EACCES));
