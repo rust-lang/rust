@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ check-fail
-//@ known-bug: #130516
+//@ check-pass
 
 // Pointer casts to and from binders where the metadata kind matches.
 

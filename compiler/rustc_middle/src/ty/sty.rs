@@ -1784,9 +1784,9 @@ impl<'tcx> Ty<'tcx> {
     pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
-        normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), normalize, || {});
+        let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), &mut normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1828,7 +1828,7 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(inner) => inner.skip_binder().ptr_metadata_ty_or_tail(tcx, normalize),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
@@ -1988,7 +1988,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(..)
-            | ty::UnsafeBinder(_)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -2021,6 +2020,8 @@ impl<'tcx> Ty<'tcx> {
             }
 
             ty::Infer(ty::TyVar(_)) => false,
+
+            ty::UnsafeBinder(inner) => inner.skip_binder().has_trivial_sizedness(tcx, sizedness),
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)

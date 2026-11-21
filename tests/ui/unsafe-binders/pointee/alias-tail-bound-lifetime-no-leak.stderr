@@ -1,11 +1,35 @@
+error[E0271]: type mismatch resolving `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata == usize`
+  --> $DIR/alias-tail-bound-lifetime-no-leak.rs:22:19
+   |
+LL |     metadata_is::<unsafe<'a> MD<T::Assoc<'a>>, usize>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata`
+   = help: consider constraining the associated type `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata` to `usize`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `metadata_is`
+  --> $DIR/alias-tail-bound-lifetime-no-leak.rs:16:36
+   |
+LL | fn metadata_is<T: ?Sized + Pointee<Metadata = M>, M>() {}
+   |                                    ^^^^^^^^^^^^ required by this bound in `metadata_is`
 
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented
-error: the compiler unexpectedly panicked. This is a bug
+error[E0271]: type mismatch resolving `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata == usize`
+  --> $DIR/alias-tail-bound-lifetime-no-leak.rs:29:19
+   |
+LL |     metadata_is::<unsafe<'a> MD<T::Assoc<'a>>, usize>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata`
+   = help: consider constraining the associated type `<unsafe<'a> ManuallyDrop<<T as Tr>::Assoc<'a>> as Pointee>::Metadata` to `usize`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `metadata_is`
+  --> $DIR/alias-tail-bound-lifetime-no-leak.rs:16:36
+   |
+LL | fn metadata_is<T: ?Sized + Pointee<Metadata = M>, M>() {}
+   |                                    ^^^^^^^^^^^^ required by this bound in `metadata_is`
 
+error: aborting due to 2 previous errors
 
-thread 'rustc' ($TID) panicked at compiler/rustc_next_trait_solver/src/solve/normalizes_to.rs:LL:CC:
-not implemented
-
-error: the compiler unexpectedly panicked. This is a bug
-
+For more information about this error, try `rustc --explain E0271`.
