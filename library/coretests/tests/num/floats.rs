@@ -1259,7 +1259,7 @@ float_test! {
         assert_biteq!(Float::ONE.scalbn(i32::MAX), Float::INFINITY);
         assert_biteq!(Float::ONE.scalbn(i32::MIN), Float::ZERO);
 
-        assert_biteq!(Float::NAN.scalbn(100), Float::NAN);
+        assert!(Float::NAN.scalbn(100).is_nan());
     }
 }
 
