@@ -240,10 +240,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // are met, then the name is set and 0 is returned. Otherwise, if
                 // the specified name is lomnger than MAXTHREADNAMESIZE, then
                 // ENAMETOOLONG is returned.
-                let thread = ecx.pthread_self()?;
                 let res = match ecx.pthread_setname_np(
-                    thread,
-                    ecx.read_scalar(name)?,
+                    None,
+                    ecx.read_pointer(name)?,
                     ecx.eval_libc("MAXTHREADNAMESIZE").to_target_usize(ecx)?,
                     /* truncate */ false,
                 )? {
@@ -272,8 +271,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The key part is the strlcpy, which truncates the resulting value,
                 // but always null terminates (except for zero sized buffers).
                 let res = match ecx.pthread_getname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     ecx.read_scalar(len)?,
                     /* truncate */ true,
                 )? {

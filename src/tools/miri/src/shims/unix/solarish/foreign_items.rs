@@ -70,8 +70,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let max_len = 32;
                 // See https://illumos.org/man/3C/pthread_setname_np for the error codes.
                 let res = match ecx.pthread_setname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     max_len,
                     /* truncate */ false,
                 )? {
@@ -87,8 +87,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 // See https://illumos.org/man/3C/pthread_getname_np for the error codes.
                 let res = match ecx.pthread_getname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     ecx.read_scalar(len)?,
                     /* truncate */ false,
                 )? {

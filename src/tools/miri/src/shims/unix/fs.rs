@@ -506,8 +506,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 // Only support default mode for non-UNIX (i.e. Windows) host.
                 // Ignore the "regular file" bit which is a NOP.
-                let s_ifreg = ecx.eval_libc("S_IFREG");
-                let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                let s_ifreg = ecx.eval_libc_int::<u32>("S_IFREG");
                 match mode & !s_ifreg {
                     0o666 => {
                         permissions.set_readonly(false);
@@ -589,8 +588,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Only support default mode for non-UNIX (i.e. Windows) host.
                     // Ignore the "regular file" bit which is a NOP.
-                    let s_ifreg = ecx.eval_libc("S_IFREG");
-                    let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                    let s_ifreg = ecx.eval_libc_int::<u32>("S_IFREG");
                     if mode & !s_ifreg != 0o666 {
                         throw_unsup_format!(
                             "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
@@ -2558,8 +2556,7 @@ impl FileMetadata {
         ecx: &mut MiriInterpCx<'tcx>,
         mode_name: &str,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
-        let mode = ecx.eval_libc(mode_name);
-        let mode: u32 = mode.to_uint(ecx.libc_ty_layout("mode_t").size)?.try_into().unwrap();
+        let mode = ecx.eval_libc_int::<u32>(mode_name);
         // We observed 0x777 on sockets and 0x600 on pipes...
         let mode = mode | 0o666;
         interp_ok(Ok(FileMetadata {
@@ -2590,8 +2587,7 @@ impl FileMetadata {
         };
 
         let file_type = metadata.file_type();
-        let mode = ecx.eval_libc(file_type_to_mode_name(file_type));
-        let mut mode = mode.to_uint(ecx.libc_ty_layout("mode_t").size)?.try_into().unwrap();
+        let mut mode = ecx.eval_libc_int::<u32>(file_type_to_mode_name(file_type));
 
         let size = metadata.len();
 

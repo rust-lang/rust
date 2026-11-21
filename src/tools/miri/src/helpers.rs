@@ -195,12 +195,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
         }
+        // TODO: Cache the result.
         self.eval_path_scalar(&["libc", name])
+    }
+
+    /// Helper function to get a `libc` constant as an integer, when the actual underlying type
+    /// differs across targets.
+    fn eval_libc_int<T: TryFrom<i128>>(&self, name: &str) -> T {
+        let ecx = self.eval_context_ref();
+        if ecx.tcx.sess.target.os == Os::Windows {
+            panic!(
+                "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
+            );
+        }
+        // TODO: Cache the result.
+        let path = &["libc", name];
+        let val = self.eval_path(path);
+        ecx.read_int::<T>(&val)
+            .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err:?}"))
     }
 
     /// Helper function to get a `libc` constant as an `i16`.
     fn eval_libc_i16(&self, name: &str) -> i16 {
-        // TODO: Cache the result.
         self.eval_libc(name).to_i16().unwrap_or_else(|_err| {
             panic!("required libc item has unexpected type (not `i16`): {name}")
         })
@@ -208,7 +224,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as an `u16`.
     fn eval_libc_u16(&self, name: &str) -> u16 {
-        // TODO: Cache the result.
         self.eval_libc(name).to_u16().unwrap_or_else(|_err| {
             panic!("required libc item has unexpected type (not `u16`): {name}")
         })
@@ -216,7 +231,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&self, name: &str) -> i32 {
-        // TODO: Cache the result.
         self.eval_libc(name).to_i32().unwrap_or_else(|_err| {
             panic!("required libc item has unexpected type (not `i32`): {name}")
         })
@@ -224,7 +238,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as an `u32`.
     fn eval_libc_u32(&self, name: &str) -> u32 {
-        // TODO: Cache the result.
         self.eval_libc(name).to_u32().unwrap_or_else(|_err| {
             panic!("required libc item has unexpected type (not `u32`): {name}")
         })
@@ -754,8 +767,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = ecx.get_ptr_alloc(ptr.wrapping_offset(len, ecx), size1)?.unwrap(); // not a ZST, so we will get a result
-            let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
+            let place = ecx.ptr_to_mplace(ptr.wrapping_offset(len, ecx), ecx.machine.layouts.u8);
+            let byte = ecx.read_scalar(&place)?.to_u8()?;
             if byte == 0 {
                 break;
             } else {
@@ -792,33 +805,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to read a sequence of unsigned integers of the given size and alignment
     /// until the first null terminator.
-    fn read_c_str_with_char_size<T>(
+    fn read_c_str_with_char_type<T>(
         &self,
         mut ptr: Pointer,
-        size: Size,
-        align: Align,
+        char_type: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Vec<T>>
     where
-        T: TryFrom<u128>,
-        <T as TryFrom<u128>>::Error: std::fmt::Debug,
+        T: TryFrom<i128> + From<u8> + PartialEq,
     {
-        assert_ne!(size, Size::ZERO);
-
         let ecx = self.eval_context_ref();
 
-        ecx.check_ptr_align(ptr, align)?;
+        ecx.check_ptr_align(ptr, char_type.align)?;
 
         let mut wchars = Vec::new();
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = ecx.get_ptr_alloc(ptr, size)?.unwrap(); // not a ZST, so we will get a result
-            let wchar_int = alloc.read_integer(alloc_range(Size::ZERO, size))?.to_bits(size)?;
-            if wchar_int == 0 {
+            let place = ecx.ptr_to_mplace(ptr, char_type);
+            let wchar = ecx.read_int::<T>(&place)?;
+            if wchar == 0u8.into() {
                 break;
             } else {
-                wchars.push(wchar_int.try_into().unwrap());
-                ptr = ptr.wrapping_offset(size, ecx);
+                wchars.push(wchar);
+                // Maintains alignment because `size` is a multiple of `align`.
+                ptr = ptr.wrapping_offset(char_type.size, ecx);
             }
         }
 
@@ -827,7 +837,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read a sequence of u16 until the first null terminator.
     fn read_wide_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u16>> {
-        self.read_c_str_with_char_size(ptr, Size::from_bytes(2), Align::from_bytes(2).unwrap())
+        let ecx = self.eval_context_ref();
+        ecx.read_c_str_with_char_type(ptr, ecx.machine.layouts.u16)
     }
 
     /// Helper function to write a sequence of u16 with an added 0x0000-terminator, which is what
@@ -870,9 +881,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We don't have libc on Windows so we have to hard-code the type ourselves.
             ecx.machine.layouts.u16
         } else {
-            ecx.libc_ty_layout("wchar_t")
+            // We always read as unsigned no matter the actual signedness.
+            let real_type = ecx.libc_ty_layout("wchar_t");
+            assert_eq!(real_type.size.bytes(), 4);
+            ecx.machine.layouts.u32
         };
-        self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align)
+        self.read_c_str_with_char_type(ptr, wchar_t)
     }
 
     fn frame_in_std(&self) -> bool {

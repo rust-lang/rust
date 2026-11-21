@@ -1236,8 +1236,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn() -> libc::pthread_t),
                     (link_name, abi, args),
                 )?;
-                let res = ecx.pthread_self()?;
-                ecx.write_scalar(res, dest)?;
+                ecx.pthread_self(dest)?;
             }
             "sched_yield" => {
                 let [] =

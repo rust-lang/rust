@@ -233,8 +233,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let res = match ecx.pthread_setname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     TASK_COMM_LEN,
                     /* truncate */ false,
                 )? {
@@ -254,8 +254,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let len = ecx.read_scalar(len)?;
                 let res = if len.to_target_usize(ecx)? >= TASK_COMM_LEN {
                     match ecx.pthread_getname_np(
-                        ecx.read_scalar(thread)?,
-                        ecx.read_scalar(name)?,
+                        Some(thread),
+                        ecx.read_pointer(name)?,
                         len,
                         /* truncate*/ false,
                     )? {

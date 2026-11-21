@@ -29,8 +29,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let max_len = u64::MAX; // FreeBSD does not seem to have a limit.
                 let res = match ecx.pthread_setname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     max_len,
                     /* truncate */ false,
                 )? {
@@ -48,8 +48,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // but always adds a null terminator (except for zero-sized buffers).
                 // https://github.com/freebsd/freebsd-src/blob/c2d93a803acef634bd0eede6673aeea59e90c277/lib/libthr/thread/thr_info.c#L119-L144
                 let res = match ecx.pthread_getname_np(
-                    ecx.read_scalar(thread)?,
-                    ecx.read_scalar(name)?,
+                    Some(thread),
+                    ecx.read_pointer(name)?,
                     ecx.read_scalar(len)?,
                     /* truncate */ true,
                 )? {

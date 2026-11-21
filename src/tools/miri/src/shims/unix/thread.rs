@@ -172,33 +172,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_u32(0))
     }
 
-    fn pthread_self(&self) -> InterpResult<'tcx, Scalar> {
-        let ecx = self.eval_context_ref();
+    fn pthread_self(&mut self, dest: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
 
         let thread_id = ecx.active_thread();
-        interp_ok(Scalar::from_uint(thread_id.to_u32(), ecx.libc_ty_layout("pthread_t").size))
+        ecx.write_int(thread_id.to_u32(), dest)
     }
 
-    /// Set the name of the specified thread. If the name including the null terminator
+    /// Set the name of the specified thread. `None` indicates the current thread.
+    /// If the name including the null terminator
     /// is longer or equals to `name_max_len`, then if `truncate` is set the truncated name
     /// is used as the thread name, otherwise [`ThreadNameResult::NameTooLong`] is returned.
     /// If the specified thread wasn't found, UB is raised.
     fn pthread_setname_np(
         &mut self,
-        thread: Scalar,
-        name: Scalar,
+        thread: Option<&OpTy<'tcx>>,
+        name: Pointer,
         name_max_len: u64,
         truncate: bool,
     ) -> InterpResult<'tcx, ThreadNameResult> {
         let ecx = self.eval_context_mut();
 
-        let thread = thread.to_int(ecx.libc_ty_layout("pthread_t").size)?;
-        let Ok(thread) = ecx.thread_id_try_from(thread) else {
-            // On Linux this has been observed to segfault. FreeBSD documents an error code
-            // for this condition but it is not clear whether they *guarantee* that error.
-            throw_ub_format!("pthread_setname_np: invalid pthread_t handle");
+        let thread = match thread {
+            None => ecx.active_thread(),
+            Some(thread) => {
+                let thread = ecx.read_int::<i128>(thread)?;
+                let Ok(thread) = ecx.thread_id_try_from(thread) else {
+                    // On Linux this has been observed to segfault. FreeBSD documents an error code
+                    // for this condition but it is not clear whether they *guarantee* that error.
+                    throw_ub_format!("pthread_setname_np: invalid pthread_t handle");
+                };
+                thread
+            }
         };
-        let name = name.to_pointer(ecx);
         let mut name = ecx.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
@@ -221,20 +227,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// thread wasn't found, UB is raised.
     fn pthread_getname_np(
         &mut self,
-        thread: Scalar,
-        name_out: Scalar,
+        thread: Option<&OpTy<'tcx>>,
+        name_out: Pointer,
         len: Scalar,
         truncate: bool,
     ) -> InterpResult<'tcx, ThreadNameResult> {
         let ecx = self.eval_context_mut();
 
-        let thread = thread.to_int(ecx.libc_ty_layout("pthread_t").size)?;
-        let Ok(thread) = ecx.thread_id_try_from(thread) else {
-            // On Linux this has been observed to segfault. FreeBSD documents an error code
-            // for this condition but it is not clear whether they *guarantee* that error.
-            throw_ub_format!("pthread_getname_np: invalid pthread_t handle");
+        let thread = match thread {
+            None => ecx.active_thread(),
+            Some(thread) => {
+                let thread = ecx.read_int::<i128>(thread)?;
+                let Ok(thread) = ecx.thread_id_try_from(thread) else {
+                    // On Linux this has been observed to segfault. FreeBSD documents an error code
+                    // for this condition but it is not clear whether they *guarantee* that error.
+                    throw_ub_format!("pthread_getname_np: invalid pthread_t handle");
+                };
+                thread
+            }
         };
-        let name_out = name_out.to_pointer(ecx);
         let len = len.to_target_usize(ecx)?;
 
         // FIXME: we should use the program name if the thread name is not set
