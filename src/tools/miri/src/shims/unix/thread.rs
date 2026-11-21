@@ -91,7 +91,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_create(
         &mut self,
-        thread: &OpTy<'tcx>,
+        thread_id: &OpTy<'tcx>,
         attr: &OpTy<'tcx>,
         start_routine: &OpTy<'tcx>,
         arg: &OpTy<'tcx>,
@@ -99,7 +99,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
-        let thread_info_place = ecx.deref_pointer(thread)?;
+        let thread_id_place = ecx.deref_pointer(thread_id)?;
 
         let start_routine = ecx.read_pointer(start_routine)?;
 
@@ -118,14 +118,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.write_scalar(ecx.eval_libc("EAGAIN"), dest);
         }
 
-        ecx.start_regular_thread(
-            Some(thread_info_place),
+        let thread_id = ecx.start_regular_thread(
             start_routine,
             ExternAbi::C { unwind: false },
             func_arg,
             ecx.machine.layouts.unit_ptr_mut,
         )?;
-
+        ecx.write_int(thread_id.to_u32(), &thread_id_place)?; // pthread_t is just the Miri ThreadId
         ecx.write_scalar(Scalar::from_i32(0), dest)
     }
 
@@ -176,7 +175,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
 
         let thread_id = ecx.active_thread();
-        ecx.write_int(thread_id.to_u32(), dest)
+        ecx.write_int(thread_id.to_u32(), dest) // pthread_t is just the Miri ThreadId
     }
 
     /// Set the name of the specified thread. `None` indicates the current thread.

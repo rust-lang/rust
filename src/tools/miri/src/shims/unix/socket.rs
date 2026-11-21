@@ -438,11 +438,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         ecx.write_socket_address(Some(&address), address_ptr, &address_len_place)?;
                     }
 
-                    // We need to create the scalar using the destination size since
+                    // We need to write the FD using the destination size since
                     // `syscall(SYS_accept4, ...)` returns a long which doesn't match
                     // the int returned from the `accept`/`accept4` syscalls.
                     // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
-                    ecx.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
+                    ecx.write_int(client_sockfd, &dest)
                 }
             ),
         )

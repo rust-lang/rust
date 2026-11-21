@@ -17,6 +17,7 @@ use self::shims::unix::solarish::foreign_items as solarish;
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::files::FD_LIMIT;
+use crate::shims::tls::TlsKey;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
@@ -920,7 +921,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Create key and write it into the memory where `key_ptr` wants it.
                 let key = ecx.machine.tls.create_tls_key(dtor, key_place.layout.size)?;
-                ecx.write_scalar(Scalar::from_uint(key, key_place.layout.size), &key_place)?;
+                ecx.write_int(key, &key_place)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;
@@ -930,7 +931,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 ecx.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 ecx.write_int(0, dest)?;
@@ -940,7 +941,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 let active_thread = ecx.active_thread();
                 let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
@@ -950,7 +951,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_key_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = ecx.read_scalar(key)?.to_bits(key.layout.size)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
                 ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
@@ -1432,10 +1433,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let guard_size = ecx.deref_pointer(guard_size)?;
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.page_size, guard_size.layout.size),
-                    &guard_size,
-                )?;
+                ecx.write_int(ecx.machine.page_size, &guard_size)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;
@@ -1452,14 +1450,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let addr_place = ecx.deref_pointer(addr_place)?;
                 let size_place = ecx.deref_pointer(size_place)?;
 
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.stack_addr, ecx.pointer_size()),
-                    &addr_place,
-                )?;
-                ecx.write_scalar(
-                    Scalar::from_uint(ecx.machine.stack_size, ecx.pointer_size()),
-                    &size_place,
-                )?;
+                ecx.write_int(ecx.machine.stack_addr, &addr_place)?;
+                ecx.write_int(ecx.machine.stack_size, &size_place)?;
 
                 // Return success (`0`).
                 ecx.write_int(0, dest)?;

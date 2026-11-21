@@ -630,10 +630,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // Return socketpair file descriptors to the caller.
-        let sv0 = Scalar::from_int(sv0, sv.layout.size);
-        let sv1 = Scalar::from_int(sv1, sv.layout.size);
-        ecx.write_scalar(sv0, &sv)?;
-        ecx.write_scalar(sv1, &ecx.project_c_array_field(&sv, 1)?)?;
+        ecx.write_int(sv0, &sv)?;
+        ecx.write_int(sv1, &ecx.project_c_array_field(&sv, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }
@@ -709,10 +707,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // Return file descriptors to the caller.
-        let pipefd0 = Scalar::from_int(pipefd0, pipefd.layout.size);
-        let pipefd1 = Scalar::from_int(pipefd1, pipefd.layout.size);
-        ecx.write_scalar(pipefd0, &pipefd)?;
-        ecx.write_scalar(pipefd1, &ecx.project_c_array_field(&pipefd, 1)?)?;
+        ecx.write_int(pipefd0, &pipefd)?;
+        ecx.write_int(pipefd1, &ecx.project_c_array_field(&pipefd, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }

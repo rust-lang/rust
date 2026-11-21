@@ -477,13 +477,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let start_routine = ecx.read_pointer(start_routine)?;
                 let func_arg = ecx.read_immediate(func_arg)?;
 
-                ecx.start_regular_thread(
-                    Some(dest.clone()),
+                let thread_id = ecx.start_regular_thread(
                     start_routine,
                     ExternAbi::Rust,
                     func_arg,
                     ecx.machine.layouts.unit,
                 )?;
+                ecx.write_int(thread_id.to_u32(), dest)?;
             }
             "miri_thread_join" => {
                 let [thread_id] = &ecx.check_shim_sig(

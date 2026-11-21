@@ -680,7 +680,7 @@ fn convert_float_to_int<'tcx>(
     // Fill remainder with zeros
     for i in op_len..dest_len {
         let dest = ecx.project_index(&dest, i)?;
-        ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
+        ecx.write_int(0, &dest)?;
     }
 
     interp_ok(())

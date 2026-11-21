@@ -212,8 +212,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_target_usize(thread)?;
-                let stack_addr = Scalar::from_uint(ecx.machine.stack_addr, ecx.pointer_size());
-                ecx.write_scalar(stack_addr, dest)?;
+                ecx.write_int(ecx.machine.stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -222,8 +221,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_target_usize(thread)?;
-                let stack_size = Scalar::from_uint(ecx.machine.stack_size, ecx.pointer_size());
-                ecx.write_scalar(stack_size, dest)?;
+                ecx.write_int(ecx.machine.stack_size, dest)?;
             }
 
             // Threading

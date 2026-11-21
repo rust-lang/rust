@@ -89,7 +89,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 for i in actual_len..dest_len {
                     let dest = ecx.project_index(&dest, i)?;
-                    ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
+                    ecx.write_int(0, &dest)?;
                 }
             }
             // Used to implement the _mm256_maddubs_epi16 function.
