@@ -28,7 +28,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         prot: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
         fd: &OpTy<'tcx>,
-        offset: i128,
+        offset: i64,
     ) -> InterpResult<'tcx, Scalar> {
         let ecx = self.eval_context_mut();
 

@@ -247,7 +247,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(count)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 ecx.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite" => {
@@ -258,7 +258,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(n)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 ecx.write(fd, buf, count, Some(offset), dest)?;
             }
@@ -498,7 +498,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 let whence = ecx.read_scalar(whence)?.to_i32()?;
                 ecx.lseek(fd, offset, whence, dest)?;
             }
@@ -508,7 +508,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let length = ecx.read_scalar(length)?.to_int(length.layout.size)?;
+                let length = ecx.read_int::<i64>(length)?;
                 let result = ecx.ftruncate64(fd, length)?;
                 ecx.write_scalar(result, dest)?;
             }
@@ -559,8 +559,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 ecx.read_scalar(fd)?.to_i32()?;
-                ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
-                ecx.read_scalar(len)?.to_int(len.layout.size)?;
+                ecx.read_int::<i64>(offset)?;
+                ecx.read_int::<i64>(len)?;
                 ecx.read_scalar(advice)?.to_i32()?;
                 // fadvise is only informational, we can ignore it.
                 ecx.write_int(0, dest)?;
@@ -580,9 +580,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 // We don't support platforms which have libc::off_t bigger than 64 bits.
-                let offset =
-                    i64::try_from(ecx.read_scalar(offset)?.to_int(offset.layout.size)?).unwrap();
-                let len = i64::try_from(ecx.read_scalar(len)?.to_int(len.layout.size)?).unwrap();
+                let offset = ecx.read_int::<i64>(offset)?;
+                let len = ecx.read_int::<i64>(len)?;
 
                 let result = ecx.posix_fallocate(fd, offset, len)?;
                 ecx.write_scalar(result, dest)?;
@@ -727,7 +726,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getsockopt" => {
                 let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =
@@ -811,7 +810,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, usize, i32, i32, i32, libc::off_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let offset = ecx.read_scalar(offset)?.to_int(ecx.libc_ty_layout("off_t").size)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 let ptr = ecx.mmap(addr, length, prot, flags, fd, offset)?;
                 ecx.write_scalar(ptr, dest)?;
             }

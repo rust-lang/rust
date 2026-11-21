@@ -372,7 +372,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd_num: i32,
         buf: Pointer,
         count: u64,
-        offset: Option<i128>,
+        offset: Option<i64>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
@@ -423,7 +423,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd_num: i32,
         buf: Pointer,
         count: u64,
-        offset: Option<i128>,
+        offset: Option<i64>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
@@ -492,7 +492,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "preadv: vectored reads with offsets aren't supported on Solaris"
                 )
             }
-            Some(ecx.read_scalar(offset)?.to_int(offset.layout.size)?)
+            Some(ecx.read_int::<i64>(offset)?)
         } else {
             None
         };
@@ -599,7 +599,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "pwritev: vectored writes with offsets aren't supported on Solaris"
                 )
             }
-            Some(ecx.read_scalar(offset)?.to_int(offset.layout.size)?)
+            Some(ecx.read_int::<i64>(offset)?)
         } else {
             None
         };
@@ -685,7 +685,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd: DynFileDescriptionRef,
         ptr: Pointer,
         len: u64,
-        offset: Option<i128>,
+        offset: Option<i64>,
         finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
@@ -735,7 +735,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd: DynFileDescriptionRef,
         ptr: Pointer,
         len: u64,
-        offset: Option<i128>,
+        offset: Option<i64>,
         finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();

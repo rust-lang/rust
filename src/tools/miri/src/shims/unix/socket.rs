@@ -509,9 +509,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let dest_addr = match dest_addr {
             Some((dest_addr, dest_addr_len)) => {
                 let dest_addr_ptr = ecx.read_pointer(dest_addr)?;
-                let socklen_layout = ecx.libc_ty_layout("socklen_t");
-                let dest_addr_len_int =
-                    ecx.read_scalar(dest_addr_len)?.to_uint(socklen_layout.size)?;
+                let dest_addr_len_int = ecx.read_int::<u64>(dest_addr_len)?;
 
                 // POSIX says the destination is entirely ignored for TCP sockets, but that does not
                 // match reality, so we eagerly read the destination when one is given.
@@ -719,7 +717,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let level = ecx.read_scalar(level)?.to_i32()?;
         let option_name = ecx.read_scalar(option_name)?.to_i32()?;
         let option_value_ptr = ecx.read_pointer(option_value)?;
-        let Some(option_len) = ecx.read_socklen(option_len)? else {
+        let Ok(option_len) = u64::try_from(ecx.read_int::<i128>(option_len)?) else {
             return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
@@ -752,7 +750,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         level: &OpTy<'tcx>,
         option_name: &OpTy<'tcx>,
         option_value: &OpTy<'tcx>,
-        option_len: &OpTy<'tcx>,
+        option_len_ptr: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let ecx = self.eval_context_mut();
 
@@ -765,7 +763,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // were actually written. If the value does not fit, it is silently truncated.
         // Also see <https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockopt.html>.
         let option_value_ptr = ecx.read_pointer(option_value)?;
-        let option_len_ptr = ecx.read_pointer(option_len)?;
+        let option_len_place = ecx.deref_pointer(option_len_ptr)?;
 
         // Get the file handle
         let Some(fd) = ecx.machine.fds.get(socket) else {
@@ -776,15 +774,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        if ecx.ptr_is_null(option_value_ptr)? || ecx.ptr_is_null(option_len_ptr)? {
+        if ecx.ptr_is_null(option_value_ptr)? || ecx.ptr_is_null(option_len_place.ptr())? {
             // This socket option returns a value and thus we need to return EFAULT
             // when either the value or the length pointers are null pointers.
             return ecx.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let socklen_layout = ecx.libc_ty_layout("socklen_t");
-        let option_len_ptr_mplace = ecx.ptr_to_mplace(option_len_ptr, socklen_layout);
-        let Some(option_len) = ecx.read_socklen(&option_len_ptr_mplace)? else {
+        let Ok(option_len) = u64::try_from(ecx.read_int::<i128>(&option_len_place)?) else {
             return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
@@ -820,10 +816,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // On output, the length pointer contains the amount of bytes written -- not the size
         // of the value before truncation.
-        ecx.write_scalar(
-            Scalar::from_uint(output_value_len.bytes(), socklen_layout.size),
-            &option_len_ptr_mplace,
-        )?;
+        ecx.write_int(output_value_len.bytes(), &option_len_place)?;
 
         interp_ok(Scalar::from_i32(0))
     }

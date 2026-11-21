@@ -743,7 +743,7 @@ fn conditional_dot_product<'tcx>(
     assert!(matches!(items_per_chunk, 2 | 4));
 
     // `imm` is a `u8` for SSE4.1 or an `i32` for AVX :/
-    let imm = ecx.read_scalar(imm)?.to_uint(imm.layout.size)?;
+    let imm = ecx.read_int::<i32>(imm)?;
 
     for i in 0..num_chunks {
         let left = ecx.project_index(&left, i)?;
@@ -980,7 +980,7 @@ fn mpsadbw<'tcx>(
 
     assert_eq!(op_items_per_chunk, dest_items_per_chunk.strict_mul(2));
 
-    let imm = ecx.read_scalar(imm)?.to_uint(imm.layout.size)?;
+    let imm = ecx.read_int::<i32>(imm)?;
 
     for i in 0..num_chunks {
         let left = ecx.project_index(&left, i)?;

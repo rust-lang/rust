@@ -319,6 +319,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
     /// we try to do the right thing anyway. `i128` can fit all integer types except for `u128` so
     /// this method is fine for almost all integer types.
+    #[track_caller]
     fn write_int(
         &mut self,
         i: impl Into<i128>,
@@ -332,8 +333,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let val = if dest.layout().backend_repr.is_signed() {
             Scalar::from_int(i, dest.layout().size)
         } else {
-            // `unwrap` can only fail here if `i` is negative
-            Scalar::from_uint(u128::try_from(i.into()).unwrap(), dest.layout().size)
+            Scalar::from_uint(
+                u128::try_from(i.into())
+                    .expect("should not store a negative value in an unsigned type"),
+                dest.layout().size,
+            )
         };
         self.eval_context_mut().write_scalar(val, dest)
     }
@@ -365,6 +369,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx.write_int(val, &field)?;
         }
         interp_ok(())
+    }
+
+    /// Read `val` as an integer at the type given in its layout, then convert the result to `T`.
+    #[track_caller]
+    fn read_int<T: TryFrom<i128>>(
+        &self,
+        val: &impl Projectable<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, T> {
+        let ecx = self.eval_context_ref();
+        let scalar = ecx.read_scalar(val)?;
+
+        let size = val.layout().size;
+        // Sanity-check that T is big enough, so we catch too-small Miri host types without having
+        // to actually pass in an extreme value. If the sizes are the same then the signendess
+        // must also match to ensure all values carry over.
+        let host_type_signed = T::try_from(-1).is_ok();
+        if size_of::<T>() < size.bytes_usize()
+            || (size_of::<T>() == size.bytes_usize()
+                && host_type_signed != val.layout().backend_repr.is_signed())
+        {
+            panic!(
+                "reading value of machine type {} which does not fit into the chosen host type",
+                val.layout().ty
+            );
+        }
+        let int = if val.layout().backend_repr.is_signed() {
+            scalar.to_int(size)?
+        } else {
+            // Can only fail for values beyond i128::MAX
+            i128::try_from(scalar.to_uint(size)?).unwrap()
+        };
+        // Based on the size check above, this cannot fail.
+        interp_ok(int.try_into().ok().unwrap())
     }
 
     /// Test if this pointer equals 0.

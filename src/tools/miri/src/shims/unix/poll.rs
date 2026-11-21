@@ -32,7 +32,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
-        let nfds: u64 = ecx.read_scalar(nfds)?.to_uint(nfds.layout.size)?.try_into().unwrap();
+        let nfds = ecx.read_int::<u64>(nfds)?;
         let timeout = ecx.read_scalar(timeout)?.to_i32()?;
 
         // Return `EINVAL`` if `nfds` is greater than `FD_LIMIT`.

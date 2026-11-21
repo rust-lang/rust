@@ -149,7 +149,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getsockopt" => {
                 let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =

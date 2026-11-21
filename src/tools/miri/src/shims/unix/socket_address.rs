@@ -122,24 +122,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.free_address_infos(res_ptr)
     }
 
-    /// Read a `socklen_t` value. Returns `None` if it does not fit into a `u64`, e.g. if it
-    /// is negative, which is possible on targets where `socklen_t` is signed.
-    fn read_socklen(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Option<u64>> {
-        let ecx = self.eval_context_ref();
-
-        let layout = op.layout();
-        let scalar = ecx.read_scalar(op)?;
-        let len = if layout.backend_repr.is_signed() {
-            u64::try_from(scalar.to_int(layout.size)?).ok()
-        } else {
-            u64::try_from(scalar.to_uint(layout.size)?).ok()
-        };
-        interp_ok(len)
-    }
-
     /// Attempt to turn an address and length operand into a standard library socket address.
     ///
     /// Returns an IO error should the address length not match the address family length.
@@ -153,7 +135,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We only support address lengths which can be stored in a u64 since the
         // size of a layout is also stored in a u64.
-        let Some(address_len) = ecx.read_socklen(address_len)? else {
+        let Ok(address_len) = u64::try_from(ecx.read_int::<i128>(address_len)?) else {
             return interp_ok(Err(LibcError("EINVAL")));
         };
         let address = ecx.deref_pointer(address)?;
@@ -172,8 +154,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let family_field = ecx.project_field_named(&address, "sa_family")?;
-        let family_layout = ecx.libc_ty_layout("sa_family_t");
-        let family = ecx.read_scalar(&family_field)?.to_int(family_layout.size)?;
+        let family = ecx.read_int::<i128>(&family_field)?;
 
         // Depending on the family, decide whether it's IPv4 or IPv6 and use specialized layout
         // to extract address and port.
@@ -297,11 +278,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
-        let address_buffer_len: u64 = ecx
-            .read_scalar(address_len_place)?
-            .to_int(address_len_place.layout.size)?
-            .try_into()
-            .unwrap();
+        let address_buffer_len: u64 = ecx.read_int::<u64>(address_len_place)?;
 
         // Check that the buffer indeed has (at least) the given size.
         ecx.check_ptr_access(
@@ -334,10 +311,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
                 // Since the `AF_INET` constant is chosen such that it can safely be converted into
                 // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet = ecx.eval_libc("AF_INET");
-                let address_family =
-                    Scalar::from_int(af_inet.to_int(af_inet.size())?, sin_family_field.layout.size);
-                ecx.write_scalar(address_family, &sin_family_field)?;
+                let af_inet = ecx.eval_libc_i32("AF_INET");
+                ecx.write_int(af_inet, &sin_family_field)?;
 
                 let sin_port_field = ecx.project_field_named(&address_buffer, "sin_port")?;
                 // Write the port in target native endianness bytes as we already converted it
@@ -386,12 +361,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
                 // Since the `AF_INET6` constant is chosen such that it can safely be converted into
                 // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet6 = ecx.eval_libc("AF_INET6");
-                let address_family = Scalar::from_int(
-                    af_inet6.to_int(af_inet6.size())?,
-                    sin6_family_field.layout.size,
-                );
-                ecx.write_scalar(address_family, &sin6_family_field)?;
+                let af_inet6 = ecx.eval_libc_i32("AF_INET6");
+                ecx.write_int(af_inet6, &sin6_family_field)?;
 
                 let sin6_port_field = ecx.project_field_named(&address_buffer, "sin6_port")?;
                 // Write the port in target native endianness bytes as we already converted it

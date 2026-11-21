@@ -142,7 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
-        let thread = ecx.read_scalar(thread)?.to_int(ecx.libc_ty_layout("pthread_t").size)?;
+        let thread = ecx.read_int::<i128>(thread)?;
         // Joining a terminated thread is valid.
         let thread = match ecx.thread_id_try_from(thread) {
             Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,
@@ -160,7 +160,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let ecx = self.eval_context_mut();
 
-        let thread = ecx.read_scalar(thread)?.to_int(ecx.libc_ty_layout("pthread_t").size)?;
+        let thread = ecx.read_int::<i128>(thread)?;
         // Detaching a terminated thread is valid.
         let thread = match ecx.thread_id_try_from(thread) {
             Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,

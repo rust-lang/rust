@@ -835,7 +835,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn lseek(
         &mut self,
         fd_num: i32,
-        offset: i128,
+        offset: i64,
         whence: i32,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -844,16 +844,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Isolation check is done via `FileDescription` trait.
 
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
-            if offset < 0 {
+            let Ok(offset) = u64::try_from(offset) else {
                 // Negative offsets return `EINVAL`.
                 return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
-            } else {
-                SeekFrom::Start(u64::try_from(offset).unwrap())
-            }
+            };
+            SeekFrom::Start(offset)
         } else if whence == this.eval_libc_i32("SEEK_CUR") {
-            SeekFrom::Current(i64::try_from(offset).unwrap())
+            SeekFrom::Current(offset)
         } else if whence == this.eval_libc_i32("SEEK_END") {
-            SeekFrom::End(i64::try_from(offset).unwrap())
+            SeekFrom::End(offset)
         } else {
             return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         };
@@ -1332,7 +1331,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let path_ptr = this.read_pointer(path_op)?;
-        let mode = this.read_scalar(mode_op)?.to_uint(this.libc_ty_layout("mode_t").size)?;
+        let mode = this.read_int::<u32>(mode_op)?;
 
         if this.ptr_is_null(path_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
@@ -1345,7 +1344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+        let permissions = this.host_permissions_from_mode(mode, || {
             // We get here if we need to read the old permissions before we can set new ones.
             // This is fundamentally racy. We cannot even use a file handle to make it less racy:
             // setting permissions requires opening for writing, but opening for writing fails
@@ -1364,7 +1363,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
-        let mode = this.read_scalar(mode_op)?.to_uint(this.libc_ty_layout("mode_t").size)?;
+        let mode = this.read_int::<u32>(mode_op)?;
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
@@ -1380,7 +1379,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+        let permissions = this.host_permissions_from_mode(mode, || {
             // We get here if we need to read the old permissions before we can set new ones.
             // This is fundamentally racy.
             file.file.metadata().map(|m| m.permissions())
@@ -1436,11 +1435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => None,
         };
         let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
-        let mode: u32 = ecx
-            .read_scalar(mode_op)?
-            .to_uint(ecx.libc_ty_layout("mode_t").size)?
-            .try_into()
-            .unwrap();
+        let mode = ecx.read_int::<u32>(mode_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
@@ -1768,7 +1763,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn ftruncate64(&mut self, fd_num: i32, length: i128) -> InterpResult<'tcx, Scalar> {
+    fn ftruncate64(&mut self, fd_num: i32, length: i64) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
