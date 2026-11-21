@@ -2382,11 +2382,6 @@ impl<'test> TestCx<'test> {
         self.compose_and_run(filecheck, Utf8Path::new(""), None, None)
     }
 
-    fn charset() -> &'static str {
-        // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "freebsd") { "ISO-8859-1" } else { "UTF-8" }
-    }
-
     fn get_lines(&self, path: &Utf8Path, mut other_files: Option<&mut Vec<String>>) -> Vec<usize> {
         let content = fs::read_to_string(path.as_std_path()).unwrap();
         let mut ignore = false;

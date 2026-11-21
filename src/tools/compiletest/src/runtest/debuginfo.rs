@@ -132,7 +132,7 @@ impl TestCx<'_> {
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str("py import debugger_tester\n");
-            script_str.push_str(&format!("set charset {}\n", Self::charset()));
+            script_str.push_str("set charset UTF-8\n");
             script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
@@ -232,7 +232,7 @@ impl TestCx<'_> {
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str("py import debugger_tester\n");
-            script_str.push_str(&format!("set charset {}\n", Self::charset()));
+            script_str.push_str("set charset UTF-8\n");
             script_str.push_str("show version\n");
 
             match self.config.gdb_version {
