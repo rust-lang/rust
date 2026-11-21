@@ -183,6 +183,27 @@ pub(crate) fn detect_features() -> cache::Initializer {
             let cpu_osxsave = bit::test(proc_info_ecx as usize, 27);
 
             if cpu_osxsave {
+                // See "13.3 ENABLING THE XSAVE FEATURE SET AND XSAVE-ENABLED
+                // FEATURES" in the "Intel® 64 and IA-32 Architectures Software
+                // Developer's Manual, Volume 1: Basic Architecture":
+                //
+                // "Software enables the XSAVE feature set by setting
+                // CR4.OSXSAVE[bit 18] to 1 (e.g., with the MOV to CR4
+                // instruction). If this bit is 0, execution of any of XGETBV,
+                // XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
+                // causes an invalid-opcode exception (#UD)"
+                enable(proc_info_ecx, 26, Feature::xsave);
+
+                // For `xsaveopt`, `xsavec`, and `xsaves` we need to query:
+                // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
+                // ECX = 1):
+                if max_basic_leaf >= 0x0d {
+                    let CpuidResult { eax: proc_extended_state1_eax, .. } = __cpuid_count(0x0d, 1);
+                    enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
+                    enable(proc_extended_state1_eax, 1, Feature::xsavec);
+                    enable(proc_extended_state1_eax, 3, Feature::xsaves);
+                }
+
                 // 2. The OS must have signaled the CPU that it supports saving and
                 // restoring the:
                 //
@@ -227,32 +248,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     enable(extended_features_edx_leaf_1, 21, Feature::apxf);
                 }
 
-                // Only if the OS and the CPU support saving/restoring the AVX
-                // registers we enable `xsave` support:
                 if os_avx_support {
-                    // See "13.3 ENABLING THE XSAVE FEATURE SET AND XSAVE-ENABLED
-                    // FEATURES" in the "Intel® 64 and IA-32 Architectures Software
-                    // Developer’s Manual, Volume 1: Basic Architecture":
-                    //
-                    // "Software enables the XSAVE feature set by setting
-                    // CR4.OSXSAVE[bit 18] to 1 (e.g., with the MOV to CR4
-                    // instruction). If this bit is 0, execution of any of XGETBV,
-                    // XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
-                    // causes an invalid-opcode exception (#UD)"
-                    //
-                    enable(proc_info_ecx, 26, Feature::xsave);
-
-                    // For `xsaveopt`, `xsavec`, and `xsaves` we need to query:
-                    // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
-                    // ECX = 1):
-                    if max_basic_leaf >= 0xd {
-                        let CpuidResult { eax: proc_extended_state1_eax, .. } =
-                            __cpuid_count(0xd_u32, 1);
-                        enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
-                        enable(proc_extended_state1_eax, 1, Feature::xsavec);
-                        enable(proc_extended_state1_eax, 3, Feature::xsaves);
-                    }
-
                     // FMA (uses 256-bit wide registers):
                     let fma = enable(proc_info_ecx, 12, Feature::fma);
 
