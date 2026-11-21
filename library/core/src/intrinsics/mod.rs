@@ -287,7 +287,7 @@ pub const unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(
     src: U,
 ) -> T;
 
-/// Subtract from the current value, returning the previous value.
+/// Subtracts from the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
@@ -314,7 +314,7 @@ pub const unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(
     src: U,
 ) -> T;
 
-/// Bitwise and with the current value, returning the previous value.
+/// Performs bitwise AND with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
@@ -341,7 +341,7 @@ pub const unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(
     src: U,
 ) -> T;
 
-/// Bitwise nand with the current value, returning the previous value.
+/// Performs bitwise NAND with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
@@ -362,7 +362,7 @@ pub const unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(
     src: U,
 ) -> T;
 
-/// Bitwise or with the current value, returning the previous value.
+/// Performs bitwise OR with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
@@ -389,7 +389,7 @@ pub const unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(
     src: U,
 ) -> T;
 
-/// Bitwise xor with the current value, returning the previous value.
+/// Performs bitwise XOR with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
 /// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
@@ -693,7 +693,7 @@ pub const fn cold_path() {}
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The to-be-stabilized version of this intrinsic is [`core::hint::likely`].
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
@@ -715,7 +715,7 @@ pub const fn likely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The to-be-stabilized version of this intrinsic is [`core::hint::unlikely`].
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
@@ -802,7 +802,7 @@ pub const fn caller_location() -> &'static crate::panic::Location<'static>;
 
 /// Moves a value out of scope without running drop glue.
 ///
-/// This exists solely for [`crate::mem::forget_unsized`]; normal `forget` uses
+/// This exists solely for [`core::mem::forget_unsized`]; normal `forget` uses
 /// `ManuallyDrop` instead.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -1133,7 +1133,7 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 /// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
-/// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
+/// The stabilized version of this intrinsic is [`core::mem::needs_drop`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
@@ -1233,6 +1233,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
+
 /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
 /// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
@@ -1263,6 +1264,7 @@ pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_load<T>(src: *const T) -> T;
+
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
@@ -1278,6 +1280,7 @@ pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
 pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
+
 /// Performs a volatile store to the `dst` pointer.
 /// The pointer is not required to be aligned.
 ///
@@ -1749,7 +1752,7 @@ pub const fn integer_max<T: [const] bounds::IntegerPrimitive>(a: T, b: T) -> T {
     if a < b { b } else { a }
 }
 
-/// Returns the number of bits set in an integer type `T`
+/// Returns the number of bits set in an integer type `T`.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -1920,7 +1923,7 @@ pub const fn bswap<T: Copy>(x: T) -> T;
 #[rustc_intrinsic]
 pub const fn bitreverse<T: Copy>(x: T) -> T;
 
-/// Does a three-way comparison between the two arguments,
+/// Performs a three-way comparison between the two arguments,
 /// which must be of character or integer (signed or unsigned) type.
 ///
 /// This was originally added because it greatly simplified the MIR in `cmp`
@@ -1932,7 +1935,7 @@ pub const fn bitreverse<T: Copy>(x: T) -> T;
 #[rustc_intrinsic]
 pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering;
 
-/// Combine two values which have no bits in common.
+/// Combines two values which have no bits in common.
 ///
 /// This allows the backend to implement it as `a + b` *or* `a | b`,
 /// depending which is easier to implement on a specific target.
@@ -1967,7 +1970,7 @@ pub const unsafe fn disjoint_bitor<T: [const] fallback::DisjointBitOr>(a: T, b: 
 #[rustc_intrinsic]
 pub const fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
-/// Performs checked integer subtraction
+/// Performs checked integer subtraction.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -1982,7 +1985,7 @@ pub const fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 #[rustc_intrinsic]
 pub const fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
-/// Performs checked integer multiplication
+/// Performs checked integer multiplication.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -2025,7 +2028,7 @@ pub const fn carrying_mul_add<T: [const] fallback::CarryingMulAdd<Unsigned = U>,
 }
 
 /// Performs an exact division, resulting in undefined behavior where
-/// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
+/// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -2034,7 +2037,7 @@ pub const fn carrying_mul_add<T: [const] fallback::CarryingMulAdd<Unsigned = U>,
 pub const unsafe fn exact_div<T: Copy>(x: T, y: T) -> T;
 
 /// Performs an unchecked division, resulting in undefined behavior
-/// where `y == 0` or `x == T::MIN && y == -1`
+/// where `y == 0` or `x == T::MIN && y == -1`.
 ///
 /// Safe wrappers for this intrinsic are available on the integer
 /// primitives via the `checked_div` method. For example,
@@ -2044,7 +2047,7 @@ pub const unsafe fn exact_div<T: Copy>(x: T, y: T) -> T;
 #[rustc_intrinsic]
 pub const unsafe fn unchecked_div<T: Copy>(x: T, y: T) -> T;
 /// Returns the remainder of an unchecked division, resulting in
-/// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
+/// undefined behavior when `y == 0` or `x == T::MIN && y == -1`.
 ///
 /// Safe wrappers for this intrinsic are available on the integer
 /// primitives via the `checked_rem` method. For example,
@@ -2164,6 +2167,7 @@ pub const fn rotate_right<T: fallback::FunnelShift>(x: T, shift: u32) -> T {
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn wrapping_add<T: Copy>(a: T, b: T) -> T;
+
 /// Wrapping (modular) subtraction. Computes `a - b`,
 /// wrapping around at the boundary of the type.
 ///
@@ -2179,8 +2183,9 @@ pub const fn wrapping_add<T: Copy>(a: T, b: T) -> T;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
-/// Wrapping (modular) multiplication. Computes `a *
-/// b`, wrapping around at the boundary of the type.
+
+/// Wrapping (modular) multiplication. Computes `a * b`,
+/// wrapping around at the boundary of the type.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -2209,6 +2214,7 @@ pub const fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn saturating_add<T: Copy>(a: T, b: T) -> T;
+
 /// Computes `a - b`, saturating at numeric bounds.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -2227,8 +2233,8 @@ pub const fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 /// Funnel Shift left.
 ///
 /// Concatenates `a` and `b` (with `a` in the most significant half),
-/// creating an integer twice as wide. Then shift this integer left
-/// by `shift`), and extract the most significant half. If `a` and `b`
+/// creating an integer twice as wide. Then shifts this integer left
+/// by `shift`), and extracts the most significant half. If `a` and `b`
 /// are the same, this is equivalent to a rotate left operation.
 ///
 /// It is undefined behavior if `shift` is greater than or equal to the
@@ -2248,8 +2254,8 @@ pub const unsafe fn unchecked_funnel_shl<T: fallback::FunnelShift>(a: T, b: T, s
 /// Funnel Shift right.
 ///
 /// Concatenates `a` and `b` (with `a` in the most significant half),
-/// creating an integer twice as wide. Then shift this integer right
-/// by `shift` (taken modulo the bit size of `T`), and extract the
+/// creating an integer twice as wide. Then shifts this integer right
+/// by `shift` (taken modulo the bit size of `T`), and extracts the
 /// least significant half. If `a` and `b` are the same, this is equivalent
 /// to a rotate right operation.
 ///
@@ -2261,7 +2267,7 @@ pub const unsafe fn unchecked_funnel_shl<T: fallback::FunnelShift>(a: T, b: T, s
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
-#[rustc_do_not_const_check] // Ise built-in impl to avoid const-checks in the fallback body.
+#[rustc_do_not_const_check] // Use built-in impl to avoid const-checks in the fallback body.
 pub const unsafe fn unchecked_funnel_shr<T: fallback::FunnelShift>(a: T, b: T, shift: u32) -> T {
     // SAFETY: caller ensures that `shift` is in-range
     unsafe { a.unchecked_funnel_shr(b, shift) }
@@ -2279,7 +2285,7 @@ pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
     a.carryless_mul(b)
 }
 
-/// This is an implementation detail of [`crate::ptr::read`] and should
+/// This is an implementation detail of [`core::ptr::read`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///
 /// This intrinsic can *only* be called where the pointer is a local without
@@ -2290,7 +2296,7 @@ pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
 #[rustc_intrinsic]
 pub const unsafe fn read_via_copy<T>(ptr: *const T) -> T;
 
-/// This is an implementation detail of [`crate::ptr::write`] and should
+/// This is an implementation detail of [`core::ptr::write`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///
 /// This intrinsic can *only* be called where the pointer is a local without
@@ -2402,7 +2408,7 @@ pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
 #[rustc_intrinsic]
 pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 
-/// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
+/// Lexicographically compares `[left, left + bytes)` and `[right, right + bytes)`
 /// as unsigned bytes, returning negative if `left` is less, zero if all the
 /// bytes match, or positive if `left` is greater.
 ///
@@ -2631,7 +2637,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// The codegen backends will replace this with a better implementation when
 /// `T` is a simple type that can be loaded and stored as an immediate.
 ///
-/// The stabilized form of this intrinsic is [`crate::mem::swap`].
+/// The stabilized form of this intrinsic is [`core::mem::swap`].
 ///
 /// # Safety
 /// Behavior is undefined if any of the following conditions are violated:
@@ -2667,7 +2673,7 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 /// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(ub_checks)` means that
 /// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
-/// primarily used by [`crate::ub_checks::assert_unsafe_precondition`].
+/// primarily used by [`core::ub_checks::assert_unsafe_precondition`].
 ///
 /// # Consteval
 ///
@@ -2705,7 +2711,7 @@ pub const fn overflow_checks() -> bool {
 }
 
 /// Allocates a block of memory at compile time.
-/// At runtime, just returns a null pointer.
+/// At runtime, just returns a null pointer (typical return value for failed allocations).
 ///
 /// # Safety
 ///
@@ -2740,7 +2746,8 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
-/// Convert the allocation this pointer points to into immutable global memory.
+/// Converts the allocation this pointer points to into immutable global memory.
+///
 /// The pointer must point to the beginning of a heap allocation.
 /// This operation only makes sense during compile time. At runtime, it does nothing.
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
@@ -2752,7 +2759,7 @@ pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
     ptr
 }
 
-/// Check if the pre-condition `cond` has been met.
+/// Checks if the pre-condition `cond` has been met.
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
@@ -2780,7 +2787,7 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
     )
 }
 
-/// Check if the post-condition `cond` has been met.
+/// Checks if the post-condition `cond` has been met.
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
@@ -2814,7 +2821,7 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
     )
 }
 
-/// The intrinsic will return the size stored in that vtable.
+/// Returns the size stored in the vtable pointed to by `ptr`.
 ///
 /// # Safety
 ///
@@ -2823,7 +2830,7 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
 #[rustc_intrinsic]
 pub unsafe fn vtable_size(ptr: *const ()) -> usize;
 
-/// The intrinsic will return the alignment stored in that vtable.
+/// Returns the alignment stored in the vtable pointed to by `ptr`.
 ///
 /// # Safety
 ///
@@ -2913,7 +2920,7 @@ pub fn field_offset<F: crate::field::Field>() -> usize;
 /// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
-/// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
+/// The to-be-stabilized version of this intrinsic is [`core::mem::variant_count`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_comptime]
@@ -2925,7 +2932,7 @@ pub fn variant_count<T>() -> usize;
 ///
 /// # Safety
 ///
-/// See [`crate::mem::size_of_val_raw`] for safety conditions.
+/// See [`core::mem::size_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
@@ -2937,7 +2944,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 ///
 /// # Safety
 ///
-/// See [`crate::mem::align_of_val_raw`] for safety conditions.
+/// See [`core::mem::align_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
@@ -3279,7 +3286,7 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
 #[rustc_intrinsic]
 pub const fn offload_get_num_devices() -> i32;
 
-/// Inform Miri that a given pointer definitely has a certain alignment.
+/// Informs Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
@@ -3303,7 +3310,7 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     )
 }
 
-/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// Loads an argument of type `T` from the `va_list` `ap` and increments the
 /// argument `ap` points to.
 ///
 /// # Safety
@@ -3339,7 +3346,7 @@ pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
     src.duplicate()
 }
 
-/// Destroy the variable argument list `ap` after initialization with `va_start` (part of the
+/// Destroys the variable argument list `ap` after initialization with `va_start` (part of the
 /// desugaring of `...`) or `va_copy`.
 ///
 /// Code generation backends should not provide a custom implementation for this intrinsic. This
