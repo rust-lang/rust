@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(self_type_conversion)]
 
 // Regression test for <https://github.com/rust-lang/trait-system-refactor-initiative/issues/214>.
 
