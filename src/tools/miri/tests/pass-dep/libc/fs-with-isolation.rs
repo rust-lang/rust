@@ -26,6 +26,12 @@ fn main() {
         assert_eq!(err.raw_os_error(), Some(libc::EACCES));
     }
 
+    // test `unlinkat`
+    unsafe {
+        let err = errno_result(libc::unlinkat(libc::AT_FDCWD, c"foo.txt".as_ptr(), 0)).unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EACCES));
+    }
+
     // test `stat`
     let err = fs::metadata("foo.txt").unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EACCES));
