@@ -1,0 +1,132 @@
+error[E0642]: patterns aren't allowed in methods without bodies
+  --> $DIR/duplicate-parameter-names.rs:48:24
+   |
+LL |     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+   |                        ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+LL +     fn pattern_in_args(_: usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+   |
+
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/duplicate-parameter-names.rs:48:50
+   |
+LL |     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+   |                                                  ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+LL +     fn pattern_in_args((x, x): usize, x: impl Fn(_: (bool, bool)), f: fn((b, b): (u64, u64)));
+   |
+
+error[E0642]: patterns aren't allowed in function pointer types
+  --> $DIR/duplicate-parameter-names.rs:48:79
+   |
+LL |     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+   |                                                                               ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn((b, b): (u64, u64)));
+LL +     fn pattern_in_args((x, x): usize, x: impl Fn((a, a): (bool, bool)), f: fn(_: (u64, u64)));
+   |
+
+error: free function without a body
+  --> $DIR/duplicate-parameter-names.rs:55:1
+   |
+LL | fn free_fn_without_body(x: u8, x: u8);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                      |
+   |                                      help: provide a definition for the function: `{ <body> }`
+
+error[E0415]: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:12:31
+   |
+LL |     fn fn_with_body(x: usize, x: u64) {}
+   |                               ^ used as parameter more than once
+
+error[E0415]: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:43:27
+   |
+LL | fn fn_with_body(x: usize, x: u64) {}
+   |                           ^ used as parameter more than once
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:8:27
+   |
+LL |     fn trait_fn(x: usize, x: usize);
+   |                 -         ^ used as parameter more than once
+   |                 |
+   |                 used here already
+   |
+   = note: `#[warn(duplicate_parameter_names)]` on by default
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:15:29
+   |
+LL |     fn three_args(x: usize, x: usize, x: u8);
+   |                   -         ^ used as parameter more than once
+   |                   |
+   |                   used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:15:39
+   |
+LL |     fn three_args(x: usize, x: usize, x: u8);
+   |                   - used here already ^ used as parameter more than once
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:23:28
+   |
+LL |     fn extern_fn(x: usize, x: usize);
+   |                  -         ^ used as parameter more than once
+   |                  |
+   |                  used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:27:31
+   |
+LL | type FnPointer = fn(x: usize, x: u64);
+   |                     -         ^ used as parameter more than once
+   |                     |
+   |                     used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:30:33
+   |
+LL | fn generic_type<T: Fn(x: usize, x: usize), U>()
+   |                       -         ^ used as parameter more than once
+   |                       |
+   |                       used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:32:31
+   |
+LL |     where U: FnOnce(x: usize, x: usize)
+   |                     -         ^ used as parameter more than once
+   |                     |
+   |                     used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:36:40
+   |
+LL | fn impl_trait(f: impl FnOnce(x: usize, x: usize)) {}
+   |                              -         ^ used as parameter more than once
+   |                              |
+   |                              used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:55:32
+   |
+LL | fn free_fn_without_body(x: u8, x: u8);
+   |                         -      ^ used as parameter more than once
+   |                         |
+   |                         used here already
+
+error: aborting due to 6 previous errors; 9 warnings emitted
+
+Some errors have detailed explanations: E0415, E0642.
+For more information about an error, try `rustc --explain E0415`.
