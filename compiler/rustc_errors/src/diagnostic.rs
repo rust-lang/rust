@@ -18,9 +18,9 @@ use tracing::debug;
 
 use crate::dedup_hash::DedupHashEncoder;
 use crate::{
-    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, Style, Sublevel, Substitution, SubstitutionPart, SuggestionStyle,
-    Suggestions,
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, EmissionOverride, ErrCode, ErrorGuaranteed,
+    ExplicitBug, Level, MultiSpan, StashKey, Style, Sublevel, Substitution, SubstitutionPart,
+    SuggestionStyle, Suggestions,
 };
 
 /// Trait implemented by error types. This is rarely implemented manually. Instead, use
@@ -203,6 +203,15 @@ pub struct DiagInner {
     pub emitted_at: DiagLocation,
 }
 
+/// Marker stored in `long_ty_path` for diagnostics that are never shown. Real paths are never empty.
+pub fn suppressed_long_ty_path() -> PathBuf {
+    PathBuf::new()
+}
+
+pub fn is_long_ty_path_suppressed(path: &Option<PathBuf>) -> bool {
+    path.as_ref().is_some_and(|p| p.as_os_str().is_empty())
+}
+
 impl DiagInner {
     #[track_caller]
     pub fn new<M: Into<DiagMessage>>(level: Level, message: M) -> Self {
@@ -220,7 +229,9 @@ impl DiagInner {
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
             is_lint: None,
-            long_ty_path: None,
+            // Expected lints are never shown, so they must not write long type files.
+            long_ty_path: matches!(level, Level::Warning(Some(EmissionOverride::Expected { .. })))
+                .then(suppressed_long_ty_path),
             emitted_at: DiagLocation::caller(),
         }
     }
@@ -1139,7 +1150,9 @@ impl<'a> Diag<'a> {
     /// `cancel`, etc. Afterwards, `drop` is the only code that will be run on
     /// `self`.
     fn take_diag(&mut self) -> DiagInner {
-        if let Some(path) = &self.long_ty_path {
+        if let Some(path) = &self.long_ty_path
+            && !is_long_ty_path_suppressed(&self.long_ty_path)
+        {
             self.note(format!(
                 "the full name for the type has been written to '{}'",
                 path.display()
