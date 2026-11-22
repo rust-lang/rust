@@ -71,36 +71,29 @@ error[E0566]: conflicting representation hints
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:30:8
+  --> $DIR/repr-repeated-attrs.rs:29:8
    |
 LL | #[repr(C, C, u8)]
    |        ^  ^  ^^
-...
+LL |
 LL | #[repr(C, u8, u8)]
    |        ^  ^^  ^^
    |
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:30:8
+  --> $DIR/repr-repeated-attrs.rs:29:8
    |
 LL | #[repr(C, C, u8)]
    |        ^  ^  ^^
-...
+LL |
 LL | #[repr(C, u8, u8)]
    |        ^  ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:38:14
+  --> $DIR/repr-repeated-attrs.rs:36:14
    |
 LL | #[repr(Rust, u8, u8)]
    |              ^^  ^^
@@ -108,22 +101,21 @@ LL | #[repr(Rust, u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:38:8
+  --> $DIR/repr-repeated-attrs.rs:36:8
    |
 LL | #[repr(Rust, u8, u8)]
    |        ^^^^  ^^  ^^
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:38:8
+  --> $DIR/repr-repeated-attrs.rs:36:8
    |
 LL | #[repr(Rust, u8, u8)]
    |        ^^^^  ^^  ^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:46:8
+  --> $DIR/repr-repeated-attrs.rs:43:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -131,28 +123,22 @@ LL | #[repr(u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:46:8
+  --> $DIR/repr-repeated-attrs.rs:43:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
-...
+LL |
 LL | #[repr(u16)]
    |        ^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:54:8
+  --> $DIR/repr-repeated-attrs.rs:50:8
    |
 LL | #[repr(C, u8)]
    |        ^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:62:8
+  --> $DIR/repr-repeated-attrs.rs:57:8
    |
 LL | #[repr(C, C, u8, u8, u8)]
    |        ^  ^  ^^  ^^  ^^
@@ -160,87 +146,12 @@ LL | #[repr(C, C, u8, u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:62:8
+  --> $DIR/repr-repeated-attrs.rs:57:8
    |
 LL | #[repr(C, C, u8, u8, u8)]
    |        ^  ^  ^^  ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 error: aborting due to 9 previous errors; 9 warnings emitted
 
 Some errors have detailed explanations: E0566, E0692.
 For more information about an error, try `rustc --explain E0566`.
-Future incompatibility report: Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:23:8
-   |
-LL | #[repr(u8, u8)]
-   |        ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:30:8
-   |
-LL | #[repr(C, C, u8)]
-   |        ^  ^  ^^
-...
-LL | #[repr(C, u8, u8)]
-   |        ^  ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:38:8
-   |
-LL | #[repr(Rust, u8, u8)]
-   |        ^^^^  ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:46:8
-   |
-LL | #[repr(u8, u8)]
-   |        ^^  ^^
-...
-LL | #[repr(u16)]
-   |        ^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:54:8
-   |
-LL | #[repr(C, u8)]
-   |        ^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:62:8
-   |
-LL | #[repr(C, C, u8, u8, u8)]
-   |        ^  ^  ^^  ^^  ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
-
