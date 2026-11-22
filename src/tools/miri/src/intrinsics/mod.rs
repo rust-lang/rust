@@ -9,6 +9,7 @@ mod x86;
 #[rustfmt::skip] // prevent `use` reordering
 use rand::RngExt;
 use rustc_abi::{Endian, Size};
+use rustc_middle::ty::Intrinsic;
 use rustc_middle::{mir, ty};
 use rustc_span::sym;
 use rustc_target::spec::Arch;
@@ -50,14 +51,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if ecx.eval_intrinsic(instance, args, dest, ret)? {
             return interp_ok(None);
         }
-        let intrinsic = ecx.tcx.intrinsic(instance.def_id()).unwrap();
-        let intrinsic_name = &intrinsic.name.to_string();
 
-        let res = ecx.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
+        let intrinsic = ecx.tcx.intrinsic(instance.def_id()).unwrap();
+        let res = match intrinsic.name {
+            Intrinsic::Rustc(name) =>
+                ecx.emulate_intrinsic_by_name(name.as_str(), instance.args, args, dest, ret)?,
+            Intrinsic::Backend { .. } => EmulateItemResult::NotSupported,
+        };
         res.jump_to_next_block(ecx, dest, ret, Some(unwind), |ecx| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
             if intrinsic.must_be_overridden {
-                throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
+                throw_unsup_format!("unimplemented intrinsic: `{}`", intrinsic.name)
             }
             let intrinsic_fallback_is_spec = ecx
                 .tcx
@@ -69,7 +73,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .is_some();
             if !intrinsic_fallback_is_spec {
                 throw_unsup_format!(
-                    "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
+                    "Miri can only use intrinsic fallback bodies that exactly reflect the specification: \
+                    they fully check for UB and are as non-deterministic as possible. \
+                    After verifying that `{}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; \
+                    also ping @rust-lang/miri when you do that",
+                    intrinsic.name
                 );
             }
             interp_ok(Some(ty::Instance {
@@ -209,15 +217,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     assert_eq!(dest_len, op_len);
 
                     for i in 0..dest_len {
-                        let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
-                        // Use `to_uint` to get a zero-extended `u128`. Those
+                        // Use `read_int` to get a zero-extended `u128`. Those
                         // extra zeros will not affect `count_ones`.
-                        let res = op.to_scalar().to_uint(op.layout.size)?.count_ones();
+                        let op = ecx.read_int::<u128>(&ecx.project_index(&op, i)?)?;
+                        let res = op.count_ones();
 
-                        ecx.write_scalar(
-                            Scalar::from_uint(res, op.layout.size),
-                            &ecx.project_index(&dest, i)?,
-                        )?;
+                        ecx.write_int(res, &ecx.project_index(&dest, i)?)?;
                     }
                 }
 
