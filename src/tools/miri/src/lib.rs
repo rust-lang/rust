@@ -9,6 +9,7 @@
     feature(abort_unwind)
 )]
 #![cfg_attr(windows, feature(windows_by_handle))]
+#![cfg_attr(not(bootstrap), feature(open_options_nofollow))]
 #![feature(array_try_from_fn)]
 #![feature(clamp_to)]
 #![feature(rustc_private)]

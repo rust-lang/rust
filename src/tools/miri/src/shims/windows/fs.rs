@@ -181,7 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // so we cannot even support anything else.
             // But for all other creation dispositions we'd have to do actual work, so reject those.
             throw_unsup_format!(
-                "CreateFileW: FILE_FLAG_OPEN_REPARSE_POINT is only supported if and only if CREATE_NEW is set"
+                "CreateFileW: FILE_FLAG_OPEN_REPARSE_POINT must be set if and only if CREATE_NEW is set"
             );
         }
         if attributes.contains(FileAttributes::BACKUP_SEMANTICS)

@@ -549,6 +549,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut flag = flag;
 
         let mut options = OpenOptions::new();
+        #[allow(unused_mut)] // depends on cfg
         let mut custom_flags = 0;
 
         let o_rdonly = ecx.eval_libc_i32("O_RDONLY");
@@ -663,13 +664,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // (Technically we do not support *not* setting this flag, but we ignore that.)
         }
         let o_nofollow = ecx.eval_libc_i32("O_NOFOLLOW");
+        #[cfg(bootstrap)]
         let mut nofollow = false;
         if flag & o_nofollow == o_nofollow {
             flag &= !o_nofollow;
-            nofollow = true;
             cfg_select! {
+                not(bootstrap) => {
+                    options.nofollow(true);
+                }
                 unix => {
                     custom_flags |= libc::O_NOFOLLOW;
+                    nofollow = true;
                 }
                 windows => {
                     if dirfd.is_some() {
@@ -679,6 +684,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     custom_flags |=
                         windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
+                    nofollow = true;
                 }
             }
         }
@@ -733,7 +739,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match f_or_d {
             Err(err) => ecx.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
-                // This means it cannot be a symlink, so `nofollow` is fine.
                 if writable {
                     // On Windows, opening a folder writable can succeed.
                     // But here we want it to always fail.
@@ -749,6 +754,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if want_directory {
                     return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
                 }
+                #[cfg(bootstrap)]
                 if file.metadata().unwrap().is_symlink() {
                     if nofollow {
                         // On Windows, FILE_FLAG_OPEN_REPARSE_POINT makes opening still succeed, it
