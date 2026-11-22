@@ -2298,6 +2298,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
+    pub fn vector_reduce_fadd_algebraic(
+        &mut self,
+        _acc: RValue<'gcc>,
+        _src: RValue<'gcc>,
+    ) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
     #[cfg(feature = "master")]
     pub fn vector_reduce_fadd(&mut self, acc: RValue<'gcc>, src: RValue<'gcc>) -> RValue<'gcc> {
         let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
@@ -2321,6 +2329,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn vector_reduce_fmul_reassoc(
+        &mut self,
+        _acc: RValue<'gcc>,
+        _src: RValue<'gcc>,
+    ) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_fmul_algebraic(
         &mut self,
         _acc: RValue<'gcc>,
         _src: RValue<'gcc>,
