@@ -706,14 +706,17 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Enum(ident, generics, ref enum_def) => {
+            hir::ItemKind::Enum(ident, generics, ref enum_def, _) => {
+                // FIXME(scrabsha): should we pretty-print the `has_drop` field?
                 self.print_enum_def(ident.name, generics, enum_def, item.span);
             }
-            hir::ItemKind::Struct(ident, generics, ref struct_def) => {
+            hir::ItemKind::Struct(ident, generics, ref struct_def, _) => {
+                // FIXME(scrabsha): should we pretty-print the `has_drop` field?
                 let (cb, ib) = self.head("struct");
                 self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }
-            hir::ItemKind::Union(ident, generics, ref struct_def) => {
+            hir::ItemKind::Union(ident, generics, ref struct_def, _) => {
+                // FIXME(scrabsha): should we pretty-print the `has_drop` field?
                 let (cb, ib) = self.head("union");
                 self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }

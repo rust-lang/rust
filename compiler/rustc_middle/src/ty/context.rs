@@ -75,7 +75,7 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, CanonicalizerState, Clause, ClausePolarity, Clauses,
-    Const, ConstKind, FlagComputation, FnSigKind, GenericArg, GenericArgsUnsized,
+    Const, ConstKind, DropImpl, FlagComputation, FnSigKind, GenericArg, GenericArgsUnsized,
     GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind,
     PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions,
     TraitObjectVisitor, Ty, TyKind, TyVid, ValTree, ValTreeKind, Visibility,
@@ -1100,8 +1100,9 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
+        drop_impl: DropImpl,
     ) -> ty::AdtDef<'tcx> {
-        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr, drop_impl))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret` with alignment 1.

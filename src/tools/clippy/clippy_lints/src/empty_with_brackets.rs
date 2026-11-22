@@ -97,7 +97,7 @@ pub struct EmptyWithBrackets {
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         // FIXME: handle `struct $name {}`
-        if let ItemKind::Struct(ident, generics, var_data) = &item.kind
+        if let ItemKind::Struct(ident, generics, var_data, _) = &item.kind
             && !item.span.from_expansion()
             && !ident.span.from_expansion()
             && has_brackets(var_data)

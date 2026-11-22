@@ -343,7 +343,7 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
             .filter_by_name_unhygienic(name)
             .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))
             .map(|assoc_item| assoc_item.def_id),
-        ItemKind::Struct(_, _, rustc_hir::VariantData::Struct { fields, .. }) if ns == PathNS::Field => {
+        ItemKind::Struct(_, _, rustc_hir::VariantData::Struct { fields, .. }, _) if ns == PathNS::Field => {
             fields.iter().find_map(|field| {
                 if field.ident.name == name {
                     Some(field.def_id.to_def_id())
@@ -352,7 +352,7 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
                 }
             })
         },
-        ItemKind::Enum(_, _, rustc_hir::EnumDef { variants }) if ns == PathNS::Type => {
+        ItemKind::Enum(_, _, rustc_hir::EnumDef { variants }, _) if ns == PathNS::Type => {
             variants.iter().find_map(|variant| {
                 if variant.ident.name == name {
                     Some(variant.def_id.to_def_id())

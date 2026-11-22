@@ -586,9 +586,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, generics, _)
-                        | hir::ItemKind::Enum(_, generics, _)
-                        | hir::ItemKind::Union(_, generics, _)
+                        hir::ItemKind::Struct(_, generics, _, _)
+                        | hir::ItemKind::Enum(_, generics, _, _)
+                        | hir::ItemKind::Union(_, generics, _, _)
                         | hir::ItemKind::Trait { generics, .. }
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
@@ -666,9 +666,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, generics, _)
-                        | hir::ItemKind::Enum(_, generics, _)
-                        | hir::ItemKind::Union(_, generics, _)
+                        hir::ItemKind::Struct(_, generics, _, _)
+                        | hir::ItemKind::Enum(_, generics, _, _)
+                        | hir::ItemKind::Union(_, generics, _, _)
                         | hir::ItemKind::Trait { generics, .. }
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }

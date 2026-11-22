@@ -267,6 +267,10 @@ pub struct ResolverAstLowering<'tcx> {
     pub lint_buffer: Steal<LintBuffer>,
 
     pub disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
+
+    /// A specific table for quickly checking whether an ADT has a `Drop` implementation. Useful
+    /// for perf. Key is the ADT, value in the trait impl block.
+    pub drop_impls: FxIndexMap<NodeId, LocalDefId>,
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]

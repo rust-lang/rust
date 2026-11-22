@@ -321,6 +321,7 @@ provide! { tcx, def_id, other, cdata,
 
     visibility => { cdata.get_visibility(tcx, def_id.index) }
     adt_def => { cdata.get_adt_def(tcx, def_id.index) }
+    drop_impl => { cdata.drop_impl(def_id.index)}
     adt_destructor => { table }
     adt_async_destructor => { table }
     associated_item_def_ids => {
