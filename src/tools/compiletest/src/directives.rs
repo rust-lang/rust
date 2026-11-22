@@ -348,7 +348,6 @@ impl TestProps {
     pub(crate) fn from_file(testfile: &Utf8Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
-        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.to_string()));
 
         // UI tests default to `//@ check-fail` if unspecified.
         if config.mode == TestMode::Ui && props.pass_fail_mode.is_none() {
