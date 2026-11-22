@@ -3797,12 +3797,12 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the following underlying operations:
-/// * Android: returns [`Unsupported`] on all files.
-/// * Linux, BSD-based platforms, QNX, NTO: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+/// * Unix: whenever possible, we use `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+///   This should work on Linux (except for Android), BSD-based platforms, QNX, NTO, and NuttX.
 ///   If that is not supported, we fall back to:
 ///   * Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by
-///   [`fs::set_permissions`].
-///   * Unix-based platforms without symlinks: `open` followed by [`fs::set_permissions`].
+///   [`File::set_permissions`].
+///   * Unix-based platforms without symlinks: `open` followed by [`File::set_permissions`].
 /// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
 ///   by `SetFileInformationByHandle`.
 ///
