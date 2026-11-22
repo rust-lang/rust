@@ -2,6 +2,9 @@ mod builders;
 mod float;
 mod num;
 
+use core::fmt;
+use core::fmt::Write;
+
 #[test]
 fn test_lifetime() {
     // Trigger all different forms of expansion,
@@ -198,4 +201,75 @@ fn formatting_options_flags() {
             }
         }
     }
+}
+
+#[test]
+fn test_options_as_specifier() {
+    struct F;
+    impl fmt::Display for F {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.options().write_fmt_specifier(f, false)
+        }
+    }
+    impl fmt::Debug for F {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Display::fmt(self, f)
+        }
+    }
+
+    // LowerExp (arbitrary choice) prints in string format
+    impl fmt::LowerExp for F {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_char('"')?;
+            f.options().write_fmt_specifier(f, true)?;
+            f.write_char('"')?;
+            Ok(())
+        }
+    }
+
+    let f = F;
+
+    // Default
+    assert_eq!(format!("{f}"), "");
+
+    // Width
+    assert_eq!(format!("{f:1}"), "1");
+
+    // Fill and align
+    assert_eq!(format!("{f:<}"), "<");
+    assert_eq!(format!("{f:^}"), "^");
+    assert_eq!(format!("{f:>}"), ">");
+    assert_eq!(format!("{f:<5}"), "<5");
+    assert_eq!(format!("{f:^5}"), "^5");
+    assert_eq!(format!("{f:>5}"), ">5");
+    assert_eq!(format!("{f:x>5}"), "x>5");
+
+    // Sign and alternates
+    assert_eq!(format!("{f:+}"), "+");
+    assert_eq!(format!("{f:-}"), "-");
+    assert_eq!(format!("{f:#}"), "#");
+    assert_eq!(format!("{f:0}"), "0");
+
+    // Precision
+    assert_eq!(format!("{f:.1}"), ".1");
+
+    // Hex within other format types
+    assert_eq!(format!("{f:x?}"), "x");
+    assert_eq!(format!("{f:X?}"), "X");
+
+    // Hodgepodge
+    assert_eq!(format!("{f:#018}"), "#018");
+    assert_eq!(format!("{f:0123}"), "0123");
+    assert_eq!(format!("{f:-<5}"), "-<5");
+    assert_eq!(format!("{f:+<05.2}"), "+<05.2");
+    assert_eq!(format!("{f:x<+#065535.123X?}"), "x<+#065535.123X");
+
+    // String quoting is done by the lowerexp impl in our tests
+    assert_eq!(format!("{f:\"<5e}"), r#""\"<5""#);
+    assert_eq!(format!("{f:'<5e}"), r#""\'<5""#);
+    assert_eq!(format!("{f:\\<5e}"), r#""\\<5""#);
+    // Same thing, unescaped
+    assert_eq!(format!("{f:\"<5}"), r#""<5"#);
+    assert_eq!(format!("{f:'<5}"), r#"'<5"#);
+    assert_eq!(format!("{f:\\<5}"), r#"\<5"#);
 }
