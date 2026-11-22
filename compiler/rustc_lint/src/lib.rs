@@ -20,11 +20,11 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(titlecase))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
-#![feature(titlecase)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
