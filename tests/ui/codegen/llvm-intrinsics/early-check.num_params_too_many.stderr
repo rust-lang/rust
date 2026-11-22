@@ -1,0 +1,8 @@
+error: incorrect number of type parameters in intrinsic `llvm.ctpop.i32.i32`: expected 1, found 2
+  --> $DIR/early-check.rs:40:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -288,6 +288,37 @@ pub(crate) struct IntrinsicWrongArch<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "incorrect number of type parameters in intrinsic `{$name}`: expected {$expected}, found {$found}"
+)]
+pub(crate) struct IntrinsicNumParamMismatch<'a> {
+    pub name: &'a str,
+    pub expected: usize,
+    pub found: usize,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid type parameter `{$found}` at position {$index} in intrinsic `{$name}`")]
+pub(crate) struct IntrinsicInvalidTypeParam<'a> {
+    pub name: &'a str,
+    pub index: usize,
+    pub found: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid type parameters for intrinsic `{$name}`: {$error}")]
+pub(crate) struct IntrinsicSignatureValidationFailed<'a> {
+    pub name: &'a str,
+    pub error: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("ignoring feature with missing prefix in `-Zllvm-target-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownLlvmTargetFeaturePrefix<'a> {

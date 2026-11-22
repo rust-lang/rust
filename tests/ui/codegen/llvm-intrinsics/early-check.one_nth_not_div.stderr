@@ -1,0 +1,8 @@
+error: invalid type parameter `<4 x i32>` at position 0 in intrinsic `llvm.vector.deinterleave3.v4i32`
+  --> $DIR/early-check.rs:65:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

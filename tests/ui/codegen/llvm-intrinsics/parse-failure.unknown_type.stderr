@@ -1,0 +1,8 @@
+error: unknown LLVM intrinsic `llvm.ctpop.bogus`
+  --> $DIR/parse-failure.rs:47:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error: using deprecated intrinsic `llvm.aarch64.neon.rbit.v8i8`, `llvm.bitreverse.v8i8` can be used instead
+  --> $DIR/deprecated.rs:18:5
+   |
+LL |     fn rbit(a: i8x8) -> i8x8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated.rs:16:12
+   |
+LL |     #[deny(deprecated_llvm_intrinsic)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using deprecated intrinsic `llvm.aarch64.neon.vcvthf2fp`
+  --> $DIR/deprecated.rs:23:5
+   |
+LL |     fn vcvthf2fp(a: u32) -> f32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated.rs:21:12
+   |
+LL |     #[deny(deprecated_llvm_intrinsic)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

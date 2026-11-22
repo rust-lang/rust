@@ -1,0 +1,8 @@
+error: intrinsic signature mismatch for `llvm.experimental.patchpoint.void`: expected signature `void (i64, i32, ptr, i32, ...)`, found `void (i64, i32, ptr, i32)`
+  --> $DIR/incorrect-signature.rs:26:5
+   |
+LL |     fn foo(id: i64, num_bytes: i32, target: *mut u8, num_args: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

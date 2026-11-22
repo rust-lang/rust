@@ -1,0 +1,8 @@
+error: invalid type parameter `i32` at position 0 in intrinsic `llvm.vector.reduce.add.i32`
+  --> $DIR/early-check.rs:49:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

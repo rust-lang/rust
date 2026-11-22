@@ -1,0 +1,8 @@
+error: invalid type parameter `<4 x ptr>` at position 0 in intrinsic `llvm.aarch64.sve.fexpa.x.v4p0`
+  --> $DIR/early-check.rs:151:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

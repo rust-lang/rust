@@ -1702,8 +1702,185 @@ extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
   return CanUpgrade;
 }
 
-extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
-  return Intrinsic::isTargetIntrinsic(ID);
+extern "C" const char *LLVMRustIntrinsicGetBaseName(unsigned ID,
+                                                    size_t *NameLength) {
+  auto baseName = Intrinsic::getBaseName(ID);
+  *NameLength = baseName.size();
+  return baseName.data();
+}
+
+enum class LLVMRustIntrinsicCheckStatus : uint8_t {
+  Ok = 0,
+  NumParamMismatch = 1,
+  InvalidParam = 2,
+};
+
+struct LLVMRustIntrinsicCheckResult {
+  LLVMRustIntrinsicCheckStatus Status;
+  unsigned Value; // expected count for NumParamMismatch, param index for
+                  // InvalidParam
+};
+
+extern "C" LLVMRustIntrinsicCheckResult
+LLVMRustIntrinsicEarlyCheckParams(unsigned ID, const LLVMTypeRef *ParamsPtr,
+                                  size_t ParamsLen) {
+  // LLVM changed some IITDesc names in LLVM23
+#if LLVM_VERSION_GE(23, 0)
+  constexpr auto IITOverloaded = Intrinsic::IITDescriptor::Overloaded;
+  constexpr auto IITExtend = Intrinsic::IITDescriptor::Extend;
+  constexpr auto IITTrunc = Intrinsic::IITDescriptor::Trunc;
+  constexpr auto IITVecElement = Intrinsic::IITDescriptor::VecElement;
+  constexpr auto IITOneNthEltsVec = Intrinsic::IITDescriptor::OneNthEltsVec;
+  constexpr auto IITSubdivide2 = Intrinsic::IITDescriptor::Subdivide2;
+  constexpr auto IITSubdivide4 = Intrinsic::IITDescriptor::Subdivide4;
+  auto getOverloadIdx = [](const Intrinsic::IITDescriptor &D) {
+    return D.getOverloadIndex();
+  };
+#else
+  constexpr auto IITOverloaded = Intrinsic::IITDescriptor::Argument;
+  constexpr auto IITExtend = Intrinsic::IITDescriptor::ExtendArgument;
+  constexpr auto IITTrunc = Intrinsic::IITDescriptor::TruncArgument;
+  constexpr auto IITVecElement = Intrinsic::IITDescriptor::VecElementArgument;
+  constexpr auto IITOneNthEltsVec =
+      Intrinsic::IITDescriptor::OneNthEltsVecArgument;
+  constexpr auto IITSubdivide2 = Intrinsic::IITDescriptor::Subdivide2Argument;
+  constexpr auto IITSubdivide4 = Intrinsic::IITDescriptor::Subdivide4Argument;
+  auto getOverloadIdx = [](const Intrinsic::IITDescriptor &D) {
+    return D.getArgumentNumber();
+  };
+#endif
+
+  ArrayRef<Type *> Params(reinterpret_cast<Type *const *>(ParamsPtr),
+                          ParamsLen);
+
+  SmallVector<Intrinsic::IITDescriptor, 8> Table;
+  Intrinsic::getIntrinsicInfoTableEntries(ID, Table);
+
+  unsigned MaxOverloadIdx = 0;
+  std::optional<unsigned> FirstBadIdx;
+
+  for (const auto &D : Table) {
+    unsigned OverloadIdx = 0;
+    bool BadTypeParam = false;
+
+    switch (D.Kind) {
+    case IITOverloaded:
+    case Intrinsic::IITDescriptor::VecOfAnyPtrsToElt:
+      OverloadIdx = getOverloadIdx(D);
+      break;
+
+    case IITExtend:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen) {
+        Type *Ty = Params[OverloadIdx];
+        BadTypeParam =
+            !Ty->isIntOrIntVectorTy() ||
+            Ty->getScalarSizeInBits() > IntegerType::MAX_INT_BITS / 2;
+      }
+      break;
+
+    case IITTrunc:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen) {
+        Type *Ty = Params[OverloadIdx];
+        unsigned Bits = Ty->getScalarSizeInBits();
+        BadTypeParam = !Ty->isIntOrIntVectorTy() || !Bits || Bits % 2 != 0;
+      }
+      break;
+
+    case IITVecElement:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen)
+        BadTypeParam = !Params[OverloadIdx]->isVectorTy();
+      break;
+
+    case Intrinsic::IITDescriptor::VecOfBitcastsToInt:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen) {
+        if (auto *VTy = dyn_cast<VectorType>(Params[OverloadIdx])) {
+          BadTypeParam =
+              VTy->getElementType()->getPrimitiveSizeInBits().isZero();
+        } else {
+          BadTypeParam = true;
+        }
+      }
+      break;
+
+    case IITOneNthEltsVec:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen) {
+        if (auto *VTy = dyn_cast<VectorType>(Params[OverloadIdx])) {
+          BadTypeParam =
+              !VTy->getElementCount().isKnownMultipleOf(D.getVectorDivisor());
+        } else {
+          BadTypeParam = true;
+        }
+      }
+      break;
+
+    case IITSubdivide2:
+    case IITSubdivide4:
+      OverloadIdx = getOverloadIdx(D);
+      if (OverloadIdx < ParamsLen) {
+        if (auto *VTy = dyn_cast<VectorType>(Params[OverloadIdx])) {
+          unsigned Divisor = D.Kind == IITSubdivide2 ? 2 : 4;
+          unsigned Bits = VTy->getScalarSizeInBits();
+          BadTypeParam = !Bits || Bits % Divisor != 0;
+        } else {
+          BadTypeParam = true;
+        }
+      }
+      break;
+
+    default:
+      continue;
+    }
+
+    MaxOverloadIdx = std::max(MaxOverloadIdx, OverloadIdx);
+
+    if (!FirstBadIdx && BadTypeParam)
+      FirstBadIdx = OverloadIdx;
+  }
+
+  if (MaxOverloadIdx + 1 != ParamsLen) {
+    return {LLVMRustIntrinsicCheckStatus::NumParamMismatch, MaxOverloadIdx + 1};
+  }
+  if (FirstBadIdx) {
+    return {LLVMRustIntrinsicCheckStatus::InvalidParam, *FirstBadIdx};
+  }
+  return {LLVMRustIntrinsicCheckStatus::Ok, 0};
+}
+
+extern "C" bool LLVMRustIntrinsicIsSignatureValid(unsigned ID, LLVMTypeRef FnTy,
+                                                  RustStringRef Err) {
+  auto FTy = unwrap<FunctionType>(FnTy);
+  RawRustStringOstream OS(Err);
+
+#if LLVM_VERSION_GE(23, 0)
+  SmallVector<Type *, 4> OverloadTys;
+  return Intrinsic::isSignatureValid(ID, FTy, OverloadTys, OS);
+#else
+  SmallVector<Intrinsic::IITDescriptor, 8> Table;
+  Intrinsic::getIntrinsicInfoTableEntries(ID, Table);
+  ArrayRef<Intrinsic::IITDescriptor> TableRef = Table;
+
+  SmallVector<Type *, 4> ArgTys;
+  switch (Intrinsic::matchIntrinsicSignature(FTy, TableRef, ArgTys)) {
+  case Intrinsic::MatchIntrinsicTypes_Match:
+    break;
+  case Intrinsic::MatchIntrinsicTypes_NoMatchRet:
+    OS << "intrinsic has incorrect return type";
+    return false;
+  case Intrinsic::MatchIntrinsicTypes_NoMatchArg:
+    OS << "intrinsic has incorrect argument type";
+    return false;
+  }
+  if (Intrinsic::matchIntrinsicVarArg(FTy->isVarArg(), TableRef)) {
+    OS << "intrinsic has incorrect vararg signature";
+    return false;
+  }
+  return true;
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,

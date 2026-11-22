@@ -29,7 +29,7 @@ struct svint8x2_t(svint8_t, svint8_t);
 #[target_feature(enable = "sve")]
 pub unsafe fn svld2_u8(pg: svbool_t, base: *const i8) -> svuint8x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8.p0")]
         fn _svld2_s8(pg: svbool_t, base: *const i8) -> svint8x2_t;
     }
     transmute(_svld2_s8(pg, base))

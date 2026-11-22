@@ -358,8 +358,19 @@ impl Intrinsic {
         unsafe { LLVMIntrinsicIsOverloaded(self.id).is_true() }
     }
 
-    pub(crate) fn is_target_specific(self) -> bool {
-        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
+    pub(crate) fn base_name(self) -> &'static [u8] {
+        let mut len = 0;
+        let ptr = unsafe { LLVMRustIntrinsicGetBaseName(self.id, &mut len) };
+
+        // SAFETY: The underlying C++ global function returns a `StringRef` that
+        // isn't tied to any particular backing buffer, so it must be 'static.
+        unsafe { std::slice::from_raw_parts(ptr.cast(), len) }
+    }
+
+    pub(crate) fn check_type_params(self, type_params: &[Type<'_>]) -> IntrinsicCheckResult {
+        unsafe {
+            LLVMRustIntrinsicEarlyCheckParams(self.id, type_params.as_ptr(), type_params.len())
+        }
     }
 
     pub(crate) fn get_declaration<'ll>(
@@ -370,6 +381,15 @@ impl Intrinsic {
         unsafe {
             LLVMGetIntrinsicDeclaration(llmod, self.id, type_params.as_ptr(), type_params.len())
         }
+    }
+
+    pub(crate) fn check_signature_validity(self, fn_ty: Type<'_>) -> Result<(), String> {
+        let mut is_valid = false;
+        let error_msg = build_byte_buffer(|err| unsafe {
+            is_valid = LLVMRustIntrinsicIsSignatureValid(self.id, fn_ty, err);
+        });
+
+        is_valid.ok_or_else(|| String::from_utf8_lossy_owned(error_msg))
     }
 }
 

@@ -1,0 +1,8 @@
+error: incorrect number of type parameters in intrinsic `llvm.ucmp.i32`: expected 2, found 1
+  --> $DIR/early-check.rs:26:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
