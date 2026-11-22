@@ -2570,6 +2570,7 @@ impl Path {
         !self.is_absolute()
     }
 
+    #[cfg(not(target_os = "uefi"))]
     pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
