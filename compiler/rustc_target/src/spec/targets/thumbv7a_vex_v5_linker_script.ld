@@ -76,6 +76,13 @@ SECTIONS {
         *(.srodata .srodata.*)
     } > USER_RAM
 
+    /* GNU build ID, which uniquely identifies this executable. */
+    .note.gnu.build-id : ALIGN(4) {
+        PROVIDE(__build_id_start = .);
+        KEEP(*(.note.gnu.build-id))
+        PROVIDE(__build_id_end = .);
+    } > USER_RAM
+
     /*
      * ARM Stack Unwinding Sections
      *

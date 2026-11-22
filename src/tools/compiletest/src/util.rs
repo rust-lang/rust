@@ -7,23 +7,6 @@ pub(crate) use shim_utils::ArgFileCommand;
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn make_new_path(path: &str) -> String {
-    assert!(cfg!(windows));
-    // Windows just uses PATH as the library search path, so we have to
-    // maintain the current value while adding our own
-    match env::var(lib_path_env_var()) {
-        Ok(curr) => format!("{}{}{}", path, path_div(), curr),
-        Err(..) => path.to_owned(),
-    }
-}
-
-pub(crate) fn lib_path_env_var() -> &'static str {
-    "PATH"
-}
-fn path_div() -> &'static str {
-    ";"
-}
-
 pub(crate) trait Utf8PathBufExt {
     /// Append an extension to the path, even if it already has one.
     fn with_extra_extension(&self, extension: &str) -> Utf8PathBuf;

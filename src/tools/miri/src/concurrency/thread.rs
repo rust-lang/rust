@@ -668,11 +668,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    /// Returns whether a thread stack of this size could be reserved.
+    fn thread_stack_size_ok(&self, stack_size: u64) -> bool {
+        let ecx = self.eval_context_ref();
+        match ecx.pointer_size().bits() {
+            32 => {
+                // Reject stacks occupying nearly the entire address space. Leave two pages below 4
+                // GiB so adding a one-page guard does not overflow a 32-bit size_t.
+                let limit = (1u64 << 32) - 2 * ecx.machine.page_size;
+                stack_size < limit
+            }
+            64 => {
+                // Approximate the user address space on 64-bit targets using 47 address bits.
+                let addr_bits = 47;
+                stack_size < (1u64 << addr_bits)
+            }
+            _ => panic!("unsupported pointer size"),
+        }
+    }
+
     /// Start a regular (non-main) thread.
     #[inline]
     fn start_regular_thread(
         &mut self,
-        thread: Option<MPlaceTy<'tcx>>,
         start_routine: Pointer,
         start_abi: ExternAbi,
         func_arg: ImmTy<'tcx>,
@@ -697,14 +715,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &func_arg,
                     new_thread_id,
                 )?,
-        }
-        // Write the current thread-id, switch to the next thread later
-        // to treat this write operation as occurring on the current thread.
-        if let Some(thread_info_place) = thread {
-            ecx.write_scalar(
-                Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
-                &thread_info_place,
-            )?;
         }
 
         // Finally switch to new thread so that we can push the first stackframe.

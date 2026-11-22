@@ -637,16 +637,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        // Parameters are discarded because foreign functions don't have a body
                         this.lower_fn_decl(
                             fdec,
                             i.id,
                             hir_id,
                             FnDeclKind::ExternFn,
                             None,
-                            DiscardParams::Yes,
+                            DiscardParams::No,
                         ),
-                        this.lower_fn_params_to_idents(fdec),
+                        this.lower_fn_params(fdec),
                     )
                 });
 
@@ -1253,7 +1252,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_id
     }
 
-    fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
+    pub(super) fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs, param.span, AstTarget::Param(param));
         hir::Param {
