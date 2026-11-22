@@ -1,6 +1,7 @@
 use std::io::ErrorKind;
 
 use rustc_abi::FieldIdx;
+use rustc_errors::Diag;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::comptime::ReadFileError;
 use rustc_middle::mir::interpret::{
@@ -66,6 +67,15 @@ pub fn experimental_comptime_fetch_file_provider<'tcx>(
 }
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
+    fn build_fs_diag(&self, msg: String) -> Diag<'_> {
+        let parent_span =
+            self.stack().iter().rev().nth(1).map(|parent_frame| parent_frame.current_span());
+
+        let item_span = self.tcx.span;
+
+        self.tcx.dcx().struct_err(msg).with_span(parent_span).with_span_context(item_span)
+    }
+
     /// intrinsics related to `comptime_ops_*`
     pub(crate) fn call_comptime_ops_intrinsic(
         &mut self,
@@ -96,26 +106,16 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     Ok(content) => content,
                     Err(ReadFileError::IO(err)) => {
                         let guard = self
-                            .tcx
-                            .dcx()
-                            .struct_err("error while reading file in constant evaluation")
-                            .with_span(self.cur_span())
-                            .with_span_help(self.tcx.span, "while evaluating this constant")
-                            .with_note(format!("filename: {path_sym}"))
-                            .with_note(format!("error: {err}"))
+                            .build_fs_diag(format!("couldn't read `{path_sym}`: {err}"))
                             .emit_err();
                         throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(
                             guard
                         )));
                     }
+
                     Err(ReadFileError::NotWhitelisted) => {
                         let guard = self
-                            .tcx
-                            .dcx()
-                            .struct_err("this file cannot be accessed during const-evaluation")
-                            .with_span(self.cur_span())
-                            .with_span_help(self.tcx.span, "while evaluating this constant")
-                            .with_note(format!("filename: {path_sym}"))
+                            .build_fs_diag(format!("not allowed to read `{path_sym}`: not whitelisted"))
                             .with_help("pass -Zexperimental-comptime-files=<path> to the compiler to allow reading this file")
                             .emit_err();
                         throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(

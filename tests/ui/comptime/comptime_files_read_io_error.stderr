@@ -1,0 +1,11 @@
+error: couldn't read `files`: Is a directory (os error 21)
+  --> $DIR/comptime_files_read_io_error.rs:7:13
+   |
+LL |     let _ = core::mem::comptime::read_file("files");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | const _: () = hello();
+   |
+
+error: aborting due to 1 previous error
+
