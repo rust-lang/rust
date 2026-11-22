@@ -2872,6 +2872,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -2909,6 +2910,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -2942,6 +2944,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {

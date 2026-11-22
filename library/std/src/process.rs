@@ -550,7 +550,7 @@ impl fmt::Debug for ChildStderr {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+/// # if cfg!(all(not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
 /// use std::process::Command;
 ///
 /// let output = if cfg!(target_os = "windows") {
@@ -1249,6 +1249,7 @@ impl Command {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::ffi::OsStr;
     /// use std::process::Command;
     ///
@@ -1283,6 +1284,7 @@ impl Command {
     ///
     /// ```
     /// #![feature(command_resolved_envs)]
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::process::Command;
     /// use std::ffi::{OsString, OsStr};
     /// use std::env;
@@ -1509,7 +1511,7 @@ impl Output {
     /// ```
     /// # #![allow(unused_features)]
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests)))] {
     /// use std::process::Command;
     /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
     /// # }
@@ -1856,7 +1858,7 @@ impl From<io::Stdout> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1885,7 +1887,7 @@ impl From<io::Stderr> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1957,7 +1959,7 @@ impl ExitStatus {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// use std::process::Command;
     ///
     /// let status = Command::new("ls")
@@ -2060,7 +2062,7 @@ impl fmt::Display for ExitStatus {
 ///
 /// ```
 /// #![feature(exit_status_error)]
-/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
 /// use std::process::{Command, ExitStatusError};
 ///
 /// fn run(cmd: &str) -> Result<(), ExitStatusError> {
@@ -2104,7 +2106,7 @@ impl ExitStatusError {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests)))] {
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
@@ -2129,7 +2131,7 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     ///
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// use std::num::NonZero;
     /// use std::process::Command;
     ///
