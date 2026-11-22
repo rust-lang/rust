@@ -34,7 +34,7 @@ declare_lint! {
     /// mutable.
     INVALID_REFERENCE_CASTING,
     Deny,
-    "casts of `&T` to `&mut T` without interior mutability"
+    "casts of `&T` to `&mut T` without interior mutability",
 }
 
 declare_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);

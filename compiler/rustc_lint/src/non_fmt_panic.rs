@@ -40,8 +40,8 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "panic-macro-consistency"),
         explain_reason: false,
-    };
-    report_in_external_macro
+    },
+    @in_external_macro = Report,
 }
 
 declare_lint_pass!(NonPanicFmt => [NON_FMT_PANICS]);

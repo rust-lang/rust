@@ -49,7 +49,7 @@ declare_lint! {
     /// to resolve it.
     IMPROPER_CTYPES,
     Warn,
-    "proper use of libc types in foreign modules"
+    "proper use of libc types in foreign modules",
 }
 
 declare_lint! {
@@ -76,7 +76,7 @@ declare_lint! {
     /// on how to resolve it.
     IMPROPER_CTYPES_DEFINITIONS,
     Warn,
-    "proper use of libc types in foreign item definitions"
+    "proper use of libc types in foreign item definitions",
 }
 
 declare_lint! {
@@ -131,7 +131,7 @@ declare_lint! {
     /// Thus, a warning is produced for the above struct.
     USES_POWER_ALIGNMENT,
     Warn,
-    "Structs do not follow the power alignment rule under repr(C)"
+    "Structs do not follow the power alignment rule under repr(C)",
 }
 
 /// Remembers types we already checked and found FFI-safe, so we don't check the

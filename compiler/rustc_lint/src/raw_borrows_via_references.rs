@@ -46,7 +46,7 @@ declare_lint! {
     pub RAW_BORROWS_VIA_REFERENCES,
     // FIXME: This should eventually be `Warn`, see the "Explanation" above.
     Allow,
-    "creating raw borrows via references is discouraged"
+    "creating raw borrows via references is discouraged",
 }
 
 declare_lint_pass!(RawBorrowsViaReferences => [RAW_BORROWS_VIA_REFERENCES]);

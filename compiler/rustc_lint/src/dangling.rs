@@ -41,7 +41,7 @@ declare_lint! {
     /// as they are statically verified by the borrow-checker to never dangle.
     pub DANGLING_POINTERS_FROM_TEMPORARIES,
     Warn,
-    "detects getting a pointer from a temporary"
+    "detects getting a pointer from a temporary",
 }
 
 declare_lint! {
@@ -71,7 +71,7 @@ declare_lint! {
     /// as they are statically verified by the borrow-checker to never dangle.
     pub DANGLING_POINTERS_FROM_LOCALS,
     Warn,
-    "detects returning a pointer from a local variable"
+    "detects returning a pointer from a local variable",
 }
 
 /// FIXME: false negatives (i.e. the lint is not emitted when it should be)

@@ -112,7 +112,8 @@ impl AllocFnFactory<'_, '_> {
         };
         thin_vec![
             self.cx.attr_word(sym::rustc_std_internal_symbol, self.span),
-            self.cx.attr_word(alloc_attr, self.span)
+            self.cx.attr_word(alloc_attr, self.span),
+            self.cx.attr_nested_word(sym::allow, sym::unsafe_op_in_unsafe_fn, self.span),
         ]
     }
 

@@ -10,6 +10,8 @@
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
+#![allow(unsafe_op_in_unsafe_fn)]
+
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
