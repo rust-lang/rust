@@ -7,6 +7,7 @@
 
 //@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=branch -Zno-profiler-runtime
+//@ ignore-backends: gcc
 
 // EMIT_MIR instrument_coverage_cleanup.main.InstrumentCoverage.diff
 // EMIT_MIR instrument_coverage_cleanup.main.CleanupPostBorrowck.diff

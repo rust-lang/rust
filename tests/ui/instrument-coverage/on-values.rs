@@ -7,5 +7,6 @@
 //@ [on] compile-flags: -Cinstrument-coverage=on
 //@ [true_] compile-flags: -Cinstrument-coverage=true
 //@ [all] compile-flags: -Cinstrument-coverage=all
+//@ ignore-backends: gcc
 
 fn main() {}

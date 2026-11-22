@@ -1,2 +1,2 @@
-error: using -Zllvm-tpde with LTO enabled is not supported
+error: required feature `fat LTO` not supported by codegen backend
 

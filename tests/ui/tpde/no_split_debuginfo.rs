@@ -11,6 +11,6 @@
 //@[packed] compile-flags: -Csplit-debuginfo=packed
 //@[unpacked] compile-flags: -Csplit-debuginfo=unpacked
 
-//[packed,unpacked]~? ERROR: using -Zllvm-tpde with split debuginfo is not supported
+//[packed,unpacked]~? ERROR: required feature `split debuginfo` not supported by codegen backend
 
 fn main() {}

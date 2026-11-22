@@ -1,2 +1,2 @@
-error: using -Zllvm-tpde with split debuginfo is not supported
+error: required feature `split debuginfo` not supported by codegen backend
 

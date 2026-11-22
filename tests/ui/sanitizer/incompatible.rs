@@ -1,5 +1,6 @@
 //@ compile-flags: -Z sanitizer=address -Z sanitizer=memory --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

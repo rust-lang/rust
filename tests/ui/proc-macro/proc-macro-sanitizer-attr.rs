@@ -1,6 +1,7 @@
 //@ compile-flags: -Z sanitizer=address
 //@ force-host
 //@ needs-sanitizer-support
+//@ ignore-backends: gcc
 
 #![crate_type = "proc-macro"]
 
