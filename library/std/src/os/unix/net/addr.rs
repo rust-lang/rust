@@ -80,6 +80,7 @@ enum AddressKind<'a> {
 ///
 #[cfg_attr(target_family = "unix", doc = "```")]
 #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// # if cfg!(skip_unsupported_miri_tests) { return; }
 /// use std::os::unix::net::UnixListener;
 ///
 /// let socket = match UnixListener::bind("/tmp/sock") {
@@ -204,6 +205,7 @@ impl SocketAddr {
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let socket = UnixDatagram::unbound()?;
     ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), true);
@@ -242,6 +244,7 @@ impl SocketAddr {
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let socket = UnixDatagram::unbound()?;
     ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), None);
