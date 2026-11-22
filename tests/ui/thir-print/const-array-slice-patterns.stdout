@@ -1,0 +1,864 @@
+DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY):
+Thir {
+    body_type: Const(
+        [u8; 4_usize],
+    ),
+    loop_hint_attrs: {},
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            1,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:10:25: 10:26 (#0),
+                },
+                neg: false,
+            },
+            ty: u8,
+            temp_scope_id: 8,
+            span: $DIR/const-array-slice-patterns.rs:10:25: 10:26 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(8),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).8),
+                value: e0,
+            },
+            ty: u8,
+            temp_scope_id: 8,
+            span: $DIR/const-array-slice-patterns.rs:10:25: 10:26 (#0),
+        },
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            2,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:10:28: 10:29 (#0),
+                },
+                neg: false,
+            },
+            ty: u8,
+            temp_scope_id: 9,
+            span: $DIR/const-array-slice-patterns.rs:10:28: 10:29 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(9),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).9),
+                value: e2,
+            },
+            ty: u8,
+            temp_scope_id: 9,
+            span: $DIR/const-array-slice-patterns.rs:10:28: 10:29 (#0),
+        },
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            3,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:10:31: 10:32 (#0),
+                },
+                neg: false,
+            },
+            ty: u8,
+            temp_scope_id: 10,
+            span: $DIR/const-array-slice-patterns.rs:10:31: 10:32 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(10),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).10),
+                value: e4,
+            },
+            ty: u8,
+            temp_scope_id: 10,
+            span: $DIR/const-array-slice-patterns.rs:10:31: 10:32 (#0),
+        },
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            4,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:10:34: 10:35 (#0),
+                },
+                neg: false,
+            },
+            ty: u8,
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:10:34: 10:35 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(11),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).11),
+                value: e6,
+            },
+            ty: u8,
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:10:34: 10:35 (#0),
+        },
+        Expr {
+            kind: Array {
+                fields: [
+                    e1,
+                    e3,
+                    e5,
+                    e7,
+                ],
+            },
+            ty: [u8; 4_usize],
+            temp_scope_id: 7,
+            span: $DIR/const-array-slice-patterns.rs:10:24: 10:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(7),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).7),
+                value: e8,
+            },
+            ty: [u8; 4_usize],
+            temp_scope_id: 7,
+            span: $DIR/const-array-slice-patterns.rs:10:24: 10:36 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:4 ~ const_array_slice_patterns[8ec1]::ARRAY::{constant#0}):
+Thir {
+    body_type: Const(
+        usize,
+    ),
+    loop_hint_attrs: {},
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            4,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:10:19: 10:20 (#0),
+                },
+                neg: false,
+            },
+            ty: usize,
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:10:19: 10:20 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(4),
+                hir_id: HirId(DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY).4),
+                value: e0,
+            },
+            ty: usize,
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:10:19: 10:20 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:5 ~ const_array_slice_patterns[8ec1]::SLICE):
+Thir {
+    body_type: Const(
+        &'{erased} [u8],
+    ),
+    loop_hint_attrs: {},
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: ByteStr(
+                        [
+                            65,
+                            66,
+                            67,
+                            68,
+                        ],
+                        Cooked,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+                },
+                neg: false,
+            },
+            ty: &'{erased} [u8; 4_usize],
+            temp_scope_id: 6,
+            span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+        },
+        Expr {
+            kind: Deref {
+                arg: e0,
+            },
+            ty: [u8; 4_usize],
+            temp_scope_id: 6,
+            span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+        },
+        Expr {
+            kind: Borrow {
+                borrow_kind: Shared,
+                arg: e1,
+            },
+            ty: &'{erased} [u8; 4_usize],
+            temp_scope_id: 6,
+            span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+        },
+        Expr {
+            kind: PointerCoercion {
+                cast: Unsize,
+                source: e2,
+                is_from_as_cast: false,
+            },
+            ty: &'{erased} [u8],
+            temp_scope_id: 6,
+            span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(6),
+                hir_id: HirId(DefId(0:5 ~ const_array_slice_patterns[8ec1]::SLICE).6),
+                value: e3,
+            },
+            ty: &'{erased} [u8],
+            temp_scope_id: 6,
+            span: $DIR/const-array-slice-patterns.rs:11:22: 11:29 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:6 ~ const_array_slice_patterns[8ec1]::array):
+Thir {
+    body_type: Fn(
+        fn([u8; 4_usize]),
+    ),
+    loop_hint_attrs: {},
+    arms: [
+        Arm {
+            pattern: Pat {
+                ty: [u8; 4_usize],
+                span: $DIR/const-array-slice-patterns.rs:15:9: 15:14 (#0),
+                extra: Some(
+                    PatExtra {
+                        expanded_const: Some(
+                            Free {
+                                def_id: DefId(0:3 ~ const_array_slice_patterns[8ec1]::ARRAY),
+                            },
+                        ),
+                        expanded_const_value: Some(
+                            Value {
+                                ty: [u8; 4_usize],
+                                valtree: Branch(
+                                    [
+                                        1_u8,
+                                        2_u8,
+                                        3_u8,
+                                        4_u8,
+                                    ],
+                                ),
+                            },
+                        ),
+                        ascriptions: [],
+                    },
+                ),
+                kind: Array {
+                    prefix: [
+                        Pat {
+                            ty: u8,
+                            span: $DIR/const-array-slice-patterns.rs:15:9: 15:14 (#0),
+                            extra: None,
+                            kind: Constant {
+                                value: Value {
+                                    ty: u8,
+                                    valtree: Leaf(
+                                        0x01,
+                                    ),
+                                },
+                            },
+                        },
+                        Pat {
+                            ty: u8,
+                            span: $DIR/const-array-slice-patterns.rs:15:9: 15:14 (#0),
+                            extra: None,
+                            kind: Constant {
+                                value: Value {
+                                    ty: u8,
+                                    valtree: Leaf(
+                                        0x02,
+                                    ),
+                                },
+                            },
+                        },
+                        Pat {
+                            ty: u8,
+                            span: $DIR/const-array-slice-patterns.rs:15:9: 15:14 (#0),
+                            extra: None,
+                            kind: Constant {
+                                value: Value {
+                                    ty: u8,
+                                    valtree: Leaf(
+                                        0x03,
+                                    ),
+                                },
+                            },
+                        },
+                        Pat {
+                            ty: u8,
+                            span: $DIR/const-array-slice-patterns.rs:15:9: 15:14 (#0),
+                            extra: None,
+                            kind: Constant {
+                                value: Value {
+                                    ty: u8,
+                                    valtree: Leaf(
+                                        0x04,
+                                    ),
+                                },
+                            },
+                        },
+                    ],
+                    slice: None,
+                    suffix: [],
+                },
+            },
+            guard: None,
+            body: e3,
+            hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).10),
+            scope: Node(10),
+            span: $DIR/const-array-slice-patterns.rs:15:9: 15:20 (#0),
+        },
+        Arm {
+            pattern: Pat {
+                ty: [u8; 4_usize],
+                span: $DIR/const-array-slice-patterns.rs:16:9: 16:10 (#0),
+                extra: None,
+                kind: Wild,
+            },
+            guard: None,
+            body: e5,
+            hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).14),
+            scope: Node(14),
+            span: $DIR/const-array-slice-patterns.rs:16:9: 16:16 (#0),
+        },
+    ],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(12),
+            span: $DIR/const-array-slice-patterns.rs:15:18: 15:20 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(16),
+            span: $DIR/const-array-slice-patterns.rs:16:14: 16:16 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(3),
+            span: $DIR/const-array-slice-patterns.rs:13:26: 18:2 (#0),
+            stmts: [],
+            expr: Some(
+                e7,
+            ),
+            safety_mode: Safe,
+        },
+    ],
+    exprs: [
+        Expr {
+            kind: VarRef {
+                id: LocalVarId(
+                    HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).2),
+                ),
+            },
+            ty: [u8; 4_usize],
+            temp_scope_id: 5,
+            span: $DIR/const-array-slice-patterns.rs:14:11: 14:12 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(5),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).5),
+                value: e0,
+            },
+            ty: [u8; 4_usize],
+            temp_scope_id: 5,
+            span: $DIR/const-array-slice-patterns.rs:14:11: 14:12 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b0,
+            },
+            ty: (),
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:15:18: 15:20 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(11),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).11),
+                value: e2,
+            },
+            ty: (),
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:15:18: 15:20 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b1,
+            },
+            ty: (),
+            temp_scope_id: 15,
+            span: $DIR/const-array-slice-patterns.rs:16:14: 16:16 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(15),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).15),
+                value: e4,
+            },
+            ty: (),
+            temp_scope_id: 15,
+            span: $DIR/const-array-slice-patterns.rs:16:14: 16:16 (#0),
+        },
+        Expr {
+            kind: Match {
+                scrutinee: e1,
+                arms: [
+                    a0,
+                    a1,
+                ],
+                match_source: Normal,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:14:5: 17:6 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(4),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).4),
+                value: e6,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:14:5: 17:6 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b2,
+            },
+            ty: (),
+            temp_scope_id: 17,
+            span: $DIR/const-array-slice-patterns.rs:13:26: 18:2 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(17),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).17),
+                value: e8,
+            },
+            ty: (),
+            temp_scope_id: 17,
+            span: $DIR/const-array-slice-patterns.rs:13:26: 18:2 (#0),
+        },
+    ],
+    stmts: [],
+    params: [
+        Param {
+            pat: Some(
+                Pat {
+                    ty: [u8; 4_usize],
+                    span: $DIR/const-array-slice-patterns.rs:13:14: 13:15 (#0),
+                    extra: None,
+                    kind: Binding {
+                        name: "x",
+                        mode: BindingMode(
+                            No,
+                            Not,
+                        ),
+                        var: LocalVarId(
+                            HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).2),
+                        ),
+                        ty: [u8; 4_usize],
+                        subpattern: None,
+                        is_primary: true,
+                        is_shorthand: false,
+                    },
+                },
+            ),
+            ty: [u8; 4_usize],
+            ty_span: Some(
+                $DIR/const-array-slice-patterns.rs:13:17: 13:24 (#0),
+            ),
+            self_kind: None,
+            hir_id: Some(
+                HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).1),
+            ),
+        },
+    ],
+}
+
+DefId(0:7 ~ const_array_slice_patterns[8ec1]::array::{constant#0}):
+Thir {
+    body_type: Const(
+        usize,
+    ),
+    loop_hint_attrs: {},
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Literal {
+                lit: Spanned {
+                    node: Int(
+                        Pu128(
+                            4,
+                        ),
+                        Unsuffixed,
+                    ),
+                    span: $DIR/const-array-slice-patterns.rs:13:22: 13:23 (#0),
+                },
+                neg: false,
+            },
+            ty: usize,
+            temp_scope_id: 21,
+            span: $DIR/const-array-slice-patterns.rs:13:22: 13:23 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(21),
+                hir_id: HirId(DefId(0:6 ~ const_array_slice_patterns[8ec1]::array).21),
+                value: e0,
+            },
+            ty: usize,
+            temp_scope_id: 21,
+            span: $DIR/const-array-slice-patterns.rs:13:22: 13:23 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice):
+Thir {
+    body_type: Fn(
+        fn(&'{erased} [u8]),
+    ),
+    loop_hint_attrs: {},
+    arms: [
+        Arm {
+            pattern: Pat {
+                ty: &'{erased} [u8],
+                span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                extra: Some(
+                    PatExtra {
+                        expanded_const: Some(
+                            Free {
+                                def_id: DefId(0:5 ~ const_array_slice_patterns[8ec1]::SLICE),
+                            },
+                        ),
+                        expanded_const_value: None,
+                        ascriptions: [],
+                    },
+                ),
+                kind: Deref {
+                    pin: Not,
+                    subpattern: Pat {
+                        ty: [u8],
+                        span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                        extra: Some(
+                            PatExtra {
+                                expanded_const: None,
+                                expanded_const_value: Some(
+                                    Value {
+                                        ty: [u8],
+                                        valtree: Branch(
+                                            [
+                                                65_u8,
+                                                66_u8,
+                                                67_u8,
+                                                68_u8,
+                                            ],
+                                        ),
+                                    },
+                                ),
+                                ascriptions: [],
+                            },
+                        ),
+                        kind: Slice {
+                            prefix: [
+                                Pat {
+                                    ty: u8,
+                                    span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                                    extra: None,
+                                    kind: Constant {
+                                        value: Value {
+                                            ty: u8,
+                                            valtree: Leaf(
+                                                0x41,
+                                            ),
+                                        },
+                                    },
+                                },
+                                Pat {
+                                    ty: u8,
+                                    span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                                    extra: None,
+                                    kind: Constant {
+                                        value: Value {
+                                            ty: u8,
+                                            valtree: Leaf(
+                                                0x42,
+                                            ),
+                                        },
+                                    },
+                                },
+                                Pat {
+                                    ty: u8,
+                                    span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                                    extra: None,
+                                    kind: Constant {
+                                        value: Value {
+                                            ty: u8,
+                                            valtree: Leaf(
+                                                0x43,
+                                            ),
+                                        },
+                                    },
+                                },
+                                Pat {
+                                    ty: u8,
+                                    span: $DIR/const-array-slice-patterns.rs:22:9: 22:14 (#0),
+                                    extra: None,
+                                    kind: Constant {
+                                        value: Value {
+                                            ty: u8,
+                                            valtree: Leaf(
+                                                0x44,
+                                            ),
+                                        },
+                                    },
+                                },
+                            ],
+                            slice: None,
+                            suffix: [],
+                        },
+                    },
+                },
+            },
+            guard: None,
+            body: e3,
+            hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).10),
+            scope: Node(10),
+            span: $DIR/const-array-slice-patterns.rs:22:9: 22:20 (#0),
+        },
+        Arm {
+            pattern: Pat {
+                ty: &'{erased} [u8],
+                span: $DIR/const-array-slice-patterns.rs:23:9: 23:10 (#0),
+                extra: None,
+                kind: Wild,
+            },
+            guard: None,
+            body: e5,
+            hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).14),
+            scope: Node(14),
+            span: $DIR/const-array-slice-patterns.rs:23:9: 23:16 (#0),
+        },
+    ],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(12),
+            span: $DIR/const-array-slice-patterns.rs:22:18: 22:20 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(16),
+            span: $DIR/const-array-slice-patterns.rs:23:14: 23:16 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(3),
+            span: $DIR/const-array-slice-patterns.rs:20:24: 25:2 (#0),
+            stmts: [],
+            expr: Some(
+                e7,
+            ),
+            safety_mode: Safe,
+        },
+    ],
+    exprs: [
+        Expr {
+            kind: VarRef {
+                id: LocalVarId(
+                    HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).2),
+                ),
+            },
+            ty: &'{erased} [u8],
+            temp_scope_id: 5,
+            span: $DIR/const-array-slice-patterns.rs:21:11: 21:12 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(5),
+                hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).5),
+                value: e0,
+            },
+            ty: &'{erased} [u8],
+            temp_scope_id: 5,
+            span: $DIR/const-array-slice-patterns.rs:21:11: 21:12 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b0,
+            },
+            ty: (),
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:22:18: 22:20 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(11),
+                hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).11),
+                value: e2,
+            },
+            ty: (),
+            temp_scope_id: 11,
+            span: $DIR/const-array-slice-patterns.rs:22:18: 22:20 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b1,
+            },
+            ty: (),
+            temp_scope_id: 15,
+            span: $DIR/const-array-slice-patterns.rs:23:14: 23:16 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(15),
+                hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).15),
+                value: e4,
+            },
+            ty: (),
+            temp_scope_id: 15,
+            span: $DIR/const-array-slice-patterns.rs:23:14: 23:16 (#0),
+        },
+        Expr {
+            kind: Match {
+                scrutinee: e1,
+                arms: [
+                    a0,
+                    a1,
+                ],
+                match_source: Normal,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:21:5: 24:6 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(4),
+                hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).4),
+                value: e6,
+            },
+            ty: (),
+            temp_scope_id: 4,
+            span: $DIR/const-array-slice-patterns.rs:21:5: 24:6 (#0),
+        },
+        Expr {
+            kind: Block {
+                block: b2,
+            },
+            ty: (),
+            temp_scope_id: 17,
+            span: $DIR/const-array-slice-patterns.rs:20:24: 25:2 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(17),
+                hir_id: HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).17),
+                value: e8,
+            },
+            ty: (),
+            temp_scope_id: 17,
+            span: $DIR/const-array-slice-patterns.rs:20:24: 25:2 (#0),
+        },
+    ],
+    stmts: [],
+    params: [
+        Param {
+            pat: Some(
+                Pat {
+                    ty: &'{erased} [u8],
+                    span: $DIR/const-array-slice-patterns.rs:20:14: 20:15 (#0),
+                    extra: None,
+                    kind: Binding {
+                        name: "x",
+                        mode: BindingMode(
+                            No,
+                            Not,
+                        ),
+                        var: LocalVarId(
+                            HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).2),
+                        ),
+                        ty: &'{erased} [u8],
+                        subpattern: None,
+                        is_primary: true,
+                        is_shorthand: false,
+                    },
+                },
+            ),
+            ty: &'{erased} [u8],
+            ty_span: Some(
+                $DIR/const-array-slice-patterns.rs:20:17: 20:22 (#0),
+            ),
+            self_kind: None,
+            hir_id: Some(
+                HirId(DefId(0:8 ~ const_array_slice_patterns[8ec1]::slice).1),
+            ),
+        },
+    ],
+}
+
