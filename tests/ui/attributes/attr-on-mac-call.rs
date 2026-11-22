@@ -6,8 +6,7 @@
 
 fn main() {
     #[export_name = "x"]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
     #[unsafe(naked)]
     //~^ WARN attribute cannot be used on macro calls

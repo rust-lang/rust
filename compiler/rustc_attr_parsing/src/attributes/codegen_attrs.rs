@@ -122,12 +122,7 @@ impl SingleAttributeParser for ExportNameParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = AttributeStability::Stable;
