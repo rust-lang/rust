@@ -85,6 +85,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let ecx = self.eval_context_mut();
 
+        // There may be delayed callbacks we have to process, which should run ASAP.
+        DelayedCallbacks::process(ecx)?;
+
         // In GenMC mode, we let GenMC do the scheduling.
         if ecx.machine.data_race.as_genmc_ref().is_some() {
             loop {
@@ -121,9 +124,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // The active thread yielded or got terminated. Let's see if there are any I/O events
         // or timeouts to take care of.
-
-        // There may be delayed callbacks we have to process, which may unblock more threads.
-        DelayedCallbacks::process(ecx)?;
 
         if ecx.machine.communicate() {
             // When isolation is disabled we need to check for events for threads
