@@ -30,7 +30,6 @@ dependencies = [
  "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
- "rustc_tools_util",
  "rustc_version",
  "serde",
  "serde_json",
@@ -227,12 +226,6 @@ dependencies = [
  "toml",
  "walkdir",
 ]
-
-[[package]]
-name = "rustc_tools_util"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3b75158011a63889ba12084cf1224baad7bcad50f6ee7c842f772b74aa148ed"
 
 [[package]]
 name = "rustc_version"
