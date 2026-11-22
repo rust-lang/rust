@@ -5,6 +5,7 @@
     "arch": "x86_64",
     "os": "linux",
     "metadata": {
+        "std": true,
         "standard_library_support": {
             "default": [
                 "core",

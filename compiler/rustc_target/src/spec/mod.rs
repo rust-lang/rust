@@ -2086,6 +2086,10 @@ impl StdSupport {
         };
         StdSupport { supported: StaticCow::Borrowed(crates), default: StaticCow::Borrowed(crates) }
     }
+
+    pub fn is_std_supported(&self) -> bool {
+        matches!(self.supported.as_ref(), [StdCrate::Core, StdCrate::Alloc, StdCrate::Std])
+    }
 }
 
 impl Target {

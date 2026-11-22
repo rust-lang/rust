@@ -752,6 +752,14 @@ impl Target {
                 standard_library_support.default <= standard_library_support.supported,
                 "`standard_library_support.default` can only be set to a value which is a subset of `supported`"
             );
+
+            // Make sure `metadata.std` and `metadata.standard_library_support` are
+            // consistent as long as `metadata.std` isn't fully removed.
+            check_eq!(
+                self.metadata.std,
+                Some(standard_library_support.is_std_supported()),
+                "metadata.standard_library_support and metadata.std are not consistent"
+            );
         }
 
         Ok(())
