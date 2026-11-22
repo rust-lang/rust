@@ -4,7 +4,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use rustc_errors::pluralize;
+use rustc_errors::{is_long_ty_path_suppressed, pluralize};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_macros::extension;
@@ -301,6 +301,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let short = self.string_with_limit(t, length_limit, namespace);
         if regular == short {
             return regular;
+        }
+        if is_long_ty_path_suppressed(path) {
+            return short;
         }
         // Ensure we create an unique file for the type passed in when we create a file.
         let mut s = DefaultHasher::new();
