@@ -12,7 +12,14 @@ fn not_quite_fshl(a: i64, b: i64, sh: i64) -> i64 {
     0
 }
 
+// Make sure we do not confuse this with the `breakpoint` intrinsic.
+#[rustc_intrinsic(llvm = "breakpoint")]
+#[miri::intrinsic_fallback_is_spec]
+fn breakpoint() {}
+
 fn main() {
     let res = not_quite_fshl(1, 2, 3);
     assert_eq!(res, 0);
+
+    breakpoint();
 }
