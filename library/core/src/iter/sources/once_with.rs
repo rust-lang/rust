@@ -58,6 +58,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// ```
 #[inline]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
+#[rustc_diagnostic_item = "iter_once_with"]
 pub fn once_with<A, F: FnOnce() -> A>(make: F) -> OnceWith<F> {
     OnceWith { make: Some(make) }
 }
