@@ -852,7 +852,7 @@ impl char {
     /// assert_eq!('中'.case(), None);
     /// ```
     #[must_use]
-    #[unstable(feature = "char_case", issue = "153892")]
+    #[unstable(feature = "char_case", issue = "166360")]
     #[inline]
     pub fn case(self) -> Option<CharCase> {
         match self {

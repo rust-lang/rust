@@ -574,7 +574,7 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the titlecase word as a new String, \
                   without modifying the original"]
-    #[unstable(feature = "word_to_titlecase", issue = "153892")]
+    #[unstable(feature = "word_to_titlecase", issue = "166361")]
     pub fn word_to_titlecase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         let mut chars = self.char_indices();
