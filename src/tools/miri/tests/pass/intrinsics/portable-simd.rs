@@ -21,6 +21,10 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 // small hack to make type inference better
 macro_rules! assert_eq {
     ($a:expr, $b:expr $(,$t:tt)* $(,)?) => {{
@@ -147,6 +151,22 @@ fn test_simd_ops_f16() {
         assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
         assert_eq!(simd_reduce_min(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
     }
+
+    // Ensure we do use non-deterministic NaN generation.
+    // Non-determinism tests do not make sense natively.
+    if cfg!(miri) {
+        let a = f16x2::splat(0.0);
+        let b = f16x2::splat(0.0);
+        let nan = f16x2::splat(f16::NAN);
+        check_nondet(|| {
+            let result = a / b;
+            result[0].to_bits() == result[1].to_bits()
+        });
+        check_nondet(|| {
+            let result = a + nan;
+            result[0].to_bits() == result[1].to_bits()
+        });
+    }
 }
 
 fn test_simd_ops_f32() {
@@ -221,6 +241,22 @@ fn test_simd_ops_f32() {
         assert_eq!(simd_reduce_min(f32x2::from_array([0.0, f32::NAN])), 0.0f32);
         assert_eq!(simd_reduce_min(f32x2::from_array([f32::NAN, 0.0])), 0.0f32);
     }
+
+    // Ensure we do use non-deterministic NaN generation.
+    // Non-determinism tests do not make sense natively.
+    if cfg!(miri) {
+        let a = f32x2::splat(0.0);
+        let b = f32x2::splat(0.0);
+        let nan = f32x2::splat(f32::NAN);
+        check_nondet(|| {
+            let result = a / b;
+            result[0].to_bits() == result[1].to_bits()
+        });
+        check_nondet(|| {
+            let result = a + nan;
+            result[0].to_bits() == result[1].to_bits()
+        });
+    }
 }
 
 fn test_simd_ops_f64() {
@@ -294,6 +330,22 @@ fn test_simd_ops_f64() {
 
         assert_eq!(simd_reduce_min(f64x2::from_array([0.0, f64::NAN])), 0.0f64);
         assert_eq!(simd_reduce_min(f64x2::from_array([f64::NAN, 0.0])), 0.0f64);
+    }
+
+    // Ensure we do use non-deterministic NaN generation.
+    // Non-determinism tests do not make sense natively.
+    if cfg!(miri) {
+        let a = f64x2::splat(0.0);
+        let b = f64x2::splat(0.0);
+        let nan = f64x2::splat(f64::NAN);
+        check_nondet(|| {
+            let result = a / b;
+            result[0].to_bits() == result[1].to_bits()
+        });
+        check_nondet(|| {
+            let result = a + nan;
+            result[0].to_bits() == result[1].to_bits()
+        });
     }
 }
 
@@ -381,6 +433,22 @@ fn test_simd_ops_f128() {
 
             assert_eq!(simd_reduce_min(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
             assert_eq!(simd_reduce_min(f128x2::from_array([f128::NAN, 0.0])), 0.0f128);
+        }
+
+        // Ensure we do use non-deterministic NaN generation.
+        // Non-determinism tests do not make sense natively.
+        if cfg!(miri) {
+            let a = f128x2::splat(0.0);
+            let b = f128x2::splat(0.0);
+            let nan = f128x2::splat(f128::NAN);
+            check_nondet(|| {
+                let result = simd_div(a, b).into_array();
+                result[0].to_bits() == result[1].to_bits()
+            });
+            check_nondet(|| {
+                let result = simd_add(a, nan).into_array();
+                result[0].to_bits() == result[1].to_bits()
+            });
         }
     }
 }
@@ -984,17 +1052,24 @@ fn test_simd_intrinsics() {
 }
 
 fn test_simd_float_intrinsics() {
+    if !cfg!(miri) {
+        // The non-determinism tests don't work natively.
+        return;
+    }
+
     // These are just smoke tests to ensure the intrinsics can be called.
     unsafe {
-        let a = f16x8::splat(10.0);
+        let a = f16x2::splat(10.0);
         simd_fsqrt(a);
-        simd_fsin(a);
-        simd_fcos(a);
-        simd_fexp(a);
-        simd_fexp2(a);
-        simd_flog(a);
-        simd_flog2(a);
-        simd_flog10(a);
+        // These ones are non-deterministic.
+        let elems_eq = |x: f16x2| x[0] == x[1];
+        check_nondet(|| elems_eq(simd_fsin(a)));
+        check_nondet(|| elems_eq(simd_fcos(a)));
+        check_nondet(|| elems_eq(simd_fexp(a)));
+        check_nondet(|| elems_eq(simd_fexp2(a)));
+        check_nondet(|| elems_eq(simd_flog(a)));
+        check_nondet(|| elems_eq(simd_flog2(a)));
+        check_nondet(|| elems_eq(simd_flog10(a)));
     }
 
     unsafe {
