@@ -425,3 +425,21 @@ mod issue16579 {
         //~^^^^ single_match
     }
 }
+
+fn issue16826() {
+    let i = 2;
+    if i == 1 {
+        println!("{i}")
+    }
+    //~^^^^^^ single_match
+
+    if i != 1 {
+        println!("{i}")
+    }
+    //~^^^^^^ single_match
+
+    if i == 1 {
+        println!("{i}")
+    }
+    //~^^^^^^ single_match
+}
