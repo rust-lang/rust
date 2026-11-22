@@ -35,7 +35,7 @@
 
 cfg_select! {
     any(
-        all(target_family = "wasm", not(target_feature = "atomics"), not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_feature = "atomics"), not(target_env = "p3")),
         target_os = "uefi",
         target_os = "zkvm",
         target_os = "trusty",
@@ -66,7 +66,7 @@ cfg_select! {
 /// single callback that runs all of the destructors in the list.
 #[cfg(all(
     target_thread_local,
-    not(all(target_family = "wasm", not(target_feature = "atomics"), not(target_os = "wasi")))
+    not(all(target_family = "wasm", not(target_feature = "atomics"), not(target_env = "p3")))
 ))]
 pub(crate) mod destructors {
     cfg_select! {
@@ -114,7 +114,13 @@ pub(crate) mod guard {
             pub(crate) use retained::{LOCAL_POINTER_NEEDS_DTOR, cleanup_pending};
         }
         any(
-            all(target_family = "wasm", not(target_os = "wasi")),
+            all(
+                target_family = "wasm",
+                not(all(
+                    target_os = "wasi",
+                    any(target_env = "p3", all(target_env = "p1", target_feature = "atomics")),
+                )),
+            ),
             target_os = "uefi",
             target_os = "zkvm",
             target_os = "trusty",
@@ -168,7 +174,10 @@ pub(crate) mod key {
             all(not(target_vendor = "apple"), not(target_family = "wasm"), target_family = "unix"),
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",
-            target_os = "wasi",
+            all(
+                target_os = "wasi",
+                any(target_env = "p3", all(target_env = "p1", target_feature = "atomics")),
+            ),
         ) => {
             mod racy;
             mod unix;
