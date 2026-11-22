@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/array-literal-len-mismatch-nested.rs:6:5
+   |
+LL |     [0],
+   |     ^^^ expected an array with a size of 2, found one with a size of 1
+   |
+help: consider specifying the actual array length
+   |
+LL - const ARR: [[usize; 2]; 2] = [
+LL + const ARR: [[usize; 2]; 1] = [
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/array-literal-len-mismatch-nested.rs:13:9
+   |
+LL |         [0],
+   |         ^^^ expected an array with a size of 2, found one with a size of 1
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
