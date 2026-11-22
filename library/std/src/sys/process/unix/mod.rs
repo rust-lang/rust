@@ -38,6 +38,7 @@ pub use imp::{ExitStatus, ExitStatusError, Process};
 pub use pidfd::PidFd;
 
 pub use self::common::{
-    ChildPipe, Command, CommandArgs, ExitCode, Stdio, getpid, getppid, read_output,
+    ChildPipe, Command, CommandArgs, ExitCode, Stdio, getegid, geteuid, getgid, getpid, getppid,
+    getuid, read_output,
 };
 pub use crate::ffi::OsString as EnvKey;

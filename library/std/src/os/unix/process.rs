@@ -827,3 +827,71 @@ impl From<OwnedFd> for process::ChildStderr {
 pub fn parent_id() -> u32 {
     crate::sys::process::getppid()
 }
+
+/// Returns the real user ID of the current process.
+///
+/// # Examples
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// println!("Real user ID: {}", process::uid());
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn uid() -> u32 {
+    crate::sys::process::getuid()
+}
+
+/// Returns the effective user ID of the current process.
+///
+/// # Examples
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// println!("Effective user ID: {}", process::effective_uid());
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn effective_uid() -> u32 {
+    crate::sys::process::geteuid()
+}
+
+/// Returns the real group ID of the current process.
+///
+/// # Examples
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// println!("Real group ID: {}", process::gid());
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn gid() -> u32 {
+    crate::sys::process::getgid()
+}
+
+/// Returns the effective group ID of the current process.
+///
+/// # Examples
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// println!("Effective group ID: {}", process::effective_gid());
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn effective_gid() -> u32 {
+    crate::sys::process::getegid()
+}
