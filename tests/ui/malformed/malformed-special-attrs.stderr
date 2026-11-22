@@ -1,5 +1,5 @@
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/malformed-special-attrs.rs:3:3
+  --> $DIR/malformed-special-attrs.rs:1:3
    |
 LL | #[cfg_attr]
    |   ^^^^^^^^ expected this to be a list
@@ -11,7 +11,7 @@ LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/malformed-special-attrs.rs:6:3
+  --> $DIR/malformed-special-attrs.rs:4:3
    |
 LL | #[cfg_attr = ""]
    |   ^^^^^^^^^^^^^ expected this to be a list
@@ -24,7 +24,7 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error: malformed `derive` attribute input
-  --> $DIR/malformed-special-attrs.rs:9:1
+  --> $DIR/malformed-special-attrs.rs:7:1
    |
 LL | #[derive]
    | ^^^^^^^^^
@@ -35,7 +35,7 @@ LL | #[derive(Trait1, Trait2, ...)]
    |         +++++++++++++++++++++
 
 error: malformed `derive` attribute input
-  --> $DIR/malformed-special-attrs.rs:12:1
+  --> $DIR/malformed-special-attrs.rs:10:1
    |
 LL | #[derive = ""]
    | ^^^^^^^^^^^^^^

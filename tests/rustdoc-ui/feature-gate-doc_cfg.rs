@@ -1,16 +1,16 @@
 #![doc(auto_cfg)] //~ ERROR
 #![doc(auto_cfg(false))]
 //~^ ERROR
-//~| WARN
+//~| ERROR
 #![doc(auto_cfg(true))]
 //~^ ERROR
-//~| WARN
+//~| ERROR
 #![doc(auto_cfg(hide(feature = "solecism")))]
 //~^ ERROR
-//~| WARN
+//~| ERROR
 #![doc(auto_cfg(show(feature = "bla")))]
 //~^ ERROR
-//~| WARN
+//~| ERROR
 #![doc(cfg(feature = "solecism"))]
 //~^ ERROR
 //~| WARN

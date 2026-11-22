@@ -1,6 +1,3 @@
-#![deny(invalid_doc_attributes)]
-//~^ NOTE
-
 #[doc(include = "external-cross-doc.md")]
 //~^ ERROR unknown `doc` attribute `include`
 //~| HELP use `doc = include_str!` instead

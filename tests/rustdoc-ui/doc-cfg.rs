@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 #![feature(doc_cfg)]
 
 #[doc(cfg(), cfg(foo, bar))]

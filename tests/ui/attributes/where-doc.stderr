@@ -1,5 +1,5 @@
 error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:6:1
+  --> $DIR/where-doc.rs:5:1
    |
 LL | #[doc(alias = ":(")]
    | ^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[doc(alias = ":(")]
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
 error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:11:1
+  --> $DIR/where-doc.rs:10:1
    |
 LL | #[doc(hidden)]
    | ^^^^^^^^^^^^^^
@@ -15,18 +15,47 @@ LL | #[doc(hidden)]
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
 error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:15:1
+  --> $DIR/where-doc.rs:14:1
    |
 LL | #[doc = ""]
    | ^^^^^^^^^^^
    |
    = help: only `#[cfg]` and `#[cfg_attr]` are supported
 
+error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
+  --> $DIR/where-doc.rs:19:3
+   |
+LL | #[doc()]
+   |   ^^^^^
+
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/where-doc.rs:23:3
+   |
+LL | #[doc(5)]
+   |   ^^^^-^
+   |       |
+   |       expected this to be of the form `... = "..."`
+
+error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
+  --> $DIR/where-doc.rs:27:3
+   |
+LL | #[doc]
+   |   ^^^
+
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/where-doc.rs:31:3
+   |
+LL | #[doc = 5]
+   |   ^^^^^^-
+   |         |
+   |         expected a string literal here
+
 error: `#[doc(alias = "...")]` isn't allowed on where predicate
-  --> $DIR/where-doc.rs:6:15
+  --> $DIR/where-doc.rs:5:15
    |
 LL | #[doc(alias = ":(")]
    |               ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0539`.

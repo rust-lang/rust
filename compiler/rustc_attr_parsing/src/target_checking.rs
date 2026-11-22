@@ -6,8 +6,7 @@ use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
-    UNUSED_DOC_COMMENTS, USELESS_DEPRECATED,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS, USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -257,12 +256,7 @@ impl<'sess> AttributeParser<'sess> {
             .unwrap_or_default();
 
         if name == "doc" {
-            let diag = crate::diagnostics::AttrCrateLevelOnly { attr_span };
-            if warn {
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
-            } else {
-                cx.emit_err(diag);
-            }
+            cx.emit_err(crate::diagnostics::AttrCrateLevelOnly { attr_span });
             return;
         }
 

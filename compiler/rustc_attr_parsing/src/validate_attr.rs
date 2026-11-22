@@ -162,7 +162,7 @@ pub fn emit_malformed_attribute(
 ) {
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
+    let should_warn = |name| matches!(name, sym::link | sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];
@@ -193,8 +193,13 @@ pub fn emit_malformed_attribute(
             span,
             ast::CRATE_NODE_ID,
             move |dcx, level| {
-                crate::diagnostics::IllFormedAttributeInput::new(&suggestions, template.docs, None)
-                    .into_diag(dcx, level)
+                crate::diagnostics::IllFormedAttributeInput::new(
+                    None,
+                    &suggestions,
+                    template.docs,
+                    None,
+                )
+                .into_diag(dcx, level)
             },
         );
     } else {

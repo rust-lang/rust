@@ -1,5 +1,4 @@
 #![feature(where_clause_attrs)]
-#![allow(invalid_doc_attributes)]
 
 fn test()
 where
@@ -18,15 +17,19 @@ where
 
 // == That the doc attributes below don't trigger the error is a bug
 #[doc()]
+//~^ ERROR
 ():,
 
 #[doc(5)]
+//~^ ERROR
 ():,
 
 #[doc]
+//~^ ERROR
 ():,
 
 #[doc = 5]
+//~^ ERROR
 ():,
 
 { }

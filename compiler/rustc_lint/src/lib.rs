@@ -724,6 +724,10 @@ fn register_builtins(store: &mut LintStore) {
         "dependency_on_unit_never_type_fallback",
         "the code warned by this lint no longer compiles",
     );
+    store.register_removed(
+        "invalid_doc_attributes",
+        "converted into hard error, invalid doc attributes should not be allowed or ignored",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
