@@ -745,13 +745,14 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    #[cfg_attr(bootstrap, doc = "```rust,skip")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
     /// #![deny(duplicate_parameter_names)]
     /// pub trait Foo {
     ///     fn foo(x: usize, x: usize);
     /// }
     /// fn main() {}
-    /// ```
+    #[doc = "```"]
     ///
     /// {{produces}}
     ///
