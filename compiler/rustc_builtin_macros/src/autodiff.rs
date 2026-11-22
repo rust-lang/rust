@@ -14,8 +14,8 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
-        MetaItemInner, PatKind, TyKind, Visibility,
+        self as ast, FnRetTy, FnSig, GenericParamKind, Generics, ItemKind, MetaItemInner, PatKind,
+        TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -24,6 +24,7 @@ mod llvm_enzyme {
     use tracing::{debug, trace};
 
     use crate::diagnostics;
+    use crate::util::generic_param_to_arg;
 
     pub(crate) fn outer_normal_attr(
         kind: &Box<rustc_ast::NormalAttr>,
@@ -449,7 +450,7 @@ mod llvm_enzyme {
             Annotatable::Stmt(_) => {
                 let mut d_fn = ecx.item(span, d_attrs, ItemKind::Fn(d_fn));
                 d_fn.vis = vis;
-                Annotatable::Stmt(Box::new(ecx.stmt_item(span, d_fn)))
+                Annotatable::Stmt(ecx.stmt_item(span, d_fn))
             }
             _ => {
                 unreachable!("item kind checked previously")
@@ -577,16 +578,8 @@ mod llvm_enzyme {
             .params
             .iter()
             .filter_map(|p| match &p.kind {
-                GenericParamKind::Type { .. } => {
-                    let path = ast::Path::from_ident(p.ident);
-                    let ty = ecx.ty_path(path);
-                    Some(GenericArg::Type(ty))
-                }
-                GenericParamKind::Const { .. } => {
-                    let anon_const = ecx.const_ident(span, p.ident);
-                    Some(GenericArg::Const(anon_const))
-                }
                 GenericParamKind::Lifetime => None,
+                _ => Some(generic_param_to_arg(ecx, p, span)),
             })
             .collect::<Vec<_>>();
 
