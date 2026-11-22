@@ -818,6 +818,7 @@ impl From<OwnedFd> for process::ChildStderr {
 ///
 #[cfg_attr(target_family = "unix", doc = "```")]
 #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// # if cfg!(skip_unsupported_miri_tests) { return; }
 /// use std::os::unix::process;
 /// let parent = process::parent_id();
 /// println!("The parent process has ID {}", parent);
