@@ -27,6 +27,11 @@ pub fn test() {
     assert_eq(new("foo"), new("foo"));
     assert_ne(new("foo"), new_raw("foo"));
 
+    assert_eq!(new_raw("crate").to_string(), "r#crate");
+    assert_eq!(new_raw("self").to_string(), "r#self");
+    assert_eq!(new_raw("Self").to_string(), "r#Self");
+    assert_eq!(new_raw("super").to_string(), "r#super");
+
     assert_ne!(LATIN_CAPITAL_LETTER_K, KELVIN_SIGN);
     assert_eq(new(LATIN_CAPITAL_LETTER_K), new(KELVIN_SIGN));
     assert_eq(new_raw(LATIN_CAPITAL_LETTER_K), new_raw(KELVIN_SIGN));
