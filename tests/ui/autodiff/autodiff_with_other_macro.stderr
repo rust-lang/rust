@@ -1,0 +1,14 @@
+error: only builtin and autodiff attributes are supported on autodiff functions
+  --> $DIR/autodiff_with_other_macro.rs:13:1
+   |
+LL | fn foo() {}
+   | ^^^^^^^^^^^
+   |
+note: this attribute is not supported
+  --> $DIR/autodiff_with_other_macro.rs:12:1
+   |
+LL | #[forward_referenced_attr]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
