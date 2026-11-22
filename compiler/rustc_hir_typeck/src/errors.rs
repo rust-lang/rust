@@ -1060,8 +1060,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // *except* the one that was actually called. This would end up being an empty set
             // if there are no alternatives.
             for (parent, def_id, inherent) in impls.filter(|(_, did, _)| def_id != *did) {
+                // FIXME: use a better way to obtain appropriate GenericArgs for the inherent impl.
                 let gen_args = if let ty::Adt(_, args) = ty.peel_refs().kind()
                     && inherent
+                    && self.tcx.check_args_compatible(def_id, *args)
                 {
                     // We want the arguments of the *type* to be passed to the `impl ReceiverType`.
                     *args
