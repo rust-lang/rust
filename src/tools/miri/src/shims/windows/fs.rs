@@ -1,4 +1,4 @@
-use std::io::SeekFrom;
+use std::io::{Seek, SeekFrom};
 use std::time::SystemTime;
 use std::{fs, io};
 
@@ -226,7 +226,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut options = fs::OpenOptions::new();
             options.read(desired_read);
             options.write(desired_write);
-            let mut append = false;
             match creation_disposition {
                 CreateAlways | OpenAlways => {
                     // These two create the file if it is missing, but also succeed if it
@@ -237,6 +236,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // file to not exist, we use `create_new` to fail if it does exist.
                     if !exists_already {
                         options.create_new(true);
+                        // Per `create_new` documentation:
+                        // The file must be opened with write or append access in order to create a new file.
+                        // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
+                        // So we open it for writing anyway, to make creating the file work. Write
+                        // accesses will still be rejected because `writable` is not set on the
+                        // `FileHandle`.
+                        options.write(true);
                     }
                     if creation_disposition == CreateAlways {
                         options.truncate(true);
@@ -244,13 +250,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 CreateNew => {
                     options.create_new(true);
-                    // Per `create_new` documentation:
-                    // The file must be opened with write or append access in order to create a new file.
-                    // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
-                    if !desired_write {
-                        options.append(true);
-                        append = true;
-                    }
+                    // See above for why we need to also request write access.
+                    options.write(true);
                 }
                 OpenExisting => {
                     if !desired_read && !desired_write {
@@ -317,7 +318,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         file,
                         writable: desired_write,
                         readable: desired_read,
-                        append,
+                        append: false,
                     }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };
@@ -447,6 +448,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // "length" (called "EOF position") and "capacity" (called "allocation size").
             // Growing the allocation size is largely a performance hint which we can
             // ignore -- it can also be directly queried, but we currently do not support that.
+            // (Linux has something equivalent, `fallocate` with `FALLOC_FL_KEEP_SIZE`, but std does
+            // not expose it so we cannot easily use it.)
             // So we only need to do something if this operation shrinks the allocation size
             // so far that it affects the EOF position.
             let place =
@@ -456,8 +459,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .to_i64()?
                 .try_into()
                 .unwrap();
-            let old_len = match file.file.metadata() {
-                Ok(m) => m.len(),
+            let old_len = match (&file.file).stream_len() {
+                Ok(l) => l,
                 Err(e) => {
                     ecx.set_last_error(e)?;
                     return interp_ok(ecx.eval_windows("c", "FALSE"));
@@ -655,9 +658,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            ecx.write_int(0, &io_status_info)?;
+                            // Native testing indicates that `io_status_block` is not written here.
                             let status = e.into_ntstatus();
-                            ecx.write_int(status, &io_status)?;
                             ecx.write_int(status, &dest)
                         }
                 }}
@@ -755,9 +757,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            ecx.write_int(0, &io_status_info)?;
+                            // Native testing indicates that `io_status_block` is not written here.
                             let status = e.into_ntstatus();
-                            ecx.write_int(status, &io_status)?;
                             ecx.write_int(status, &dest)
                         }
                 }}

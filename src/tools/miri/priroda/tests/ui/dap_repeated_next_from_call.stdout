@@ -28,4 +28,4 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":14,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
 
-{"seq":15,"type":"response","request_seq":10,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())","source":{"name":"function.rs","path":"{RUSTC_SYSROOT}/lib/rustlib/src/rust/library/core/src/ops/function.rs","sourceReference":0},"line":250,"column":5}],"totalFrames":1},"error":null}
+{"seq":15,"type":"response","request_seq":10,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())","source":{"name":"function.rs","path":"RUSTLIB/core/src/ops/function.rs","sourceReference":0},"line":250,"column":5}],"totalFrames":1},"error":null}

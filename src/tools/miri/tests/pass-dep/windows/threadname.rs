@@ -1,20 +1,13 @@
 //@only-target: windows # this directly tests windows-only functions
 //@run-native
 
-use core::ffi::c_void;
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
-type HANDLE = *mut c_void;
-type PWSTR = *mut u16;
-type PCWSTR = *const u16;
-type HRESULT = i32;
-type HLOCAL = *mut ::core::ffi::c_void;
-extern "system" {
-    fn GetCurrentThread() -> HANDLE;
-    fn GetThreadDescription(hthread: HANDLE, lpthreaddescription: *mut PWSTR) -> HRESULT;
-    fn SetThreadDescription(hthread: HANDLE, lpthreaddescription: PCWSTR) -> HRESULT;
-    fn LocalFree(hmem: HLOCAL) -> HLOCAL;
-}
+
+use windows_sys::Win32::Foundation::LocalFree;
+use windows_sys::Win32::System::Threading::{
+    GetCurrentThread, GetThreadDescription, SetThreadDescription,
+};
 
 fn to_u16s<S: AsRef<OsStr>>(s: S) -> Vec<u16> {
     let mut result: Vec<_> = s.as_ref().encode_wide().collect();

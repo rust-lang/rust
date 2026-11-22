@@ -17,6 +17,7 @@ use self::shims::unix::solarish::foreign_items as solarish;
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::files::FD_LIMIT;
+use crate::shims::tls::TlsKey;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
@@ -89,21 +90,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         buf: &OpTy<'tcx>,
         buflen: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let errnum = this.read_scalar(errnum)?;
-        let buf = this.read_pointer(buf)?;
-        let buflen = this.read_target_usize(buflen)?;
-        let error = this.try_errnum_to_io_error(errnum)?;
+        let errnum = ecx.read_scalar(errnum)?;
+        let buf = ecx.read_pointer(buf)?;
+        let buflen = ecx.read_target_usize(buflen)?;
+        let error = ecx.try_errnum_to_io_error(errnum)?;
         let formatted = match error {
             Some(err) => format!("{err}"),
             None => format!("<unknown errnum in strerror_r: {errnum}>"),
         };
-        let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
+        let (complete, _) = ecx.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
         if complete {
             interp_ok(Scalar::from_i32(0))
         } else {
-            interp_ok(Scalar::from_i32(this.eval_libc_i32("ERANGE")))
+            interp_ok(Scalar::from_i32(ecx.eval_libc_i32("ERANGE")))
         }
     }
 
@@ -114,226 +115,226 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        if this.machine.communicate() {
+        if ecx.machine.communicate() {
             // When isolation is disabled we need to check for new host I/O events before
             // running any shimmed function. This is needed to ensure that the shim we
             // execute has up-to-date information about host readiness (as reflected
             // e.g. by epoll) even if the current thread never yields.
 
             // Perform a non-blocking poll for newly available I/O events from the OS.
-            this.poll_and_unblock(Some(Duration::ZERO))?;
+            ecx.poll_and_unblock(Some(Duration::ZERO))?;
         }
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         match link_name.as_str() {
             // Environment related shims
             "getenv" => {
-                let [name] = &this
+                let [name] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
-                let result = this.getenv(name)?;
-                this.write_pointer(result, dest)?;
+                let result = ecx.getenv(name)?;
+                ecx.write_pointer(result, dest)?;
             }
             "unsetenv" => {
-                let [name] = &this
+                let [name] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.unsetenv(name)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.unsetenv(name)?;
+                ecx.write_scalar(result, dest)?;
             }
             "setenv" => {
-                let [name, value, overwrite] = &this.check_shim_sig(
+                let [name, value, overwrite] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.read_scalar(overwrite)?.to_i32()?;
-                let result = this.setenv(name, value)?;
-                this.write_scalar(result, dest)?;
+                ecx.read_scalar(overwrite)?.to_i32()?;
+                let result = ecx.setenv(name, value)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getcwd" => {
-                let [buf, size] = &this.check_shim_sig(
+                let [buf, size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let result = this.getcwd(buf, size)?;
-                this.write_pointer(result, dest)?;
+                let result = ecx.getcwd(buf, size)?;
+                ecx.write_pointer(result, dest)?;
             }
             "gethostname" => {
-                let [name, len] = &this.check_shim_sig(
+                let [name, len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.gethostname(name, len)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.gethostname(name, len)?;
+                ecx.write_scalar(result, dest)?;
             }
             "chdir" => {
-                let [path] = &this
+                let [path] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.chdir(path)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.chdir(path)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getpid" => {
-                let [] = &this.check_shim_sig(
+                let [] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn() -> libc::pid_t),
                     (link_name, abi, args),
                 )?;
-                let result = this.getpid()?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.getpid()?;
+                ecx.write_scalar(result, dest)?;
             }
             "uname" => {
                 // Not all Unixes have the `uname` symbol, e.g. FreeBSD does not.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::Android, Os::MacOs, Os::Solaris, Os::Illumos],
                     link_name,
                 )?;
 
-                let [uname] = &this.check_shim_sig(
+                let [uname] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::utsname) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.uname(uname, None)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.uname(uname, None)?;
+                ecx.write_scalar(result, dest)?;
             }
             "sysconf" => {
-                let [val] = &this.check_shim_sig(
+                let [val] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32) -> isize),
                     (link_name, abi, args),
                 )?;
-                let result = this.sysconf(val)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.sysconf(val)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // File descriptors
             "read" => {
-                let [fd, buf, count] = &this.check_shim_sig(
+                let [fd, buf, count] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize) -> isize),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(count)?;
-                this.read(fd, buf, count, None, dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let buf = ecx.read_pointer(buf)?;
+                let count = ecx.read_target_usize(count)?;
+                ecx.read(fd, buf, count, None, dest)?;
             }
             "write" => {
-                let [fd, buf, n] = &this.check_shim_sig(
+                let [fd, buf, n] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize) -> isize),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(n)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let buf = ecx.read_pointer(buf)?;
+                let count = ecx.read_target_usize(n)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
-                this.write(fd, buf, count, None, dest)?;
+                ecx.write(fd, buf, count, None, dest)?;
             }
             "readv" => {
-                let [fd, iov, iovcnt] = &this.check_shim_sig(
+                let [fd, iov, iovcnt] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::iovec, i32) -> isize),
                     (link_name, abi, args),
                 )?;
-                this.readv(fd, iov, iovcnt, None, dest)?;
+                ecx.readv(fd, iov, iovcnt, None, dest)?;
             }
             "writev" => {
-                let [fd, iov, iovcnt] = &this.check_shim_sig(
+                let [fd, iov, iovcnt] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::iovec, i32) -> isize),
                     (link_name, abi, args),
                 )?;
-                this.writev(fd, iov, iovcnt, None, dest)?;
+                ecx.writev(fd, iov, iovcnt, None, dest)?;
             }
             "pread" => {
-                let [fd, buf, count, offset] = &this.check_shim_sig(
+                let [fd, buf, count, offset] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(count)?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                this.read(fd, buf, count, Some(offset), dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let buf = ecx.read_pointer(buf)?;
+                let count = ecx.read_target_usize(count)?;
+                let offset = ecx.read_int::<i64>(offset)?;
+                ecx.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite" => {
-                let [fd, buf, n, offset] = &this.check_shim_sig(
+                let [fd, buf, n, offset] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_pointer(buf)?;
-                let count = this.read_target_usize(n)?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let buf = ecx.read_pointer(buf)?;
+                let count = ecx.read_target_usize(n)?;
+                let offset = ecx.read_int::<i64>(offset)?;
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
-                this.write(fd, buf, count, Some(offset), dest)?;
+                ecx.write(fd, buf, count, Some(offset), dest)?;
             }
             "preadv" => {
-                let [fd, iov, iovcnt, offset] = &this.check_shim_sig(
+                let [fd, iov, iovcnt, offset] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::iovec, i32, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
-                this.readv(fd, iov, iovcnt, Some(offset), dest)?;
+                ecx.readv(fd, iov, iovcnt, Some(offset), dest)?;
             }
             "pwritev" => {
-                let [fd, iov, iovcnt, offset] = &this.check_shim_sig(
+                let [fd, iov, iovcnt, offset] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::iovec, i32, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
-                this.writev(fd, iov, iovcnt, Some(offset), dest)?;
+                ecx.writev(fd, iov, iovcnt, Some(offset), dest)?;
             }
 
             "close" => {
-                let [fd] = &this
+                let [fd] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let result = this.close(fd)?;
-                this.write_scalar(result, dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let result = ecx.close(fd)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fcntl" => {
-                let ([fd_num, cmd], varargs) = this.check_shim_sig_variadic(
+                let ([fd_num, cmd], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(i32, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fcntl(&fd_num, &cmd, varargs)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fcntl(&fd_num, &cmd, varargs)?;
+                ecx.write_scalar(result, dest)?;
             }
             "dup" => {
-                let [old_fd] = &this
+                let [old_fd] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
-                let old_fd = this.read_scalar(old_fd)?.to_i32()?;
-                let new_fd = this.dup(old_fd)?;
-                this.write_scalar(new_fd, dest)?;
+                let old_fd = ecx.read_scalar(old_fd)?.to_i32()?;
+                let new_fd = ecx.dup(old_fd)?;
+                ecx.write_scalar(new_fd, dest)?;
             }
             "dup2" => {
-                let [old_fd, new_fd] = &this.check_shim_sig(
+                let [old_fd, new_fd] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let old_fd = this.read_scalar(old_fd)?.to_i32()?;
-                let new_fd = this.read_scalar(new_fd)?.to_i32()?;
-                let result = this.dup2(old_fd, new_fd)?;
-                this.write_scalar(result, dest)?;
+                let old_fd = ecx.read_scalar(old_fd)?.to_i32()?;
+                let new_fd = ecx.read_scalar(new_fd)?.to_i32()?;
+                let result = ecx.dup2(old_fd, new_fd)?;
+                ecx.write_scalar(result, dest)?;
             }
             "flock" => {
                 // Currently this function does not exist on all Unixes, e.g. on Solaris.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::Android, Os::FreeBsd, Os::MacOs, Os::Illumos],
                     link_name,
                 )?;
 
-                let [fd, op] = &this.check_shim_sig(
+                let [fd, op] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let op = this.read_scalar(op)?.to_i32()?;
-                let result = this.flock(fd, op)?;
-                this.write_scalar(result, dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let op = ecx.read_scalar(op)?.to_i32()?;
+                let result = ecx.flock(fd, op)?;
+                ecx.write_scalar(result, dest)?;
             }
             "ioctl" => {
                 // The type of `op` depends on the libc. :(
                 // glibc, BSD use `unsigned long`, the rest uses `int`.
-                let op_is_ulong = match this.tcx.sess.target.os {
+                let op_is_ulong = match ecx.tcx.sess.target.os {
                     Os::FreeBsd | Os::NetBsd | Os::MacOs => true,
-                    Os::Linux if this.tcx.sess.target.env == Env::Gnu => true,
+                    Os::Linux if ecx.tcx.sess.target.env == Env::Gnu => true,
                     _ => false,
                 };
-                let ([fd, op], varargs) = this.check_shim_sig_variadic(
+                let ([fd, op], varargs) = ecx.check_shim_sig_variadic(
                     if op_is_ulong {
                         shim_sig!(extern "C" fn(i32, usize, ...) -> i32)
                     } else {
@@ -341,962 +342,994 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     },
                     (link_name, abi, args),
                 )?;
-                let result = this.ioctl(&fd, &op, varargs)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.ioctl(&fd, &op, varargs)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // File and file system access
             "open" => {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
-                let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                let ([path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(None, &path_raw, &flag, varargs)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.open(None, &path_raw, &flag, varargs)?;
+                ecx.write_scalar(result, dest)?;
             }
             "openat" => {
-                let ([dirfd, path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                let ([dirfd, path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(Some(&dirfd), &path_raw, &flag, varargs)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.open(Some(&dirfd), &path_raw, &flag, varargs)?;
+                ecx.write_scalar(result, dest)?;
             }
             "unlink" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [path] = &this
+                let [path] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.unlink(path)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.unlink(path)?;
+                ecx.write_scalar(result, dest)?;
+            }
+            "unlinkat" => {
+                let [dirfd, path, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.unlinkat(dirfd, path, flags)?;
+                ecx.write_scalar(result, dest)?;
             }
             "symlink" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [target, linkpath] = &this.check_shim_sig(
+                let [target, linkpath] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.symlink(target, linkpath)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.symlink(target, linkpath)?;
+                ecx.write_scalar(result, dest)?;
             }
             "linkat" => {
-                let [oldfd, oldpath, newfd, newpath, flags] = &this.check_shim_sig(
+                let [oldfd, oldpath, newfd, newpath, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, i32, *_, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.linkat(oldfd, oldpath, newfd, newpath, flags)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.linkat(oldfd, oldpath, newfd, newpath, flags)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fstat" => {
-                let [fd, buf] = &this.check_shim_sig(
+                let [fd, buf] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::stat) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fstat(fd, buf)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fstat(fd, buf)?;
+                ecx.write_scalar(result, dest)?;
             }
             "lstat" => {
-                let [path, buf] = &this.check_shim_sig(
+                let [path, buf] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *libc::stat) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.lstat(path, buf)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.lstat(path, buf)?;
+                ecx.write_scalar(result, dest)?;
             }
             "stat" => {
-                let [path, buf] = &this.check_shim_sig(
+                let [path, buf] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *libc::stat) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.stat(path, buf)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.stat(path, buf)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fstatat" => {
-                let [dirfd, path, buf, flags] = &this.check_shim_sig(
+                let [dirfd, path, buf, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, *libc::stat, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fstatat(dirfd, path, buf, flags)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fstatat(dirfd, path, buf, flags)?;
+                ecx.write_scalar(result, dest)?;
             }
             "chmod" => {
-                let [path, mode] = &this.check_shim_sig(
+                let [path, mode] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.chmod(path, mode)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.chmod(path, mode)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fchmod" => {
-                let [fd, mode] = &this.check_shim_sig(
+                let [fd, mode] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fchmod(fd, mode)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fchmod(fd, mode)?;
+                ecx.write_scalar(result, dest)?;
             }
             "rename" => {
-                let [oldpath, newpath] = &this.check_shim_sig(
+                let [oldpath, newpath] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.rename(oldpath, newpath)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.rename(oldpath, newpath)?;
+                ecx.write_scalar(result, dest)?;
             }
             "mkdir" => {
-                let [path, mode] = &this.check_shim_sig(
+                let [path, mode] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.mkdir(path, mode)?;
-                this.write_scalar(result, dest)?;
+                ecx.mkdir(None, path, mode, dest)?;
+            }
+            "mkdirat" => {
+                let [dirfd, path, mode] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, libc::mode_t) -> i32),
+                    (link_name, abi, args),
+                )?;
+                ecx.mkdir(Some(dirfd), path, mode, dest)?;
             }
             "rmdir" => {
-                let [path] = &this
+                let [path] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.rmdir(path)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.rmdir(path)?;
+                ecx.write_scalar(result, dest)?;
             }
             "opendir" => {
-                let [name] = &this
+                let [name] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
-                let result = this.opendir(name)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.opendir(name)?;
+                ecx.write_scalar(result, dest)?;
             }
             "closedir" => {
-                let [dirp] = &this
+                let [dirp] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.closedir(dirp)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.closedir(dirp)?;
+                ecx.write_scalar(result, dest)?;
             }
             "readdir" => {
-                let [dirp] = &this
+                let [dirp] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
-                this.readdir(dirp, dest, "dirent")?;
+                ecx.readdir(dirp, dest, "dirent")?;
             }
             "dirfd" => {
-                let [dirp] = &this
+                let [dirp] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                this.dirfd(dirp, dest)?;
+                ecx.dirfd(dirp, dest)?;
             }
             "lseek" => {
-                let [fd, offset, whence] = &this.check_shim_sig(
+                let [fd, offset, whence] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t, i32) -> libc::off_t),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                let whence = this.read_scalar(whence)?.to_i32()?;
-                this.lseek(fd, offset, whence, dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let offset = ecx.read_int::<i64>(offset)?;
+                let whence = ecx.read_scalar(whence)?.to_i32()?;
+                ecx.lseek(fd, offset, whence, dest)?;
             }
             "ftruncate" => {
-                let [fd, length] = &this.check_shim_sig(
+                let [fd, length] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let fd = this.read_scalar(fd)?.to_i32()?;
-                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(result, dest)?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
+                let length = ecx.read_int::<i64>(length)?;
+                let result = ecx.ftruncate64(fd, length)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fsync" => {
-                let [fd] = &this
+                let [fd] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
-                let result = this.fsync(fd)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fsync(fd)?;
+                ecx.write_scalar(result, dest)?;
             }
             "fdatasync" => {
                 // fdatasync is not supported by macos.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::FreeBsd, Os::NetBsd, Os::Solaris, Os::Illumos, Os::Android],
                     link_name,
                 )?;
-                let [fd] = &this
+                let [fd] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
-                let result = this.fdatasync(fd)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.fdatasync(fd)?;
+                ecx.write_scalar(result, dest)?;
             }
             "futimens" => {
-                let [fd, times] = &this.check_shim_sig(
+                let [fd, times] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.futimens(fd, times)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.futimens(fd, times)?;
+                ecx.write_scalar(result, dest)?;
             }
             "utimensat" => {
-                let [dirfd, path, times, flags] = &this.check_shim_sig(
+                let [dirfd, path, times, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, *libc::timespec, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.utimensat(dirfd, path, times, flags)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.utimensat(dirfd, path, times, flags)?;
+                ecx.write_scalar(result, dest)?;
             }
             "readlink" => {
-                let [pathname, buf, bufsize] = &this.check_shim_sig(
+                let [pathname, buf, bufsize] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, usize) -> isize),
                     (link_name, abi, args),
                 )?;
-                let result = this.readlink(pathname, buf, bufsize)?;
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                let result = ecx.readlink(pathname, buf, bufsize)?;
+                ecx.write_scalar(Scalar::from_target_isize(result, ecx), dest)?;
             }
             "posix_fadvise" => {
-                let [fd, offset, len, advice] = &this.check_shim_sig(
+                let [fd, offset, len, advice] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t, libc::off_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.read_scalar(fd)?.to_i32()?;
-                this.read_scalar(offset)?.to_int(offset.layout.size)?;
-                this.read_scalar(len)?.to_int(len.layout.size)?;
-                this.read_scalar(advice)?.to_i32()?;
+                ecx.read_scalar(fd)?.to_i32()?;
+                ecx.read_int::<i64>(offset)?;
+                ecx.read_int::<i64>(len)?;
+                ecx.read_scalar(advice)?.to_i32()?;
                 // fadvise is only informational, we can ignore it.
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             "posix_fallocate" => {
                 // posix_fallocate is not supported by macos.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos, Os::Android],
                     link_name,
                 )?;
 
-                let [fd, offset, len] = &this.check_shim_sig(
+                let [fd, offset, len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t, libc::off_t) -> i32),
                     (link_name, abi, args),
                 )?;
 
-                let fd = this.read_scalar(fd)?.to_i32()?;
+                let fd = ecx.read_scalar(fd)?.to_i32()?;
                 // We don't support platforms which have libc::off_t bigger than 64 bits.
-                let offset =
-                    i64::try_from(this.read_scalar(offset)?.to_int(offset.layout.size)?).unwrap();
-                let len = i64::try_from(this.read_scalar(len)?.to_int(len.layout.size)?).unwrap();
+                let offset = ecx.read_int::<i64>(offset)?;
+                let len = ecx.read_int::<i64>(len)?;
 
-                let result = this.posix_fallocate(fd, offset, len)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.posix_fallocate(fd, offset, len)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             "realpath" => {
-                let [path, resolved_path] = &this.check_shim_sig(
+                let [path, resolved_path] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> *_),
                     (link_name, abi, args),
                 )?;
-                let result = this.realpath(path, resolved_path)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.realpath(path, resolved_path)?;
+                ecx.write_scalar(result, dest)?;
             }
             "mkstemp" => {
-                let [template] = &this
+                let [template] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.mkstemp(template)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.mkstemp(template)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // Poll
             "poll" => {
-                let [fds, nfds, timeout] = &this.check_shim_sig(
+                let [fds, nfds, timeout] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pollfd, libc::nfds_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.poll(fds, nfds, timeout, dest)?;
+                ecx.poll(fds, nfds, timeout, dest)?;
             }
 
             // Sockets and pipes
             "socketpair" => {
-                let [domain, type_, protocol, sv] = &this.check_shim_sig(
+                let [domain, type_, protocol, sv] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32, *i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.socketpair(domain, type_, protocol, sv)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.socketpair(domain, type_, protocol, sv)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pipe" => {
-                let [pipefd] = &this.check_shim_sig(
+                let [pipefd] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pipe2(pipefd, /*flags*/ None)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pipe2(pipefd, /*flags*/ None)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pipe2" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::Android, Os::FreeBsd, Os::Solaris, Os::Illumos],
                     link_name,
                 )?;
 
-                let [pipefd, flags] = &this.check_shim_sig(
+                let [pipefd, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pipe2(pipefd, Some(flags))?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pipe2(pipefd, Some(flags))?;
+                ecx.write_scalar(result, dest)?;
             }
             "socket" => {
-                let [domain, type_, protocol] = &this.check_shim_sig(
+                let [domain, type_, protocol] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.socket(domain, type_, protocol)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.socket(domain, type_, protocol)?;
+                ecx.write_scalar(result, dest)?;
             }
             "bind" => {
-                let [socket, address, address_len] = &this.check_shim_sig(
+                let [socket, address, address_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.bind(socket, address, address_len)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.bind(socket, address, address_len)?;
+                ecx.write_scalar(result, dest)?;
             }
             "listen" => {
-                let [socket, backlog] = &this.check_shim_sig(
+                let [socket, backlog] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.listen(socket, backlog)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.listen(socket, backlog)?;
+                ecx.write_scalar(result, dest)?;
             }
             "accept" => {
-                let [socket, address, address_len] = &this.check_shim_sig(
+                let [socket, address, address_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.accept4(socket, address, address_len, /* flags */ None, dest)?;
+                ecx.accept4(socket, address, address_len, /* flags */ None, dest)?;
             }
             "accept4" => {
-                let [socket, address, address_len, flags] = &this.check_shim_sig(
+                let [socket, address, address_len, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.accept4(socket, address, address_len, Some(flags), dest)?;
+                ecx.accept4(socket, address, address_len, Some(flags), dest)?;
             }
             "connect" => {
-                let [socket, address, address_len] = &this.check_shim_sig(
+                let [socket, address, address_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.connect(socket, address, address_len, dest)?;
+                ecx.connect(socket, address, address_len, dest)?;
             }
             "send" => {
-                let [socket, buffer, length, flags] = &this.check_shim_sig(
+                let [socket, buffer, length, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::size_t, i32) -> libc::ssize_t),
                     (link_name, abi, args),
                 )?;
-                this.send(socket, buffer, length, flags, /* dest_addr */ None, dest)?;
+                ecx.send(socket, buffer, length, flags, /* dest_addr */ None, dest)?;
             }
             "sendto" => {
-                let [socket, buffer, length, flags, dest_addr, dest_addr_len] = &this.check_shim_sig(
+                let [socket, buffer, length, flags, dest_addr, dest_addr_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::size_t, i32, *libc::sockaddr, libc::socklen_t) -> libc::ssize_t),
                     (link_name, abi, args),
                 )?;
-                this.send(socket, buffer, length, flags, Some((dest_addr, dest_addr_len)), dest)?;
+                ecx.send(socket, buffer, length, flags, Some((dest_addr, dest_addr_len)), dest)?;
             }
             "recv" => {
-                let [socket, buffer, length, flags] = &this.check_shim_sig(
+                let [socket, buffer, length, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::size_t, i32) -> libc::ssize_t),
                     (link_name, abi, args),
                 )?;
-                this.recv(socket, buffer, length, flags, /* dest_addr */ None, dest)?;
+                ecx.recv(socket, buffer, length, flags, /* dest_addr */ None, dest)?;
             }
             "recvfrom" => {
-                let [socket, buffer, length, flags, dest_addr, dest_addr_len] = &this.check_shim_sig(
+                let [socket, buffer, length, flags, dest_addr, dest_addr_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::size_t, i32, *libc::sockaddr, *libc::socklen_t) -> libc::ssize_t),
                     (link_name, abi, args),
                 )?;
-                this.recv(socket, buffer, length, flags, Some((dest_addr, dest_addr_len)), dest)?;
+                ecx.recv(socket, buffer, length, flags, Some((dest_addr, dest_addr_len)), dest)?;
             }
             "setsockopt" => {
-                let [socket, level, option_name, option_value, option_len] = &this.check_shim_sig(
+                let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32, *_, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =
-                    this.setsockopt(socket, level, option_name, option_value, option_len)?;
-                this.write_scalar(result, dest)?;
+                    ecx.setsockopt(socket, level, option_name, option_value, option_len)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getsockopt" => {
-                let [socket, level, option_name, option_value, option_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
+                let [socket, level, option_name, option_value, option_len] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result =
-                    this.getsockopt(socket, level, option_name, option_value, option_len)?;
-                this.write_scalar(result, dest)?;
+                    ecx.getsockopt(socket, level, option_name, option_value, option_len)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getsockname" => {
-                let [socket, address, address_len] = &this.check_shim_sig(
+                let [socket, address, address_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.getsockname(socket, address, address_len)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.getsockname(socket, address, address_len)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getpeername" => {
-                let [socket, address, address_len] = &this.check_shim_sig(
+                let [socket, address, address_len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.getpeername(socket, address, address_len, dest)?;
+                ecx.getpeername(socket, address, address_len, dest)?;
             }
             "shutdown" => {
-                let [sockfd, how] = &this.check_shim_sig(
+                let [sockfd, how] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.shutdown(sockfd, how)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.shutdown(sockfd, how)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getaddrinfo" => {
-                let [node, service, hints, res] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
+                let [node, service, hints, res] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_, *libc::addrinfo, **libc::addrinfo) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.getaddrinfo(node, service, hints, res)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.getaddrinfo(node, service, hints, res)?;
+                ecx.write_scalar(result, dest)?;
             }
             "freeaddrinfo" => {
-                let [res] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
-                this.freeaddrinfo(res)?;
+                let [res] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::addrinfo) -> ()),
+                    (link_name, abi, args),
+                )?;
+                ecx.freeaddrinfo(res)?;
             }
 
             // Time
             "gettimeofday" => {
-                let [tv, tz] = &this.check_shim_sig(
+                let [tv, tz] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::timeval, *libc::timezone) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.gettimeofday(tv, tz)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.gettimeofday(tv, tz)?;
+                ecx.write_scalar(result, dest)?;
             }
             "localtime_r" => {
-                let [timep, result_op] = &this.check_shim_sig(
+                let [timep, result_op] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::time_t, *libc::tm) -> *libc::tm),
                     (link_name, abi, args),
                 )?;
-                let result = this.localtime_r(timep, result_op)?;
-                this.write_pointer(result, dest)?;
+                let result = ecx.localtime_r(timep, result_op)?;
+                ecx.write_pointer(result, dest)?;
             }
             "clock_gettime" => {
-                let [clk_id, tp] = &this.check_shim_sig(
+                let [clk_id, tp] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::clockid_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.clock_gettime(clk_id, tp, dest)?;
+                ecx.clock_gettime(clk_id, tp, dest)?;
             }
 
             // Allocation
             "posix_memalign" => {
-                let [memptr, align, size] = &this.check_shim_sig(
+                let [memptr, align, size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(**_, usize, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.posix_memalign(memptr, align, size)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.posix_memalign(memptr, align, size)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             "mmap" => {
-                let [addr, length, prot, flags, fd, offset] = &this.check_shim_sig(
+                let [addr, length, prot, flags, fd, offset] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize, i32, i32, i32, libc::off_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
-                let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
-                this.write_scalar(ptr, dest)?;
+                let offset = ecx.read_int::<i64>(offset)?;
+                let ptr = ecx.mmap(addr, length, prot, flags, fd, offset)?;
+                ecx.write_scalar(ptr, dest)?;
             }
             "munmap" => {
-                let [addr, length] = &this.check_shim_sig(
+                let [addr, length] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.munmap(addr, length)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.munmap(addr, length)?;
+                ecx.write_scalar(result, dest)?;
             }
             "mprotect" => {
-                let [addr, length, prot] = &this.check_shim_sig(
+                let [addr, length, prot] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.mprotect(addr, length, prot)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.mprotect(addr, length, prot)?;
+                ecx.write_scalar(result, dest)?;
             }
             "madvise" => {
-                let [addr, length, advice] = &this.check_shim_sig(
+                let [addr, length, advice] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.madvise(addr, length, advice)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.madvise(addr, length, advice)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
+                ecx.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
 
-                let [ptr, nmemb, size] = &this.check_shim_sig(
+                let [ptr, nmemb, size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let nmemb = this.read_target_usize(nmemb)?;
-                let size = this.read_target_usize(size)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let nmemb = ecx.read_target_usize(nmemb)?;
+                let size = ecx.read_target_usize(size)?;
                 // reallocarray checks a possible overflow and returns ENOMEM
                 // if that happens.
                 //
                 // Linux: https://www.unix.com/man-page/linux/3/reallocarray/
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=reallocarray
-                match this.compute_size_in_bytes(Size::from_bytes(size), nmemb) {
+                match ecx.compute_size_in_bytes(Size::from_bytes(size), nmemb) {
                     None => {
-                        this.set_last_error(LibcError("ENOMEM"))?;
-                        this.write_int(0, dest)?;
+                        ecx.set_last_error(LibcError("ENOMEM"))?;
+                        ecx.write_int(0, dest)?;
                     }
                     Some(len) => {
-                        let res = this.realloc(ptr, len.bytes())?;
-                        this.write_pointer(res, dest)?;
+                        let res = ecx.realloc(ptr, len.bytes())?;
+                        ecx.write_pointer(res, dest)?;
                     }
                 }
             }
             "aligned_alloc" => {
                 // This is a C11 function, we assume all Unixes have it.
                 // (MSVC explicitly does not support this.)
-                let [align, size] = &this.check_shim_sig(
+                let [align, size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(usize, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let res = this.aligned_alloc(align, size)?;
-                this.write_pointer(res, dest)?;
+                let res = ecx.aligned_alloc(align, size)?;
+                ecx.write_pointer(res, dest)?;
             }
 
             // Dynamic symbol loading
             "dlsym" => {
-                let [handle, symbol] = &this.check_shim_sig(
+                let [handle, symbol] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> *_),
                     (link_name, abi, args),
                 )?;
-                this.read_target_usize(handle)?;
-                let symbol = this.read_pointer(symbol)?;
-                let name = this.read_c_str(symbol)?;
+                ecx.read_target_usize(handle)?;
+                let symbol = ecx.read_pointer(symbol)?;
+                let name = ecx.read_c_str(symbol)?;
                 let Ok(name) = str::from_utf8(name) else {
                     throw_unsup_format!("dlsym: non UTF-8 symbol name not supported")
                 };
-                if this.is_dyn_sym(name) {
-                    let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
-                    this.write_pointer(ptr, dest)?;
-                } else if let Some(&ptr) = this.machine.extern_statics.get(&Symbol::intern(name)) {
-                    this.write_pointer(ptr, dest)?;
+                if ecx.is_dyn_sym(name) {
+                    let ptr = ecx.fn_ptr(FnVal::Other(DynSym::from_str(name)));
+                    ecx.write_pointer(ptr, dest)?;
+                } else if let Some(&ptr) = ecx.machine.extern_statics.get(&Symbol::intern(name)) {
+                    ecx.write_pointer(ptr, dest)?;
                 } else {
-                    this.write_int(0, dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
 
             // Thread-local storage
             "pthread_key_create" => {
-                let [key, dtor] = &this.check_shim_sig(
+                let [key, dtor] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_key_t, fn(..) -> _) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key_place = this.deref_pointer(key)?;
-                let dtor = this.read_pointer(dtor)?;
+                let key_place = ecx.deref_pointer(key)?;
+                let dtor = ecx.read_pointer(dtor)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
-                let dtor = if !this.ptr_is_null(dtor)? {
+                let dtor = if !ecx.ptr_is_null(dtor)? {
                     Some((
-                        this.get_ptr_fn(dtor)?.as_instance()?,
-                        this.machine.current_user_relevant_span(),
+                        ecx.get_ptr_fn(dtor)?.as_instance()?,
+                        ecx.machine.current_user_relevant_span(),
                     ))
                 } else {
                     None
                 };
 
                 // Create key and write it into the memory where `key_ptr` wants it.
-                let key = this.machine.tls.create_tls_key(dtor, key_place.layout.size)?;
-                this.write_scalar(Scalar::from_uint(key, key_place.layout.size), &key_place)?;
+                let key = ecx.machine.tls.create_tls_key(dtor, key_place.layout.size)?;
+                ecx.write_int(key, &key_place)?;
 
                 // Return success (`0`).
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_key_delete" => {
-                let [key] = &this.check_shim_sig(
+                let [key] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
-                this.machine.tls.delete_tls_key(key)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
+                ecx.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_getspecific" => {
-                let [key] = &this.check_shim_sig(
+                let [key] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> *_),
                     (link_name, abi, args),
                 )?;
-                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
-                let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls_key(key, active_thread)?;
-                this.write_pointer(ptr, dest)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
+                let active_thread = ecx.active_thread();
+                let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
+                ecx.write_pointer(ptr, dest)?;
             }
             "pthread_setspecific" => {
-                let [key, new_ptr] = &this.check_shim_sig(
+                let [key, new_ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
-                let active_thread = this.active_thread();
-                let new_data = this.read_pointer(new_ptr)?;
-                this.machine.tls.store_tls_key(key, active_thread, new_data)?;
+                let key = ecx.read_int::<TlsKey>(key)?;
+                let active_thread = ecx.active_thread();
+                let new_data = ecx.read_pointer(new_ptr)?;
+                ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
 
                 // Return success (`0`).
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             // Synchronization primitives
             "pthread_mutexattr_init" => {
-                let [attr] = &this.check_shim_sig(
+                let [attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_mutexattr_init(attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_mutexattr_init(attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_mutexattr_settype" => {
-                let [attr, kind] = &this.check_shim_sig(
+                let [attr, kind] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_mutexattr_settype(attr, kind)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_mutexattr_settype(attr, kind)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_mutexattr_destroy" => {
-                let [attr] = &this.check_shim_sig(
+                let [attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_mutexattr_destroy(attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_mutexattr_destroy(attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_mutex_init" => {
-                let [mutex, attr] = &this.check_shim_sig(
+                let [mutex, attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutex_t, *libc::pthread_mutexattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_mutex_init(mutex, attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_mutex_init(mutex, attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_mutex_lock" => {
-                let [mutex] = &this.check_shim_sig(
+                let [mutex] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_mutex_lock(mutex, dest)?;
+                ecx.pthread_mutex_lock(mutex, dest)?;
             }
             "pthread_mutex_trylock" => {
-                let [mutex] = &this.check_shim_sig(
+                let [mutex] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_mutex_trylock(mutex)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_mutex_trylock(mutex)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_mutex_unlock" => {
-                let [mutex] = &this.check_shim_sig(
+                let [mutex] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_mutex_unlock(mutex)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_mutex_unlock(mutex)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_mutex_destroy" => {
-                let [mutex] = &this.check_shim_sig(
+                let [mutex] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_mutex_destroy(mutex)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_mutex_destroy(mutex)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_rwlock_rdlock" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_rwlock_rdlock(rwlock, dest)?;
+                ecx.pthread_rwlock_rdlock(rwlock, dest)?;
             }
             "pthread_rwlock_tryrdlock" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_rwlock_tryrdlock(rwlock)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_rwlock_tryrdlock(rwlock)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_rwlock_wrlock" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_rwlock_wrlock(rwlock, dest)?;
+                ecx.pthread_rwlock_wrlock(rwlock, dest)?;
             }
             "pthread_rwlock_trywrlock" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_rwlock_trywrlock(rwlock)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_rwlock_trywrlock(rwlock)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_rwlock_unlock" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_rwlock_unlock(rwlock)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_rwlock_unlock(rwlock)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_rwlock_destroy" => {
-                let [rwlock] = &this.check_shim_sig(
+                let [rwlock] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_rwlock_destroy(rwlock)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_rwlock_destroy(rwlock)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_condattr_init" => {
-                let [attr] = &this.check_shim_sig(
+                let [attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_condattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_condattr_init(attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_condattr_init(attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_condattr_setclock" => {
-                let [attr, clock_id] = &this.check_shim_sig(
+                let [attr, clock_id] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_condattr_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.pthread_condattr_setclock(attr, clock_id)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.pthread_condattr_setclock(attr, clock_id)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_condattr_getclock" => {
-                let [attr, clock_id] = &this.check_shim_sig(
+                let [attr, clock_id] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_condattr_t, *libc::clockid_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_condattr_getclock(attr, clock_id)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_condattr_getclock(attr, clock_id)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_condattr_destroy" => {
-                let [attr] = &this.check_shim_sig(
+                let [attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_condattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_condattr_destroy(attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_condattr_destroy(attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_cond_init" => {
-                let [cond, attr] = &this.check_shim_sig(
+                let [cond, attr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_condattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_init(cond, attr)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_cond_init(cond, attr)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_cond_signal" => {
-                let [cond] = &this.check_shim_sig(
+                let [cond] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_signal(cond)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_cond_signal(cond)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_cond_broadcast" => {
-                let [cond] = &this.check_shim_sig(
+                let [cond] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_broadcast(cond)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_cond_broadcast(cond)?;
+                ecx.write_int(0, dest)?;
             }
             "pthread_cond_wait" => {
-                let [cond, mutex] = &this.check_shim_sig(
+                let [cond, mutex] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_wait(cond, mutex, dest)?;
+                ecx.pthread_cond_wait(cond, mutex, dest)?;
             }
             "pthread_cond_timedwait" => {
-                let [cond, mutex, abstime] = &this.check_shim_sig(
+                let [cond, mutex, abstime] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_mutex_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_timedwait(
+                ecx.pthread_cond_timedwait(
                     cond, mutex, abstime, dest, /* macos_relative_np */ false,
                 )?;
             }
             "pthread_cond_destroy" => {
-                let [cond] = &this.check_shim_sig(
+                let [cond] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_cond_destroy(cond)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_cond_destroy(cond)?;
+                ecx.write_int(0, dest)?;
             }
             "sem_init" => {
-                let [sem, pshared, value] = &this.check_shim_sig(
+                let [sem, pshared, value] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::sem_t, i32, u32) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_sem_init(sem, pshared, value, dest)?;
+                ecx.pthread_sem_init(sem, pshared, value, dest)?;
             }
             "sem_wait" => {
-                let [sem] = &this.check_shim_sig(
+                let [sem] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_sem_wait(sem, dest)?;
+                ecx.pthread_sem_wait(sem, dest)?;
             }
             "sem_timedwait" => {
-                let [sem, abs_timeout] = &this.check_shim_sig(
+                let [sem, abs_timeout] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::sem_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_sem_timedwait(sem, abs_timeout, dest)?;
+                ecx.pthread_sem_timedwait(sem, abs_timeout, dest)?;
             }
             "sem_post" => {
-                let [sem] = &this.check_shim_sig(
+                let [sem] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_sem_post(sem, dest)?;
+                ecx.pthread_sem_post(sem, dest)?;
             }
             "sem_destroy" => {
-                let [sem] = &this.check_shim_sig(
+                let [sem] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_sem_destroy(sem, dest)?;
+                ecx.pthread_sem_destroy(sem, dest)?;
             }
 
             // Threading
-            "pthread_create" => {
-                let [thread, attr, start, arg] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*libc::pthread_t, *_, fn(..) -> _, *_) -> i32),
+            "pthread_attr_init" => {
+                let [attr] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_attr_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_create(thread, attr, start, arg)?;
-                this.write_int(0, dest)?;
+                ecx.pthread_attr_init(attr, dest)?;
+            }
+            "pthread_attr_destroy" => {
+                let [attr] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_attr_t) -> i32),
+                    (link_name, abi, args),
+                )?;
+                ecx.pthread_attr_destroy(attr, dest)?;
+            }
+            "pthread_attr_setstacksize" => {
+                let [attr, stack_size] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_attr_t, usize) -> i32),
+                    (link_name, abi, args),
+                )?;
+                ecx.pthread_attr_setstacksize(attr, stack_size, dest)?;
+            }
+            "pthread_create" => {
+                let [thread, attr, start, arg] = &ecx.check_shim_sig(
+                    shim_sig!(
+                        extern "C" fn(*libc::pthread_t, *libc::pthread_attr_t, fn(..) -> _, *_) -> i32
+                    ),
+                    (link_name, abi, args),
+                )?;
+                ecx.pthread_create(thread, attr, start, arg, dest)?;
             }
             "pthread_join" => {
-                let [thread, retval] = &this.check_shim_sig(
+                let [thread, retval] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.pthread_join(thread, retval, dest)?;
+                ecx.pthread_join(thread, retval, dest)?;
             }
             "pthread_detach" => {
-                let [thread] = &this.check_shim_sig(
+                let [thread] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let res = this.pthread_detach(thread)?;
-                this.write_scalar(res, dest)?;
+                let res = ecx.pthread_detach(thread)?;
+                ecx.write_scalar(res, dest)?;
             }
             "pthread_self" => {
-                let [] = &this.check_shim_sig(
+                let [] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn() -> libc::pthread_t),
                     (link_name, abi, args),
                 )?;
-                let res = this.pthread_self()?;
-                this.write_scalar(res, dest)?;
+                ecx.pthread_self(dest)?;
             }
             "sched_yield" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
-                this.sched_yield()?;
-                this.write_int(0, dest)?;
+                let [] =
+                    &ecx.check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
+                ecx.sched_yield()?;
+                ecx.write_int(0, dest)?;
             }
             "nanosleep" => {
-                let [duration, rem] = &this.check_shim_sig(
+                let [duration, rem] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::timespec, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.nanosleep(duration, rem)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.nanosleep(duration, rem)?;
+                ecx.write_scalar(result, dest)?;
             }
             "clock_nanosleep" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::FreeBsd, Os::Linux, Os::Android, Os::Solaris, Os::Illumos],
                     link_name,
                 )?;
 
-                let [clock_id, flags, req, rem] = &this.check_shim_sig(
+                let [clock_id, flags, req, rem] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::clockid_t, i32, *libc::timespec, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.clock_nanosleep(clock_id, flags, req, rem)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.clock_nanosleep(clock_id, flags, req, rem)?;
+                ecx.write_scalar(result, dest)?;
             }
             "sched_getaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
+                ecx.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
 
-                let [pid, cpusetsize, mask] = &this.check_shim_sig(
+                let [pid, cpusetsize, mask] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pid_t, usize, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.sched_getaffinity(pid, cpusetsize, mask, dest)?;
+                ecx.sched_getaffinity(pid, cpusetsize, mask, dest)?;
             }
             "sched_setaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
+                ecx.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
 
-                let [pid, cpusetsize, mask] = &this.check_shim_sig(
+                let [pid, cpusetsize, mask] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pid_t, usize, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.sched_setaffinity(pid, cpusetsize, mask, dest)?;
+                ecx.sched_setaffinity(pid, cpusetsize, mask, dest)?;
             }
 
             // Miscellaneous
             "isatty" => {
-                let [fd] = &this
+                let [fd] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
-                let result = this.isatty(fd)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.isatty(fd)?;
+                ecx.write_scalar(result, dest)?;
             }
             "pthread_atfork" => {
-                // FIXME: This does not have a direct test (#3179).
-                let [prepare, parent, child] = &this.check_shim_sig(
+                let [prepare, parent, child] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(fn(..) -> _, fn(..) -> _, fn(..) -> _) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.read_pointer(prepare)?;
-                this.read_pointer(parent)?;
-                this.read_pointer(child)?;
+                ecx.read_pointer(prepare)?;
+                ecx.read_pointer(parent)?;
+                ecx.read_pointer(child)?;
                 // We do not support forking, so there is nothing to do here.
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
             "strerror_r" => {
-                let [errnum, buf, buflen] = &this.check_shim_sig(
+                let [errnum, buf, buflen] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.strerror_r(errnum, buf, buflen)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.strerror_r(errnum, buf, buflen)?;
+                ecx.write_scalar(result, dest)?;
             }
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, macOS, FreeBSD and Solaris/Illumos.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::MacOs, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android],
                     link_name,
                 )?;
 
-                let [buf, bufsize] = &this.check_shim_sig(
+                let [buf, bufsize] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let buf = this.read_pointer(buf)?;
-                let bufsize = this.read_target_usize(bufsize)?;
+                let buf = ecx.read_pointer(buf)?;
+                let bufsize = ecx.read_target_usize(bufsize)?;
 
                 // getentropy sets errno to EIO when the buffer size exceeds 256 bytes.
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=getentropy&sektion=3&format=html
@@ -1304,43 +1337,43 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // macOS: https://keith.github.io/xcode-man-pages/getentropy.2.html
                 // Solaris/Illumos: https://illumos.org/man/3C/getentropy
                 if bufsize > 256 {
-                    this.set_errno_and_return_neg1(LibcError("EIO"), dest)?;
+                    ecx.set_errno_and_return_neg1(LibcError("EIO"), dest)?;
                 } else {
-                    this.gen_random(buf, bufsize)?;
-                    this.write_int(0, dest)?;
+                    ecx.gen_random(buf, bufsize)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "getrandom" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, FreeBSD and Solaris/Illumos.
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android],
                     link_name,
                 )?;
 
-                let [ptr, len, flags] = &this.check_shim_sig(
+                let [ptr, len, flags] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize, u32) -> isize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let len = this.read_target_usize(len)?;
-                let _flags = this.read_scalar(flags)?.to_i32()?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let len = ecx.read_target_usize(len)?;
+                let _flags = ecx.read_scalar(flags)?.to_i32()?;
                 // We ignore the flags, just always use the same PRNG / host RNG.
-                this.gen_random(ptr, len)?;
-                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+                ecx.gen_random(ptr, len)?;
+                ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
             }
             "arc4random_buf" => {
                 // This function is non-standard but exists with the same signature and
                 // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
-                this.check_target_os(&[Os::FreeBsd, Os::Illumos, Os::Solaris], link_name)?;
+                ecx.check_target_os(&[Os::FreeBsd, Os::Illumos, Os::Solaris], link_name)?;
 
-                let [ptr, len] = &this.check_shim_sig(
+                let [ptr, len] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> ()),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let len = this.read_target_usize(len)?;
-                this.gen_random(ptr, len)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let len = ecx.read_target_usize(len)?;
+                ecx.gen_random(ptr, len)?;
             }
             "_Unwind_RaiseException" => {
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
@@ -1356,35 +1389,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // For arm32 they did something custom, but similar enough that the same
                 // `_Unwind_RaiseException` impl in miri should work:
                 // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
-                this.check_target_os(
+                ecx.check_target_os(
                     &[Os::Linux, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android, Os::MacOs],
                     link_name,
                 )?;
 
                 // This function looks and behaves exactly like miri_start_unwind.
-                let [payload] = &this.check_shim_sig(
+                let [payload] = &ecx.check_shim_sig(
                     // Look up the return type via `panic_unwind::`, not via `unwind::`, as
                     // the latter it not always unique.
                     shim_sig!(extern "C" fn(*_) -> panic_unwind::imp::uw::_Unwind_Reason_Code),
                     (link_name, abi, args),
                 )?;
-                this.handle_miri_start_unwind(payload)?;
+                ecx.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
             "getuid" | "geteuid" => {
-                let [] = &this.check_shim_sig(
+                let [] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn() -> libc::uid_t),
                     (link_name, abi, args),
                 )?;
                 // For now, just pretend we always have this fixed UID.
-                this.write_int(UID, dest)?;
+                ecx.write_int(UID, dest)?;
             }
             "pause" => {
-                let [] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
+                let [] =
+                    &ecx.check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
                 // This blocks the current thread until a signal gets delivered. We don't support
                 // signals, so we block forever.
-                this.block_thread(
+                ecx.block_thread(
                     BlockReason::Pause,
                     None,
                     callback!(@capture<'tcx> {}
@@ -1396,94 +1429,71 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            "pthread_attr_getguardsize" if this.frame_in_std() => {
-                let [_attr, guard_size] = &this.check_shim_sig(
+            "pthread_attr_getguardsize" if ecx.frame_in_std() => {
+                let [_attr, guard_size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let guard_size = this.deref_pointer(guard_size)?;
-                this.write_scalar(
-                    Scalar::from_uint(this.machine.page_size, guard_size.layout.size),
-                    &guard_size,
-                )?;
+                let guard_size = ecx.deref_pointer(guard_size)?;
+                ecx.write_int(ecx.machine.page_size, &guard_size)?;
 
                 // Return success (`0`).
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
 
-            "pthread_attr_init" | "pthread_attr_destroy" if this.frame_in_std() => {
-                let [_] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                this.write_int(0, dest)?;
-            }
-
-            "pthread_attr_setstacksize" if this.frame_in_std() => {
-                let [_, _] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, usize) -> i32),
-                    (link_name, abi, args),
-                )?;
-                this.write_int(0, dest)?;
-            }
-
-            "pthread_attr_getstack" if this.frame_in_std() => {
+            "pthread_attr_getstack" if ecx.frame_in_std() => {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
                 // Hence we can mostly ignore the input `attr_place`.
-                let [attr_place, addr_place, size_place] = &this.check_shim_sig(
+                let [attr_place, addr_place, size_place] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::pthread_attr_t, *usize, *usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let _attr_place = this.deref_pointer(attr_place)?;
-                let addr_place = this.deref_pointer(addr_place)?;
-                let size_place = this.deref_pointer(size_place)?;
+                let _attr_place = ecx.deref_pointer(attr_place)?;
+                let addr_place = ecx.deref_pointer(addr_place)?;
+                let size_place = ecx.deref_pointer(size_place)?;
 
-                this.write_scalar(
-                    Scalar::from_uint(this.machine.stack_addr, this.pointer_size()),
-                    &addr_place,
-                )?;
-                this.write_scalar(
-                    Scalar::from_uint(this.machine.stack_size, this.pointer_size()),
-                    &size_place,
-                )?;
+                ecx.write_int(ecx.machine.stack_addr, &addr_place)?;
+                ecx.write_int(ecx.machine.stack_size, &size_place)?;
 
                 // Return success (`0`).
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
 
-            "signal" if this.frame_in_std() => {
-                let [_, _] = &this.check_shim_sig(
+            "signal" if ecx.frame_in_std() => {
+                let [_, _] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::sighandler_t) -> libc::sighandler_t),
                     (link_name, abi, args),
                 )?;
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
-            "sigaltstack" if this.frame_in_std() => {
-                let [_, _] = &this.check_shim_sig(
+            "sigaltstack" if ecx.frame_in_std() => {
+                let [_, _] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
-            "sigaction" if this.frame_in_std() => {
-                let [_, _, _] = &this.check_shim_sig(
+            "sigaction" if ecx.frame_in_std() => {
+                let [_, _, _] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
             }
 
-            "getpwuid_r" | "__posix_getpwuid_r" if this.frame_in_std() => {
+            "getpwuid_r" | "__posix_getpwuid_r" if ecx.frame_in_std() => {
                 // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
-                let [uid, pwd, buf, buflen, result] = &this.check_shim_sig(
+                let [uid, pwd, buf, buflen, result] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::uid_t, *libc::passwd, *_, usize, **_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.check_no_isolation("`getpwuid_r`")?;
+                ecx.check_no_isolation("`getpwuid_r`")?;
 
-                let uid = this.read_scalar(uid)?.to_u32()?;
-                let pwd = this.deref_pointer(pwd)?;
-                let buf = this.read_pointer(buf)?;
-                let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_pointer(result)?;
+                let uid = ecx.read_scalar(uid)?.to_u32()?;
+                let pwd = ecx.deref_pointer(pwd)?;
+                let buf = ecx.read_pointer(buf)?;
+                let buflen = ecx.read_target_usize(buflen)?;
+                let result = ecx.deref_pointer(result)?;
 
                 // Must be for "us".
                 if uid != UID {
@@ -1492,51 +1502,51 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Reset all fields to `uninit` to make sure nobody reads them.
                 // (This is a std-only shim so we are okay with such hacks.)
-                this.write_uninit(&pwd)?;
+                ecx.write_uninit(&pwd)?;
 
                 // We only set the home_dir field.
                 #[allow(deprecated)]
                 let home_dir = std::env::home_dir().unwrap();
-                let (written, _) = this.write_path_to_c_str(&home_dir, buf, buflen)?;
-                let pw_dir = this.project_field_named(&pwd, "pw_dir")?;
-                this.write_pointer(buf, &pw_dir)?;
+                let (written, _) = ecx.write_path_to_c_str(&home_dir, buf, buflen)?;
+                let pw_dir = ecx.project_field_named(&pwd, "pw_dir")?;
+                ecx.write_pointer(buf, &pw_dir)?;
 
                 if written {
-                    this.write_pointer(pwd.ptr(), &result)?;
-                    this.write_int(0, dest)?;
+                    ecx.write_pointer(pwd.ptr(), &result)?;
+                    ecx.write_int(0, dest)?;
                 } else {
-                    this.write_int(0, &result)?;
-                    this.write_scalar(this.eval_libc("ERANGE"), dest)?;
+                    ecx.write_int(0, &result)?;
+                    ecx.write_scalar(ecx.eval_libc("ERANGE"), dest)?;
                 }
             }
 
             // Platform-specific shims
             _ => {
-                let target_os = &this.tcx.sess.target.os;
+                let target_os = &ecx.tcx.sess.target.os;
                 return match target_os {
                     Os::Android =>
                         android::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::FreeBsd =>
                         freebsd::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::Linux =>
                         linux::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::MacOs =>
                         macos::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::Solaris | Os::Illumos =>
                         solarish::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::NetBsd =>
                         netbsd::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     _ => interp_ok(EmulateItemResult::NotSupported),
                 };

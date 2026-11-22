@@ -474,6 +474,17 @@ unsafe fn test_avx() {
         let r = _mm256_dp_ps::<0xFF>(a, b);
         let e = _mm256_setr_ps(200., 200., 200., 200., 2387., 2387., 2387., 2387.);
         assert_eq_m256(r, e);
+
+        // Each 128-bit half has its own reduction and uses the same masks.
+        let a = _mm256_setr_ps(1e20, 1.0, -1e20, 1.0, -0.0, -0.0, -0.0, -0.0);
+        let b = _mm256_set1_ps(1.0);
+        let r: [u32; 8] = transmute(_mm256_dp_ps::<0xff>(a, b));
+        let neg_zero = (-0.0f32).to_bits();
+        assert_eq!(r, [0, 0, 0, 0, neg_zero, neg_zero, neg_zero, neg_zero]);
+        let r: [u32; 8] = transmute(_mm256_dp_ps::<0xf5>(a, b));
+        assert_eq!(r, [0, 0, 0, 0, neg_zero, 0, neg_zero, 0]);
+        let r: [f32; 8] = transmute(_mm256_dp_ps::<0x2f>(a, b));
+        assert_eq!(r.map(f32::to_bits), [1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0].map(f32::to_bits));
     }
     test_mm256_dp_ps();
 
