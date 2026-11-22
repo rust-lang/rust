@@ -10,7 +10,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, Const, Interner, TypeVisitor, UintTy, ValTreeKind};
+use crate::{self as ty, Const, Interner, TypeVisitor, ValTreeKind};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -173,12 +173,17 @@ pub fn trait_impl_exact_match_self_ty<I: Interner>(cx: I, impl_def_id: I::ImplId
     is_exact_match_ty::<I>(self_ty).then_some(self_ty)
 }
 
-/// The following types are "exact-match":
+/// A `Ty` is "exact-match" if its unification with another type implies equality. This means an
+/// exact-match type doesn't contain types that could be further resolved or instantiated.
+///
+/// The following types are exact-match:
 /// - Scalar types: `bool`, `char`, integers, floats, `str`, and `!`.
 /// - Certain aggregate types (ADTs, tuples, arrays, slices) that satisfy the following:
 ///   - Any type parameters must themselves be exact-match types.
-///   - Any const parameters must be trivial `usize` leaf consts.
-///   - No region parameters are allowed.
+///   - Any const parameters must be trivial leaf consts.
+///   - No region parameters are allowed, because types with different regions can unify.
+///
+/// Types that aren't exact-match include type params, type inference variables, and placeholders.
 ///
 /// The crucial thing that follows is that we can trivially test if two exact-match `Ty`s unify via
 /// equality: they unify iff they are equal. This property is used to optimize candidate selection,
@@ -251,7 +256,6 @@ impl<I: Interner> TypeVisitor<I> for ExactMatchTyVisitor {
         // and `5u64`) to unify. `usize` is the type that shows up in various real-world crates
         // such as `bitmaps` and `typenum`.
         if let ty::ConstKind::Value(val) = ct.kind()
-            && let ty::Uint(UintTy::Usize) = val.ty().kind()
             && let ValTreeKind::Leaf(_) = val.valtree().kind()
         {
             ControlFlow::Continue(())

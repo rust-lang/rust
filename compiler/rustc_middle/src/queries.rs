@@ -1651,13 +1651,14 @@ rustc_queries! {
     }
 
     /// Given a trait `trait_id`, for the given simplified type `simp`, return a list with one
-    /// entry per trait impl. Each entry is `Some(self_ty)` if that `self_ty` is an exact-match
-    /// type, or `None` otherwise.
+    /// pair element per trait impl. The first value in the pair is the trait impl `DefId`. The
+    /// second value in the pair is `Some(self_ty)` if that trait impl's `self_ty` is an
+    /// exact-match type, or `None` otherwise.
     ///
     /// The length and order of the list matches that for the `simp` entry within
     /// `trait_impls_of(trait_id)`.
     query trait_impl_exact_match_self_tys((trait_id, simp): (DefId, SimplifiedType))
-        -> &'tcx [Option<Ty<'tcx>>]
+        -> &'tcx [(DefId, Option<Ty<'tcx>>)]
     {
         desc {
             "finding exact-match self tys for trait impls of `{}` that match `{:?}`",

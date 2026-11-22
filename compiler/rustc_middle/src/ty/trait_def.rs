@@ -157,9 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let exact_match_self_tys =
                         tcx.trait_impl_exact_match_self_tys((trait_def_id, simp));
                     assert_eq!(impls_for_type.len(), exact_match_self_tys.len());
-                    for (&impl_def_id, &exact_match_self_ty) in
-                        iter::zip(impls_for_type, exact_match_self_tys)
-                    {
+                    for &(impl_def_id, exact_match_self_ty) in exact_match_self_tys {
                         if let Some(exact_match_self_ty) = exact_match_self_ty
                             && exact_match_self_ty != self_ty
                         {
@@ -399,16 +397,16 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 pub(super) fn trait_impl_exact_match_self_tys_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     (trait_id, simp): (DefId, SimplifiedType),
-) -> &'tcx [Option<Ty<'tcx>>] {
+) -> &'tcx [(DefId, Option<Ty<'tcx>>)] {
     // Get the non-blanket impls of the trait that match `simp`, and for each one, wrap it in
     // `Some` if it is exact-match or `None` otherwise.
     match tcx.trait_impls_of(trait_id).non_blanket_impls().get(&simp) {
         None => bug!("query should only be called when non-blanket impls are present"),
-        Some(non_blanket_impls) => tcx.arena.alloc_from_iter(
-            non_blanket_impls
-                .iter()
-                .map(|&trait_impl| fast_reject::trait_impl_exact_match_self_ty(tcx, trait_impl)),
-        ),
+        Some(non_blanket_impls) => {
+            tcx.arena.alloc_from_iter(non_blanket_impls.iter().map(|&trait_impl| {
+                (trait_impl, fast_reject::trait_impl_exact_match_self_ty(tcx, trait_impl))
+            }))
+        }
     }
 }
 

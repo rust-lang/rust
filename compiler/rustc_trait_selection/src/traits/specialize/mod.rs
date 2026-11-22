@@ -11,8 +11,6 @@
 
 pub mod specialization_graph;
 
-use std::iter;
-
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diag;
 use rustc_errors::codes::*;
@@ -415,8 +413,7 @@ pub(super) fn specialization_graph_provider(
                 let exact_match_self_tys =
                     tcx.trait_impl_exact_match_self_tys((trait_id, simplified_self));
                 assert_eq!(bucket.len(), exact_match_self_tys.len());
-                for (&impl_def_id, &exact_match_self_ty) in iter::zip(bucket, exact_match_self_tys)
-                {
+                for &(impl_def_id, exact_match_self_ty) in exact_match_self_tys {
                     if let Some(exact_match_self_ty) = exact_match_self_ty {
                         exact_match_self_tys_map.insert(impl_def_id, exact_match_self_ty);
                     }
