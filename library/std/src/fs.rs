@@ -2169,6 +2169,38 @@ impl OpenOptions {
         self
     }
 
+    /// Sets the option for *not* following symlinks when opening a file.
+    ///
+    /// If this option is set, then opening the file will fail if the file is a symlink.
+    /// This only affects the last component of the path; directory symlinks earlier in the path
+    /// will still behave as usual.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// On supported systems (including Windows and some UNIX-based OSes), this check will happen
+    /// atomically as part of filename resolution. Specifically, on UNIX this is implemented via the
+    /// `O_NOFOLLOW` flag, and on Windows via the `FILE_FLAG_OPEN_REPARSE_POINT` flag followed by a
+    /// symlink check after the file got opened.
+    ///
+    /// When that is not supported, the check will be done before opening the file. In the latter
+    /// case, no [TOCTOU] guarantees are made.
+    ///
+    /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(open_options_nofollow)]
+    /// use std::fs::OpenOptions;
+    ///
+    /// let file = OpenOptions::new().read(true).nofollow(true).open("foo.txt");
+    /// ```
+    #[unstable(feature = "open_options_nofollow", issue = "166352")]
+    pub fn nofollow(&mut self, nofollow: bool) -> &mut Self {
+        self.0.nofollow(nofollow);
+        self
+    }
+
     /// Opens a file at `path` with the options specified by `self`.
     ///
     /// # Errors

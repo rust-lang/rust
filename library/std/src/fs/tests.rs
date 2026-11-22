@@ -2104,6 +2104,48 @@ fn open_flavors() {
 }
 
 #[test]
+fn nofollow() {
+    let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    }
+
+    let mut opts = OpenOptions::new();
+    opts.read(true).nofollow(true);
+
+    let filename = tmpdir.join("file.txt");
+    let linkname = tmpdir.join("link");
+    check!(fs::write(&filename, b"hello world"));
+    check!(symlink_file(&filename, &linkname));
+
+    // Opening the link fails, but opening the file directly still works.
+    let err = opts.open(&linkname).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::FilesystemLoop);
+    check!(opts.open(&filename));
+
+    // We still follow directory symlinks in the path.
+    let dirlinkname = tmpdir.join("dirlink");
+    check!(symlink_dir(tmpdir.path(), &dirlinkname));
+    check!(opts.open(dirlinkname.join("file.txt")));
+
+    // We also still follow hardlinks.
+    let hardlinkname = tmpdir.join("hardlink");
+    check!(fs::hard_link(&filename, &hardlinkname));
+    check!(opts.open(&hardlinkname));
+
+    // Also check `fs::Dir` methods.
+    check!(fs::Dir::open(&dirlinkname)); // just to confirm that it works without nofollow
+    let err = fs::Dir::open_with(&dirlinkname, &opts).unwrap_err();
+    assert_matches!(err.kind(), ErrorKind::FilesystemLoop | ErrorKind::NotADirectory); // different error on Linux
+    let dir = check!(fs::Dir::open_with(tmpdir.path(), &opts));
+    let err = dir.open_file_with("link", &opts).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::FilesystemLoop);
+    check!(dir.open_dir("dirlink")); // just to confirm that it works without nofollow
+    let err = dir.open_dir_with("dirlink", &opts).unwrap_err();
+    assert_matches!(err.kind(), ErrorKind::FilesystemLoop | ErrorKind::NotADirectory); // different error on Linux
+}
+
+#[test]
 #[cfg(windows)]
 fn windows_access_mode_override() {
     // ensure that using access_mode negates the need for using write or append
@@ -2205,7 +2247,7 @@ fn realpath_works() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
         return;
-    };
+    }
 
     let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
     let file = tmpdir.join("test");
@@ -2232,7 +2274,7 @@ fn realpath_works_tricky() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
         return;
-    };
+    }
 
     let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
     let a = tmpdir.join("a");
@@ -2403,7 +2445,7 @@ fn symlink_hard_link() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
         return;
-    };
+    }
 
     // Create "file", a file.
     check!(fs::File::create(tmpdir.join("file")));
