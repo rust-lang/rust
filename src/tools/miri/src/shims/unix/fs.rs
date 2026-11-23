@@ -1334,31 +1334,41 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let operation_name = if dirfd_op.is_some() { "`fchmodat`" } else { "`chmod`" };
+        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
 
-        if let Some(dirfd_op) = dirfd_op {
-            let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
-            if dirfd != this.eval_libc_i32("AT_FDCWD") {
-                throw_unsup_format!(
-                    "`fchmodat` with `dirfd` not equal to `AT_FDCWD` is not supported"
-                );
-            }
-        }
-        let mut flags =
+        let dirfd = if let Some(dirfd_op) = dirfd_op {
+            this.read_scalar(dirfd_op)?.to_i32()?
+        } else {
+            at_fdcwd
+        };
+        let path_ptr = this.read_pointer(path_op)?;
+        let mode = this.read_int::<u32>(mode_op)?;
+        let flags =
             if let Some(flags_op) = flags_op { this.read_scalar(flags_op)?.to_i32()? } else { 0 };
+
+        // Validate arguments.
+        if dirfd != at_fdcwd {
+            throw_unsup_format!("`fchmodat` with `dirfd` not equal to `AT_FDCWD` is not supported");
+        }
+
+        // Parse flags.
+        let mut flags = flags;
+        // AT_SYMLINK_NOFOLLOW
         let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
         let nofollow = flags & at_symlink_nofollow == at_symlink_nofollow;
         flags &= !at_symlink_nofollow;
+        // Complain about unknown flags.
         if flags != 0 {
             throw_unsup_format!("unsupported flags for `fchmodat`: {flags:#x}")
         }
-
-        let path_ptr = this.read_pointer(path_op)?;
-        let mode = this.read_int::<u32>(mode_op)?;
 
         if this.ptr_is_null(path_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
         let path = this.read_path_from_c_str(path_ptr)?;
+        if path.is_empty() {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+        }
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1366,6 +1376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
+        // Perform actual permission update.
         let permissions = this.host_permissions_from_mode(mode, || {
             // We get here if we need to read the old permissions before we can set new ones.
             // This is fundamentally racy. We cannot even use a file handle to make it less racy:
