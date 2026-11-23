@@ -1,0 +1,16 @@
+// This test ensures that the events work on settings popover tabs labels.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("open-settings-menu", {})
+assert: ".settings-menu > a:focus"
+press-key: "Tab"
+// For now, the first tab is selected and displayed.
+assert: ".settings-menu #settings .tabs-header input:checked + label:nth-of-type(1):focus-visible"
+press-key: "Tab"
+assert: ".settings-menu #settings .tabs-header input:not(:checked) + label:nth-of-type(2):focus-visible"
+press-key: "Enter"
+assert: ".settings-menu #settings .tabs-header input:checked + label:nth-of-type(2):focus-visible"
+// We switch to the last tab and this time test with the "Space" key.
+press-key: "Tab"
+press-key: "Space"
+assert: ".settings-menu #settings .tabs-header input:checked + label:nth-of-type(3):focus-visible"

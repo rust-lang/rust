@@ -651,13 +651,25 @@ function preLoadCss(cssUrl) {
             return;
         }
 
-        if (document.activeElement &&
-            document.activeElement instanceof HTMLInputElement &&
+        if (document.activeElement instanceof HTMLInputElement &&
             document.activeElement.type !== "checkbox" &&
             document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
+                break;
+            }
+        } else if (document.activeElement instanceof HTMLLabelElement) {
+            switch (getVirtualKey(ev)) {
+            case "Escape":
+                handleEscape(ev);
+                break;
+            case " ":
+            case "Enter":
+                nonnull(document.getElementById(
+                    nonnull(document.activeElement.getAttribute("for")),
+                // @ts-expect-error
+                )).checked = true;
                 break;
             }
         } else {

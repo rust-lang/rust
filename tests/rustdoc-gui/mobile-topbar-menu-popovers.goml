@@ -8,14 +8,15 @@ include: "utils.goml"
 // We open the settings menu
 call-function: ("open-settings-menu", {})
 // We ensure it's not scrolled down yet.
-assert-property: ("#settings .tabs > input:checked + label + .content", {"scrollTop": 0})
+assert: "#settings .tabs-header > input:first-of-type:checked"
+assert-property: ("#settings .content:first-of-type", {"scrollTop": 0})
 // We ensure its height is smaller than the window's, but its content's height is bigger.
 store-property: (
-    "#settings .tabs",
+    "#settings .content:first-of-type",
     {
         "offsetHeight": menu_height,
         "scrollHeight": scroll_height,
-    },
+    }
 )
 assert: |menu_height| < |window_height| && |scroll_height| > |window_height|
 
@@ -23,7 +24,7 @@ assert: |menu_height| < |window_height| && |scroll_height| > |window_height|
 scroll-to: "#settings .setting-line:last-of-type input"
 // The item should be visible now, and so the Y scroll value should have changed.
 // Note: The `scrollTop` value will change if settings are added or removed.
-assert-property: ("#settings .tabs", {"scrollTop": 82})
+assert-property: ("#settings .content:first-of-type", {"scrollTop": 82})
 
 // Now we open the help menu.
 click: ".help-menu a"

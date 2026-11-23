@@ -2149,7 +2149,6 @@ span.tooltip:hover::after {
 }
 .tabs > .content {
 	display: none;
-	min-height: 0;
 	overflow-y: auto;
 }
 .tabs:has(> .tabs-header > input:nth-of-type(1):checked) > section.content:nth-of-type(1),
@@ -2157,10 +2156,8 @@ span.tooltip:hover::after {
 .tabs:has(> .tabs-header > input:nth-of-type(3):checked) > section.content:nth-of-type(3) {
 	display: block;
 }
-/* We don't want them to be visible but still "focusable". */
 .tabs-header > input {
-	position: absolute;
-	opacity: 0;
+	display: none;
 }
 
 #search-tabs .count {

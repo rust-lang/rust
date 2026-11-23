@@ -50,7 +50,7 @@ define-function: (
     block {
         // In case it's not open yet, we open it.
         call-function: ("open-settings-menu", {})
-        click: "#settings .tabs > label[for='setting-tab-" + |tab_name| + "']"
+        click: "#settings .tabs label[for='setting-tab-" + |tab_name| + "']"
         // We ensure it worked.
         wait-for: "#setting-tab-" + |tab_name| + ":checked"
     }

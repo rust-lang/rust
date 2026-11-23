@@ -119,22 +119,36 @@
 
     /**
      * This function builds the sections inside the "settings page". It takes a `tabs` list
-     * as argument which describes each setting and how to render it. It returns a string
-     * representing the raw HTML.
+     * as argument which describes each setting and how to render it. It returns an HTMLElement
+     * representing the headers and an HTML string representing the tabs content.
      *
      * @param {Array<rustdoc.SettingsTab>} tabs
      *
-     * @return {string}
+     * @return {(string | HTMLDivElement)[]}
      */
     function buildSettingsPageSections(tabs) {
         let output = "";
-        let headers = "<div class='tabs-header'>";
+        const headers = document.createElement("div");
+        headers.className = "tabs-header";
 
         for (const [index, tab] of tabs.entries()) {
-            headers += `\
-<input type="radio" ${index === 0 ? " checked" : ""} id="setting-tab-${tab.name}" \
-    name="setting-radio" tabindex=-1><label for="setting-tab-${tab.name}" tabindex=0>${tab.name}\
-    </label>`;
+            const input = document.createElement("input");
+            const settingId = `setting-tab-${tab.name}`;
+            input.id = settingId;
+            input.setAttribute("type", "radio");
+            input.setAttribute("name", "setting-radio");
+            // We prevent the `input` to be focusable so we can handle the `tab` through the label.
+            input.setAttribute("tabindex", "-1");
+            if (index === 0) {
+                input.setAttribute("checked", "");
+            }
+            headers.appendChild(input);
+            const label = document.createElement("label");
+            label.setAttribute("for", settingId);
+            label.setAttribute("tabindex", "0");
+            label.innerText = tab.name;
+            headers.appendChild(label);
+
             output += "<section class='content'>";
             for (const setting of tab.settings) {
                 const js_data_name = setting["js_name"];
@@ -174,7 +188,7 @@
             }
             output += "</section>";
         }
-        return headers + "</div>" + output;
+        return [headers, output];
     }
 
     /**
@@ -285,14 +299,21 @@
         ];
 
         // Then we build the DOM.
+        const settings = document.createElement("div");
+        settings.className = "settings tabs";
+        const [headers, settingsTabs] = buildSettingsPageSections(tabs);
+        // @ts-expect-error
+        settings.appendChild(headers);
+        // @ts-expect-error
+        settings.insertAdjacentHTML("beforeend", settingsTabs);
+
         const elementKind = isSettingsPage ? "section" : "div";
-        const innerHTML = `<div class="settings tabs">${buildSettingsPageSections(tabs)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
         if (!isSettingsPage) {
             el.className = "popover";
         }
-        el.innerHTML = innerHTML;
+        el.appendChild(settings);
 
         if (isSettingsPage) {
             const mainElem = document.getElementById(MAIN_ID);
