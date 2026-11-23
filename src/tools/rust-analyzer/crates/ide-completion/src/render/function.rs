@@ -246,8 +246,11 @@ pub(super) fn add_call_parens<'b>(
                         Some(n) => {
                             let smol_str = n.display_no_db(ctx.edition).to_smolstr();
                             let text = smol_str.as_str().trim_start_matches('_');
-                            let ref_ =
-                                ref_of_param(ctx, text, &param.ty().instantiate_with_errors());
+                            let ref_ = ref_of_param(
+                                ctx,
+                                text,
+                                &param.ty().instantiate_with_errors(ctx.db),
+                            );
                             f(&format_args!("${{{}:{ref_}{text}}}", index + offset))
                         }
                         None => {

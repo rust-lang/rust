@@ -310,18 +310,20 @@ impl<'db> Expr<'db> {
             Expr::Local(it) => it.ty(db),
             Expr::ConstParam(it) => it.ty(db),
             Expr::FamousType { ty, .. } => ty.clone(),
-            Expr::Function { func, generics, .. } => func.ret_type(db).instantiate(generics),
+            Expr::Function { func, generics, .. } => func.ret_type(db).instantiate(db, generics),
             Expr::Method { func, generics, target, .. } => func
                 .ret_type(db)
-                .instantiate(target.ty(db).type_arguments().chain(generics.iter().cloned())),
+                .instantiate(db, target.ty(db).type_arguments().chain(generics.iter().cloned())),
             Expr::Variant { variant, generics, .. } => {
-                Adt::from(variant.parent_enum(db)).ty(db).instantiate(generics)
+                Adt::from(variant.parent_enum(db)).ty(db).instantiate(db, generics)
             }
             Expr::Struct { strukt, generics, .. } => {
-                Adt::from(*strukt).ty(db).instantiate(generics)
+                Adt::from(*strukt).ty(db).instantiate(db, generics)
             }
             Expr::Tuple { ty, .. } => ty.clone(),
-            Expr::Field { expr, field } => field.ty(db).instantiate(expr.ty(db).type_arguments()),
+            Expr::Field { expr, field } => {
+                field.ty(db).instantiate(db, expr.ty(db).type_arguments())
+            }
             Expr::Reference(it) => it.ty(db),
             Expr::Many(ty) => ty.clone(),
         }
