@@ -543,13 +543,13 @@ fn print_extra_info_tags(
         // to render "unstable" everywhere.
         let stability = import_def_id
             .map_or_else(|| item.stability(tcx), |import_did| tcx.lookup_stability(import_did));
-        if let Some(stability) = stability
-            && stability.feature != sym::rustc_private
-        {
-            if tcx.features().internal(stability.feature) {
-                write!(f, "{}", tag_html("internal", "", "Internal"))?;
-            } else {
-                write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+        if let Some(s) = stability {
+            if s.is_unstable() && s.feature != sym::rustc_private {
+                if super::is_internal_lib_feature(s.feature) {
+                    write!(f, "{}", tag_html("internal", "", "Internal"))?;
+                } else {
+                    write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+                }
             }
         }
 
