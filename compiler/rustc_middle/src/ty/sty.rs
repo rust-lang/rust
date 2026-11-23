@@ -835,15 +835,25 @@ impl<'tcx> Ty<'tcx> {
         args: GenericArgs<'tcx>,
         fields: &[FieldIdx],
     ) -> Ty<'tcx> {
-        tcx.debug_assert_args_compatible(def.did(), args);
-        tcx.debug_assert_adt_def_kind_compatible(def);
-
         let base = Ty::new_adt(tcx, def, args);
 
         let fields = fields
             .iter()
             .map(|field| Ty::new_field_representing_type(tcx, base, FIRST_VARIANT, *field));
         let fields = Ty::new_tup_from_iter(tcx, fields);
+
+        Ty::new_encoded_view(tcx, def, args, fields)
+    }
+
+    fn new_encoded_view(
+        tcx: TyCtxt<'tcx>,
+        def: AdtDef<'tcx>,
+        args: GenericArgs<'tcx>,
+        fields: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        tcx.debug_assert_args_compatible(def.did(), args);
+        tcx.debug_assert_adt_def_kind_compatible(def);
+        tcx.debug_assert_encoded_viewed_fields_compatible(def, args, fields);
 
         tcx.interners.intern_view(def, args, fields)
     }
@@ -972,6 +982,15 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         args: ty::GenericArgs<'tcx>,
     ) -> Self {
         Ty::new_adt(interner, adt_def, args)
+    }
+
+    fn new_view(
+        interner: TyCtxt<'tcx>,
+        adt_def: ty::AdtDef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
+        fields: Ty<'tcx>,
+    ) -> Self {
+        Ty::new_encoded_view(interner, adt_def, args, fields)
     }
 
     fn new_foreign(interner: TyCtxt<'tcx>, def_id: DefId) -> Self {

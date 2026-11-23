@@ -1,0 +1,62 @@
+error: field `b` cannot be accessed
+  --> $DIR/field-access.rs:36:17
+   |
+LL |     let _ = foo.b;
+   |                 ^
+   |
+note: this expression has type &view_type!(Foo.{ a }), of which only `a` can be accessed
+  --> $DIR/field-access.rs:36:13
+   |
+LL |     let _ = foo.b;
+   |             ^^^
+
+error: field `1` cannot be accessed
+  --> $DIR/field-access.rs:43:18
+   |
+LL |     let _ = &bar.1;
+   |                  ^
+   |
+note: this expression has type &view_type!(Bar.{ 0 }), of which only `0` can be accessed
+  --> $DIR/field-access.rs:43:14
+   |
+LL |     let _ = &bar.1;
+   |              ^^^
+
+error: field `c` cannot be accessed
+  --> $DIR/field-access.rs:53:17
+   |
+LL |     let _ = foo.c;
+   |                 ^
+   |
+note: this expression has type &&view_type!(Foo.{ a, b }), of which only `a` and `b` can be accessed
+  --> $DIR/field-access.rs:53:13
+   |
+LL |     let _ = foo.c;
+   |             ^^^
+
+error: field `2` cannot be accessed
+  --> $DIR/field-access.rs:60:18
+   |
+LL |     let _ = &bar.2;
+   |                  ^
+   |
+note: this expression has type &&view_type!(Bar.{ 0, 1 }), of which only `0` and `1` can be accessed
+  --> $DIR/field-access.rs:60:14
+   |
+LL |     let _ = &bar.2;
+   |              ^^^
+
+error: field `b` cannot be accessed
+  --> $DIR/field-access.rs:71:17
+   |
+LL |     let _ = baz.b;
+   |                 ^
+   |
+note: this expression has type Baz, of which only `a` can be accessed
+  --> $DIR/field-access.rs:71:13
+   |
+LL |     let _ = baz.b;
+   |             ^^^
+
+error: aborting due to 5 previous errors
+
