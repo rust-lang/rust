@@ -16,6 +16,7 @@ use libc_utils::{errno_check, errno_result};
 fn main() {
     test_chmod();
     test_fchmod();
+    test_fchmodat();
 }
 
 #[track_caller]
@@ -50,4 +51,76 @@ fn test_fchmod() {
     // We can leave the file type in the mode that we pass to `fchmod`.
     unsafe { errno_check(libc::fchmod(fd, getmod(&c_path) | 0o111)) };
     assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o711);
+}
+
+fn test_fchmodat() {
+    use std::io::ErrorKind;
+
+    let path = utils::prepare_with_content("miri_test_libc_fchmodat.txt", b"abcdef");
+    let c_path = utils::into_c_string(&path);
+
+    // Test AT_FDCWD with an absolute path, without and with NOFOLLOW.
+    unsafe { errno_check(libc::fchmodat(libc::AT_FDCWD, c_path.as_ptr(), 0o610, 0)) };
+    assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o610);
+    unsafe {
+        errno_check(libc::fchmodat(
+            libc::AT_FDCWD,
+            c_path.as_ptr(),
+            0o744,
+            libc::AT_SYMLINK_NOFOLLOW,
+        ))
+    };
+    assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o744);
+
+    // Test with a relative path.
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(path.parent().unwrap()).unwrap();
+    unsafe {
+        errno_check(libc::fchmodat(
+            libc::AT_FDCWD,
+            c"miri_test_libc_fchmodat.txt".as_ptr(),
+            0o700,
+            0,
+        ))
+    };
+    std::env::set_current_dir(old_cwd).unwrap();
+    assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o700);
+
+    if utils::have_symlink_permission() {
+        let link = utils::prepare("miri_test_libc_fchmodat.link");
+        std::os::unix::fs::symlink(&path, &link).unwrap();
+        let c_link = utils::into_c_string(&link);
+        // Following the link changes the target. No-follow must leave it alone.
+        unsafe { errno_check(libc::fchmodat(libc::AT_FDCWD, c_link.as_ptr(), 0o600, 0)) };
+        assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o600);
+        let result = unsafe {
+            errno_result(libc::fchmodat(
+                libc::AT_FDCWD,
+                c_link.as_ptr(),
+                0o777,
+                libc::AT_SYMLINK_NOFOLLOW,
+            ))
+        };
+        // Behavior depends on the host: on Linux, we get an error;
+        // on BSD, it changes the permissions of the link itself.
+        if let Err(err) = result {
+            assert_eq!(err.kind(), ErrorKind::Unsupported);
+        }
+        assert_eq!(getmod(&c_path) & !libc::S_IFMT, 0o600);
+        std::fs::remove_file(link).unwrap();
+    }
+
+    let missing = c"miri_test_libc_fchmodat_missing";
+    assert_eq!(
+        unsafe { errno_result(libc::fchmodat(libc::AT_FDCWD, missing.as_ptr(), 0o600, 0)) }
+            .unwrap_err()
+            .raw_os_error(),
+        Some(libc::ENOENT),
+    );
+    assert_eq!(
+        unsafe { errno_result(libc::fchmodat(libc::AT_FDCWD, std::ptr::null(), 0o600, 0)) }
+            .unwrap_err()
+            .raw_os_error(),
+        Some(libc::EFAULT),
+    );
 }

@@ -432,7 +432,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.chmod(path, mode)?;
+                let result = ecx.chmod(None, path, mode, None)?;
                 ecx.write_scalar(result, dest)?;
             }
             "fchmod" => {
@@ -441,6 +441,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let result = ecx.fchmod(fd, mode)?;
+                ecx.write_scalar(result, dest)?;
+            }
+            "fchmodat" => {
+                let [dirfd, path, mode, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, libc::mode_t, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.chmod(Some(dirfd), path, mode, Some(flags))?;
                 ecx.write_scalar(result, dest)?;
             }
             "rename" => {
