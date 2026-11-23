@@ -5,8 +5,10 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iterator_try_collect)]
 #![feature(option_into_flat_iter)]
+#![feature(register_tool)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use hir::ConstContext;

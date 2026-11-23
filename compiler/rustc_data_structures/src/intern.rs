@@ -32,7 +32,8 @@ mod private {
 /// The `PrivateZst` field means you can pattern match with `Interned(v, _)` but you can only
 /// construct a `Interned` with `new_unchecked`, and not directly. This means that all creation
 /// points can be audited easily.
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct Interned<'a, T>(pub &'a T, pub private::PrivateZst);
 
 impl<'a, T> Interned<'a, T> {

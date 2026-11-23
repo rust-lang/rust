@@ -1312,7 +1312,7 @@ pub(crate) struct AttributeKindInFindAttr;
 #[derive(Diagnostic)]
 #[diag("match is not exhaustive")]
 #[help("explicitly list all variants of the enum in a `match`")]
-pub(crate) struct RustcMustMatchExhaustivelyNotExhaustive {
+pub(crate) struct LintMustMatchExhaustivelyNotExhaustive {
     #[label("required because of this attribute")]
     pub attr_span: Span,
 
