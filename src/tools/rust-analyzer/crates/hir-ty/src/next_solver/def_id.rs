@@ -4,10 +4,12 @@ use hir_def::{
     AdtId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId, EnumId,
     EnumVariantId, ExpressionStoreOwnerId, FunctionId, GenericDefId, ImplId, StaticId, StructId,
     TraitId, TypeAliasId, UnionId, VariantId,
+    hir::ExprId,
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, StaticSignature, StructSignature,
         TraitSignature, TypeAliasSignature, UnionSignature,
     },
+    type_ref::{ConstRef, TypeRefId},
 };
 use rustc_type_ir::inherent;
 use salsa::SalsaValue;
@@ -538,6 +540,58 @@ impl<'db> From<TermId> for SolverDefId<'db> {
             TermId::TypeAliasId(id) => id.into(),
             TermId::ConstId(id) => id.into(),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TermRefId {
+    TypeRefId(TypeRefId),
+    ConstRef(ConstRef),
+}
+impl_from!(TypeRefId, ConstRef for TermRefId);
+
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub struct TermRefIdPacked(u32);
+
+const _: () = assert!(std::mem::size_of::<TermRefIdPacked>() == std::mem::size_of::<u32>());
+
+impl TermRefIdPacked {
+    const CONST_REF_BIT: u32 = 1 << (u32::BITS - 1);
+    const INDEX_MASK: u32 = !Self::CONST_REF_BIT;
+
+    pub fn unpack(self) -> TermRefId {
+        let is_const_ref = self.0 & Self::CONST_REF_BIT != 0;
+        match is_const_ref {
+            true => {
+                let expr = ExprId::from_raw((self.0 & Self::INDEX_MASK).into());
+                TermRefId::ConstRef(ConstRef { expr })
+            }
+            false => TermRefId::TypeRefId(TypeRefId::from_raw(self.0.into())),
+        }
+    }
+}
+
+impl std::fmt::Debug for TermRefIdPacked {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.unpack().fmt(f)
+    }
+}
+
+impl From<TypeRefId> for TermRefIdPacked {
+    fn from(value: TypeRefId) -> Self {
+        let value = value.into_raw().into_u32();
+        // virtually impossible to have IDs that high
+        debug_assert_eq!(value & Self::CONST_REF_BIT, 0);
+        Self(value)
+    }
+}
+
+impl From<ConstRef> for TermRefIdPacked {
+    fn from(value: ConstRef) -> Self {
+        let value = value.expr.into_raw().into_u32();
+        // virtually impossible to have IDs that high
+        debug_assert_eq!(value & Self::CONST_REF_BIT, 0);
+        Self(value | Self::CONST_REF_BIT)
     }
 }
 
