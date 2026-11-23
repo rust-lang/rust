@@ -2,7 +2,6 @@
 //@ needs-unwind
 
 #![allow(dropping_references, dropping_copy_types)]
-
 // FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
@@ -58,9 +57,16 @@ const DROP_CHECKER: DropChecker = DropChecker(1);
 fn const_zero() {
     unsafe { CHECK = 0 };
     let v: [DropChecker; 0] = [DROP_CHECKER; 0];
-    check_drops!(0);
+    check_drops!(1);
     std::mem::drop(v);
-    check_drops!(0);
+    check_drops!(1);
+
+    // test lifetime extension
+    unsafe { CHECK = 0 };
+    let v: ([DropChecker; 0], ()) = ([DROP_CHECKER; 0], check_drops!(1));
+    check_drops!(1);
+    std::mem::drop(v);
+    check_drops!(1);
 }
 
 fn const_one() {
@@ -74,9 +80,16 @@ fn const_one() {
 fn const_generic_zero<const N: usize>() {
     unsafe { CHECK = 0 };
     let v: [DropChecker; N] = [DROP_CHECKER; N];
-    check_drops!(0);
+    check_drops!(1);
     std::mem::drop(v);
-    check_drops!(0);
+    check_drops!(1);
+
+    // test lifetime extension
+    unsafe { CHECK = 0 };
+    let v: ([DropChecker; N], ()) = ([DROP_CHECKER; N], check_drops!(1));
+    check_drops!(1);
+    std::mem::drop(v);
+    check_drops!(1);
 }
 
 fn const_generic_one<const N: usize>() {
@@ -104,7 +117,7 @@ fn on_unwind() {
     std::panic::catch_unwind(|| {
         let panic = DropPanic;
         let _local = DropChecker(2);
-        let _v = (DropChecker(1), [panic; 0]);
+        let _v = (DropChecker(1), [{ panic }; 0]);
         std::process::abort();
     })
     .unwrap_err();

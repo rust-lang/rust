@@ -6,11 +6,10 @@ use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
-use rustc_span::{DUMMY_SP, Span, Spanned, bug};
+use rustc_span::{Span, Spanned, bug};
 use tracing::debug;
 
 use crate::builder::expr::as_place::PlaceBase;
@@ -57,19 +56,139 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_to_target_usize(this.tcx) {
-                    this.build_zero_repeat(block, value, scope, source_info)
-                } else {
-                    let value_operand = unpack!(
-                        block = this.as_operand(
+                let value_expr = &this.thir[value];
+                let elem_ty = value_expr.ty;
+                let value_operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+                );
+                match count.try_to_target_usize(this.tcx) {
+                    Some(0) => {
+                        let needs_drop = value_expr.ty.needs_drop(this.tcx, this.typing_env());
+
+                        let place_to_drop = match value_operand {
+                            Operand::Move(place) if needs_drop => {
+                                this.record_operands_moved(&[Spanned {
+                                    node: value_operand,
+                                    span: expr_span,
+                                }]);
+                                Some(place)
+                            }
+                            Operand::Constant(const_operand) => {
+                                let const_temp = this.temp(elem_ty, expr_span);
+
+                                // Do this even if not `needs_drop`
+                                // to ensure the const is mentioned in MIR
+                                this.cfg.push_assign_constant(
+                                    block,
+                                    source_info,
+                                    const_temp,
+                                    *const_operand,
+                                );
+                                if needs_drop { Some(const_temp) } else { None }
+                            }
+                            Operand::Move(_) | Operand::Copy(_) | Operand::RuntimeChecks(_) => None,
+                        };
+
+                        if let Some(to_drop) = place_to_drop {
+                            let success = this.cfg.start_new_block();
+                            this.cfg.terminate(
+                                block,
+                                source_info,
+                                TerminatorKind::Drop {
+                                    place: to_drop,
+                                    target: success,
+                                    unwind: UnwindAction::Continue,
+                                    replace: false,
+                                    drop: None,
+                                },
+                            );
+                            this.diverge_from(block);
+                            block = success;
+                        }
+
+                        block.and(Rvalue::Aggregate(
+                            Box::new(AggregateKind::Array(elem_ty)),
+                            IndexVec::new(),
+                        ))
+                    }
+
+                    Some(1) => {
+                        let fields = IndexVec::from_elem_n(value_operand, 1);
+                        block
+                            .and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), fields))
+                    }
+
+                    None if value_expr.ty.needs_drop(this.tcx, this.typing_env())
+                        && let Operand::Constant(ref constant) = value_operand =>
+                    {
+                        // conditionally drop the constant if `count` is 0
+
+                        let is_zero_temp = this.temp(this.tcx.types.bool, expr_span);
+
+                        let conditional_drop_block = this.cfg.start_new_block();
+                        let post_conditional_drop_block = this.cfg.start_new_block();
+
+                        // check if `count` is 0
+                        this.cfg.push_assign(
                             block,
-                            scope,
-                            value,
-                            LocalInfo::Boring,
-                            NeedsTemporary::No
-                        )
-                    );
-                    block.and(Rvalue::Repeat(value_operand, count))
+                            source_info,
+                            is_zero_temp,
+                            Rvalue::BinaryOp(
+                                BinOp::Eq,
+                                Box::new((
+                                    Operand::Constant(Box::new(ConstOperand {
+                                        span: expr_span,
+                                        user_ty: None,
+                                        const_: Const::Ty(this.tcx.types.usize, count),
+                                    })),
+                                    Operand::Constant(Box::new(ConstOperand {
+                                        span: expr_span,
+                                        user_ty: None,
+                                        const_: Const::from_usize(this.tcx, 0),
+                                    })),
+                                )),
+                            ),
+                        );
+
+                        // drop the const if it is
+                        let const_temp = this.temp(elem_ty, expr_span);
+                        this.cfg.push_assign_constant(
+                            conditional_drop_block,
+                            source_info,
+                            const_temp,
+                            (**constant).clone(),
+                        );
+
+                        this.cfg.terminate(
+                            conditional_drop_block,
+                            source_info,
+                            TerminatorKind::Drop {
+                                place: const_temp,
+                                target: post_conditional_drop_block,
+                                unwind: UnwindAction::Continue,
+                                replace: false,
+                                drop: None,
+                            },
+                        );
+                        this.diverge_from(conditional_drop_block);
+
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::if_(
+                                Operand::Move(is_zero_temp),
+                                conditional_drop_block,
+                                post_conditional_drop_block,
+                            ),
+                        );
+
+                        block = post_conditional_drop_block;
+
+                        block.and(Rvalue::Repeat(value_operand, count))
+                    }
+
+                    _ => block.and(Rvalue::Repeat(value_operand, count)),
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {
@@ -582,65 +701,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => Rvalue::BinaryOp(op, Box::new((lhs, rhs))),
         };
         block.and(rvalue)
-    }
-
-    /// Recursively inspect a THIR expression and probe through unsizing
-    /// operations that can be const-folded today.
-    fn check_constness(&self, mut kind: &'a ExprKind<'tcx>) -> bool {
-        loop {
-            debug!(?kind, "check_constness");
-            match kind {
-                &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
-                | &ExprKind::ValueExpr { source: eid }
-                | &ExprKind::PointerCoercion {
-                    cast: PointerCoercion::Unsize,
-                    source: eid,
-                    is_from_as_cast: _,
-                }
-                | &ExprKind::Scope { region_scope: _, hir_id: _, value: eid } => {
-                    kind = &self.thir[eid].kind
-                }
-                _ => return matches!(Category::of(&kind), Some(Category::Constant)),
-            }
-        }
-    }
-
-    fn build_zero_repeat(
-        &mut self,
-        mut block: BasicBlock,
-        value: ExprId,
-        scope: TempLifetime,
-        outer_source_info: SourceInfo,
-    ) -> BlockAnd<Rvalue<'tcx>> {
-        let this = self; // See "LET_THIS_SELF".
-        let value_expr = &this.thir[value];
-        let elem_ty = value_expr.ty;
-        if this.check_constness(&value_expr.kind) {
-            // Repeating a const does nothing
-        } else {
-            // For a non-const, we may need to generate an appropriate `Drop`
-            let value_operand = unpack!(
-                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
-            );
-            if let Operand::Move(to_drop) = value_operand {
-                let success = this.cfg.start_new_block();
-                this.cfg.terminate(
-                    block,
-                    outer_source_info,
-                    TerminatorKind::Drop {
-                        place: to_drop,
-                        target: success,
-                        unwind: UnwindAction::Continue,
-                        replace: false,
-                        drop: None,
-                    },
-                );
-                this.diverge_from(block);
-                block = success;
-            }
-            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
-        }
-        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
 
     fn limit_capture_mutability(
