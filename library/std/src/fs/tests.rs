@@ -690,6 +690,7 @@ fn set_get_permissions_nofollows_symlink() {
             target_os = "openbsd",
             target_os = "netbsd",
             target_os = "dragonfly",
+            target_os = "hurd",
             target_os = "nto",
             target_os = "qnx"
         ) => {
