@@ -114,8 +114,11 @@ pub fn enable() {
         REGISTERED.replace(true)
     } else {
         // `#[thread_local]` is unavailable on windows-gnu (`target_thread_local` is off),
-        // but setting the FLS key's value is about as expensive as `TlsGet`, so we don't bother tracking registration separately.
-        false
+        // so we check if the FLS key's value is already set for this thread instead.
+        // This avoids contending on `ACTIVE_ENABLE_CALLS` on every TLS access.
+        // Racing with the `atexit` hook is fine, since we only read the value.
+        let current_key = KEY.load(Ordering::Acquire);
+        current_key != FLS_OUT_OF_INDEXES && unsafe { !c::FlsGetValue(current_key).is_null() }
     };
 
     if !registered {
