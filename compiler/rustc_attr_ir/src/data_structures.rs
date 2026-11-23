@@ -839,6 +839,12 @@ pub enum AttributeKind {
     /// Represents `#[automatically_derived]`
     AutomaticallyDerived,
 
+    /// Represents one or more `#[btf_decl_tag("...")]`.
+    BtfDeclTag(ThinVec<Symbol>),
+
+    /// Represents one or more `#[btf_type_tag("...")]`.
+    BtfTypeTag(ThinVec<Symbol>),
+
     /// Represents the trace attribute of `#[cfg_attr]`
     CfgAttrTrace(ThinVec<(CfgEntry, Span)>),
 

@@ -1041,7 +1041,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
     unsigned ScopeLine, LLVMDIFlags Flags, LLVMRustDISPFlags SPFlags,
-    LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
+    LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl,
+    LLVMMetadataRef Annotations) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
@@ -1050,10 +1051,150 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
       unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags,
-      TParams, unwrapDIPtr<DISubprogram>(Decl));
+      TParams, unwrapDIPtr<DISubprogram>(Decl), /*ThrownTypes=*/nullptr,
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations)));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
+}
+
+// The LLVM-C entry points for these nodes have no way to pass an
+// `annotations:` array, which is how BTF tags are carried in debuginfo.
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef PointeeTy, uint64_t SizeInBits,
+    uint32_t AlignInBits, const char *Name, size_t NameLen,
+    LLVMMetadataRef Annotations) {
+  return wrap(unwrap(Builder)->createPointerType(
+      unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits,
+      /*DWARFAddressSpace=*/std::nullopt, StringRef(Name, NameLen),
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations))));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMDIFlags Flags,
+    LLVMMetadataRef Ty, LLVMMetadataRef Annotations) {
+  return wrap(unwrap(Builder)->createMemberType(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits,
+      fromRust(Flags), unwrapDI<DIType>(Ty),
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations))));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
+    LLVMMetadataRef Elements, LLVMMetadataRef VTableHolder,
+    const char *UniqueId, size_t UniqueIdLen, LLVMMetadataRef Annotations) {
+#if LLVM_VERSION_LT(23, 0)
+  // `DICompositeType` has supported annotations since LLVM 14, but
+  // `createStructType` only gained a parameter for them in LLVM 23, so build
+  // the node directly, as `createStructType` itself does. Its other side
+  // effects aren't needed here: a stub without elements is always resolved and
+  // Rust types are never scoped to a subprogram.
+  if (Annotations) {
+    DIScope *Context = unwrapDI<DIScope>(Scope);
+    if (isa_and_nonnull<DICompileUnit>(Context))
+      Context = nullptr;
+    assert(!isa_and_nonnull<DILocalScope>(Context));
+    DICompositeType *R = DICompositeType::get(
+        unwrapDI<DIFile>(File)->getContext(), dwarf::DW_TAG_structure_type,
+        StringRef(Name, NameLen), unwrapDI<DIFile>(File), LineNumber, Context,
+        /*BaseType=*/nullptr, SizeInBits, AlignInBits, /*OffsetInBits=*/0,
+        fromRust(Flags), DINodeArray(unwrapDIPtr<MDTuple>(Elements)),
+        /*RuntimeLang=*/0, /*EnumKind=*/std::nullopt,
+        unwrapDI<DIType>(VTableHolder), /*TemplateParams=*/nullptr,
+        StringRef(UniqueId, UniqueIdLen), /*Discriminator=*/nullptr,
+        /*DataLocation=*/nullptr, /*Associated=*/nullptr,
+        /*Allocated=*/nullptr, /*Rank=*/nullptr,
+        DINodeArray(unwrapDIPtr<MDTuple>(Annotations)));
+    assert(R->isResolved());
+    return wrap(R);
+  }
+#endif
+  return wrap(unwrap(Builder)->createStructType(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      fromRust(Flags), /*DerivedFrom=*/nullptr,
+      DINodeArray(unwrapDIPtr<MDTuple>(Elements)), /*RunTimeLang=*/0,
+      unwrapDI<DIType>(VTableHolder), StringRef(UniqueId, UniqueIdLen),
+      /*Specification=*/nullptr, /*NumExtraInhabitants=*/0
+#if LLVM_VERSION_GE(23, 0)
+      ,
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations))
+#endif
+          ));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
+    LLVMMetadataRef Elements, const char *UniqueId, size_t UniqueIdLen,
+    LLVMMetadataRef Annotations) {
+#if LLVM_VERSION_LT(23, 0)
+  // `DICompositeType` has supported annotations since LLVM 14, but
+  // `createUnionType` only gained a parameter for them in LLVM 23, so build
+  // the node directly, as `createUnionType` itself does. Its other side
+  // effects aren't needed here: a stub without elements is always resolved and
+  // Rust types are never scoped to a subprogram.
+  if (Annotations) {
+    DIScope *Context = unwrapDI<DIScope>(Scope);
+    if (isa_and_nonnull<DICompileUnit>(Context))
+      Context = nullptr;
+    assert(!isa_and_nonnull<DILocalScope>(Context));
+    DICompositeType *R = DICompositeType::get(
+        unwrapDI<DIFile>(File)->getContext(), dwarf::DW_TAG_union_type,
+        StringRef(Name, NameLen), unwrapDI<DIFile>(File), LineNumber, Context,
+        /*BaseType=*/nullptr, SizeInBits, AlignInBits, /*OffsetInBits=*/0,
+        fromRust(Flags), DINodeArray(unwrapDIPtr<MDTuple>(Elements)),
+        /*RuntimeLang=*/0, /*EnumKind=*/std::nullopt,
+        /*VTableHolder=*/nullptr, /*TemplateParams=*/nullptr,
+        StringRef(UniqueId, UniqueIdLen), /*Discriminator=*/nullptr,
+        /*DataLocation=*/nullptr, /*Associated=*/nullptr,
+        /*Allocated=*/nullptr, /*Rank=*/nullptr,
+        DINodeArray(unwrapDIPtr<MDTuple>(Annotations)));
+    assert(R->isResolved());
+    return wrap(R);
+  }
+#endif
+  return wrap(unwrap(Builder)->createUnionType(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      fromRust(Flags), DINodeArray(unwrapDIPtr<MDTuple>(Elements)),
+      /*RunTimeLang=*/0, StringRef(UniqueId, UniqueIdLen)
+#if LLVM_VERSION_GE(23, 0)
+                             ,
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations))
+#endif
+          ));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateGlobalVariableExpression(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, const char *Linkage, size_t LinkLen, LLVMMetadataRef File,
+    unsigned LineNo, LLVMMetadataRef Ty, bool LocalToUnit, LLVMMetadataRef Expr,
+    LLVMMetadataRef Decl, uint32_t AlignInBits, LLVMMetadataRef Annotations) {
+  return wrap(unwrap(Builder)->createGlobalVariableExpression(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
+      StringRef(Linkage, LinkLen), unwrapDI<DIFile>(File), LineNo,
+      unwrapDI<DIType>(Ty), LocalToUnit, /*isDefined=*/true,
+      unwrap<DIExpression>(Expr), unwrapDIPtr<MDNode>(Decl),
+      /*TemplateParams=*/nullptr, AlignInBits,
+      DINodeArray(unwrapDIPtr<MDTuple>(Annotations))));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateParameterVariable(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, unsigned ArgNo, LLVMMetadataRef File, unsigned LineNo,
+    LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMDIFlags Flags,
+    LLVMMetadataRef Annotations) {
+  return wrap(unwrap(Builder)->createParameterVariable(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen), ArgNo,
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve,
+      fromRust(Flags), DINodeArray(unwrapDIPtr<MDTuple>(Annotations))));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(

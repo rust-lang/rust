@@ -82,7 +82,7 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
-use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
+use crate::middle::codegen_fn_attrs::{BtfTags, CodegenFnAttrs, SanitizerFnAttrs};
 use crate::middle::dead_code::DeadCodeLivenessSummary;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::deduced_param_attrs::DeducedParamAttrs;
@@ -1564,6 +1564,25 @@ rustc_queries! {
         cache_on_disk
         separate_provide_extern
         feedable
+    }
+
+    /// The `#[btf_decl_tag]`s and `#[btf_type_tag]`s of the item or field `def_id`.
+    ///
+    /// Codegen must use this instead of looking at the attributes directly: for local items that
+    /// would read the HIR owner (including its spans), making the codegen unit depend on it. The
+    /// result of this query is hashed, so the codegen unit only depends on the tags themselves.
+    query btf_tags(def_id: DefId) -> BtfTags<'tcx> {
+        desc { "looking up BTF tags of `{}`", tcx.def_path_str(def_id) }
+    }
+
+    /// The BTF tags of each parameter of the local function `def_id`, or an empty slice if none
+    /// of its parameters is tagged.
+    ///
+    /// Parameters don't have a `DefId`, so their attributes can only be found through the HIR of
+    /// the function body. Reading that in codegen would make the codegen unit depend on the whole
+    /// body; going through this query only makes it depend on the (hashed) result.
+    query fn_param_btf_tags(def_id: LocalDefId) -> &'tcx [BtfTags<'tcx>] {
+        desc { "looking up BTF tags of the parameters of `{}`", tcx.def_path_str(def_id) }
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {

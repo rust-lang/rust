@@ -24,6 +24,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use crate::attributes::allow_unstable::*;
 use crate::attributes::autodiff::*;
 use crate::attributes::body::*;
+use crate::attributes::btf::*;
 use crate::attributes::cfi_encoding::*;
 use crate::attributes::codegen_attrs::*;
 use crate::attributes::confusables::*;
@@ -188,6 +189,8 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Combine<AllowInternalUnstableParser>,
+        Combine<BtfDeclTagParser>,
+        Combine<BtfTypeTagParser>,
         Combine<CrateTypeParser>,
         Combine<DebuggerVisualizerParser>,
         Combine<FeatureParser>,
