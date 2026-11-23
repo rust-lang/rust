@@ -1530,7 +1530,7 @@ impl Function {
                 // because it has not `CallableDefId`.
                 // FIXME: This does not account for replacing `Self`. Do we really need that?
                 let Some(trait_method) = method.trait_method(db, impl_) else {
-                    return Type::unknown();
+                    return Type::unknown(db);
                 };
                 Function::from(trait_method).ty(db)
             }
@@ -1551,7 +1551,7 @@ impl Function {
                 // because it has not `CallableDefId`.
                 // FIXME: This does not account for replacing `Self`. Do we really need that?
                 let Some(trait_method) = method.trait_method(db, impl_) else {
-                    return Type::unknown();
+                    return Type::unknown(db);
                 };
                 Function::from(trait_method).fn_ptr_type(db)
             }
@@ -4506,7 +4506,7 @@ impl<'db> Type<'db> {
     fn from_value_def(db: &'db dyn HirDatabase, def: impl Into<ValueTyDefId>) -> Self {
         let def = def.into();
         let Some(ty) = db.value_ty(def) else {
-            return Type::unknown();
+            return Type::unknown(db);
         };
         let def = match def {
             ValueTyDefId::ConstId(it) => GenericDefId::ConstId(it),
@@ -4524,8 +4524,8 @@ impl<'db> Type<'db> {
     }
 
     /// Replace any generic parameters with error types.
-    pub fn instantiate_with_errors(&self) -> Self {
-        let interner = DbInterner::conjure();
+    pub fn instantiate_with_errors(&self, db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
         let krate = self.krate(interner.db());
         let args = match self.owner {
             TypeOwnerId::GenericDefId(def) => GenericArgs::error_for_item(interner, def.into()),
@@ -4538,8 +4538,12 @@ impl<'db> Type<'db> {
     }
 
     // FIXME: Find some way with const params, maybe even lifetimes?
-    pub fn instantiate(&self, args: impl IntoIterator<Item: Borrow<Type<'db>>>) -> Type<'db> {
-        let interner = DbInterner::conjure();
+    pub fn instantiate(
+        &self,
+        db: &'db dyn HirDatabase,
+        args: impl IntoIterator<Item: Borrow<Type<'db>>>,
+    ) -> Type<'db> {
+        let interner = DbInterner::new_no_crate(db);
         let (args, owner) = match self.owner {
             TypeOwnerId::GenericDefId(def) => generic_args_from_tys(interner, def.into(), args),
             TypeOwnerId::BuiltinDeriveImplId(def) => {
@@ -4596,7 +4600,7 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         rebase_into: &Type<'db>,
     ) -> Type<'db> {
-        self.try_rebase_into(db, rebase_into).unwrap_or_else(|| self.instantiate_with_errors())
+        self.try_rebase_into(db, rebase_into).unwrap_or_else(|| self.instantiate_with_errors(db))
     }
 
     pub fn try_rebase_into_owner(
@@ -4617,15 +4621,13 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         new_owner: GenericDef,
     ) -> Self {
-        self.try_rebase_into_owner(db, new_owner).unwrap_or_else(|| self.instantiate_with_errors())
+        self.try_rebase_into_owner(db, new_owner)
+            .unwrap_or_else(|| self.instantiate_with_errors(db))
     }
 
-    pub fn unknown() -> Self {
-        let interner = DbInterner::conjure();
-        Type::no_params(
-            Self::builtin_type_crate(interner.db()),
-            Ty::new_error(interner, ErrorGuaranteed),
-        )
+    pub fn unknown(db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
+        Type::no_params(Self::builtin_type_crate(db), Ty::new_error(interner, ErrorGuaranteed))
     }
 
     pub fn new_slice(db: &'db dyn HirDatabase, ty: Self) -> Self {
@@ -4657,9 +4659,9 @@ impl<'db> Type<'db> {
         Type { owner, ty }
     }
 
-    pub fn new_unit() -> Self {
-        let interner = DbInterner::conjure();
-        Type::no_params(Self::builtin_type_crate(interner.db()), Ty::new_unit(interner))
+    pub fn new_unit(db: &'db dyn HirDatabase) -> Self {
+        let interner = DbInterner::new_no_crate(db);
+        Type::no_params(Self::builtin_type_crate(db), Ty::new_unit(interner))
     }
 
     pub fn is_unit(&self) -> bool {

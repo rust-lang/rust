@@ -423,6 +423,8 @@ impl<'a> Parser<'a> {
             self.parse_unsafe_binder_ty()?
         } else if self.eat_forced_keyword_noexpect(kw::FieldOf) {
             self.parse_ty_field_of(lo)?
+        } else if self.eat_forced_keyword_noexpect(kw::Gca) {
+            self.parse_ty_gca(lo)?
         } else if self.eat_forced_keyword_noexpect(kw::PatternType) {
             self.parse_pat_ty(lo)?
         } else if self.eat_forced_keyword_noexpect(kw::ViewType) {
@@ -873,6 +875,14 @@ impl<'a> Parser<'a> {
                 "`field_of` only supports a single field or a variant with a field",
             )),
         }
+    }
+
+    fn parse_ty_gca(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.prev_token.span));
+        Ok(TyKind::Gca(expr))
     }
 
     fn parse_pat_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
