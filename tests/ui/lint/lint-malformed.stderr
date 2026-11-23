@@ -57,15 +57,6 @@ LL - #![allow(bar = "baz")]
 LL + #![allow(reason = "baz")]
    |
 
-warning: unused attribute
-  --> $DIR/lint-malformed.rs:2:1
-   |
-LL | #![allow(bar = "baz")]
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-   = note: attribute `allow` without any lints has no effect
-   = note: requested on the command line with `-W unused-attributes`
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

@@ -28,6 +28,7 @@ impl LintParser {
     fn parse(&mut self, kind: LintCheckKind, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         let attr_span = cx.attr_span;
         let attr_id = cx.attr_id.expect("no `AttrId` for lint attribute");
+        let mut has_invalid_reason_key = false;
 
         if let Some(list) = cx.expect_list(args, cx.attr_span) {
             let mut parsers = list.sub_parsers();
@@ -37,6 +38,7 @@ impl LintParser {
                 let p = parsers.last()?.meta_item()?;
                 let nv = p.args().as_name_value()?;
                 if !p.path().word_is(sym::reason) {
+                    has_invalid_reason_key = true;
                     cx.emit_err(MalformedLintAttributeInput {
                         span: p.span(),
                         help: MalformedLintAttributeInputHelp::Reason {
@@ -109,7 +111,7 @@ impl LintParser {
 
             // FIXME(164898) Lint attributes are unique because they're parsed twice with `ShouldEmit::ErrorsAndLints`
             // To avoid emitting the lint twice, we check `cx.parse_filter`, which will be `Some` during AST linting
-            if parsers.is_empty() && cx.parse_filter.is_none() {
+            if parsers.is_empty() && cx.parse_filter.is_none() && !has_invalid_reason_key {
                 cx.emit_lint(
                     UNUSED_ATTRIBUTES,
                     diagnostics::Unused {
