@@ -12,14 +12,6 @@ help: add `#![feature(unstable_value)]` to the crate attributes to enable `value
    |
 LL + #![feature(unstable_value)]
    |
-help: add `#![feature(unstable_value)]` to the crate attributes to enable `value`
-   |
-LL + #![feature(unstable_value)]
-   |
-help: add `#![feature(unstable_value)]` to the crate attributes to enable `value`
-   |
-LL + #![feature(unstable_value)]
-   |
 
 warning: 1 warning emitted
 

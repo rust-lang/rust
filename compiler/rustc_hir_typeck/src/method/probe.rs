@@ -1946,11 +1946,17 @@ impl<'tcx> Pick<'tcx> {
                     }
                     _ => {}
                 }
+                let mut seen = FxHashSet::default();
                 tcx.disabled_nightly_features(
                     &mut lint,
-                    this.unstable_candidates.iter().map(|(candidate, feature)| {
-                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                    }),
+                    this.unstable_candidates
+                        .iter()
+                        .filter(|(candidate, feature)| {
+                            seen.insert((candidate.item.def_id, *feature))
+                        })
+                        .map(|(candidate, feature)| {
+                            (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                        }),
                 );
                 lint
             }
