@@ -445,10 +445,9 @@ fn clean_where_predicate<'tcx>(
 }
 
 pub(crate) fn clean_clause<'tcx>(
-    clause: ty::Clause<'tcx>,
+    bound_clause: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    let bound_clause = clause.kind();
     match bound_clause.skip_binder() {
         ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_clause.rebind(pred), cx),
         ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_clause(pred, cx.tcx)),
@@ -465,6 +464,7 @@ pub(crate) fn clean_clause<'tcx>(
         | ty::ClauseKind::UnstableFeature(..)
         // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
+        ty::ClauseKind::CompressedTrait(_) => unreachable!(),
     }
 }
 
@@ -945,7 +945,7 @@ fn clean_ty_generics_inner<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
             {
-                let clause = clean_clause(*clause, cx)?;
+                let clause = clean_clause(clause.kind(), cx)?;
 
                 bounds.extend(clause.get_bounds().into_iter().flatten().cloned());
 
@@ -1004,7 +1004,8 @@ fn clean_ty_generics_inner<'tcx>(
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
-    let where_predicates = where_clauses.into_iter().flat_map(|c| clean_clause(*c, cx)).collect();
+    let where_predicates =
+        where_clauses.into_iter().flat_map(|c| clean_clause(c.kind(), cx)).collect();
 
     let mut generics = Generics { params, where_predicates };
     simplify::sizedness_bounds(cx, &mut generics);
@@ -1112,7 +1113,7 @@ fn clean_fn_or_proc_macro<'tcx>(
                 cx,
                 sig,
                 generics,
-                ParamsSrc::Body(body_id),
+                ParamsSrc::Params(cx.tcx.hir_body(body_id).params),
                 item.owner_id.to_def_id(),
             );
             let mut func = Function { generics, decl };
@@ -1145,8 +1146,8 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_
 }
 
 enum ParamsSrc<'tcx> {
-    Body(hir::BodyId),
     Idents(&'tcx [Option<Ident>]),
+    Params(&'tcx [hir::Param<'tcx>]),
 }
 
 fn clean_function<'tcx>(
@@ -1170,7 +1171,7 @@ fn clean_function<'tcx>(
             clean_poly_fn_sig(cx, Some(def_id), sig)
         } else {
             let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl, body_id),
+                ParamsSrc::Params(body_id) => clean_params_via_body(cx, sig.decl, body_id),
                 // Let's not perpetuate anon params from Rust 2015; use `_` for them.
                 ParamsSrc::Idents(idents) => clean_params(cx, sig.decl, idents, |ident| {
                     Some(ident.map_or(kw::Underscore, |ident| ident.name))
@@ -1203,11 +1204,11 @@ fn clean_params<'tcx>(
 fn clean_params_via_body<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'tcx>,
-    body_id: hir::BodyId,
+    params: &'tcx [hir::Param<'tcx>],
 ) -> Vec<Parameter> {
     decl.inputs
         .iter()
-        .zip(cx.tcx.hir_body(body_id).params)
+        .zip(params)
         .enumerate()
         .map(|(i, (ty, param))| Parameter {
             name: Some(name_from_pat(param.pat)),
@@ -1311,7 +1312,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Fn(ref sig, body) => {
                 let (params, body) = match body {
                     hir::TraitFn::Provided(body) => (
-                        ParamsSrc::Body(body),
+                        ParamsSrc::Params(cx.tcx.hir_body(body).params),
                         Some(Defaultness::from_trait_item(trait_item.defaultness)),
                     ),
                     hir::TraitFn::Required(idents) => (ParamsSrc::Idents(idents), None),
@@ -1355,8 +1356,13 @@ pub(crate) fn clean_impl_item<'tcx>(
                 }))
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let (generics, decl) =
-                    clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
+                let (generics, decl) = clean_function(
+                    cx,
+                    sig,
+                    impl_.generics,
+                    ParamsSrc::Params(cx.tcx.hir_body(body).params),
+                    local_did,
+                );
                 ItemKind::AssocFunction(Box::new(AssocFunction {
                     generics,
                     decl,
@@ -1385,7 +1391,7 @@ pub(crate) fn clean_impl_item<'tcx>(
 
 pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocContext<'_>) -> Item {
     let tcx = cx.tcx;
-    let kind = match assoc_item.kind {
+    let kind = cx.with_param_env(assoc_item.def_id, |cx| match assoc_item.kind {
         ty::AssocKind::Const { .. } => {
             let type_ = clean_middle_ty(
                 ty::Binder::dummy(
@@ -1573,7 +1579,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 type_: type_.map(|type_| AliasedType { type_, middle_type: None }),
             }))
         }
-    };
+    });
 
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, tcx)
 }
@@ -3373,9 +3379,9 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(sig, idents, generics) => {
+            hir::ForeignItemKind::Fn(sig, params, generics) => {
                 let (generics, decl) =
-                    clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id);
+                    clean_function(cx, &sig, generics, ParamsSrc::Params(params), def_id);
                 ItemKind::ForeignFunction(
                     Box::new(Function { generics, decl }),
                     sig.header.safety(),

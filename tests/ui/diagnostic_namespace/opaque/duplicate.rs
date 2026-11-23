@@ -3,7 +3,7 @@
 #![deny(unused_attributes)]
 #[diagnostic::opaque]
 #[diagnostic::opaque]
-//~^ERROR unused attribute
+//~^ERROR duplicate `diagnostic::opaque` attributes
 macro_rules! m {
-    () => {}
+    () => {};
 }

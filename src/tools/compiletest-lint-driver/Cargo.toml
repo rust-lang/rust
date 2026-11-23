@@ -1,0 +1,10 @@
+[package]
+name = "compiletest-lint-driver"
+version = "0.1.0"
+edition = "2024"
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[dependencies]
+libloading = "0.9.0"

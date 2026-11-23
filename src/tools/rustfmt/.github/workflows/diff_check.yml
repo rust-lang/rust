@@ -1,0 +1,58 @@
+name: Diff Check (Custom)
+on:
+  workflow_dispatch:
+    inputs:
+      clone_url:
+        description: 'Git url of a rustfmt fork to compare against the latest rustfmt'
+        required: true
+      branch_name:
+        description: 'Name of the feature branch on the forked repo'
+        required: true
+      language_edition:
+        description: 'Rust language `edition` used to parse code'
+        required: true
+        default: 2015
+        type: choice
+        options:
+          - 2015
+          - 2018
+          - 2021
+          - 2024
+      style_edition:
+        description: 'rustfmt `style_edition` used when formatting code.'
+        required: true
+        default: 2021
+        type: choice
+        options:
+          - 2021 # 2015, 2018, and 2021 are all formatted the same since `style_edition` was added between 2021 and 2024
+          - 2024
+      commit_hash:
+        description: 'Optional commit hash from the feature branch'
+        required: false
+      rustfmt_configs:
+        description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
+        required: false
+      release_channel:
+        description: 'Configure which release channel to use when compiling rustfmt'
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+          - nightly
+
+permissions:
+  contents: read
+
+jobs:
+  diff_check:
+    name: "Diff Check {Edition ${{ inputs.language_edition }}, Style Edition ${{ inputs.style_edition }}}"
+    uses: $/.github/workflows/diff_check_common.yml
+    with:
+      clone_url: ${{ inputs.clone_url }}
+      branch_name: ${{ inputs.branch_name }}
+      language_edition: ${{ inputs.language_edition }}
+      style_edition: ${{ inputs.style_edition }}
+      commit_hash: ${{ inputs.commit_hash }}
+      rustfmt_configs: ${{ inputs.rustfmt_configs }}
+      release_channel: ${{ inputs.release_channel }}

@@ -195,8 +195,10 @@ impl CommandLineStep for Std {
             return None;
         }
 
-        if builder.config.keep_stage.contains(&build_compiler.stage)
-            || builder.config.keep_stage_std.contains(&build_compiler.stage)
+        // Reuse std for `--keep-stage-std` if it was built before, otherwise build it.
+        if (builder.config.keep_stage.contains(&build_compiler.stage)
+            || builder.config.keep_stage_std.contains(&build_compiler.stage))
+            && build_stamp::libstd_stamp(builder, build_compiler, target).path().exists()
         {
             trace!(keep_stage = ?builder.config.keep_stage);
             trace!(keep_stage_std = ?builder.config.keep_stage_std);

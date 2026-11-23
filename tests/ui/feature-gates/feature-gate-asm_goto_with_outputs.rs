@@ -9,3 +9,5 @@ fn main() {
         //~^ ERROR using both label and output operands for inline assembly is unstable
     }
 }
+
+//@ reference: asm.options.checks-label-with-outputs

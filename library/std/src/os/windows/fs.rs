@@ -219,6 +219,9 @@ pub trait FileExt {
     /// from the current cursor. The current cursor **is** affected by this
     /// function, it is set to the end of the write.
     ///
+    /// If the file was opened for appending (via [`OpenOptions::append`]), this is equivalent
+    /// to `write`: the `offset` is ignored, and `buf` is appended at the end of the file.
+    ///
     /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are set to zero.
     ///

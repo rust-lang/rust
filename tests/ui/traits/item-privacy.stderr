@@ -8,7 +8,11 @@ LL |     S.a();
    |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
+help: trait `crate::method::A` which provides `a` is implemented but not reachable
+  --> $DIR/item-privacy.rs:7:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is a method `b` with a similar name
    |
 LL -     S.a();
@@ -21,12 +25,18 @@ error[E0599]: no method named `b` found for struct `S` in the current scope
 LL | struct S;
    | -------- method `b` not found for this struct
 ...
-LL |         fn b(&self) { }
-   |            - the method is available for `S` here
-...
 LL |     S.b();
    |       ^
    |
+note: the method is available on trait `B` for `S`
+  --> $DIR/item-privacy.rs:20:5
+   |
+LL |     pub trait B {
+LL |         fn b(&self) { }
+   |            - the method is available here
+...
+LL |     impl B for crate::S {}
+   |     ^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
@@ -57,7 +67,11 @@ LL |     S::a(&S);
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
+help: trait `crate::method::A` which provides `a` is implemented but not reachable
+  --> $DIR/item-privacy.rs:7:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
@@ -105,7 +119,11 @@ LL |     S::A;
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::assoc_const::A` which provides `A` is implemented but not reachable
+help: trait `crate::assoc_const::A` which provides `A` is implemented but not reachable
+  --> $DIR/item-privacy.rs:25:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is an associated constant `B` with a similar name
    |
 LL -     S::A;

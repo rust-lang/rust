@@ -240,7 +240,7 @@ use crate::ops::ControlFlow;
 ///
 /// [`eq`]: PartialEq::eq
 /// [`ne`]: PartialEq::ne
-#[lang = "eq"]
+#[lang = "partial_eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
@@ -348,6 +348,7 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "eq"]
 #[rustc_diagnostic_item = "Eq"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const trait Eq: [const] PartialEq<Self> + PointeeSized {

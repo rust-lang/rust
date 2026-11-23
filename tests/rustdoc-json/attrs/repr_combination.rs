@@ -5,20 +5,20 @@
 //@ is "$.index[?(@.name=='ReprCI8')].attrs" '[{"repr":{"align":null,"int":"i8","kind":"c","packed":null}}]'
 #[repr(C, i8)]
 pub enum ReprCI8 {
-    First,
+    First(usize),
 }
 
 //@ is "$.index[?(@.name=='SeparateReprCI16')].attrs" '[{"repr":{"align":null,"int":"i16","kind":"c","packed":null}}]'
 #[repr(C)]
 #[repr(i16)]
 pub enum SeparateReprCI16 {
-    First,
+    First(usize),
 }
 
 //@ is "$.index[?(@.name=='ReversedReprCUsize')].attrs" '[{"repr":{"align":null,"int":"usize","kind":"c","packed":null}}]'
 #[repr(usize, C)]
 pub enum ReversedReprCUsize {
-    First,
+    First(usize),
 }
 
 //@ is "$.index[?(@.name=='ReprCPacked')].attrs" '[{"repr":{"align":null,"int":null,"kind":"c","packed":1}}]'
@@ -68,13 +68,13 @@ pub struct ReversedReprCAlign {
 //@ is "$.index[?(@.name=='AlignedExplicitRepr')].attrs" '[{"repr":{"align":16,"int":"isize","kind":"c","packed":null}}]'
 #[repr(C, align(16), isize)]
 pub enum AlignedExplicitRepr {
-    First,
+    First(usize),
 }
 
 //@ is "$.index[?(@.name=='ReorderedAlignedExplicitRepr')].attrs" '[{"repr":{"align":16,"int":"isize","kind":"c","packed":null}}]'
 #[repr(isize, C, align(16))]
 pub enum ReorderedAlignedExplicitRepr {
-    First,
+    First(usize),
 }
 
 //@ is "$.index[?(@.name=='Transparent')].attrs" '[{"repr":{"align":null,"int":null,"kind":"transparent","packed":null}}]'

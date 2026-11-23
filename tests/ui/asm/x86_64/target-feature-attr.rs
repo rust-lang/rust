@@ -45,3 +45,5 @@ fn main() {
         bar();
     }
 }
+
+//@ reference: asm.register-operands.value-type-constraints

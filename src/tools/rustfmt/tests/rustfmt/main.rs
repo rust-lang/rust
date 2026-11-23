@@ -3,10 +3,10 @@
 use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test, rustfmt_only_ci_test};
+use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test, stable_only_test};
 
 /// Run the rustfmt executable with environment vars set and return its output.
 /// If `input` is given, it is piped to the executable's stdin.
@@ -135,12 +135,22 @@ fn print_config_writes_to_file() {
     assert_eq!(exit_code, 0);
 }
 
+fn this_file() -> String {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let p = p.join("tests/rustfmt/main.rs");
+    p.into_os_string().into_string().expect("assumes UTF-8 path")
+}
+
+// Can only run this test on nightly because the call to `file!` below
+// will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
+#[nightly_only_test]
 #[test]
 fn print_config_merges_override_from_args() {
     let args = &[
         "--print-config",
         "current",
-        ".",
+        // load the root `rustfmt.toml` (of rustfmt subtree)
+        &this_file(),
         "--config=color=Never,edition=2018",
     ];
 
@@ -154,12 +164,16 @@ fn print_config_merges_override_from_args() {
     assert_eq!(exit_code, 0);
 }
 
+// Can only run this test on nightly because the call to `file!` below
+// will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
+#[nightly_only_test]
 #[test]
 fn print_config_merges_multiple_overrides_from_args() {
     let args = &[
         "--print-config",
         "current",
-        ".",
+        // load the root `rustfmt.toml` (of rustfmt subtree)
+        &this_file(),
         "--config",
         "color=never,edition=2018",
         "--config",
@@ -223,6 +237,7 @@ fn rustfmt_usage_text() {
         -V, --version       Show version information
         -h, --help [=TOPIC] Show this message or help about a specific topic:
                             `config`
+        @path               Read newline separated options from the file at `path`. Can be specified more than once.
     ");
     assert_eq!(exit_code, 0);
 }
@@ -284,6 +299,7 @@ fn rustfmt_nightly_usage_text() {
         -V, --version       Show version information
         -h, --help [=TOPIC] Show this message or help about a specific topic:
                             `config` or `file-lines`
+        @path               Read newline separated options from the file at `path`. Can be specified more than once.
     ");
     assert_eq!(exit_code, 0);
 }
@@ -581,4 +597,92 @@ fn cfg_select_parser_recovery_ice_7087() {
     // Invalid arm should cause `cfg_select!` to be re-emitted unmodified.
     assert_eq!(source, stdout);
     assert_eq!(exit_code, 0);
+}
+
+#[test]
+fn test_args_file_all_args() {
+    let src_file = Path::new("tests/rustfmt/sources/args_file/space_indents.rs");
+    let args_file = Path::new("tests/rustfmt/sources/args_file/args_full_tab_indent");
+    let args = &[
+        &format!("@{}", args_file.to_str().unwrap()),
+        src_file.to_str().unwrap(),
+    ];
+
+    let (stdout, stderr, exit_code) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", src_file.canonicalize().unwrap().display()),
+    );
+    assert_eq!(exit_code, 1);
+}
+
+#[test]
+fn test_args_file_merge_with_cmd_args() {
+    let src_file = Path::new("tests/rustfmt/sources/args_file/space_indents.rs");
+    let args_file = Path::new("tests/rustfmt/sources/args_file/args_tab_indent");
+    let args = &[
+        "--check",
+        "--files-with-diff",
+        &format!("@{}", args_file.to_str().unwrap()),
+        src_file.to_str().unwrap(),
+    ];
+
+    let (stdout, stderr, exit_code) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", src_file.canonicalize().unwrap().display()),
+    );
+    assert_eq!(exit_code, 1);
+}
+
+#[test]
+fn test_args_file_multiple_files_merged() {
+    let first_src_file = Path::new("tests/rustfmt/sources/args_file/space_indents.rs");
+    let second_src_file = Path::new("tests/rustfmt/sources/args_file/hex_lowercase.rs");
+    let first_args_file = Path::new("tests/rustfmt/sources/args_file/args_tab_indent");
+    let second_args_file = Path::new("tests/rustfmt/sources/args_file/args_hex_uppercase");
+    let args = &[
+        "--check",
+        "--files-with-diff",
+        &format!("@{}", first_args_file.to_str().unwrap()),
+        &format!("@{}", second_args_file.to_str().unwrap()),
+        first_src_file.to_str().unwrap(),
+        second_src_file.to_str().unwrap(),
+    ];
+
+    let (stdout, stderr, exit_code) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!(
+            "{}\n{}\n",
+            first_src_file.canonicalize().unwrap().display(),
+            second_src_file.canonicalize().unwrap().display()
+        ),
+    );
+    assert_eq!(exit_code, 1);
+}
+
+#[test]
+fn test_args_file_carriage_return() {
+    let src_file = Path::new("tests/rustfmt/sources/args_file/space_indents.rs");
+    let args_file = Path::new("tests/rustfmt/sources/args_file/args_full_carriage_return");
+    let args = &[
+        &format!("@{}", args_file.to_str().unwrap()),
+        src_file.to_str().unwrap(),
+    ];
+
+    let (stdout, stderr, exit_code) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", src_file.canonicalize().unwrap().display()),
+    );
+    assert_eq!(exit_code, 1);
 }

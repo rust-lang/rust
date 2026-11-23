@@ -26,7 +26,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
     let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
-        ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
+        ty::FnDef(..) => body_ty.fn_sig_abi(tcx),
         ty::Closure(..) => ExternAbi::RustCall,
         ty::CoroutineClosure(..) => ExternAbi::RustCall,
         ty::Coroutine(..) => ExternAbi::Rust,
@@ -78,11 +78,11 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         let TerminatorKind::Call { func, .. } = &terminator.kind else { continue };
 
         let ty = func.ty(body, tcx);
-        let sig = ty.fn_sig(tcx);
+        let abi = ty.fn_sig_abi(tcx);
 
         // Rust calls cannot themselves create foreign unwinds.
         // We assume this is true for intrinsics as well.
-        if sig.abi().is_rustic_abi() {
+        if abi.is_rustic_abi() {
             continue;
         };
 
@@ -100,7 +100,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             _ => bug!("invalid callee of type {:?}", ty),
         };
 
-        if layout::fn_can_unwind(tcx, fn_def_id, sig.abi()) {
+        if layout::fn_can_unwind(tcx, fn_def_id, abi) {
             // We have detected a call that can possibly leak foreign unwind.
             //
             // Because the function body itself can unwind, we are not aborting this function call

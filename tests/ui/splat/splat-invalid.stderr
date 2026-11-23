@@ -131,7 +131,7 @@ LL |     let splat_variadic2_: unsafe extern "C" fn(..., #[rustc_splat] (u32, i8
    |
    = help: remove `#[rustc_splat]` or remove `...`
 
-error: multiple `rustc_splat` attributes
+error: duplicate `rustc_splat` attributes
   --> $DIR/splat-invalid.rs:11:5
    |
 LL |     #[rustc_splat]
@@ -143,7 +143,7 @@ note: attribute also specified here
 LL |     #[rustc_splat]
    |     ^^^^^^^^^^^^^^
 
-error: multiple `rustc_splat` attributes
+error: duplicate `rustc_splat` attributes
   --> $DIR/splat-invalid.rs:20:5
    |
 LL |     #[rustc_splat]
@@ -155,7 +155,7 @@ note: attribute also specified here
 LL |     #[rustc_splat]
    |     ^^^^^^^^^^^^^^
 
-error: multiple `rustc_splat` attributes
+error: duplicate `rustc_splat` attributes
   --> $DIR/splat-invalid.rs:71:9
    |
 LL |         #[rustc_splat]
@@ -167,7 +167,7 @@ note: attribute also specified here
 LL |         #[rustc_splat]
    |         ^^^^^^^^^^^^^^
 
-error: multiple `rustc_splat` attributes
+error: duplicate `rustc_splat` attributes
   --> $DIR/splat-invalid.rs:78:9
    |
 LL |         #[rustc_splat]

@@ -9,7 +9,7 @@ use rustc_type_ir::solve::{
     AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
     SizedTraitKind,
 };
-use rustc_type_ir::{self as ty, Interner, Unnormalized, elaborate};
+use rustc_type_ir::{self as ty, CallerBoundsIterator, Interner, Unnormalized, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -38,11 +38,20 @@ where
     fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
     }
-
+    fn non_fast_rejected_caller_bounds(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> impl Iterator<Item = ty::Binder<I, ty::ClauseKind<I>>> {
+        goal.param_env.caller_bounds().non_trait_clauses().iter().filter_map(move |assumption| {
+            match Self::fast_reject_assumption(ecx, goal, assumption) {
+                Ok(()) => Some(assumption.kind()),
+                Err(NoSolution) => None,
+            }
+        })
+    }
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause()
@@ -62,10 +71,16 @@ where
     fn match_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let host_clause = assumption.as_host_effect_clause().unwrap();
+        let host_clause = assumption
+            .map_bound(|i| match i {
+                ty::ClauseKind::HostEffect(h) => Some(h),
+                _ => None,
+            })
+            .transpose()
+            .unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;

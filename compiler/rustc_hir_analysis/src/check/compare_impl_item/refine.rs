@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
+use rustc_trait_selection::error_reporting::traits::suggest_new_overflow_limit;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -150,8 +151,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
-    let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
+    let param_env =
+        normalize_param_env_or_error(tcx, hybrid_clauses.collect(), ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
@@ -286,10 +287,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
             if !self.tcx.recursion_limit().value_within_limit(self.depth) {
-                self.tcx.dcx().span_delayed_bug(
+                let mut err = self.tcx.dcx().struct_span_err(
                     self.tcx.def_span(proj.kind),
                     "recursion limit exceeded while collecting implied RPITIT bounds",
                 );
+                suggest_new_overflow_limit(self.tcx, &mut err);
+                err.emit();
                 return ControlFlow::Break(());
             }
             if self.types.insert(proj) {

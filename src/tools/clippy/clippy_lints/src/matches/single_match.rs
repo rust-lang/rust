@@ -1,13 +1,18 @@
+use std::borrow::Cow;
+use std::ops::Not as _;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{
     SpanExt as _, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
 };
+use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
 use clippy_utils::{
     is_block_like, is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, sym,
 };
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
+use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
@@ -134,7 +139,7 @@ fn report_single_pattern(
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
         && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
-        && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
+        && let Some(pe_trait_id) = cx.tcx.lang_items().partial_eq_trait()
         && (ty.is_integral()
             || ty.is_char()
             || ty.is_str()
@@ -164,16 +169,22 @@ fn report_single_pattern(
         };
 
         let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
-
         let if_expr_block = complete_block_expr_semicolon(cx, arm.body, ctxt, expr, &mut app);
+        let ex_sugg = Sugg::hir_with_context(cx, ex, ctxt, "..", &mut app);
 
-        let sugg = format!(
-            "if {} == {}{} {if_expr_block}{els_str}",
-            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
+        let cond_sugg = if ty.is_bool()
+            && let PatKind::Expr(lit) = pat.kind
+            && let PatExprKind::Lit { lit, negated: false } = lit.kind
+            && let LitKind::Bool(value) = lit.node
+        {
+            if value { ex_sugg } else { ex_sugg.not() }
+        } else {
+            let pat_snip = snippet_with_applicability(cx, arm.pat.span, "..", &mut app);
             // PartialEq for different reference counts may not exist.
-            ref_or_deref_adjust,
-            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
-        );
+            let pat_sugg = Sugg::NonParen(Cow::Owned(format!("{ref_or_deref_adjust}{pat_snip}")));
+            make_binop(BinOpKind::Eq, &ex_sugg, &pat_sugg)
+        };
+        let sugg = format!("if {cond_sugg} {if_expr_block}{els_str}");
         (msg, sugg)
     } else {
         let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";

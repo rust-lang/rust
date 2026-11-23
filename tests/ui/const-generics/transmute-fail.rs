@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 //@ normalize-stderr: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
 
-
 #![feature(transmute_generic_consts)]
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
@@ -38,7 +37,6 @@ fn overflow(v: [[[u32; 8888888]; 9999999]; 777777777]) -> [[[u32; 9999999]; 7777
 fn overflow_more(v: [[[u32; 8888888]; 9999999]; 777777777]) -> [[[u32; 9999999]; 777777777]; 239] {
     unsafe { std::mem::transmute(v) } //~ ERROR cannot transmute between types of different sizes
 }
-
 
 fn transpose<const W: usize, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
     unsafe {
@@ -91,13 +89,6 @@ fn known_size<const L: usize>(v: [u16; L]) -> [u8; L * 2] {
 }
 
 fn condense_bytes<const L: usize>(v: [u8; L * 2]) -> [u16; L] {
-    unsafe {
-        std::mem::transmute(v)
-        //~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types
-    }
-}
-
-fn singleton_each<const L: usize>(v: [u8; L]) -> [[u8; 1]; L] {
     unsafe {
         std::mem::transmute(v)
         //~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types

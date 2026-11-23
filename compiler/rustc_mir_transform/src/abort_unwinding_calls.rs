@@ -52,7 +52,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         // unwinding or not.
         let body_ty = tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
-            ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
+            ty::FnDef(..) => body_ty.fn_sig_abi(tcx),
             ty::Closure(..) => ExternAbi::RustCall,
             ty::CoroutineClosure(..) => ExternAbi::RustCall,
             ty::Coroutine(..) => ExternAbi::Rust,
@@ -90,13 +90,13 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
             let call_can_unwind = match &terminator.kind {
                 TerminatorKind::Call { func, .. } => {
                     let ty = func.ty(&body.local_decls, tcx);
-                    let sig = ty.fn_sig(tcx);
+                    let abi = ty.fn_sig_abi(tcx);
                     let fn_def_id = match ty.kind() {
                         ty::FnPtr(..) => None,
                         &ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };
-                    layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
+                    layout::fn_can_unwind(tcx, fn_def_id, abi)
                 }
                 TerminatorKind::Drop { .. } => {
                     tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind

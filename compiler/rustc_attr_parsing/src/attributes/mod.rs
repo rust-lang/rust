@@ -27,7 +27,7 @@ use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext};
-use crate::diagnostics::UnusedMultiple;
+use crate::diagnostics::DuplicateAttribute;
 use crate::parser::ArgParser;
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeTemplate, template};
@@ -234,19 +234,15 @@ impl OnDuplicate {
         used: Span,
         unused: Span,
     ) {
+        let name =
+            Symbol::intern(&P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"));
         match self {
-            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
-            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
-            OnDuplicate::Error => {
-                cx.emit_err(UnusedMultiple {
-                    this: unused,
-                    other: used,
-                    name: Symbol::intern(
-                        &P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
-                    ),
-                });
-            }
             OnDuplicate::Ignore => {}
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused, name, false),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate(used, unused, name, true),
+            OnDuplicate::Error => {
+                cx.emit_err(DuplicateAttribute { this: unused, other: used, name, warning: false });
+            }
         }
     }
 }

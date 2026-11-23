@@ -4,10 +4,15 @@ error[E0425]: cannot find type `Type` in this scope
 LL | impl Generic<Type> for S {}
    |              ^^^^ not found in this scope
    |
-help: consider importing this struct
+help: there is an enum variant `std::mem::type_info::Generic::Type`; try using the variant's enum
    |
-LL + use std::mem::type_info::Type;
+LL - impl Generic<Type> for S {}
+LL + impl Generic<std::mem::type_info::Generic> for S {}
    |
+help: you might be missing a type parameter
+   |
+LL | impl<Type> Generic<Type> for S {}
+   |     ++++++
 
 error: aborting due to 1 previous error
 

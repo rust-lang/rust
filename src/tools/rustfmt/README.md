@@ -88,6 +88,15 @@ Please see `cargo fmt --help` for usage information.
 You can specify the path to your own `rustfmt` binary for cargo to use by setting the`RUSTFMT` 
 environment variable. This was added in v1.4.22, so you must have this version or newer to leverage this feature (`cargo fmt --version`)
 
+`rustfmt` supports args-files, using `@`:
+
+```
+$ printf -- "--check\npath/to/file.rs\n" > args_file
+$ rustfmt @args_file
+# the above is equivalent to
+$ rustfmt --check path/to/file.rs
+```
+
 ### Running `rustfmt` directly
 
 To format individual files or arbitrary codes from stdin, the `rustfmt` binary should be used. Some

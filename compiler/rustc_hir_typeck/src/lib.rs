@@ -17,6 +17,7 @@ mod coercion;
 mod demand;
 mod diagnostics;
 mod diverges;
+mod errors;
 mod expectation;
 mod expr;
 mod inline_asm;

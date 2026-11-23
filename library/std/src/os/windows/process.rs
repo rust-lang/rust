@@ -334,6 +334,7 @@ pub impl(self) trait CommandExt {
     #[cfg_attr(windows, doc = "```")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_raw_attribute)]
+    /// # if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     /// use std::os::windows::io::AsRawHandle;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
     /// use std::process::Command;
@@ -614,6 +615,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     #[cfg_attr(all(windows, target_vendor = "win7"), doc = "```no_run")]
     #[cfg_attr(all(windows, not(target_vendor = "win7")), doc = "```")]
     /// #![feature(windows_process_extensions_raw_attribute)]
+    /// # if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     /// use std::ffi::c_void;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
     /// use std::os::windows::raw::HANDLE;

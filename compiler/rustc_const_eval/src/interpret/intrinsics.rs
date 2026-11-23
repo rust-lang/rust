@@ -119,6 +119,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    /// Writes an option into dest, uses `write_some` to write to the field if val is some.
+    pub(crate) fn write_option<T>(
+        &mut self,
+        val: Option<T>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+        write_some: impl FnOnce(&mut Self, PlaceTy<'tcx, M::Provenance>, T) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let variant_idx = match val {
+            Some(val) => {
+                let (variant_idx, some_place) = self.project_downcast_named(dest, sym::Some)?;
+                let payload_place = self.project_field(&some_place, FieldIdx::ZERO)?;
+                write_some(self, payload_place, val)?;
+                variant_idx
+            }
+            None => self.project_downcast_named(dest, sym::None)?.0,
+        };
+        self.write_discriminant(variant_idx, dest)
+    }
+
     /// Read a value of type `TypeId`, returning the type it represents.
     pub(crate) fn read_type_id(
         &self,

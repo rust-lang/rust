@@ -32,9 +32,9 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> fmt::Debug
             }
         }
         let (variant, field) = const {
-            use crate::mem::type_info::{self, Type, TypeKind};
+            use crate::mem::type_info::{self, TypeKind};
             let type_id = type_info::of::<T>();
-            match Type::of::<T>().kind {
+            match TypeKind::of::<T>() {
                 TypeKind::Struct => (None, Member::Name(type_id.field(0, FIELD as usize).name())),
                 TypeKind::Tuple => (None, Member::Index(FIELD)),
                 TypeKind::Enum => {

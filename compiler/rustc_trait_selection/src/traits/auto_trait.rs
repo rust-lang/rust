@@ -252,10 +252,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
 
-        let full_user_env = ty::ParamEnv::new(
-            tcx,
-            orig_env.caller_bounds().all_clauses(tcx).iter().chain(field_clauses),
-        );
+        let full_user_env = orig_env.extend(tcx, field_clauses);
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
         let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
@@ -327,7 +324,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
-        for clause in param_env.caller_bounds().all_clauses(infcx.tcx).iter() {
+        for clause in param_env.caller_bounds().all_clauses_interned(infcx.tcx).iter() {
             fresh_preds.insert(self.clean_pred(infcx, clause.as_predicate()));
         }
 
@@ -343,9 +340,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }));
 
         let computed_clauses =
-            param_env.caller_bounds().all_clauses(infcx.tcx).iter().collect::<Vec<_>>();
+            param_env.caller_bounds().all_clauses_interned(infcx.tcx).iter().collect::<Vec<_>>();
         let mut user_computed_clauses: FxIndexSet<_> =
-            user_env.caller_bounds().all_clauses(infcx.tcx).iter().collect();
+            user_env.caller_bounds().all_clauses_interned(infcx.tcx).iter().collect();
+        let mut prev_user_computed_clauses = None::<FxIndexSet<_>>;
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -417,6 +415,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 _ => panic!("Unexpected error for '{ty:?}': {result:?}"),
             };
+
+            // `computed_clauses` doesn't change, only `user_computed_clauses` does.
+            // except not always! If it didn't, we can stop here.
+            if prev_user_computed_clauses
+                .as_ref()
+                .is_some_and(|prev| prev == &user_computed_clauses)
+            {
+                continue;
+            }
+            prev_user_computed_clauses = Some(user_computed_clauses.clone());
 
             let normalized_preds = elaborate(
                 tcx,
@@ -921,6 +929,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => return false,
+
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
             };
         }
         true

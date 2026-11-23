@@ -157,8 +157,11 @@ language_item_table! {
     AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     OffsetOf,                kw::OffsetOf,             offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
+    RawEq,                   sym::raw_eq,              raw_eq,                     Target::Fn,             GenericRequirement::Exact(1);
+    CompareBytes,            sym::compare_bytes,       compare_bytes,              Target::Fn,             GenericRequirement::Exact(0);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
+    Debug,                   sym::debug,               debug_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
@@ -166,6 +169,7 @@ language_item_table! {
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
+    Send,                    sym::send,                send_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
@@ -280,13 +284,14 @@ language_item_table! {
     Move,                    sym::move_trait,          move_trait,                 Target::Trait,          GenericRequirement::None;
 
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
-    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    PartialEq,               sym::partial_eq,          partial_eq_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    Eq,                      sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(0);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
     F16B,                    sym::f16b,                f16b,                       Target::Struct,         GenericRequirement::Exact(0);
 
-    Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
-    TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,         GenericRequirement::None;
+    TypeKind,                sym::type_kind,           type_kind,                  Target::Enum,           GenericRequirement::None;
+    TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,           GenericRequirement::None;
     TypeId,                  sym::type_id,             type_id,                    Target::Struct,         GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
@@ -471,6 +476,7 @@ language_item_table! {
 
     // Experimental lang item for `Reflection and comptime`(https://goals.rust-lang.org/2025h2/reflection-and-comptime.html)
     FnPtr,                   sym::FnPtr,               fn_ptr,                     Target::Struct,         GenericRequirement::None;
+    DynTrait,                sym::DynTrait,            dyn_trait,                  Target::Struct,         GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

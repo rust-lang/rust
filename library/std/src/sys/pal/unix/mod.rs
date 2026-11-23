@@ -1,4 +1,4 @@
-#![allow(missing_docs, nonstandard_style)]
+#![allow(nonstandard_style)]
 
 use crate::io;
 

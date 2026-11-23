@@ -1,0 +1,2 @@
+# prevent git doing any conversion of the CRLF line endings in this file
+/args_full_carriage_return -text

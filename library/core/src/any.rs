@@ -819,7 +819,7 @@ impl TypeId {
             return None;
         }
 
-        if matches!(trait_represented_by_type_id.info().kind, TypeKind::DynTrait(_))
+        if matches!(trait_represented_by_type_id.info(), TypeKind::DynTrait)
             && let Some(vtable) = type_id_vtable(self, trait_represented_by_type_id)
         {
             Some(TraitImpl { vtable })

@@ -1,0 +1,31 @@
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused_parens_reference_binding.rs:10:9
+   |
+LL |     let (_x @ S{});
+   |         ^        ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused_parens_reference_binding.rs:4:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let (_x @ S{});
+LL +     let _x @ S{};
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused_parens_reference_binding.rs:12:10
+   |
+LL |     let &(_y): &i32;
+   |          ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let &(_y): &i32;
+LL +     let &_y: &i32;
+   |
+
+warning: 2 warnings emitted
+

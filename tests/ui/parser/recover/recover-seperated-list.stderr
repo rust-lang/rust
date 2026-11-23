@@ -1,0 +1,11 @@
+error: expected one of `,` or `>`, found `'b`
+  --> $DIR/recover-seperated-list.rs:7:46
+   |
+LL |     ($ty:ty) => {
+   |      ------ while parsing argument for this `ty` macro fragment
+...
+LL | fn f<'a, 'b>() -> probe!(impl Sized + use<'a 'b>) {
+   |                                              ^^ expected one of `,` or `>`
+
+error: aborting due to 1 previous error
+

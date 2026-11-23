@@ -337,8 +337,17 @@ fn do_normalize_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
+    elaborated_env_clauses: Vec<ty::Clause<'tcx>>,
     clauses: Vec<ty::Clause<'tcx>>,
 ) -> Vec<ty::Clause<'tcx>> {
+    // sanity check: it's a perf optimization to ask for a `ParamEnv` *and*
+    // an equivalent list of clauses here to avoid a decompression. In debug
+    // mode we ensure that no callsite accidentally passed in mismatching clauses.
+    debug_assert_eq!(
+        ty::ParamEnv::new(tcx, elaborated_env_clauses.iter().copied()),
+        elaborated_env
+    );
+
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
@@ -358,11 +367,8 @@ fn do_normalize_clauses<'tcx>(
     // consistent with the old solver.
     let elaborated_env =
         if tcx.next_trait_solver_globally() && !tcx.disable_param_env_normalization_hack() {
-            let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
-            let elaborated_env = set_projection_term_to_non_rigid(
-                tcx,
-                elaborated_env.caller_bounds().all_clauses(tcx).iter(),
-            );
+            let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env_clauses);
+            let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env);
 
             ty::ParamEnv::new(tcx, elaborated_env)
         } else {
@@ -444,7 +450,7 @@ fn do_normalize_clauses<'tcx>(
 #[instrument(level = "debug", skip(tcx))]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    unnormalized_env: ty::ParamEnv<'tcx>,
+    unnormalized_env: Vec<ty::Clause<'tcx>>,
     cause: ObligationCause<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
     // I'm not wild about reporting errors here; I'd prefer to
@@ -463,7 +469,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut clauses: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().all_clauses(tcx).iter().map(|clause| {
+        unnormalized_env.into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
                 return clause;
             }
@@ -536,6 +542,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-clauses={:?}", clauses);
 
+    let elaborated_env_clauses = clauses.iter().copied().collect();
     let elaborated_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
     if !elaborated_env.has_aliases() {
         return elaborated_env;
@@ -569,7 +576,8 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: clauses=(non-outlives={:?}, outlives={:?})",
         clauses, outlives_clauses
     );
-    let non_outlives_clauses = do_normalize_clauses(tcx, cause.clone(), elaborated_env, clauses);
+    let non_outlives_clauses =
+        do_normalize_clauses(tcx, cause.clone(), elaborated_env, elaborated_env_clauses, clauses);
 
     debug!("normalize_param_env_or_error: non-outlives clauses={:?}", non_outlives_clauses);
 
@@ -577,8 +585,12 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // clauses here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
-    let outlives_env = ty::ParamEnv::new(tcx, outlives_env);
-    let outlives_clauses = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses);
+    // perf optimization: get the individual clauses of the outlives env into a vec
+    // so we don't have to decompress again.
+    let outlives_env_clauses = outlives_env.collect::<Vec<_>>();
+    let outlives_env = ty::ParamEnv::new(tcx, outlives_env_clauses.iter().copied());
+    let outlives_clauses =
+        do_normalize_clauses(tcx, cause, outlives_env, outlives_env_clauses, outlives_clauses);
     debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
     let mut clauses = non_outlives_clauses;

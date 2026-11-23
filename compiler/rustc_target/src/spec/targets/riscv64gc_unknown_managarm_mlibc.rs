@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".into(),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+relax".into(),
             llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
             ..base::managarm_mlibc::opts()

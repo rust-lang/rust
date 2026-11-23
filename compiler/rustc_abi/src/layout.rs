@@ -4,6 +4,7 @@ use std::num::NonZero;
 use std::ops::Deref;
 use std::range::{RangeFrom, RangeToInclusive};
 
+pub use coroutine::PackCoroutineLayout;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitMatrix;

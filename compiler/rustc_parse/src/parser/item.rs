@@ -507,12 +507,13 @@ impl<'a> Parser<'a> {
         let span = if is_pub { self.prev_token.span.to(ident_span) } else { ident_span };
         let insert_span = ident_span.shrink_to_lo();
 
-        let ident = if self.token.is_ident()
+        let ident = if let Some(ident) = self.token.non_reserved_ident()
             && (!is_const || self.look_ahead(1, |t| *t == token::OpenParen))
             && self.look_ahead(1, |t| {
                 matches!(t.kind, token::Lt | token::OpenBrace | token::OpenParen)
             }) {
-            self.parse_ident_common(true).unwrap()
+            self.bump(); // ident
+            ident
         } else {
             return Ok(());
         };

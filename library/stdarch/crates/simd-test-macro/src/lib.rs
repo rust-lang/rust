@@ -142,7 +142,7 @@ pub fn simd_test(
                 }
                 any(
                     target_arch = "mips",
-                    target_arch = "mips32r6"
+                    target_arch = "mips32r6",
                     target_arch = "mips64",
                     target_arch = "mips64r6",
                 ) => {
