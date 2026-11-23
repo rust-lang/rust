@@ -1,0 +1,40 @@
+error: malformed `allow` attribute input
+  --> $DIR/malformed-lint-reason.rs:2:21
+   |
+LL | #![allow(dead_code, note = "testing")]
+   |                     ^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![allow(dead_code, note = "testing")]
+LL + #![allow(dead_code, reason = "testing")]
+   |
+
+error: malformed `allow` attribute input
+  --> $DIR/malformed-lint-reason.rs:2:21
+   |
+LL | #![allow(dead_code, note = "testing")]
+   |                     ^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![allow(dead_code, note = "testing")]
+LL + #![allow(dead_code, reason = "testing")]
+   |
+
+error: malformed `allow` attribute input
+  --> $DIR/malformed-lint-reason.rs:2:21
+   |
+LL | #![allow(dead_code, note = "testing")]
+   |                     ^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![allow(dead_code, note = "testing")]
+LL + #![allow(dead_code, reason = "testing")]
+   |
+
+error: aborting due to 3 previous errors
+
