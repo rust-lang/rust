@@ -40,7 +40,6 @@ mod eii;
 mod env;
 mod format;
 mod format_foreign;
-mod gca;
 mod global_allocator;
 mod iter;
 mod log_syntax;
@@ -87,7 +86,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         file: source_util::expand_file,
         format_args: format::expand_format_args,
         format_args_nl: format::expand_format_args_nl,
-        gca: gca::expand,
         global_asm: asm::expand_global_asm,
         include: source_util::expand_include,
         include_bytes: source_util::expand_include_bytes,

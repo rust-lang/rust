@@ -1597,7 +1597,7 @@ impl Expr {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
-            | ExprKind::GcaMacro(..)
+            | ExprKind::Gca(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1838,7 +1838,7 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(Box<InlineAsm>),
 
-    /// An `offset_of` expression (e.g., `k#offset_of(Struct, field)`).
+    /// An offset-of expression (e.g., `k#offset_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
@@ -1894,8 +1894,11 @@ pub enum ExprKind {
 
     UnsafeBinderCast(UnsafeBinderCastKind, Box<Expr>, Option<Box<Ty>>),
 
-    /// An mGCA `gca!()` expression.
-    GcaMacro(Box<Expr>),
+    /// An mGCA expression (e.g., `k#gca(0)`).
+    ///
+    /// Usually not written directly in user code but indirectly via the macro
+    /// `std::gca` (`core::marker::gca`).
+    Gca(Box<Expr>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
@@ -2544,8 +2547,11 @@ pub enum TyKind {
     FieldOf(Box<Ty>, Option<Ident>, Ident),
     /// A view of a type. `T.{ field_1, field_2 }`.
     View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
-    /// An mGCA `gca!()` expression.
-    GcaMacro(Box<Expr>),
+    /// An mGCA expression (e.g., `k#gca(0)`), not a real type.
+    ///
+    /// Usually not written directly in user code but indirectly via the macro
+    /// `std::gca` (`core::marker::gca`).
+    Gca(Box<Expr>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
