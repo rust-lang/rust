@@ -1,0 +1,14 @@
+[package]
+name = "rustc_unicode"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+unicode-ident = "=1.0.27"
+unicode-normalization = "=0.1.26"
+unicode-properties = { version = "=0.1.5", default-features = false, features = ["emoji"] }
+unicode-script = "=0.5.9"
+unicode-security = "=0.1.3"
+unicode-width = "=0.2.3"
+# tidy-alphabetical-end
