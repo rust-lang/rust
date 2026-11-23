@@ -170,6 +170,7 @@
         target_os = "trusty",
         target_os = "hermit",
         target_os = "l4re",
+        target_os = "qurt",
     ))
 ))]
 mod tests;

@@ -1,5 +1,5 @@
 use crate::ffi::c_int;
-#[cfg(not(target_os = "teeos"))]
+#[cfg(not(any(target_os = "teeos", target_os = "qurt")))]
 use crate::ffi::{CStr, c_char};
 use crate::{fmt, io};
 
@@ -39,6 +39,7 @@ unsafe extern "C" {
     #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
+    #[cfg_attr(target_os = "qurt", link_name = "_Geterrno")]
     // SAFETY: this will always return the same pointer on a given thread.
     #[unsafe(ffi_const)]
     pub safe fn errno_location() -> *mut c_int;
@@ -62,7 +63,6 @@ pub fn errno() -> i32 {
     target_os = "dragonfly",
     target_os = "espidf",
     target_os = "lynxos178",
-    target_os = "qurt",
     target_os = "rtems",
     target_os = "vxworks",
     target_os = "wasi",
@@ -230,7 +230,7 @@ pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     }
 }
 
-#[cfg(target_os = "teeos")]
+#[cfg(any(target_os = "teeos", target_os = "qurt"))]
 pub fn format_error(_errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str("error string unimplemented")
 }

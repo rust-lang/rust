@@ -48,7 +48,7 @@ cfg_select! {
         mod unsupported;
         pub use unsupported::{DEFAULT_MIN_STACK_SIZE, Thread, current_os_id, set_name, yield_now};
     }
-    any(target_family = "unix", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
         mod unix;
         #[cfg(not(any(
             target_env = "newlib",
@@ -58,6 +58,7 @@ cfg_select! {
             target_os = "hurd",
             target_os = "aix",
             target_os = "wasi",
+            target_os = "qurt",
         )))]
         pub use unix::set_name;
         #[cfg(any(
@@ -88,6 +89,7 @@ cfg_select! {
             target_os = "hurd",
             target_os = "aix",
             target_os = "wasi",
+            target_os = "qurt",
         ))]
         pub use unsupported::set_name;
     }
