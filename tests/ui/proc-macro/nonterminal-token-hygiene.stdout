@@ -39,7 +39,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 #![feature /* 0#0 */(decl_macro /* 0#0 */)]
 #![no_std /* 0#0 */]
 extern crate core /* 0#2 */;
-#[prelude_import /* 0#1 */]
+#[prelude_import]
 use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
