@@ -22,6 +22,7 @@ pub(crate) macro float_impl(
     exponent_bias = $exponent_bias:literal,
     // Feature gates
     assoc_int_consts = #[$assoc_int_consts:meta],
+    float_bits_const = #[$float_bits_const:meta],
     // Things needed for `f16`/`f128` doctests
     $(feature = $feature:ident,)?
     $(has_reliable_cfg = $has_reliable_cfg:ident,)?
@@ -34,7 +35,7 @@ pub(crate) macro float_impl(
     pub const RADIX: u32 = 2;
 
     /// The size of this float type in bits.
-    #[unstable(feature = "float_bits_const", issue = "151073")]
+    #[$float_bits_const]
     pub const BITS: u32 = $BITS;
 
     /// Number of significant digits in base 2.
