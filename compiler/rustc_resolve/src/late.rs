@@ -5621,7 +5621,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
 
             // Equivalent to `visit::walk_expr` + passing some context to children.
-            ExprKind::Field(ref subexpression, _) => {
+            ExprKind::Field(ref subexpression, _) | ExprKind::RawHandle(ref subexpression) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
             ExprKind::MethodCall(MethodCall { ref seg, ref receiver, ref args, .. }) => {

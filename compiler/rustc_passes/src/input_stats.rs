@@ -376,6 +376,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Become,
                 InlineAsm,
                 OffsetOf,
+                RawHandle,
                 Struct,
                 Repeat,
                 Yield,
@@ -668,7 +669,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
-                InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
+                InlineAsm, FormatArgs, OffsetOf, RawHandle, MacCall, Struct, Repeat, Paren, Try,
+                Yield, Yeet,
                 Become, IncludedBytes, Gen, UnsafeBinderCast, GcaMacro, Err, Dummy
             ]
         );

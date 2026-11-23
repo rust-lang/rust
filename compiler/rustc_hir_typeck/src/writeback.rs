@@ -79,6 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_transmutes();
         wbcx.visit_offloads();
         wbcx.visit_offset_of_container_types();
+        wbcx.visit_raw_handle_data();
         wbcx.visit_potentially_region_dependent_goals();
 
         let used_trait_imports =
@@ -801,6 +802,33 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .map(|&(ty, variant, field)| (self.resolve(ty, &hir_id), variant, field))
                 .collect();
             self.typeck_results.offset_of_data_mut().insert(hir_id, indices);
+        }
+    }
+
+    fn visit_raw_handle_data(&mut self) {
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
+
+        for (local_id, data) in fcx_typeck_results.raw_handle_data().items_in_stable_order() {
+            let hir_id = HirId { owner: common_hir_owner, local_id };
+            let fields = data
+                .fields
+                .iter()
+                .map(|&ty::RawHandleField { adjusted_base_ty, field_idx, autoderefs }| {
+                    ty::RawHandleField {
+                        adjusted_base_ty: self.resolve(adjusted_base_ty, &hir_id),
+                        field_idx,
+                        autoderefs,
+                    }
+                })
+                .collect();
+            let resolved = ty::RawHandleData {
+                root_ty: self.resolve(data.root_ty, &hir_id),
+                mutability: data.mutability,
+                fields,
+            };
+            self.typeck_results.raw_handle_data_mut().insert(hir_id, resolved);
         }
     }
 

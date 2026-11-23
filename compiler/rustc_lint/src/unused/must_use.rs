@@ -376,6 +376,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             },
             hir::ExprKind::AddrOf(..) => Some("borrow"),
             hir::ExprKind::OffsetOf(..) => Some("`offset_of` call"),
+            hir::ExprKind::RawHandle(..) => Some("`raw_handle` call"),
             hir::ExprKind::Unary(..) => Some("unary operation"),
             // The `offset_of` macro wraps its contents inside a `const` block.
             hir::ExprKind::ConstBlock(block) => {

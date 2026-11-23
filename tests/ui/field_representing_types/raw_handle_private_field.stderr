@@ -1,0 +1,9 @@
+error[E0616]: field `y` of struct `Point` is private
+  --> $DIR/raw_handle_private_field.rs:22:53
+   |
+LL |         let h: LocalHandle<i32> = raw_handle!(point.y);
+   |                                                     ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

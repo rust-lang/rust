@@ -144,6 +144,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | MacCall(..)
             | Match(_, _, MatchKind::Prefix)
             | OffsetOf(..)
+            | RawHandle(..)
             | Paren(..)
             | Path(..)
             | Range(None, _, _)
@@ -218,7 +219,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
                 break (mac.args.delim == Delimiter::Brace).then_some(TrailingBrace::MacCall(mac));
             }
 
-            InlineAsm(_) | OffsetOf(_, _) | IncludedBytes(_) | FormatArgs(_) => {
+            InlineAsm(_) | OffsetOf(_, _) | RawHandle(_) | IncludedBytes(_) | FormatArgs(_) => {
                 // These should have been denied pre-expansion.
                 break None;
             }

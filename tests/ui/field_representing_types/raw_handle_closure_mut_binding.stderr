@@ -1,0 +1,27 @@
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/raw_handle_closure_mut_binding.rs:16:5
+   |
+LL |     let mut r = &mut x;
+   |                 ------ `x` is borrowed here
+LL |     let mut c = || unsafe { raw_handle!(r.a) };
+LL |     c()
+   |     ^^^ returns a value referencing data owned by the current function
+
+error[E0596]: cannot borrow `c` as mutable, as it is not declared as mutable
+  --> $DIR/raw_handle_closure_mut_binding.rs:26:5
+   |
+LL |         let _ = raw_handle!(r.a);
+   |                             - calling `c` requires mutable binding due to mutable borrow of `r`
+LL |     };
+LL |     c();
+   |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut c = || unsafe {
+   |         +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0515, E0596.
+For more information about an error, try `rustc --explain E0515`.

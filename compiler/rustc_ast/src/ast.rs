@@ -1585,6 +1585,7 @@ impl Expr {
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Paren(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
@@ -1843,6 +1844,9 @@ pub enum ExprKind {
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
     OffsetOf(Box<Ty>, ThinVec<Ident>),
+
+    /// A `raw_handle` expression (e.g., `raw_handle!(expr)`).
+    RawHandle(Box<Expr>),
 
     /// A macro invocation; pre-expansion.
     MacCall(Box<MacCall>),

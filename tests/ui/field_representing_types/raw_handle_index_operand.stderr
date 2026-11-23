@@ -1,0 +1,9 @@
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw_handle_index_operand.rs:8:25
+   |
+LL |     let _ = raw_handle!(arr[0]);
+   |                         ^^^^^^ temporary value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0745`.

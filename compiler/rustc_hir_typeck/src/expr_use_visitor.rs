@@ -475,6 +475,44 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.borrow_expr(base, bk)?;
             }
 
+            hir::ExprKind::RawHandle(pe) => {
+                let results = self.cx.typeck_results();
+                let Some(data) = results.raw_handle_data().get(expr.hir_id) else {
+                    self.cx.tainted_by_errors()?;
+                    return Err(self.cx.report_bug(expr.span, "missing raw_handle_data"));
+                };
+                let bk = match data.mutability {
+                    hir::Mutability::Mut => BorrowKind::Mutable,
+                    hir::Mutability::Not => BorrowKind::Immutable,
+                };
+                let res = results.qpath_res(&pe.path, expr.hir_id);
+                let root_ty = self.cx.deeply_resolve_ignoring_regions(data.root_ty);
+                drop(results);
+                let diag_hir_id = match pe.path {
+                    hir::QPath::Resolved(_, path) => {
+                        path.segments.last().map_or(expr.hir_id, |seg| seg.hir_id)
+                    }
+                    hir::QPath::TypeRelative(_, seg) => seg.hir_id,
+                };
+                let place_with_id = self.cat_res(expr.hir_id, pe.path_span, root_ty, res)?;
+                // FIXME(dingxiangfei2009): Pending upstream design work; this currently
+                // misbehaves because it gives up on computing a fine-grained
+                // projection/capture, instead capturing the entire root variable.
+                // Specifically:
+                // 1. Overcapturing: `|| raw_handle!(s.a)` borrows or moves all of `s`
+                //    instead of only `s.a`, rejecting disjoint borrows or moves of
+                //    sibling fields (`s.b`) and forcing `FnMut` whenever the root
+                //    binding is `let mut`.
+                // 2. Deref capture on immutable reference bindings: for `let r = &mut x`,
+                //    `|| unsafe { raw_handle!(r.a) }` selects `BorrowKind::Immutable`
+                //    because `r` itself is not `mut`, capturing `r` by shared reference
+                //    (`&&mut S`) instead of reborrowing `(*r).a` mutably.
+                // Changing this to record fine-grained `PlaceExpr` projections (or a
+                // dedicated `LocalHandle` upvar capture) will restrict captures to the
+                // projected subplace and use the proper borrow kind across derefs.
+                self.delegate.borrow_mut().borrow(&place_with_id, diag_hir_id, bk);
+            }
+
             hir::ExprKind::InlineAsm(asm) => {
                 for (op, _op_sp) in asm.operands {
                     match op {
@@ -1357,6 +1395,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::RawHandle(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)

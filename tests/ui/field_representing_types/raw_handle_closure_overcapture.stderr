@@ -1,0 +1,41 @@
+error[E0499]: cannot borrow `s` as mutable more than once at a time
+  --> $DIR/raw_handle_closure_overcapture.rs:17:17
+   |
+LL |     let r = &mut s.a;
+   |             -------- first mutable borrow occurs here
+LL |     let mut c = || unsafe { raw_handle!(s.b) };
+   |                 ^^                      - second borrow occurs due to use of `s` in closure
+   |                 |
+   |                 second mutable borrow occurs here
+LL |     let _ = c();
+LL |     r.push('x');
+   |     - first borrow later used here
+
+error[E0505]: cannot move out of `s.a` because it is borrowed
+  --> $DIR/raw_handle_closure_overcapture.rs:25:10
+   |
+LL |     let c = || unsafe { raw_handle!(s.b) };
+   |             --                      - borrow occurs due to use in closure
+   |             |
+   |             borrow of `s` occurs here
+LL |     drop(s.a);
+   |          ^^^ move out of `s.a` occurs here
+LL |     drop(c);
+   |          - borrow later used here
+
+error[E0382]: borrow of partially moved value: `s`
+  --> $DIR/raw_handle_closure_overcapture.rs:32:17
+   |
+LL |     drop(s.a);
+   |          --- value partially moved here
+LL |     let mut c = || unsafe { raw_handle!(s.b) };
+   |                 ^^                      - borrow occurs due to use in closure
+   |                 |
+   |                 value borrowed here after partial move
+   |
+   = note: partial move occurs because `s.a` has type `String`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0499, E0505.
+For more information about an error, try `rustc --explain E0382`.

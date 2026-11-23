@@ -279,11 +279,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }) => {
                 (segment.ident.span, span, SelfSource::MethodCall(rcvr), segment.ident, Some(args))
             }
-            hir::Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Path(QPath::TypeRelative(rcvr, segment)),
-                span,
-                ..
-            })
+            hir::Node::Expr(
+                &hir::Expr {
+                    kind: hir::ExprKind::Path(QPath::TypeRelative(rcvr, segment)),
+                    span,
+                    ..
+                }
+                | &hir::Expr {
+                    kind:
+                        hir::ExprKind::RawHandle(&hir::PlaceExpr {
+                            path: QPath::TypeRelative(rcvr, segment),
+                            path_span: span,
+                            ..
+                        }),
+                    ..
+                },
+            )
             | hir::Node::PatExpr(&hir::PatExpr {
                 kind: hir::PatExprKind::Path(QPath::TypeRelative(rcvr, segment)),
                 span,

@@ -105,8 +105,8 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
-    Rust2024IncompatiblePatInfo, SplattedDef, TypeckResults, UserType, UserTypeAnnotationIndex,
-    UserTypeKind,
+    RawHandleData, RawHandleField, Rust2024IncompatiblePatInfo, SplattedDef, TypeckResults,
+    UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 use crate::diagnostics::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
