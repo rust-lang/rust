@@ -161,8 +161,9 @@ fn validate_utf8_from_suspect(v: &[u8], pos: usize) -> (usize, u8) {
 
 /// Checks `v[start..]` with scalar code, like [`validate`].
 fn validate_scalar(v: &[u8], start: usize) -> (usize, u8) {
-    match run_utf8_validation_from::<false>(v, start) {
-        Ok(()) => (0, u8::MAX),
+    // SAFETY: `v[..start]` passed by callers is valid UTF-8.
+    match unsafe { run_utf8_validation_from::<false>(v, start) } {
+        Ok(_) => (0, u8::MAX),
         Err(error) => (error.valid_up_to, error.error_len.unwrap_or(0)),
     }
 }

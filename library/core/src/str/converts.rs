@@ -87,14 +87,7 @@ use crate::{mem, ptr};
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
 #[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
-    // FIXME(const-hack): This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked(v) })
-        }
-        Err(err) => Err(err),
-    }
+    run_utf8_validation(v)
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.

@@ -123,22 +123,28 @@ const fn contains_nonascii(x: usize) -> bool {
 }
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
-/// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
+/// returning `Ok(&str)` in that case, or, if it is invalid, `Err(err)`.
 #[inline(always)]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
-pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    run_utf8_validation_from::<true>(v, 0)
+pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<&str, Utf8Error> {
+    // SAFETY: `index == 0`
+    unsafe { run_utf8_validation_from::<true>(v, 0) }
 }
 
 /// Checks UTF-8 in `v[index..]`. Error offsets are relative to `v`.
-/// `index` must be at most `v.len()`, and `v[..index]` must already be valid UTF-8.
+/// Returns the whole `v` as a str on success.
+///
 /// With `SIMD`, long inputs continue in `neon::validate` after `neon::SCALAR_LEN` bytes.
+///
+/// # Safety
+///
+/// `index` must be at most `v.len()`, and `v[..index]` must already be valid UTF-8.
 #[inline(always)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-const fn run_utf8_validation_from<const SIMD: bool>(
+const unsafe fn run_utf8_validation_from<const SIMD: bool>(
     v: &[u8],
     mut index: usize,
-) -> Result<(), Utf8Error> {
+) -> Result<&str, Utf8Error> {
     let full = v;
     // For long inputs, check multibyte characters in a prefix only and continue with SIMD
     // after it. ASCII is still skipped in all of `full`, since the word loop below is faster
@@ -276,7 +282,8 @@ const fn run_utf8_validation_from<const SIMD: bool>(
                 // returning, which is noticeable for short ASCII inputs.
                 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
                 if index == full.len() {
-                    return Ok(());
+                    // SAFETY: The rest of `full` passes validation.
+                    return Ok(unsafe { str::from_utf8_unchecked(full) });
                 }
             } else {
                 index += 1;
@@ -295,20 +302,22 @@ const fn run_utf8_validation_from<const SIMD: bool>(
         }
         let v = full;
         return const_eval_select!(
-            @capture { v: &[u8], index: usize } -> Result<(), Utf8Error>:
+            @capture { v: &[u8], index: usize } -> Result<&str, Utf8Error>:
             if const {
-                run_utf8_validation_from::<false>(v, index)
+                // SAFETY: `v[..index]` is valid already.
+                unsafe { run_utf8_validation_from::<false>(v, index) }
             } else {
                 match neon::validate(v, index) {
-                    (_, u8::MAX) => Ok(()),
+                    // SAFETY: The rest of `v` passes validation.
+                    (_, u8::MAX) => Ok(unsafe { str::from_utf8_unchecked(v) }),
                     (valid_up_to, 0) => Err(Utf8Error { valid_up_to, error_len: None }),
                     (valid_up_to, n) => Err(Utf8Error { valid_up_to, error_len: Some(n) }),
                 }
             }
         );
     }
-
-    Ok(())
+    // SAFETY: The rest of `full` passes validation.
+    Ok(unsafe { str::from_utf8_unchecked(full) })
 }
 
 // https://tools.ietf.org/html/rfc3629
