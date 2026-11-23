@@ -23,9 +23,10 @@ use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, JobsMode, Lto, OptimizationObjective, OutFileName, OutputFilenames, OutputType, Passes,
+    self, JobsMode, Lto, OptimizationObjective, OutFileName, OutputFilenames, Passes,
     SwitchWithOptPath,
 };
+use rustc_session::output::OutputType;
 use rustc_session::{BorrowedIncrCompSession, IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, InnerSpan, Span, SyntaxContext, bug};

@@ -19,7 +19,7 @@ use rustc_driver::Compilation;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::output::ErrorOutputType;
 use rustc_structures::CrateType;
 
 fn find_sysroot() -> String {

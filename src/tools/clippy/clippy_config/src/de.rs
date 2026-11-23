@@ -5,7 +5,7 @@ use rustc_attr_ir::RustcVersion;
 use rustc_attr_parsing::parse_version;
 use rustc_errors::{DiagCtxtHandle, DiagMessage};
 use rustc_session::Session;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::output::ErrorOutputType;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::{BytePos, Pos as _, Span, Spanned, Symbol};
 use std::collections::{HashMap, HashSet};

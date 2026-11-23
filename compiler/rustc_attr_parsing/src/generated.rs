@@ -18,7 +18,16 @@ pub(crate) struct GeneratedAttrState {
 impl GeneratedAttrState {
     pub(crate) fn accept_generated_attr(&mut self, span: Span, generated: &GeneratedAttr) {
         let attr = match *generated {
+            // tidy-alphabetical-start
             GeneratedAttr::AutomaticallyDerived => AttributeKind::AutomaticallyDerived,
+            GeneratedAttr::CoverageOff => AttributeKind::Coverage(CoverageAttrKind::Off),
+            GeneratedAttr::DocHidden => AttributeKind::Doc(Box::new({
+                let mut d = DocAttribute::default();
+                d.hidden = Some(span);
+                d
+            })),
+            GeneratedAttr::Inline => AttributeKind::Inline(InlineAttr::Hint, span),
+            GeneratedAttr::PreludeImport => AttributeKind::PreludeImport,
             GeneratedAttr::RustcConstUnstableDerived => AttributeKind::RustcConstStability {
                 stability: PartialConstStability {
                     feature: sym::derive_const,
@@ -32,17 +41,12 @@ impl GeneratedAttrState {
                 },
                 span,
             },
-            GeneratedAttr::Inline => AttributeKind::Inline(InlineAttr::Hint, span),
-            GeneratedAttr::DocHidden => AttributeKind::Doc(Box::new({
-                let mut d = DocAttribute::default();
-                d.hidden = Some(span);
-                d
-            })),
-            GeneratedAttr::CoverageOff => AttributeKind::Coverage(CoverageAttrKind::Off),
+            GeneratedAttr::RustcMain => AttributeKind::RustcMain,
             GeneratedAttr::RustcTestMarker(test_marker) => {
                 AttributeKind::RustcTestMarker(test_marker)
             }
             GeneratedAttr::RustcTrivialFieldReads => AttributeKind::RustcTrivialFieldReads(span),
+            // tidy-alphabetical-end
         };
         self.state.push(attr);
     }
