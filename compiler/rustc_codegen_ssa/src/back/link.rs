@@ -582,7 +582,7 @@ fn link_rlib<'a>(
         RlibFlavor::Normal => {
             let (metadata, metadata_position) =
                 create_wrapper_file(sess, ".rmeta".to_string(), metadata.stub_or_full());
-            let metadata = emit_wrapper_file(sess, &metadata, tmpdir.as_ref(), METADATA_FILENAME);
+            let metadata_path = tmpdir.as_ref().join(METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -590,7 +590,7 @@ fn link_rlib<'a>(
                     // normal linkers for the platform. Sometimes this is not possible however.
                     // If it is possible however, placing the metadata object first improves
                     // performance of getting metadata from rlibs.
-                    ab.add_file(&metadata, ArchiveEntryKind::Other);
+                    ab.add_in_memory_file(&metadata_path, metadata, ArchiveEntryKind::Other);
                     // Place the rmeta-link member immediately after metadata so consumers
                     // can find it without iterating the whole archive.
                     if let Some(file) = &metadata_link_file {
@@ -598,7 +598,10 @@ fn link_rlib<'a>(
                     }
                     None
                 }
-                MetadataPosition::Last => Some(metadata),
+                MetadataPosition::Last => {
+                    emit_wrapper_file(sess, &metadata, tmpdir.as_ref(), METADATA_FILENAME);
+                    Some(metadata_path)
+                }
             }
         }
 

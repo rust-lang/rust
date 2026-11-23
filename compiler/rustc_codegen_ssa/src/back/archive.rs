@@ -322,6 +322,8 @@ pub struct ArchiveSymbols {
 }
 
 pub trait ArchiveBuilder {
+    fn add_in_memory_file(&mut self, path: &Path, data: Vec<u8>, kind: ArchiveEntryKind);
+
     fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
     fn add_archive(&mut self, archive: &Path, kind: AddArchiveKind<'_>) -> io::Result<()>;
@@ -404,6 +406,7 @@ pub enum ArchiveEntryKind {
 enum ArchiveEntrySource {
     Archive { archive_index: usize, file_range: (u64, u64) },
     File(PathBuf),
+    InMemoryFile(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -554,6 +557,14 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         ));
     }
 
+    /// Adds arbitrary data from memory to this archive.
+    fn add_in_memory_file(&mut self, file: &Path, data: Vec<u8>, kind: ArchiveEntryKind) {
+        self.entries.push((
+            file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
+            ArchiveEntry { source: ArchiveEntrySource::InMemoryFile(data), kind },
+        ));
+    }
+
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool {
@@ -605,6 +616,9 @@ impl<'a> ArArchiveBuilder<'a> {
                         if let Ok(data) = fs::read(file) {
                             collect_internal_names(&data, &sym.exported, &mut names);
                         }
+                    }
+                    ArchiveEntrySource::InMemoryFile(data) => {
+                        collect_internal_names(&data, &sym.exported, &mut names);
                     }
                 }
             }
@@ -672,6 +686,19 @@ impl<'a> ArArchiveBuilder<'a> {
                         Box::new(mmap) as Box<dyn AsRef<[u8]>>
                     }
                 },
+                ArchiveEntrySource::InMemoryFile(data) => {
+                    if entry.kind == ArchiveEntryKind::RustObj
+                        && let Some(sym) = &symbols
+                    {
+                        let edited = apply_edits(&data, &sym.exported, sym.hide, rename.as_ref());
+                        match edited {
+                            Cow::Borrowed(_) => Box::new(data) as Box<dyn AsRef<[u8]>>,
+                            Cow::Owned(v) => Box::new(v),
+                        }
+                    } else {
+                        Box::new(data) as Box<dyn AsRef<[u8]>>
+                    }
+                }
             };
 
             entries.push(NewArchiveMember {
