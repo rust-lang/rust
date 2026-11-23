@@ -378,6 +378,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 tcx.sess,
                 tcx.features(),
                 tcx.registered_attr_tools(()),
+                tcx.registered_lint_tools(()),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             ),
         }
