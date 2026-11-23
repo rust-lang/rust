@@ -691,7 +691,6 @@ define_tables! {
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<LazyValue<mir::ConstQualifs>>,
-    rendered_const: Table<LazyValue<String>>,
     rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     coroutine_kind: Table<hir::CoroutineKind>,

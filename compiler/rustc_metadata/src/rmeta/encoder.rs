@@ -1987,11 +1987,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     self.table_writer().mir_const_qualif(def_id, qualifs);
-                    let body = tcx.hir_maybe_body_owned_by(def_id);
-                    if let Some(body) = body {
-                        let const_data = rendered_const(tcx, &body, def_id);
-                        self.table_writer().rendered_const(def_id, const_data);
-                    }
                 }
             }
             if !is_trivial {

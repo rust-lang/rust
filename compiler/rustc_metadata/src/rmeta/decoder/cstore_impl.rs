@@ -274,7 +274,6 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info")))
     }
     mir_const_qualif => { table }
-    rendered_const => { table }
     rendered_precise_capturing_args => { table }
     asyncness => { table_direct }
     fn_arg_idents => { table }
