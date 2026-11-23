@@ -29,8 +29,6 @@ pub struct Job {
     pub free_disk: Option<bool>,
     /// Documentation link to a resource that could help people debug this CI job.
     pub doc_url: Option<String>,
-    /// Whether the job is executed on AWS CodeBuild.
-    pub codebuild: Option<bool>,
     /// Which Python version (if any) is required. On Windows, this is typically required to run
     /// LLDB.
     #[serde(default)]
@@ -170,7 +168,6 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             only_on_channel,
             free_disk,
             doc_url,
-            codebuild,
             required_python_version,
 
             // Carve-out configs allowed to be different.
@@ -183,7 +180,6 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             && *only_on_channel == auto_job.only_on_channel
             && *free_disk == auto_job.free_disk
             && *doc_url == auto_job.doc_url
-            && *codebuild == auto_job.codebuild
             && *required_python_version == auto_job.required_python_version
         {
             Ok(())
@@ -249,14 +245,12 @@ struct GithubActionsJob {
     #[serde(skip_serializing_if = "Option::is_none")]
     doc_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    codebuild: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     required_python_version: Option<String>,
 }
 
 /// Replace GitHub context variables with environment variables in job configs.
-/// Used for codebuild jobs like
-/// `codebuild-ubuntu-22-8c-$github.run_id-$github.run_attempt`
+///
+/// This is used for self-hosted runner jobs to loosely tie an instance to a particular GHA job.
 fn substitute_github_vars(jobs: Vec<Job>) -> anyhow::Result<Vec<Job>> {
     let run_id = load_env_var("GITHUB_RUN_ID")?;
     let run_attempt = load_env_var("GITHUB_RUN_ATTEMPT")?;
@@ -382,7 +376,6 @@ fn calculate_jobs(
                 continue_on_error: job.continue_on_error,
                 free_disk: job.free_disk,
                 doc_url: job.doc_url,
-                codebuild: job.codebuild,
                 required_python_version: job.required_python_version,
             }
         })
