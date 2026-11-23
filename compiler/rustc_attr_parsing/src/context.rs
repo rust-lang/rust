@@ -221,6 +221,7 @@ attribute_parsers!(
         Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,
         Single<LinkageParser>,
+        Single<LintCBufferLengthParser>,
         Single<MacroExportParser>,
         Single<MoveSizeLimitParser>,
         Single<MustNotSuspendParser>,
