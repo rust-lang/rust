@@ -658,7 +658,7 @@ fn expected_type_and_name<'db>(
             let def = *generic_def
                 .get_or_insert_with(|| sema.scope(&node).and_then(|scope| scope.generic_def()));
             def.and_then(|def| ty.try_rebase_into_owner(sema.db, def))
-                .unwrap_or_else(|| ty.instantiate_with_errors())
+                .unwrap_or_else(|| ty.instantiate_with_errors(sema.db))
         }
     };
     let (ty, name) = loop {

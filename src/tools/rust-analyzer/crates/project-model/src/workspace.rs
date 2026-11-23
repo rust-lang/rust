@@ -791,7 +791,7 @@ impl ProjectWorkspace {
                 RustLibSrcWorkspace::Json(project_json) => project_json
                     .crates()
                     .map(|(_, krate)| PackageRoot {
-                        is_local: false,
+                        is_local: krate.is_workspace_member,
                         include: krate.include.clone(),
                         exclude: krate.exclude.clone(),
                     })

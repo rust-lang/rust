@@ -9580,7 +9580,7 @@ fn notable_ranged() {
         r#"
 //- minicore: future, iterator
 struct S;
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "transparent"))]
 trait Notable {}
 impl Notable for S {}
 impl core::future::Future for S {

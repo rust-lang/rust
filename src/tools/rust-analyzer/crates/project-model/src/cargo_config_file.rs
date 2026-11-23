@@ -196,7 +196,8 @@ pub(crate) fn make_lockfile_copy(
 
     let temp_dir = NamedTempDir::new("rust-analyzer").ok()?;
     let path = temp_dir.path().join("Cargo.lock");
-    std::fs::copy(lockfile_path.as_std_path(), &path).ok()?;
+    // `fs::read` + `fs::write` instead of `fs::copy` to avoid copying permission bits.
+    std::fs::write(&path, std::fs::read(lockfile_path.as_std_path()).ok()?).ok()?;
 
     Some(LockfileCopy { path: Utf8PathBuf::from_path_buf(path).ok()?, usage, _temp_dir: temp_dir })
 }

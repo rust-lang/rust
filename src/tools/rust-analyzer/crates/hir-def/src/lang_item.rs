@@ -2,7 +2,7 @@
 //!
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
-use base_db::SourceDatabase;
+use base_db::{SourceDatabase, TargetKind};
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
@@ -108,6 +108,8 @@ pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<Lan
         lang_items.fill_non_lang_core_items(db, crate_def_map);
     }
 
+    lang_items.rust_1_102_partial_eq_hack();
+
     lang_items.resolve_manually(db);
 
     if lang_items.is_empty() {
@@ -130,6 +132,8 @@ fn crate_extern_prelude(db: &dyn SourceDatabase, start_crate: Crate) -> Box<[Cra
             // Some crates declares themselves as extern crate like `extern crate self as core`.
             // Ignore these to prevent cycles.
             krate != start_crate
+                // Exclude proc macro dependencies, they have their own sysroot that could conflict.
+                && krate.data(db).target_kind != TargetKind::Lib { is_proc_macro: true }
         })
         .collect()
 }
@@ -392,6 +396,16 @@ impl LangItems {
         let def = def.into();
         self.solver_adt[lang_item as usize] = Some(def);
         self.reverse_solver_adt.insert(def, lang_item);
+    }
+
+    /// FIXME: Remove this when we have MSRV >= 1.102.0.
+    /// See comments on [`LangItems::Rust1_102PartialEqHack`].
+    fn rust_1_102_partial_eq_hack(&mut self) {
+        if self.Rust1_102PartialEqHack.is_none() {
+            return;
+        }
+        self.Eq = self.PartialEq;
+        self.PartialEq = self.Rust1_102PartialEqHack;
     }
 }
 
@@ -851,6 +865,10 @@ language_item_table! { $ LangItems =>
     AsyncGenReady,           sym::AsyncGenReady,       FunctionId;
 
     PartialEq,               sym::eq,                  TraitId;
+    // FIXME: `PartialEq`'s lang item attribute has been changed into `partial_eq` and `eq` has
+    // been assigned to `Eq` in 1.102.0. Remove this and move `Eq` here once we bump our
+    // MSRV >= 1.102.0.
+    Rust1_102PartialEqHack,  sym::partial_eq,          TraitId;
     PartialOrd,              sym::partial_ord,         TraitId;
     CVoid,                   sym::c_void,              EnumId;
 
@@ -1046,10 +1064,66 @@ language_item_table! { $ LangItems =>
     PartialOrd_ge,                 FunctionId;
     PartialOrd_gt,                 FunctionId;
     Drop_drop,                     FunctionId;
-    Drop_pin_drop,                     FunctionId;
+    Drop_pin_drop,                 FunctionId;
     Debug_fmt,                     FunctionId;
     Deref_deref,                   FunctionId;
     DerefMut_deref_mut,            FunctionId;
     Index_index,                   FunctionId;
     IndexMut_index_mut,            FunctionId;
+}
+
+#[cfg(test)]
+mod tests {
+    use base_db::all_crates;
+    use rustc_hash::FxHashMap;
+    use test_fixture::WithFixture;
+
+    use crate::{test_db::TestDB, unstable_features::UnstableFeatures};
+
+    /// Ensures each crate can only have up to one transitive dependency with `#![feature(lang_items)]`.
+    ///
+    /// In reality there can be multiple (std, alloc, core) but this is a representative of bugs we had.
+    fn ensure_single_lang_items_owner(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let mut lang_items_owner_count = FxHashMap::default();
+
+        let db = TestDB::with_files(ra_fixture);
+        // `all_crates()` is in topological order, so we can just loop over it.
+        for &krate in all_crates(&db).iter() {
+            let mut lang_items_count = u32::from(UnstableFeatures::query(&db, krate).lang_items);
+            lang_items_count += super::crate_extern_prelude(&db, krate)
+                .iter()
+                .map(|dep| lang_items_owner_count[dep])
+                .sum::<u32>();
+            lang_items_owner_count.insert(krate, lang_items_count);
+        }
+
+        let invalid_crates = lang_items_owner_count
+            .iter()
+            .filter(|(_, count)| **count > 1)
+            .map(|(krate, _)| match &krate.extra_data(&db).display_name {
+                Some(name) => name.crate_name().to_string(),
+                None => format!("{krate:?}"),
+            })
+            .collect::<Vec<_>>();
+        if !invalid_crates.is_empty() {
+            panic!("crates [{}] have more than one lang items owner", invalid_crates.join(", "));
+        }
+    }
+
+    #[test]
+    fn proc_macros_not_included() {
+        ensure_single_lang_items_owner(
+            r#"
+//- /core1.rs crate:core1
+#![feature(lang_items)]
+
+//- /proc_macro.rs crate:proc-macro:proc_macro deps:core1
+
+//- /core2.rs crate:core2
+#![feature(lang_items)]
+
+//- /main.rs crate:main deps:core2,proc_macro
+        "#,
+        );
+    }
 }

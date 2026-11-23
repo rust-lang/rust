@@ -5410,6 +5410,22 @@ The tracking issue for this feature is: [#87555]
         deny_since: None,
     },
     Lint {
+        label: "const_abort",
+        description: r##"# `const_abort`
+
+
+
+The tracking issue for this feature is: [#166193]
+
+[#166193]: https://github.com/rust-lang/rust/issues/166193
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "const_alloc_error",
         description: r##"# `const_alloc_error`
 
@@ -8532,6 +8548,22 @@ The tracking issue for this feature is: [#164793]
         deny_since: None,
     },
     Lint {
+        label: "extern_item_default_impls",
+        description: r##"# `extern_item_default_impls`
+
+Externally implementable items with default impls
+
+The tracking issue for this feature is: [#125418]
+
+[#125418]: https://github.com/rust-lang/rust/issues/125418
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "extern_item_impls",
         description: r##"# `extern_item_impls`
 
@@ -10549,22 +10581,6 @@ Enable #[instrument_fn] on function.
 The tracking issue for this feature is: [#157081]
 
 [#157081]: https://github.com/rust-lang/rust/issues/157081
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "int_from_ascii",
-        description: r##"# `int_from_ascii`
-
-
-
-The tracking issue for this feature is: [#134821]
-
-[#134821]: https://github.com/rust-lang/rust/issues/134821
 
 ------------------------
 "##,
@@ -18118,6 +18134,22 @@ The tracking issue for this feature is: [#100486]
 The tracking issue for this feature is: [#148227]
 
 [#148227]: https://github.com/rust-lang/rust/issues/148227
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "vec_repeat",
+        description: r##"# `vec_repeat`
+
+
+
+The tracking issue for this feature is: [#164215]
+
+[#164215]: https://github.com/rust-lang/rust/issues/164215
 
 ------------------------
 "##,
