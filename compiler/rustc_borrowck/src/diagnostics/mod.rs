@@ -339,7 +339,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mut buf = String::new();
         let mut ok = self.append_local_to_string(local, &mut buf);
 
-        for (index, elem) in place.projection.into_iter().enumerate() {
+        for (index, elem) in place.projection.iter().enumerate() {
             match elem {
                 ProjectionElem::Deref => {
                     if index == 0 {
@@ -425,15 +425,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     }
 
     fn describe_name(&self, place: PlaceRef<'tcx>) -> Option<Symbol> {
-        for elem in place.projection.into_iter() {
-            match elem {
-                ProjectionElem::Downcast(Some(name), _) => {
-                    return Some(*name);
-                }
-                _ => {}
-            }
-        }
-        None
+        place.projection.iter().find_map(|elem| match elem {
+            ProjectionElem::Downcast(Some(name), _) => Some(*name),
+            _ => None,
+        })
     }
 
     /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
@@ -1034,24 +1029,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // StatementKind::FakeRead only contains a def_id if they are introduced as a result
         // of pattern matching within a closure.
-        if let StatementKind::FakeRead((cause, place)) = stmt.kind {
-            match cause {
-                FakeReadCause::ForMatchedPlace(Some(closure_def_id))
-                | FakeReadCause::ForLet(Some(closure_def_id)) => {
-                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
-                    let places = &[Operand::Move(place)];
-                    if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
-                        self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
-                    {
-                        return ClosureUse {
-                            closure_kind,
-                            args_span,
-                            capture_kind_span,
-                            path_span,
-                        };
-                    }
-                }
-                _ => {}
+        if let StatementKind::FakeRead((
+            FakeReadCause::ForMatchedPlace(Some(closure_def_id))
+            | FakeReadCause::ForLet(Some(closure_def_id)),
+            place,
+        )) = stmt.kind
+        {
+            debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+            let places = &[Operand::Move(place)];
+            if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
+                self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
+            {
+                return ClosureUse { closure_kind, args_span, capture_kind_span, path_span };
             }
         }
 

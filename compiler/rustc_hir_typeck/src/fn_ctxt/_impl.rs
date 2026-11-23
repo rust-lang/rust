@@ -24,9 +24,7 @@ use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryRespons
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_infer::traits::{TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{SELF_CONSTRUCTOR_FROM_OUTER_ITEM, UNREACHABLE_CODE};
-use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
-};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgs, GenericParamDefKind, IsIdentity, SizedTraitKind,
     SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized, UserArgs,
@@ -393,11 +391,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let autoborrow_mut = adj.iter().any(|adj| {
             matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
+                adj.kind,
+                Adjust::Borrow(autoborrow) if autoborrow.mutability().is_mut()
             )
         });
 

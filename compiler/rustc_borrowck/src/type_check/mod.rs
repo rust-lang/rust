@@ -25,8 +25,8 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Intrinsic, Ty,
+    TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -977,7 +977,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     //
                     // Unbound parts of arguments were never required to be Sized
                     // - maybe we should make that a warning.
-                    return;
                 }
                 LocalKind::Temp => {
                     let span = local_decl.source_info.span;
@@ -1847,7 +1846,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
+                    args.terms().map(ty::ClauseKind::WellFormed),
                     locations,
                     ConstraintCategory::Boring,
                 );
@@ -2033,8 +2032,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a
             // constant. (Eventually this should use const-generics, but those are not up for the
             // task yet: https://github.com/rust-lang/rust/issues/85229.)
-            if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
-                self.tcx().intrinsic(def_id).map(|i| i.name)
+            if let Some(Intrinsic::Rustc(
+                name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract),
+            )) = self.tcx().intrinsic(def_id).map(|i| i.name)
             {
                 let idx = match name {
                     sym::simd_shuffle => 2,

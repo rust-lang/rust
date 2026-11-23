@@ -16,3 +16,5 @@ pub fn foo() {
         //~^ ERROR cannot use register `r8`: high registers (r8+) can only be used as clobbers in Thumb-1 code
     }
 }
+
+//@ reference: asm.register-operands.supported-register-classes

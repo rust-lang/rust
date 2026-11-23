@@ -11,7 +11,7 @@
 
 #[test]
 #[test]
-//~^ WARNING multiple `test` attributes
+//~^ WARNING duplicate `test` attributes
 fn f() {}
 
 // The following shouldn't trigger an error. The attribute is not duplicated.
@@ -28,24 +28,24 @@ use test::Bencher;
 
 #[bench]
 #[bench]
-//~^ WARNING multiple `bench` attributes
+//~^ WARNING duplicate `bench` attributes
 fn f4(_: &mut Bencher) {}
 
 #[test]
 #[test]
-//~^ WARNING multiple `test` attributes
+//~^ WARNING duplicate `test` attributes
 #[test]
-//~^ WARNING multiple `test` attributes
+//~^ WARNING duplicate `test` attributes
 fn f5() {}
 
 #[test_case]
 #[test_case]
-//~^ WARNING multiple `test_case` attributes
+//~^ WARNING duplicate `test_case` attributes
 struct T;
 
 #[cfg_eval]
 #[cfg_eval]
-//~^ WARNING multiple `cfg_eval` attributes
+//~^ WARNING duplicate `cfg_eval` attributes
 struct S;
 
 #[cfg_eval]

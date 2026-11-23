@@ -24,6 +24,7 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -48,16 +49,16 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 
 use crate::diagnostics::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
-    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
-    BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames,
+    BuiltinEllipsisInclusiveRangePatterns, BuiltinEllipsisInclusiveRangePatternsLint,
+    BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
+    BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
+    BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+    BuiltinMutablesTransmutes, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinWhileTrue, EqInternalMethodImplemented,
+    InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -738,102 +739,81 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &[ast::Attribute]) {
-    use rustc_ast::token::CommentKind;
+declare_lint! {
+    /// The `duplicate_parameter_names` lint detects duplicate parameter names
+    /// in functions without bodies.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,skip")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// #![deny(duplicate_parameter_names)]
+    /// pub trait Foo {
+    ///     fn foo(x: usize, x: usize);
+    /// }
+    /// fn main() {}
+    #[doc = "```"]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Duplicate parameter names are allowed in body-less functions,
+    /// in function pointers, and in parenthesised generic args, but this
+    /// is confusing and inconsistent behaviour, and is discouraged.
+    pub DUPLICATE_PARAMETER_NAMES,
+    Warn,
+    "detects duplicate parameter names in functions without bodies",
+}
 
-    let mut attrs = attrs.iter().peekable();
+declare_lint_pass!(
+    /// Checks for duplicate parameter names
+    DuplicateParameterNames => [DUPLICATE_PARAMETER_NAMES]
+);
 
-    // Accumulate a single span for sugared doc comments.
-    let mut sugared_span: Option<Span> = None;
+fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
+    let mut map = FxHashMap::default();
 
-    while let Some(attr) = attrs.next() {
-        let (is_doc_comment, is_doc_attribute) = match &attr.kind {
-            AttrKind::DocComment(..) => (true, false),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => (true, true),
-            _ => (false, false),
-        };
-        if is_doc_comment {
-            sugared_span =
-                Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
-        }
+    for param in params {
+        if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
+            if param.is_self() {
+                continue;
+            }
 
-        if !is_doc_attribute && attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
-            continue;
-        }
+            let name = ident.normalize_to_macro_rules();
 
-        let span = sugared_span.take().unwrap_or(attr.span);
-
-        if is_doc_comment || is_doc_attribute {
-            let sub = match attr.kind {
-                AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
-                    BuiltinUnusedDocCommentSub::PlainHelp
-                }
-                AttrKind::DocComment(CommentKind::Block, _) => {
-                    BuiltinUnusedDocCommentSub::BlockHelp
-                }
-                AttrKind::Synthetic(..) | AttrKind::Generated(..) => unreachable!(),
-            };
-            cx.emit_span_lint(
-                UNUSED_DOC_COMMENTS,
-                span,
-                BuiltinUnusedDocComment { kind: node_kind, label: node_span, sub },
-            );
+            if let Some(&prev_use) = map.get(&name) {
+                cx.emit_span_lint(
+                    DUPLICATE_PARAMETER_NAMES,
+                    ident.span,
+                    BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
+                );
+            } else {
+                map.insert(name, ident.span);
+            }
         }
     }
 }
 
-impl EarlyLintPass for UnusedDocComment {
-    fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        let kind = match stmt.kind {
-            ast::StmtKind::Let(..) => "statements",
-            // Disabled pending discussion in #78306
-            ast::StmtKind::Item(..) => return,
-            // expressions will be reported by `check_expr`.
-            ast::StmtKind::Empty
-            | ast::StmtKind::Semi(_)
-            | ast::StmtKind::Expr(_)
-            | ast::StmtKind::MacCall(_) => return,
-        };
-
-        warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
-    }
-
-    fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        if let Some(body) = &arm.body {
-            let arm_span = arm.pat.span.with_hi(body.span.hi());
-            warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
-        }
-    }
-
-    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {
-        if let ast::PatKind::Struct(_, _, fields, _) = &pat.kind {
-            for field in fields {
-                warn_if_doc(cx, field.span, "pattern fields", &field.attrs);
+impl EarlyLintPass for DuplicateParameterNames {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _: Span, _: ast::NodeId) {
+        if let FnKind::Fn(_, _, Fn { sig, body, .. }) = fk {
+            // if there's a body, an error is already thrown, so we shouldn't warn
+            if body.is_none() {
+                find_duplicated_parameters(cx, &sig.decl.inputs);
             }
         }
     }
 
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
-
-        if let ExprKind::Struct(s) = &expr.kind {
-            for field in &s.fields {
-                warn_if_doc(cx, field.span, "expression fields", &field.attrs);
-            }
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let TyKind::FnPtr(f) = &ty.kind {
+            find_duplicated_parameters(cx, &f.decl.inputs);
         }
     }
 
-    fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
-        warn_if_doc(cx, param.ident.span, "generic parameters", &param.attrs);
-    }
-
-    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        warn_if_doc(cx, block.span, "blocks", block.attrs());
-    }
-
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::ForeignMod(_) = item.kind {
-            warn_if_doc(cx, item.span, "extern blocks", &item.attrs);
+    fn check_generic_args(&mut self, cx: &EarlyContext<'_>, args: &ast::GenericArgs) {
+        if let ast::GenericArgs::Parenthesized(parens) = args {
+            find_duplicated_parameters(cx, &parens.inputs);
         }
     }
 }
@@ -991,7 +971,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            cx.tcx.is_intrinsic(def_id, sym::transmute)
+            cx.tcx.is_rustc_intrinsic(def_id, sym::transmute)
         }
     }
 }
@@ -1431,6 +1411,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     | ClauseKind::ConstEvaluatable(..)
                     // Users don't write this directly, only via another trait ref.
                     | ty::ClauseKind::HostEffect(..) => continue,
+                    ty::ClauseKind::CompressedTrait(_) => unreachable!(),
                 };
                 if clause.is_global() {
                     cx.emit_span_lint(

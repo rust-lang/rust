@@ -585,7 +585,7 @@ fn sidebar_deref_methods<'a>(
                 .iter()
                 .filter(|i| {
                     i.inner_impl().trait_.is_none()
-                        && real_target.is_doc_subtype_of(&i.inner_impl().for_, cx)
+                        && target.is_doc_subtype_of(&i.inner_impl().for_, cx)
                 })
                 .flat_map(|i| {
                     get_methods(

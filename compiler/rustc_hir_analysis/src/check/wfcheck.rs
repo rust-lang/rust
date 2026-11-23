@@ -29,9 +29,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::region_constraint::{And, LeafRegionConstraint, Or};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, CallerBoundsIterator, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt,
-    TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast,
+    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{DUMMY_SP, Span, bug, span_bug, sym};
@@ -577,11 +577,10 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds =
-        param_env.caller_bounds().all_clauses(tcx).iter().chain(new_clauses.iter().copied());
+    let bounds = param_env.extend(tcx, new_clauses.iter().copied());
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(tcx, bounds)
+    bounds
 }
 
 /// We use the following trait as an example throughout this function.
@@ -2478,7 +2477,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             let mut r = Ok(());
 
             let mut validate_and = |and: &And<TyCtxt<'_>, _>| {
-                for c in and.0.iter() {
+                for c in and.iter() {
                     match c {
                         LeafRegionConstraint::Ambiguity(_)
                         | LeafRegionConstraint::RegionOutlives(..)
@@ -2503,7 +2502,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             };
 
             validate_and(&constraint.and_constraint);
-            for and in constraint.or_constraint.0.iter() {
+            for and in constraint.or_constraint.iter() {
                 validate_and(and);
             }
 
@@ -2607,12 +2606,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         expected: &SolverRegionConstraint<'tcx>,
         actual: &SolverRegionConstraint<'tcx>,
     ) {
-        let span_of_and = |c: &And<_, _>| {
-            c.0.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span))
-        };
+        let span_of_and =
+            |c: &And<_, _>| c.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span));
 
         let span_of_or = |c: &Or<_, _>| {
-            c.0.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
+            c.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
         };
 
         let check_leaf_constraint =
@@ -2638,10 +2636,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             };
 
         let check_and_constraint = |expected: &And<_, _>, actual: &And<_, _>| {
-            if expected.0.len() != actual.0.len() {
+            if expected.len() != actual.len() {
                 Err((span_of_and(expected), span_of_and(actual)))
             } else {
-                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                for (expected, actual) in expected.iter().zip(actual) {
                     check_leaf_constraint(expected, actual)?;
                 }
                 Ok(())
@@ -2649,10 +2647,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         };
 
         let check_or_constraint = |expected: &Or<_, _>, actual: &Or<_, _>| {
-            if expected.0.len() != actual.0.len() {
+            if expected.len() != actual.len() {
                 Err((span_of_or(expected), span_of_or(actual)))
             } else {
-                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                for (expected, actual) in expected.iter().zip(actual) {
                     check_and_constraint(expected, actual)?;
                 }
                 Ok(())

@@ -178,6 +178,9 @@ xflags::xflags! {
 
             /// Exclude code from vendored libraries from the resulting index.
             optional --exclude-vendored-libraries
+
+            /// The number of worker threads for cache priming. Defaults to the number of physical cores.
+            optional --num-threads num_threads: usize
         }
 
         cmd scip {
@@ -332,6 +335,7 @@ pub struct Lsif {
     pub path: PathBuf,
 
     pub exclude_vendored_libraries: bool,
+    pub num_threads: Option<usize>,
 }
 
 #[derive(Debug)]

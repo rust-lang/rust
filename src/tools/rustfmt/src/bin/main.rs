@@ -25,6 +25,10 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rustfmt/issues/new?la
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_driver;
+extern crate rustc_session;
+
+use rustc_session::EarlyDiagCtxt;
+use rustc_session::config::ErrorOutputType;
 
 fn main() {
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |_| ());
@@ -241,7 +245,13 @@ fn is_nightly() -> bool {
 
 // Returned i32 is an exit code
 fn execute(opts: &Options) -> Result<i32> {
-    let matches = opts.parse(env::args().skip(1))?;
+    let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let cmdline_args = env::args().skip(1).collect::<Vec<String>>();
+    // if we saw a `@path` arg, read arguments from that file and merge them with the other
+    // arguments.
+    let args = rustc_driver::args::arg_expand_all(&early_dcx, &cmdline_args);
+
+    let matches = opts.parse(&args)?;
     let options = GetOptsOptions::from_matches(&matches)?;
 
     match determine_operation(&matches)? {
@@ -448,7 +458,11 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
         format!("{reason}\n\n")
     };
     let msg = format!("{sep}Format Rust code\n\nusage: rustfmt [options] <file>...");
-    println!("{}", opts.usage(&msg));
+    print!("{}", opts.usage(&msg));
+    println!(
+        "    @path               Read newline separated options from the file at `path`. \
+        Can be specified more than once."
+    );
 }
 
 fn print_help_file_lines() {

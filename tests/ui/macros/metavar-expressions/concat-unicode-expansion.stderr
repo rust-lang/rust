@@ -1,0 +1,35 @@
+warning: identifier contains an uncommon character: 'Ṕ'
+  --> $DIR/concat-unicode-expansion.rs:14:29
+   |
+LL |     turn_to_page!(P1, "Ṕ2", Ṕ);
+   |                             ^
+   |
+   = note: this character is included in the Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
+warning: identifier contains uncommon characters: 'Ḧ' and 'Ṕ'
+  --> $DIR/concat-unicode-expansion.rs:16:16
+   |
+LL |     assert_eq!(ḦṔ, 394);
+   |                ^^
+   |
+   = note: these characters are included in the Unicode general security profile
+
+warning: identifier contains an uncommon character: 'Ḧ'
+  --> $DIR/concat-unicode-expansion.rs:18:16
+   |
+LL |     assert_eq!(ḦP1, 394);
+   |                ^^^
+   |
+   = note: this character is included in the Unicode general security profile
+
+warning: identifier contains uncommon characters: 'Ḧ' and 'Ṕ'
+  --> $DIR/concat-unicode-expansion.rs:20:16
+   |
+LL |     assert_eq!(ḦṔ2, 394);
+   |                ^^^
+   |
+   = note: these characters are included in the Unicode general security profile
+
+warning: 4 warnings emitted
+

@@ -354,7 +354,7 @@ impl From<ParenthesizedArgs> for Box<GenericArgs> {
 pub struct ParenthesizedArgs {
     /// ```text
     /// Foo(A, B) -> C
-    /// ^^^^^^^^^^^^^^
+    ///    ^^^^^^^^^^^
     /// ```
     pub span: Span,
 
@@ -1438,33 +1438,6 @@ impl Expr {
             expr
         } else {
             self
-        }
-    }
-
-    /// Determines whether this expression is a macro call optionally wrapped in braces . If
-    /// `already_stripped_block` is set then we do not attempt to peel off a layer of braces.
-    ///
-    /// Returns the [`NodeId`] of the macro call and whether a layer of braces has been peeled
-    /// either before, or part of, this function.
-    pub fn optionally_braced_mac_call(
-        &self,
-        already_stripped_block: bool,
-    ) -> Option<(bool, NodeId)> {
-        match &self.kind {
-            ExprKind::Block(block, None)
-                if let [stmt] = &*block.stmts
-                    && !already_stripped_block =>
-            {
-                match &stmt.kind {
-                    StmtKind::MacCall(_) => Some((true, stmt.id)),
-                    StmtKind::Expr(expr) if let ExprKind::MacCall(_) = &expr.kind => {
-                        Some((true, expr.id))
-                    }
-                    _ => None,
-                }
-            }
-            ExprKind::MacCall(_) => Some((already_stripped_block, self.id)),
-            _ => None,
         }
     }
 
@@ -3556,17 +3529,6 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn is_word(&self) -> bool {
-        match self {
-            GeneratedAttr::AutomaticallyDerived => true,
-            GeneratedAttr::RustcConstUnstableDerived => false,
-            GeneratedAttr::Inline => true,
-            GeneratedAttr::DocHidden => false,
-            GeneratedAttr::CoverageOff => false,
-            GeneratedAttr::RustcTestMarker(_) => false,
-            GeneratedAttr::RustcTrivialFieldReads => false,
-        }
-    }
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
             GeneratedAttr::AutomaticallyDerived => None,
@@ -3663,6 +3625,14 @@ pub enum SyntheticAttr {
     ///
     /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
+
+    /// This synthetic attribute is added by the `#[test]` and `#[bench]` macros to the annotated
+    /// function, so that tools (e.g. rustc drivers doing analysis) can find test entry points
+    /// without relying on unstable details such test lowering.
+    ///
+    /// The attribute is not used by rustc directly and is instead only provided as a utility for
+    /// out of tree users.
+    TestEntrypoint,
 }
 
 impl AttrItem {

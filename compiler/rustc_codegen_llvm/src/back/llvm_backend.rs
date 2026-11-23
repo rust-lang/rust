@@ -273,7 +273,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::round, sym::round_ties_even,
                 sym::fma,
 
-                sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+                sym::copysign,
             ];
 
             will_not_use_fallback
@@ -288,8 +288,8 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         CodegenBackendInit {
             global_backend_features,
-            replaced_intrinsics,
-            fallback_intrinsics,
+            replaced_rustc_intrinsics: replaced_intrinsics,
+            fallback_rustc_intrinsics: fallback_intrinsics,
             thin_lto_supported: true,
         }
     }

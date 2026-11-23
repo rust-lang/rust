@@ -14,7 +14,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         start_op: &OpTy<'tcx>,
         arg_op: &OpTy<'tcx>,
         flags_op: &OpTy<'tcx>,
-        thread_op: &OpTy<'tcx>,
+        thread_id_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
         let ecx = self.eval_context_mut();
 
@@ -24,13 +24,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let start_routine = ecx.read_pointer(start_op)?;
         let func_arg = ecx.read_immediate(arg_op)?;
         let flags = ecx.read_scalar(flags_op)?.to_u32()?;
-
-        let thread = if ecx.ptr_is_null(ecx.read_pointer(thread_op)?)? {
-            None
-        } else {
-            let thread_info_place = ecx.deref_pointer(thread_op)?;
-            Some(thread_info_place)
-        };
+        let thread_id_place = ecx.deref_pointer(thread_id_op)?;
 
         let stack_size_param_is_a_reservation =
             ecx.eval_windows_u32("c", "STACK_SIZE_PARAM_IS_A_RESERVATION");
@@ -45,13 +39,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("non-null `lpThreadAttributes` in `CreateThread`")
         }
 
-        ecx.start_regular_thread(
-            thread,
+        let thread_id = ecx.start_regular_thread(
             start_routine,
             ExternAbi::System { unwind: false },
             func_arg,
             ecx.layout_of(ecx.tcx.types.u32)?,
-        )
+        )?;
+        if !ecx.ptr_is_null(thread_id_place.ptr())? {
+            ecx.write_int(thread_id.to_u32(), &thread_id_place)?;
+        }
+        interp_ok(thread_id)
     }
 
     fn WaitForSingleObject(

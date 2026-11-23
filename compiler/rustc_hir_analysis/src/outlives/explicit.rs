@@ -44,6 +44,7 @@ impl<'tcx> ExplicitClausesMap<'tcx> {
                     | ty::ClauseKind::ConstEvaluatable(_)
                     | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::HostEffect(..) => {}
+                    ty::ClauseKind::CompressedTrait(..) => unreachable!(),
                 }
             }
 

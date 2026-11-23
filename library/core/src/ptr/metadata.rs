@@ -101,7 +101,7 @@ pub const fn metadata<T: PointeeSized>(ptr: *const T) -> <T as Pointee>::Metadat
     ptr_metadata(ptr)
 }
 
-/// Forms a (possibly-wide) raw pointer from a data pointer and metadata.
+/// Forms a (possibly-[wide]) raw pointer from a data pointer and metadata.
 ///
 /// This function is safe but the returned pointer is not necessarily safe to dereference.
 /// For slices, see the documentation of [`slice::from_raw_parts`] for safety requirements.
@@ -111,6 +111,7 @@ pub const fn metadata<T: PointeeSized>(ptr: *const T) -> <T as Pointee>::Metadat
 /// a thin pointer can always be obtained by casting `*const T` to `*const ()`.
 ///
 /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
+/// [wide]: core::ptr#thin-and-wide-pointers
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn from_raw_parts<T: PointeeSized>(

@@ -1,12 +1,18 @@
 error[E0599]: no method named `foobar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:22:11
    |
-LL |             fn foobar(&self) { }
-   |                ------ the method is available for `u32` here
-...
 LL |         x.foobar();
    |           ^^^^^^
    |
+note: the method is available on trait `Foobar` for `u32`
+  --> $DIR/trait-import-suggestions.rs:11:9
+   |
+LL |         pub(crate) trait Foobar {
+LL |             fn foobar(&self) { }
+   |                ------ the method is available here
+...
+LL |         impl Foobar for u32 { }
+   |         ^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Foobar` which provides `foobar` is implemented but not in scope; perhaps you want to import it
    |
@@ -21,12 +27,18 @@ LL +         x.bar();
 error[E0599]: no method named `bar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:28:7
    |
-LL |         fn bar(&self) { }
-   |            --- the method is available for `u32` here
-...
 LL |     x.bar();
    |       ^^^
    |
+note: the method is available on trait `Bar` for `u32`
+  --> $DIR/trait-import-suggestions.rs:18:5
+   |
+LL |     pub(crate) trait Bar {
+LL |         fn bar(&self) { }
+   |            --- the method is available here
+...
+LL |     impl Bar for u32 { }
+   |     ^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `bar` is implemented but not in scope; perhaps you want to import it
    |

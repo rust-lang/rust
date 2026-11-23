@@ -1,0 +1,93 @@
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:4:8
+   |
+LL |     <
+LL |     &[u32]
+LL |     >::iter;
+   |        ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     &[u32]
+LL +     [u32]
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:7:20
+   |
+LL |     <&[u32]/*c*/>::iter;
+   |                    ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     <&[u32]/*c*/>::iter;
+LL +     <[u32]/*c*/>::iter;
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:11:8
+   |
+LL |     <&[u32] // c
+LL |     >::iter;
+   |        ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     <&[u32] // c
+LL +     <[u32] // c
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:16:14
+   |
+LL |     </* header
+LL |     // out */
+LL |     &[u32]>::iter;
+   |              ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     &[u32]>::iter;
+LL +     [u32]>::iter;
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:19:21
+   |
+LL |     </*/c*/&[u32]>::iter;
+   |                     ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -     </*/c*/&[u32]>::iter;
+LL +     </*/c*/[u32]>::iter;
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:25:19
+   |
+LL |         <&[u32]>::iter,
+   |                   ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -         <&[u32]>::iter,
+LL +         <[u32]>::iter,
+   |
+
+error[E0599]: no associated function or constant named `iter` found for reference `&[u32]` in the current scope
+  --> $DIR/wrapped-path-trivia.rs:31:18
+   |
+LL |         < // */
+LL |         &[u32]>::iter;
+   |                  ^^^^ associated function or constant not found in `&[u32]`
+   |
+help: the function `iter` is implemented on `[u32]`
+   |
+LL -         &[u32]>::iter;
+LL +         [u32]>::iter;
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

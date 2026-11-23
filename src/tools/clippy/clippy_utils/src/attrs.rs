@@ -2,6 +2,7 @@
 
 use crate::source::SpanExt as _;
 use crate::{sym, tokenize_with_text};
+use rustc_ast::AttrKind;
 use rustc_attr_ir::{AttrArgs, find_attr};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -14,14 +15,14 @@ use std::str::FromStr as _;
 
 /// Validates a single clippy attribute and emits errors for unknown or deprecated ones.
 pub fn check_clippy_attr(sess: &Session, attr: &rustc_ast::ast::Attribute) {
-    if let [clippy, segment2] = &*attr.path()
-        && *clippy == sym::clippy
+    let AttrKind::Normal(normal) = &attr.kind else { return };
+    let attr_item = &normal.item;
+    if let [clippy, segment2] = &*attr_item.path.segments
+        && clippy.ident.name == sym::clippy
     {
-        let path_span = attr
-            .path_span()
-            .expect("Clippy attributes are tool attributes, so they have a span");
+        let path_span = attr_item.path.span;
 
-        match *segment2 {
+        match segment2.ident.name {
             sym::cyclomatic_complexity => {
                 sess.dcx()
                     .struct_span_err(path_span, "usage of deprecated attribute")
@@ -167,10 +168,10 @@ impl LimitStack {
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[rustc_attr_ir::Attribute], name: Symbol, mut f: F) {
     let attrs = attrs.iter().filter_map(move |attr| {
-        if let rustc_attr_ir::Attribute::Tool(t) = attr
-            && *t.path.segments == [sym::clippy, name]
+        if let rustc_attr_ir::Attribute::Tool { item, .. } = attr
+            && *item.path.segments == [sym::clippy, name]
         {
-            Some(&**t)
+            Some(&**item)
         } else {
             None
         }

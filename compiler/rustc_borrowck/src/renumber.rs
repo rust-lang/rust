@@ -68,7 +68,7 @@ impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
     {
         let origin = NllRegionVariableOrigin::Existential { name: None };
         fold_regions(self.infcx.tcx, value, |_region, _depth| {
-            self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
+            self.infcx.next_nll_region_var(origin, &region_ctxt_fn)
         })
     }
 }

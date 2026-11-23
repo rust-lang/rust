@@ -177,9 +177,12 @@ impl Command {
         cmd!(sh, "cargo clean").run()?;
         // Call `cargo metadata` on the sources in case that changes the lockfile
         // (works around <https://github.com/rust-lang/rust-analyzer/issues/23392>).
+        // Need to set `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow` otherwise lockfiles with
+        // newer packages get rejected; that's fine as everything is already pinned in the lockfile.
         let sysroot = cmd!(sh, "rustc --print sysroot").read()?;
         let sysroot = sysroot.trim();
-        cmd!(sh, "cargo metadata --format-version 1 --manifest-path {sysroot}/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml").ignore_stdout().run()?;
+        cmd!(sh, "cargo metadata --format-version 1 --manifest-path {sysroot}/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml")
+            .ignore_stdout().env("CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE", "allow").run()?;
         Ok(())
     }
 

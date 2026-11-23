@@ -721,7 +721,7 @@ fn generic_param_associated_bounds(
             let qualifier = path.qualifier()?.as_single_segment()?;
             let qualifier = qualifier
                 .name_ref()
-                .or_else(|| match qualifier.type_anchor()?.ty()? {
+                .or_else(|| match qualifier.type_anchor()?.self_ty()? {
                     ast::Type::PathType(path_type) => path_type.path()?.as_single_name_ref(),
                     _ => None,
                 })

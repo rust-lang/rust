@@ -97,15 +97,15 @@ const fn stderr_raw() -> StderrRaw {
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.read(buf), || Ok(0))
+        self.0.read(buf)
     }
 
     fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
-        handle_ebadf(self.0.read_buf(buf), || Ok(()))
+        self.0.read_buf(buf)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        handle_ebadf(self.0.read_vectored(bufs), || Ok(0))
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
@@ -117,33 +117,32 @@ impl Read for StdinRaw {
         if buf.is_empty() {
             return Ok(());
         }
-        handle_ebadf(self.0.read_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+        self.0.read_exact(buf)
     }
 
     fn read_buf_exact(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         if buf.capacity() == 0 {
             return Ok(());
         }
-        handle_ebadf(self.0.read_buf_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+        self.0.read_buf_exact(buf)
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_end(buf), || Ok(0))
+        self.0.read_to_end(buf)
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_string(buf), || Ok(0))
+        self.0.read_to_string(buf)
     }
 }
 
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
+        self.0.write(buf)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        self.0.write_vectored(bufs)
     }
 
     #[inline]
@@ -152,30 +151,29 @@ impl Write for StdoutRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), || Ok(()))
+        self.0.flush()
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), || Ok(()))
+        self.0.write_all(buf)
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
+        self.0.write_all_vectored(bufs)
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
+        self.0.write_fmt(fmt)
     }
 }
 
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
+        self.0.write(buf)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
-        handle_ebadf(self.0.write_vectored(bufs), total)
+        self.0.write_vectored(bufs)
     }
 
     #[inline]
@@ -184,26 +182,19 @@ impl Write for StderrRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), || Ok(()))
+        self.0.flush()
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), || Ok(()))
+        self.0.write_all(buf)
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
+        self.0.write_all_vectored(bufs)
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
-    }
-}
-
-fn handle_ebadf<T>(r: io::Result<T>, default: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
-    match r {
-        Err(ref e) if stdio::is_ebadf(e) => default(),
-        r => r,
+        self.0.write_fmt(fmt)
     }
 }
 
@@ -1158,7 +1149,9 @@ where
         return;
     }
 
-    if let Err(e) = global_s().write_fmt(args) {
+    if let Err(e) = global_s().write_fmt(args)
+        && !stdio::is_ebadf(&e)
+    {
         panic!("failed printing to {label}: {e}");
     }
 }

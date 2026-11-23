@@ -1,1 +1,1 @@
-builtin#global_asm("")
+k#global_asm("")

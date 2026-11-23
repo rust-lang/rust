@@ -854,7 +854,7 @@ export function viewItemTree(ctx: CtxInit): Cmd {
 
 function crateGraph(ctx: CtxInit, full: boolean): Cmd {
     return async () => {
-        const nodeModulesPath = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
+        const outPath = vscode.Uri.file(path.join(ctx.extensionPath, "out"));
 
         const panel = vscode.window.createWebviewPanel(
             "rust-analyzer.crate-graph",
@@ -863,7 +863,7 @@ function crateGraph(ctx: CtxInit, full: boolean): Cmd {
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
-                localResourceRoots: [nodeModulesPath],
+                localResourceRoots: [outPath],
             },
         );
         const params = {
@@ -871,7 +871,9 @@ function crateGraph(ctx: CtxInit, full: boolean): Cmd {
         };
         const client = ctx.client;
         const dot = await client.sendRequest(ra.viewCrateGraph, params);
-        const uri = panel.webview.asWebviewUri(nodeModulesPath);
+        const scriptUri = panel.webview.asWebviewUri(
+            vscode.Uri.file(path.join(ctx.extensionPath, "out", "crate_graph.js")),
+        );
 
         const html = `
             <!DOCTYPE html>
@@ -891,28 +893,9 @@ function crateGraph(ctx: CtxInit, full: boolean): Cmd {
                 </style>
             </head>
             <body>
-                <script type="text/javascript" src="${uri}/d3/dist/d3.min.js"></script>
-                <script type="text/javascript" src="${uri}/@hpcc-js/wasm/dist/graphviz.umd.js"></script>
-                <script type="text/javascript" src="${uri}/d3-graphviz/build/d3-graphviz.min.js"></script>
                 <div id="graph"></div>
-                <script>
-                    let dot = \`${dot}\`;
-                    let graph = d3.select("#graph")
-                                  .graphviz({ useWorker: false, useSharedWorker: false })
-                                  .fit(true)
-                                  .zoomScaleExtent([0.1, Infinity])
-                                  .renderDot(dot);
-
-                    d3.select(window).on("click", (event) => {
-                        if (event.ctrlKey) {
-                            graph.resetZoom(d3.transition().duration(100));
-                        }
-                    });
-                    d3.select(window).on("copy", (event) => {
-                        event.clipboardData.setData("text/plain", dot);
-                        event.preventDefault();
-                    });
-                </script>
+                <script id="graph-data" type="application/json">${JSON.stringify(dot).replace(/</g, "\\u003c")}</script>
+                <script type="text/javascript" src="${scriptUri}"></script>
             </body>
             `;
 

@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     codegen_handle_fn_abi_err,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty, TyCtxt};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
@@ -111,6 +111,9 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<Value<'ll>, Value<'ll>>>,
+
+    /// Cache of globally unique names for const operands to global assembly (value -> name)
+    pub global_asm_symbols: RefCell<FxHashMap<Value<'ll>, String>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
@@ -210,6 +213,11 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
             // LLVM 24 updated the amdgpu layout: http://github.com/llvm/llvm-project/pull/209746 Add BARRIER address space
             target_data_layout = target_data_layout
                 .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
+        }
+        if sess.target.arch == Arch::PowerPC64 && sess.target.os == Os::FreeBsd {
+            // LLVM 24 updated the powerpc64 FreeBSD layout to use 16-byte stack and vector
+            // alignment: https://github.com/llvm/llvm-project/pull/232336
+            target_data_layout = target_data_layout.replace("-S128-v256:256:256-v512:512:512", "");
         }
     }
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -714,6 +722,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 vtables: Default::default(),
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),
+                global_asm_symbols: Default::default(),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: Vec::new(),
                 compiler_used_statics: Default::default(),
@@ -945,11 +954,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn apply_vcall_visibility_metadata(
         &self,
-        ty: Ty<'tcx>,
-        poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
+        trait_hierarchy: &[ty::ExistentialTraitRef<'tcx>],
         vtable: Value<'ll>,
     ) {
-        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
+        apply_vcall_visibility_metadata(self, trait_hierarchy, vtable);
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Value<'ll> {
@@ -1097,8 +1105,8 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
-        matches!(name, sym::black_box)
+    fn intrinsic_call_expects_place_always(&self, name: Intrinsic) -> bool {
+        matches!(name, Intrinsic::Rustc(sym::black_box))
     }
 }
 

@@ -516,7 +516,7 @@ pub mod mem {
     // region:offset_of
     pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
         // The `{}` is for better error messages
-        {builtin # offset_of($Container, $($fields)+)}
+        {k#offset_of($Container, $($fields)+)}
     }
     // endregion:offset_of
 }
@@ -2311,7 +2311,7 @@ mod macros {
     // region:deref_pat
     #[allow_internal_unstable(builtin_syntax)]
     pub macro deref($pat:pat) {
-        builtin # deref($pat)
+        k#deref($pat)
     }
     // endregion:deref_pat
 }

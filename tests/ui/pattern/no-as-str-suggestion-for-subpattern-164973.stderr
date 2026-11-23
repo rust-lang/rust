@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/no-as-str-suggestion-for-subpattern-164973.rs:8:57
+   |
+LL |     let _ = v.iter().filter(|t| matches!(t, Enum::Value("str"))).count();
+   |                                          -              ^^^^^ expected `String`, found `&str`
+   |                                          |
+   |                                          this expression has type `&&Enum`
+
+error[E0308]: mismatched types
+  --> $DIR/no-as-str-suggestion-for-subpattern-164973.rs:12:21
+   |
+LL |     match Enum::Other {
+   |           ----------- this expression has type `Enum`
+LL |         Enum::Value("str") => {}
+   |                     ^^^^^ expected `String`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/no-as-str-suggestion-for-subpattern-164973.rs:18:13
+   |
+LL |     if let ("a", 1) = pair {}
+   |             ^^^       ---- this expression has type `(String, {integer})`
+   |             |
+   |             expected `String`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/no-as-str-suggestion-for-subpattern-164973.rs:22:17
+   |
+LL |     if let Some("a") = opt {}
+   |                 ^^^    --- this expression has type `Option<String>`
+   |                 |
+   |                 expected `String`, found `&str`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

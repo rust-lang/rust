@@ -2,11 +2,10 @@
 //! specifically for `const` items.
 
 macro_rules! m {
-    (const $id:item()) => {}
+    (const $id:item()) => {};
 }
 
 m!(const Self());
-//~^ ERROR expected identifier, found keyword `Self`
-//~^^ ERROR missing `fn` or `struct` for function or struct definition
+//~^ ERROR expected one of `!` or `::`, found `(`
 
 fn main() {}

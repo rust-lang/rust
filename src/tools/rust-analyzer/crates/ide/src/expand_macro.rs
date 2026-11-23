@@ -242,7 +242,7 @@ fn _format(
     const DOLLAR_CRATE_REPLACE: &str = "__r_a_";
     const BUILTIN_REPLACE: &str = "builtin__POUND";
     let expansion =
-        expansion.replace("$crate", DOLLAR_CRATE_REPLACE).replace("builtin #", BUILTIN_REPLACE);
+        expansion.replace("$crate", DOLLAR_CRATE_REPLACE).replace("k#", BUILTIN_REPLACE);
     let (prefix, suffix) = match kind {
         SyntaxKind::MACRO_PAT => ("fn __(", ": u32);"),
         SyntaxKind::MACRO_EXPR | SyntaxKind::MACRO_STMTS => ("fn __() {", "}"),
@@ -272,9 +272,8 @@ fn _format(
     let captured_stdout = String::from_utf8(output.stdout).ok()?;
 
     if output.status.success() && !captured_stdout.trim().is_empty() {
-        let output = captured_stdout
-            .replace(DOLLAR_CRATE_REPLACE, "$crate")
-            .replace(BUILTIN_REPLACE, "builtin #");
+        let output =
+            captured_stdout.replace(DOLLAR_CRATE_REPLACE, "$crate").replace(BUILTIN_REPLACE, "k#");
         let output = output.trim().strip_prefix(prefix)?;
         let output = match kind {
             SyntaxKind::MACRO_PAT => {

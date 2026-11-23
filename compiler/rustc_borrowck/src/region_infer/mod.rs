@@ -285,7 +285,7 @@ impl<'tcx> BestBlame<'tcx> {
                     None
                 }
             })
-            .unwrap_or_else(|| ObligationCauseCode::Misc);
+            .unwrap_or(ObligationCauseCode::Misc);
 
         ObligationCause::new(self.constraint().span, CRATE_DEF_ID, cause_code.clone())
     }

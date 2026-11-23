@@ -95,6 +95,7 @@ pub(crate) fn add_target_modifiers(
     tmod: &mut BTreeMap<OptionsTargetModifiers, String>,
     target_config: &TargetConfig,
     target: &Target,
+    cg_backend: &dyn CodegenBackend,
 ) {
     // Record relevant target features as target modifier.
     // Join all target-modifier target features into a single comma-separated string,
@@ -108,6 +109,9 @@ pub(crate) fn add_target_modifiers(
         .collect::<Vec<_>>()
         .join(",");
     tmod.insert(OptionsTargetModifiers::TargetFeatures, target_feature_modifier);
+
+    // Record the codegen backend name as target modifier.
+    tmod.insert(OptionsTargetModifiers::CodegenBackendName, cg_backend.name().to_string());
 }
 
 /// Ensures that all target features required by the ABI are present.

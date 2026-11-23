@@ -395,7 +395,7 @@ fn parse_cfg_attr_internal<'a>(
         attribute.span,
         item.span,
         attribute.style,
-        AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
+        AttrPath::from_ast(&item.path, identity),
         Some(item.unsafety),
         AttributeSafety::Normal,
         ParsedDescription::Attribute,

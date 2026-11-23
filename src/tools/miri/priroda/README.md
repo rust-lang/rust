@@ -156,7 +156,7 @@ To update the expected output files after an intentional output change, run:
 | `out`, `stepout` | Run until execution returns to a shallower user frame. |
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
-| `l`, `locals` | List source-level locals in the current frame by name. |
+| `l`, `locals` | List the MIR locals of the current frame, with source names and projections where debug info provides them. |
 | `p <local>`, `print <local>` | Print one MIR local by numeric id. |
 | `f <alloc> <offset>`, `follow <alloc> <offset>` | Render allocation bytes from an offset, including the full allocation size. |
 | `q`, `quit` | Exit Priroda. |

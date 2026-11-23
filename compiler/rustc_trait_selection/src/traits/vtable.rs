@@ -16,7 +16,9 @@ use crate::traits::is_vtable_safe_method;
 
 #[derive(Clone, Debug)]
 pub enum VtblSegment<'tcx> {
+    /// The segment containing Drop, Size and Align.
     MetadataDSA,
+    /// A segment with the methods of a particular trait.
     TraitOwnEntries { trait_ref: ty::TraitRef<'tcx>, emit_vptr: bool },
 }
 
@@ -451,6 +453,39 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
         ));
         None
     })
+}
+
+/// Returns the traits that are prefixes of this vtable, such that upcasting to these traits
+/// reuses the vtable pointer unchanged.
+///
+/// For a `trait Foo: A + B`, the methods for A are stored as a prefix to the vtable for Foo.
+/// If B has no methods, it is also part of this prefix (although it takes up no space).
+///
+/// This function returns the full set of these traits (A might have its own supertrait, etc.).
+/// The input trait is the last element of the output vector.
+pub fn vtable_prefix_traits<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::TraitRef<'tcx>,
+) -> Vec<ty::ExistentialTraitRef<'tcx>> {
+    debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
+
+    let mut entries = vec![];
+
+    let vtable_segment_callback = |segment| -> ControlFlow<()> {
+        // When `emit_vptr: false`, this trait's vtable is a prefix of `key`'s vtable.
+        if let VtblSegment::TraitOwnEntries { trait_ref, emit_vptr: false } = segment {
+            entries.push(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+        }
+
+        ControlFlow::Continue(())
+    };
+
+    let _ = prepare_vtable_segments(tcx, key, vtable_segment_callback);
+
+    // The input trait is the last element in the output vector.
+    debug_assert_eq!(entries.last(), Some(&ty::ExistentialTraitRef::erase_self_ty(tcx, key)));
+
+    entries
 }
 
 pub(super) fn provide(providers: &mut Providers) {

@@ -10,10 +10,10 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a + /* Trait */) = &'a ()>>) {}
    |                                +++++++++++++
 
 error: parenthesized generic arguments cannot be used in associated type constraints
-  --> $DIR/gat-trait-path-parenthesised-args.rs:6:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:6:28
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^^^^^
+   |                            ^^^^
    |
 help: use angle brackets instead
    |
@@ -22,12 +22,10 @@ LL + fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
    |
 
 error: parenthesized generic arguments cannot be used in associated type constraints
-  --> $DIR/gat-trait-path-parenthesised-args.rs:13:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:13:28
    |
 LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
-   |                           ^--
-   |                            |
-   |                            help: remove these parentheses
+   |                            ^^ help: remove these parentheses
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/gat-trait-path-parenthesised-args.rs:6:27

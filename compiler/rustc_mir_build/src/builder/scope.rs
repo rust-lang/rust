@@ -1904,6 +1904,12 @@ where
                     unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                 }
 
+                if let Some(idx) = dropline_to {
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drop_nodes[idx].next);
+                }
+
                 // If the operand has been moved, and we are not on an unwind
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the

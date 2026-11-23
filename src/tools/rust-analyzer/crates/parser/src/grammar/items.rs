@@ -139,6 +139,14 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Res
         has_mods = true;
     }
 
+    // test final_assoc_fn
+    // trait Trait {
+    //     final fn f() {}
+    // }
+    if p.eat(T![final]) {
+        has_mods = true;
+    }
+
     // modifiers
     if p.at(T![const]) && p.nth(1) != T!['{'] {
         p.eat(T![const]);
@@ -285,16 +293,9 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] if (la == IDENT || la == T![_] || la == T![mut]) => consts::static_(p, m),
 
-        IDENT
-            if p.at_contextual_kw(T![builtin])
-                && p.nth_at(1, T![#])
-                && p.nth_at_contextual_kw(2, T![global_asm]) =>
-        {
-            p.bump_remap(T![builtin]);
-            p.bump(T![#]);
-            p.bump_remap(T![global_asm]);
+        _ if p.eat_builtin_kw(T![global_asm]) => {
             // test global_asm
-            // builtin#global_asm("")
+            // k#global_asm("")
             expressions::parse_asm_expr(p, m);
         }
 

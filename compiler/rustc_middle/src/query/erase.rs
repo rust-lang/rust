@@ -224,6 +224,7 @@ impl_erasable_for_types_with_no_type_params! {
     Ty<'_>,
     bool,
     rustc_crate_store::CrateDepKind,
+    rustc_crate_store::CrateSourceFlags,
     rustc_data_structures::svh::Svh,
     rustc_hir::Constness,
     rustc_hir::Defaultness,

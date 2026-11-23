@@ -2297,7 +2297,7 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpacksswb))]
+#[cfg_attr(test, assert_instr(vpacksswb, limit(5), not(vpmin), not(vpmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(packsswb(a.as_i16x16(), b.as_i16x16())) }
@@ -2309,7 +2309,7 @@ pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpackssdw))]
+#[cfg_attr(test, assert_instr(vpackssdw, limit(5), not(vpmin), not(vpmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(packssdw(a.as_i32x8(), b.as_i32x8())) }
@@ -2321,7 +2321,7 @@ pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpackuswb))]
+#[cfg_attr(test, assert_instr(vpackuswb, limit(5), not(vpmin), not(vpmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(packuswb(a.as_i16x16(), b.as_i16x16())) }
@@ -2333,7 +2333,7 @@ pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpackusdw))]
+#[cfg_attr(test, assert_instr(vpackusdw, limit(5), not(vpmin), not(vpmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(packusdw(a.as_i32x8(), b.as_i32x8())) }

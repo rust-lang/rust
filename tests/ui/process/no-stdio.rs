@@ -17,7 +17,7 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
     let doit = |a| {
         let r = libc::dup(a);
         assert!(r >= 0);
-        return r
+        return r;
     };
     let a = doit(0);
     let b = doit(1);
@@ -33,7 +33,7 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
     assert!(libc::dup2(b, 1) >= 0);
     assert!(libc::dup2(c, 2) >= 0);
 
-    return r
+    return r;
 }
 
 #[cfg(unix)]
@@ -66,7 +66,7 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
         let handle = GetStdHandle(id);
         assert!(handle != INVALID_HANDLE_VALUE);
         assert!(SetStdHandle(id, INVALID_HANDLE_VALUE) != 0);
-        return handle
+        return handle;
     };
 
     let a = doit(STD_INPUT_HANDLE);
@@ -82,7 +82,7 @@ unsafe fn without_stdio<R, F: FnOnce() -> R>(f: F) -> R {
     doit(STD_OUTPUT_HANDLE, b);
     doit(STD_ERROR_HANDLE, c);
 
-    return r
+    return r;
 }
 
 fn main() {
@@ -99,10 +99,10 @@ fn main() {
         assert_fd_is_valid(0);
         assert_fd_is_valid(1);
         assert_fd_is_valid(2);
-        return
+        return;
     }
 
-    // First, make sure reads/writes without stdio work if stdio itself is
+    // First, make sure reads/writes without stdio error if stdio itself is
     // missing.
     let (a, b, c) = unsafe {
         without_stdio(|| {
@@ -114,25 +114,32 @@ fn main() {
         })
     };
 
-    assert_eq!(a.unwrap(), 5);
-    assert_eq!(b.unwrap(), 5);
-    assert_eq!(c.unwrap(), 0);
+    if cfg!(windows) {
+        // On Windows it's not an error to write to unset stdio.
+        assert_eq!(a.unwrap(), 5);
+        assert_eq!(b.unwrap(), 5);
+        assert_eq!(c.unwrap(), 0);
+    } else {
+        // On Unix platforms it is.
+        assert!(a.is_err());
+        assert!(b.is_err());
+        assert!(c.is_err());
+    }
 
     // Second, spawn a child and do some work with "null" descriptors to make
     // sure it's ok
     let me = env::current_exe().unwrap();
     let status = Command::new(&me)
-                        .arg("next")
-                        .stdin(Stdio::null())
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .status().unwrap();
+        .arg("next")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap();
     assert!(status.success(), "{} isn't a success", status);
 
     // Finally, close everything then spawn a child to make sure everything is
     // *still* ok.
-    let status = unsafe {
-        without_stdio(|| Command::new(&me).arg("next").status())
-    }.unwrap();
+    let status = unsafe { without_stdio(|| Command::new(&me).arg("next").status()) }.unwrap();
     assert!(status.success(), "{} isn't a success", status);
 }

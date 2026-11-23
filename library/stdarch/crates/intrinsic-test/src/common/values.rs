@@ -61,10 +61,10 @@ pub fn test_values_array(ty: &IntrinsicType) -> String {
             ..
         } => (1, TypeKind::Bool),
         IntrinsicType {
-            kind: TypeKind::Float,
+            kind: kind @ (TypeKind::Float | TypeKind::BFloat),
             bit_len: Some(bit_len),
             ..
-        } => (*bit_len, TypeKind::Float),
+        } => (*bit_len, *kind),
         IntrinsicType {
             kind: TypeKind::Vector,
             ..
@@ -87,6 +87,7 @@ pub fn test_values_array(ty: &IntrinsicType) -> String {
                     fmt(&format_args!("{}", if src == 1 { true } else { false }))
                 }
                 TypeKind::Float => fmt(&format_args!("f{bit_len}::from_bits({src:#x})")),
+                TypeKind::BFloat => fmt(&format_args!("f16b::from_bits({src:#x})")),
                 TypeKind::Vector | TypeKind::Int(Sign::Signed) if (src >> (bit_len - 1)) != 0 => {
                     // `src` is a two's complement representation of a negative value.
                     let mask = !0u64 >> (64 - bit_len);

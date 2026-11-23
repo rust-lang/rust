@@ -177,4 +177,31 @@ fn issue14377() {
     S { c, d } = S { c: 1, d: 2 };
 }
 
+fn plain_same(x: u8) {
+    let x = x;
+    //~^ shadow_same
+}
+fn tuple_same((x,): (u8,)) {
+    let x = x;
+    //~^ shadow_same
+}
+
+fn plain_reuse(x: u8) {
+    let x = x + 1;
+    //~^ shadow_reuse
+}
+fn tuple_reuse((x,): (u8,)) {
+    let x = x + 1;
+    //~^ shadow_reuse
+}
+
+fn plain_unrelated(x: u8) {
+    let x = 1u8;
+    //~^ shadow_unrelated
+}
+fn tuple_unrelated((x,): (u8,)) {
+    let x = 1u8;
+    //~^ shadow_unrelated
+}
+
 fn main() {}

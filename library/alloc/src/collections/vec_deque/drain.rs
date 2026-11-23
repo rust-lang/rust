@@ -72,6 +72,14 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
             (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
     }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        // SAFETY: `deque` is valid for reads for the lifetime of the `Drain`.
+        unsafe { self.deque.as_ref().allocator() }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

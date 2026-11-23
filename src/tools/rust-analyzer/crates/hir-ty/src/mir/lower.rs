@@ -375,10 +375,10 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     ) -> Result<'db, Option<BasicBlockId>> {
         match &self.store[expr_id] {
             Expr::OffsetOf(_) => {
-                not_supported!("builtin#offset_of")
+                not_supported!("k#offset_of")
             }
             Expr::InlineAsm(_) => {
-                not_supported!("builtin#asm")
+                not_supported!("k#asm")
             }
             Expr::Missing => {
                 if let Some(f) = self.owner.as_function() {

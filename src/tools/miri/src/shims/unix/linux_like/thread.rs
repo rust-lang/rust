@@ -31,12 +31,11 @@ pub fn prctl<'tcx>(
                 "prctl(PR_SET_NAME, ...)",
             )?;
 
-            let name = ecx.read_scalar(&name)?;
-            let thread = ecx.pthread_self()?;
+            let name = ecx.read_pointer(&name)?;
             // The Linux kernel silently truncates long names.
             // https://www.man7.org/linux/man-pages/man2/PR_SET_NAME.2const.html
             let res =
-                ecx.pthread_setname_np(thread, name, TASK_COMM_LEN, /* truncate */ true)?;
+                ecx.pthread_setname_np(None, name, TASK_COMM_LEN, /* truncate */ true)?;
             assert_eq!(res, ThreadNameResult::Ok);
             Scalar::from_u32(0)
         }
@@ -47,15 +46,14 @@ pub fn prctl<'tcx>(
                 "prctl(PR_GET_NAME, ...)",
             )?;
 
-            let name = ecx.read_scalar(&name)?;
-            let thread = ecx.pthread_self()?;
+            let name = ecx.read_pointer(&name)?;
             let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);
             ecx.check_ptr_access(
-                name.to_pointer(ecx),
+                name,
                 Size::from_bytes(TASK_COMM_LEN),
                 CheckInAllocMsg::MemoryAccess,
             )?;
-            let res = ecx.pthread_getname_np(thread, name, len, /* truncate*/ false)?;
+            let res = ecx.pthread_getname_np(None, name, len, /* truncate*/ false)?;
             assert_eq!(res, ThreadNameResult::Ok);
             Scalar::from_u32(0)
         }

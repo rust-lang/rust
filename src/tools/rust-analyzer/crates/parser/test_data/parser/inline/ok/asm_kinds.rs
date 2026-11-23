@@ -1,5 +1,5 @@
 fn foo() {
-    builtin#asm("");
-    builtin#global_asm("");
-    builtin#naked_asm("");
+    k#asm("");
+    k#global_asm("");
+    k#naked_asm("");
 }

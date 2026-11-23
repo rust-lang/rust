@@ -446,6 +446,10 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    ///
+    /// ### Notes
+    ///
+    /// - Results whose error type is never or an enum with no variants are ignored.
     #[clippy::version = "1.41.0"]
     pub MISSING_ERRORS_DOC,
     pedantic,

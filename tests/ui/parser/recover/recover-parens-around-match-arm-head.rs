@@ -1,12 +1,17 @@
-//@ run-rustfix
+//@ revisions: pass fail
+//@[pass] check-pass
+//@[fail] run-rustfix
+#![cfg_attr(pass, feature(guard_patterns))]
+
 fn main() {
     let val = 42;
     let x = match val {
         (0 if true) => {
-        //~^ ERROR unexpected parentheses surrounding `match` arm pattern
+            //[fail]~^ ERROR unexpected parentheses surrounding `match` arm pattern
             42u8
         }
         _ => 0u8,
     };
-    let _y: u32 = x; //~ ERROR mismatched types
+    #[cfg(fail)]
+    let _y: u32 = x; //[fail]~ ERROR mismatched types
 }

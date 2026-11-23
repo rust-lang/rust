@@ -7,6 +7,7 @@ use crate::diagnostics::{
     ImplicitProvenanceCastsInt2Ptr, ImplicitProvenanceCastsPtr2Int, Int2PtrSuggestion,
     Ptr2IntSuggestion,
 };
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
@@ -69,12 +70,14 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitProvenanceCasts {
         if cast_from_ty.is_raw_ptr() {
             let cast_to_ty = typeck_results.expr_ty(expr);
             if cast_to_ty.is_integral() {
-                lint_ptr2int(cx, expr, cast_from_expr, cast_from_ty, cast_to_hir, cast_to_ty)
+                let krate = std_or_core(cx).unwrap_or("core");
+                lint_ptr2int(cx, krate, expr, cast_from_expr, cast_from_ty, cast_to_hir, cast_to_ty)
             }
         } else if cast_from_ty.is_integral() {
             let cast_to_ty = typeck_results.expr_ty(expr);
             if cast_to_ty.is_raw_ptr() {
-                lint_int2ptr(cx, expr, cast_from_expr, cast_from_ty, cast_to_hir, cast_to_ty)
+                let krate = std_or_core(cx).unwrap_or("core");
+                lint_int2ptr(cx, krate, expr, cast_from_expr, cast_from_ty, cast_to_hir, cast_to_ty)
             }
         }
     }
@@ -82,6 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitProvenanceCasts {
 
 fn lint_ptr2int<'tcx>(
     cx: &LateContext<'tcx>,
+    krate: &'static str,
     expr: &'tcx hir::Expr<'tcx>,
     cast_from_expr: &'tcx hir::Expr<'tcx>,
     cast_from_ty: Ty<'tcx>,
@@ -101,12 +105,13 @@ fn lint_ptr2int<'tcx>(
         }
     });
 
-    let lint = ImplicitProvenanceCastsPtr2Int { cast_from_ty, cast_to_ty, sugg };
+    let lint = ImplicitProvenanceCastsPtr2Int { cast_from_ty, cast_to_ty, krate, sugg };
     cx.tcx.emit_node_span_lint(IMPLICIT_PROVENANCE_CASTS, expr.hir_id, expr.span, lint);
 }
 
 fn lint_int2ptr<'tcx>(
     cx: &LateContext<'tcx>,
+    krate: &'static str,
     expr: &'tcx hir::Expr<'tcx>,
     cast_from_expr: &'tcx hir::Expr<'tcx>,
     cast_from_ty: Ty<'tcx>,
@@ -117,6 +122,7 @@ fn lint_int2ptr<'tcx>(
         lo: cast_from_expr.span.shrink_to_lo(),
         hi: cast_from_expr.span.shrink_to_hi().to(cast_to_hir.span),
     });
-    let lint = ImplicitProvenanceCastsInt2Ptr { expr_ty: cast_from_ty, cast_ty: cast_to_ty, sugg };
+    let lint =
+        ImplicitProvenanceCastsInt2Ptr { expr_ty: cast_from_ty, cast_ty: cast_to_ty, krate, sugg };
     cx.tcx.emit_node_span_lint(IMPLICIT_PROVENANCE_CASTS, expr.hir_id, expr.span, lint)
 }

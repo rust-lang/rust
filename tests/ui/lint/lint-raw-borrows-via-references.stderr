@@ -101,7 +101,40 @@ LL |     unsafe { ref_cast!(*x) }
    = help: consider using `&raw const` for a safer and more explicit raw pointer
 
 warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
-  --> $DIR/lint-raw-borrows-via-references.rs:79:13
+  --> $DIR/lint-raw-borrows-via-references.rs:80:13
+   |
+LL |     let p = &mut x as *mut usize;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL |     let p = &raw mut x as *mut usize;
+   |              +++
+
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:87:13
+   |
+LL |     let p = &x as *const usize;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL |     let p = &raw const x as *const usize;
+   |              +++++++++
+
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:92:14
+   |
+LL |     let _p = &mut x as *const i32;
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL |     let _p = &raw mut x as *const i32;
+   |               +++
+
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:98:13
    |
 LL |     let a = &a as *const i32;
    |             ^^^^^^^^^^^^^^^^
@@ -113,7 +146,7 @@ LL +     let a = &raw const a;
    |
 
 warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
-  --> $DIR/lint-raw-borrows-via-references.rs:83:13
+  --> $DIR/lint-raw-borrows-via-references.rs:102:13
    |
 LL |     let b = &mut b as *mut i32;
    |             ^^^^^^^^^^^^^^^^^^
@@ -124,5 +157,5 @@ LL -     let b = &mut b as *mut i32;
 LL +     let b = &raw mut b;
    |
 
-warning: 10 warnings emitted
+warning: 13 warnings emitted
 

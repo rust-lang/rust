@@ -524,9 +524,11 @@ impl Expr {
                 YieldExpr(e) => e.yield_token(),
                 YeetExpr(e) => e.do_token(),
                 LetExpr(e) => e.let_token(),
-                OffsetOfExpr(e) => e.builtin_token(),
-                FormatArgsExpr(e) => e.builtin_token(),
-                AsmExpr(e) => e.builtin_token(),
+                OffsetOfExpr(e) => e.offset_of_token(),
+                FormatArgsExpr(e) => e.format_args_token(),
+                AsmExpr(e) => {
+                    e.asm_token().or_else(|| e.global_asm_token()).or_else(|| e.naked_asm_token())
+                }
                 ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_)
                 | IfExpr(_) | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_)
                 | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_)

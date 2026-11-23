@@ -1489,26 +1489,26 @@ fn main() {
 }
 "#,
         expect![[r#"
-            !0..122 'builti...muto,)': ()
-            !0..136 'builti...tack))': ()
-            !0..449 'builti...urn),)': !
+            !0..116 'k#asm(...muto,)': ()
+            !0..130 'k#asm(...tack))': ()
+            !0..443 'k#asm(...urn),)': !
             10..1236 '{     ...   } }': ()
             16..1234 'unsafe...     }': !
             37..40 'foo': i32
             43..44 '1': i32
             58..63 'mut o': i32
             66..67 '0': i32
-            !95..104 'thread_id': usize
-            !103..107 '&foo': &'? i32
-            !104..107 'foo': i32
-            !115..120 '&muto': &'? mut i32
-            !119..120 'o': i32
+            !89..98 'thread_id': usize
+            !97..101 '&foo': &'? i32
+            !98..101 'foo': i32
+            !109..114 '&muto': &'? mut i32
+            !113..114 'o': i32
             293..294 'o': i32
+            !308..314 'OffPtr': usize
             308..317 'thread_id': usize
-            !314..320 'OffPtr': usize
-            !333..338 'OffFn': usize
-            !354..355 '0': i32
-            !371..382 'MEM_RELEASE': usize
+            !327..332 'OffFn': usize
+            !348..349 '0': i32
+            !365..376 'MEM_RELEASE': usize
         "#]],
     )
 }

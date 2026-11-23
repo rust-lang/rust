@@ -34,7 +34,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(count)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_scalar(offset)?.to_i64()?;
                 ecx.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite64" => {
@@ -45,7 +45,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
                 let buf = ecx.read_pointer(buf)?;
                 let count = ecx.read_target_usize(n)?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_scalar(offset)?.to_i64()?;
                 trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 ecx.write(fd, buf, count, Some(offset), dest)?;
             }
@@ -55,7 +55,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let offset = ecx.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let offset = ecx.read_scalar(offset)?.to_i64()?;
                 let whence = ecx.read_scalar(whence)?.to_i32()?;
                 ecx.lseek(fd, offset, whence, dest)?;
             }
@@ -65,7 +65,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let fd = ecx.read_scalar(fd)?.to_i32()?;
-                let length = ecx.read_scalar(length)?.to_int(length.layout.size)?;
+                let length = ecx.read_scalar(length)?.to_i64()?;
                 let result = ecx.ftruncate64(fd, length)?;
                 ecx.write_scalar(result, dest)?;
             }

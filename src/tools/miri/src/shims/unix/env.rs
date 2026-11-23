@@ -423,7 +423,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(ecx.eval_libc("EINVAL"));
         }
 
-        let thread = ecx.read_scalar(thread_op)?.to_int(ecx.libc_ty_layout("pthread_t").size)?;
+        let thread = ecx.read_int::<i128>(thread_op)?;
         let thread = if thread == 0 {
             // Null thread ID indicates that we are querying the active thread.
             ecx.machine.threads.active_thread()

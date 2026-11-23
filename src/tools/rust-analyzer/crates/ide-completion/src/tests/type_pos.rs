@@ -1760,3 +1760,59 @@ type X = dyn $0;
         "#]],
     );
 }
+
+#[test]
+fn complete_traits_in_type_anchor() {
+    check_with_config(
+        TEST_CONFIG,
+        r#"
+trait Foo {}
+type X = <i32 as $0>
+"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module::
+            tt Foo
+            tt Trait
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { enable_auto_dyn: false, ..TEST_CONFIG },
+        r#"
+trait Foo {}
+type X = <i32 as $0>
+"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module::
+            tt Foo
+            tt Trait
+        "#]],
+    );
+    check_with_config(
+        TEST_CONFIG,
+        r#"
+trait Foo {}
+const X: i32 = <i32 as $0>
+"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module::
+            tt Foo
+            tt Trait
+        "#]],
+    );
+    check_with_config(
+        TEST_CONFIG,
+        r#"
+trait Foo {}
+fn f<T>() where <T as $0>
+"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module::
+            tt Foo
+            tt Trait
+        "#]],
+    );
+}

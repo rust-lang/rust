@@ -80,8 +80,7 @@ check-aux:
 		$(BOOTSTRAP) miri --stage 2 \
 		library/std \
 		$(BOOTSTRAP_ARGS) \
-		--target x86_64-unknown-linux-gnu,aarch64-apple-darwin,i686-pc-windows-msvc \
-		--tests # skip all doctests, they are not using skip_unsupported_miri_tests
+		--target x86_64-unknown-linux-gnu,aarch64-apple-darwin,i686-pc-windows-msvc
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:

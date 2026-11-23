@@ -68,7 +68,7 @@ impl BuildStamp {
         );
 
         let stamp_filename = self.path.file_name().unwrap().to_str().unwrap();
-        let stamp_filename = stamp_filename.strip_prefix('.').unwrap_or(stamp_filename);
+        let stamp_filename = stamp_filename.trim_prefix('.');
         self.path.set_file_name(format!(".{prefix}-{stamp_filename}"));
 
         self

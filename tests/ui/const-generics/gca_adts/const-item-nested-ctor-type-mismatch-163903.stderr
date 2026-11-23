@@ -1,0 +1,17 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const-item-nested-ctor-type-mismatch-163903.rs:10:8
+   |
+LL | #[derive(ConstParamTy, PartialEq, Eq)]
+   |          ------------ in this derive macro expansion
+LL | struct WrapInline(NoDerive);
+   |        ^^^^^^^^^^ -------- this field does not implement `ConstParamTy_`
+
+error: the constant `NoDerive` is not of type `i32`
+  --> $DIR/const-item-nested-ctor-type-mismatch-163903.rs:13:1
+   |
+LL | const WRAP_DIRECT_INLINE: WrapInline = WrapInline(NoDerive(NoDerive));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct constructor
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

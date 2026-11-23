@@ -43,7 +43,7 @@ INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
 
 case ${TARGET} in
     aarch64_be*)
-        export CFLAGS="-I${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc/usr/include --sysroot={AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc -Wno-nonportable-vector-initialization"
+        export CFLAGS="-I${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc/usr/include --sysroot=${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc -Wno-nonportable-vector-initialization"
         ARCH=aarch64_be
         RUNTIME_RUSTFLAGS=
         ;;

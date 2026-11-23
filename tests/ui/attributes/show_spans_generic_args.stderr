@@ -1,0 +1,58 @@
+note: showing the spans of the generic_args
+  --> $DIR/show_spans_generic_args.rs:9:15
+   |
+LL |     let _: Vec<u8>;
+   |               ^^^^
+
+note: showing the spans of the generic_args
+  --> $DIR/show_spans_generic_args.rs:10:15
+   |
+LL |     let _: Vec<Option<u8>>;
+   |               ^^^^^^^^^^^^
+
+note: showing the spans of the generic_args
+  --> $DIR/show_spans_generic_args.rs:10:22
+   |
+LL |     let _: Vec<Option<u8>>;
+   |                      ^^^^
+
+note: showing the spans of the generic_args
+  --> $DIR/show_spans_generic_args.rs:11:18
+   |
+LL |     let _ = Vec::<u8>::new();
+   |                  ^^^^
+
+note: showing the spans of the generic_args
+  --> $DIR/show_spans_generic_args.rs:16:23
+   |
+LL | macro_rules! parenthesized {
+LL |     ($f:ident) => {
+LL |         let _: &dyn $f(u8) -> u8;
+   |                       ^^^^^^^^^^
+...
+LL |     parenthesized!(Fn);
+   |     ------------------ in this macro invocation
+
+note: showing the spans of the path
+  --> $DIR/show_spans_generic_args.rs:27:21
+   |
+LL | macro_rules! arrow {
+LL |     ($f:tt $args:tt, $o:tt) => {
+LL |         let _: &dyn $f $args -> $o;
+   |                     ^^^^^^^^^^^^^^
+...
+LL |     arrow!(Fn (u8), u8);
+   |     ------------------- in this macro invocation
+
+note: showing the spans of the path
+  --> $DIR/show_spans_generic_args.rs:33:16
+   |
+LL |     arrow!(Fn (u8), u8);
+   |                ^^
+
+note: showing the spans of the path
+  --> $DIR/show_spans_generic_args.rs:33:21
+   |
+LL |     arrow!(Fn (u8), u8);
+   |                     ^^
+

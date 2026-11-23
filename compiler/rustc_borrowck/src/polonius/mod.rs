@@ -159,7 +159,7 @@ impl<'tcx> PoloniusContext<'tcx> {
             let deferred_liveness = std::mem::take(&mut self.deferred_liveness);
             let mut live_loans = LiveLoans::new(location_map.num_points(), borrow_set.len());
             let comp =
-                LivenessComputation::new(infcx, body, location_map, move_data, &local_use_map);
+                LivenessComputation::new(infcx, body, location_map, move_data, local_use_map);
             let mut liveness_source = DeferredLivenessSource {
                 liveness,
                 live_region_variances: &mut self.live_region_variances,
@@ -194,8 +194,8 @@ impl<'a> LivenessSource for DeferredLivenessSource<'a, '_> {
         self.deferred_liveness.ensure_deferred_liveness(
             region,
             self.universal_regions,
-            &mut self.liveness,
-            &mut self.live_region_variances,
+            self.liveness,
+            self.live_region_variances,
             &mut self.comp,
         );
 

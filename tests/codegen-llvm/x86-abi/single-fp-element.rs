@@ -27,25 +27,25 @@ extern "C" fn wrapped_f16(x: Wrapper<f16>) -> Wrapper<f16> {
     x
 }
 
-// CHECK-LABEL: define noundef float @plain_f32(
+// CHECK-LABEL: define noundef x86_fp80 @plain_f32(
 #[unsafe(no_mangle)]
 extern "C" fn plain_f32(x: f32) -> f32 {
     x
 }
 
-// CHECK-LABEL: define float @wrapped_f32(
+// CHECK-LABEL: define noundef x86_fp80 @wrapped_f32(
 #[unsafe(no_mangle)]
 extern "C" fn wrapped_f32(x: Wrapper<f32>) -> Wrapper<f32> {
     x
 }
 
-// CHECK-LABEL: define noundef double @plain_f64(
+// CHECK-LABEL: define noundef x86_fp80 @plain_f64(
 #[unsafe(no_mangle)]
 extern "C" fn plain_f64(x: f64) -> f64 {
     x
 }
 
-// CHECK-LABEL: define double @wrapped_f64(
+// CHECK-LABEL: define noundef x86_fp80 @wrapped_f64(
 #[unsafe(no_mangle)]
 extern "C" fn wrapped_f64(x: Wrapper<f64>) -> Wrapper<f64> {
     x
@@ -66,13 +66,13 @@ extern "C" fn wrapped_f128(x: Wrapper<f128>) -> Wrapper<f128> {
 #[repr(transparent)]
 struct Transparent<T>(T);
 
-// CHECK-LABEL: define float @transparent_wrapped_f32(
+// CHECK-LABEL: define noundef x86_fp80 @transparent_wrapped_f32(
 #[unsafe(no_mangle)]
 extern "C" fn transparent_wrapped_f32(x: Transparent<Wrapper<f32>>) -> Transparent<Wrapper<f32>> {
     x
 }
 
-// CHECK-LABEL: define float @transparent_transparent_wrapped_f32(
+// CHECK-LABEL: define noundef x86_fp80 @transparent_transparent_wrapped_f32(
 #[unsafe(no_mangle)]
 extern "C" fn transparent_transparent_wrapped_f32(
     x: Transparent<Transparent<Wrapper<f32>>>,
@@ -91,7 +91,7 @@ struct Struct {
 }
 
 // One or more aligned ZSTs are fine and do not disqualify the type.
-// CHECK-LABEL: define float @aligned_zst_f32(
+// CHECK-LABEL: define noundef x86_fp80 @aligned_zst_f32(
 #[unsafe(no_mangle)]
 extern "C" fn aligned_zst_f32(x: Struct) -> Struct {
     x
@@ -123,7 +123,7 @@ union UnionWrapper<T: Copy> {
 
 // A repr(C) union does count.
 //
-// CHECK-LABEL: define float @union_wrapped_f32(
+// CHECK-LABEL: define x86_fp80 @union_wrapped_f32(
 #[unsafe(no_mangle)]
 extern "C" fn union_wrapped_f32(x: UnionWrapper<f32>) -> UnionWrapper<f32> {
     x
@@ -131,7 +131,7 @@ extern "C" fn union_wrapped_f32(x: UnionWrapper<f32>) -> UnionWrapper<f32> {
 
 // A repr(transparent) union does too.
 //
-// CHECK-LABEL: define float @maybe_uninit_f32(
+// CHECK-LABEL: define x86_fp80 @maybe_uninit_f32(
 #[unsafe(no_mangle)]
 extern "C" fn maybe_uninit_f32(x: MaybeUninit<f32>) -> MaybeUninit<f32> {
     x
@@ -139,7 +139,7 @@ extern "C" fn maybe_uninit_f32(x: MaybeUninit<f32>) -> MaybeUninit<f32> {
 
 // A single-element array also does count.
 //
-// CHECK-LABEL: define float @array_f32(
+// CHECK-LABEL: define noundef x86_fp80 @array_f32(
 #[unsafe(no_mangle)]
 extern "C" fn array_f32(x: [f32; 1]) -> [f32; 1] {
     x

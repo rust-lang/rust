@@ -7,6 +7,7 @@
 // Tests static EIIs with default implementations.
 
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii(eii1)]
 pub static DECL1: u64 = 5;

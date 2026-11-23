@@ -497,7 +497,7 @@ fn f(param: usize) {
             r#"
 fn f(param: usize) {
     let local = 0;
-    let _: builtin#pattern_type (usize is 0..=$0) = 0;
+    let _: k#pattern_type (usize is 0..=$0) = 0;
 }
 "#,
             &["param"],
@@ -510,7 +510,7 @@ fn f(param: usize) {
             r#"
 fn f(param: usize) {
     let local = 0;
-    let _ = |_: builtin#pattern_type (usize is 0..=$0)| {};
+    let _ = |_: k#pattern_type (usize is 0..=$0)| {};
 }
 "#,
             &["param"],

@@ -1,18 +1,25 @@
+use std::borrow::Cow;
+use std::ops::Not as _;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{
     SpanExt as _, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
 };
+use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
-use clippy_utils::{is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, sym};
+use clippy_utils::{
+    is_block_like, is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, sym,
+};
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
+use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 
@@ -132,7 +139,7 @@ fn report_single_pattern(
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
         && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
-        && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
+        && let Some(pe_trait_id) = cx.tcx.lang_items().partial_eq_trait()
         && (ty.is_integral()
             || ty.is_char()
             || ty.is_str()
@@ -162,22 +169,32 @@ fn report_single_pattern(
         };
 
         let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
-        let sugg = format!(
-            "if {} == {}{} {}{els_str}",
-            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
+        let if_expr_block = complete_block_expr_semicolon(cx, arm.body, ctxt, expr, &mut app);
+        let ex_sugg = Sugg::hir_with_context(cx, ex, ctxt, "..", &mut app);
+
+        let cond_sugg = if ty.is_bool()
+            && let PatKind::Expr(lit) = pat.kind
+            && let PatExprKind::Lit { lit, negated: false } = lit.kind
+            && let LitKind::Bool(value) = lit.node
+        {
+            if value { ex_sugg } else { ex_sugg.not() }
+        } else {
+            let pat_snip = snippet_with_applicability(cx, arm.pat.span, "..", &mut app);
             // PartialEq for different reference counts may not exist.
-            ref_or_deref_adjust,
-            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
-            expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
-        );
+            let pat_sugg = Sugg::NonParen(Cow::Owned(format!("{ref_or_deref_adjust}{pat_snip}")));
+            make_binop(BinOpKind::Eq, &ex_sugg, &pat_sugg)
+        };
+        let sugg = format!("if {cond_sugg} {if_expr_block}{els_str}");
         (msg, sugg)
     } else {
         let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
+
+        let if_let_expr_block = complete_block_expr_semicolon(cx, arm.body, ctxt, expr, &mut app);
+
         let sugg = format!(
-            "if let {} = {} {}{els_str}",
+            "if let {} = {} {if_let_expr_block}{els_str}",
             snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
             snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
-            expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
     };
@@ -424,5 +441,29 @@ impl<'a> PatState<'a> {
                 true
             },
         }
+    }
+}
+
+/// Adds trailing semicolon when the arm body is unit type expression and is not block-like.
+fn complete_block_expr_semicolon(
+    cx: &LateContext<'_>,
+    body: &Expr<'_>,
+    ctxt: SyntaxContext,
+    expr: &Expr<'_>,
+    app: &mut Applicability,
+) -> String {
+    let is_block = match body.kind {
+        // `for`
+        ExprKind::DropTemps(_) => true,
+        // `?` and `.await`
+        ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar) => false,
+
+        _ => is_block_like(body),
+    };
+
+    if !is_block && cx.typeck_results().expr_ty(body).is_unit() {
+        format!("{{ {}; }}", snippet_with_context(cx, body.span, ctxt, "..", app).0)
+    } else {
+        expr_block(cx, body, ctxt, "..", Some(expr.span), app)
     }
 }

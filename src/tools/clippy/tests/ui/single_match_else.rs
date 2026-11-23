@@ -242,3 +242,29 @@ fn irrefutable_match() -> Option<&'static ExprNode> {
     }
     //~^^^^^^^ single_match_else
 }
+
+mod issue_16579 {
+    fn normal(opt: Option<u8>) {
+        let mut result: Vec<u8> = Vec::new();
+        match opt {
+            Some(n) => result.push(n),
+            None => {
+                result.push(0_u8);
+                result.push(1_u8);
+            },
+        }
+        //~^^^^^^^ single_match_else
+    }
+
+    // When the arm value is not (), lint won't add trailing `;`.
+    fn return_value(opt: Option<u8>) -> u8 {
+        match opt {
+            Some(n) => n + 1,
+            None => {
+                let _ = "placeholder";
+                0
+            },
+        }
+        //~^^^^^^^ single_match_else
+    }
+}

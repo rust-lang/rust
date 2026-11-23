@@ -12,14 +12,15 @@ class ReprCommand(gdb.Command):
         super().__init__("repr", gdb.COMMAND_OBSCURE)
 
     def invoke(self, argument: str, from_tty: bool):
-        from ..common import Result
-        from .check_gdb import check
-
-        print(f"(gdb) repr {argument}")
-
-        global REPR_COMMAND_RUN
-        REPR_COMMAND_RUN = True
         try:
+            from ..common import Result
+            from .check_gdb import check
+
+            print(f"(gdb) repr {argument}")
+
+            global REPR_COMMAND_RUN
+            REPR_COMMAND_RUN = True
+
             if check(argument) == Result.Mismatch:
                 global REPR_ERROR
                 REPR_ERROR = True

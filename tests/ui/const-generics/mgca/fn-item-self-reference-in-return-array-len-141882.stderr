@@ -1,0 +1,14 @@
+error: function items cannot be used as const args
+  --> $DIR/fn-item-self-reference-in-return-array-len-141882.rs:6:43
+   |
+LL | fn combinator<T, const S: usize>() -> [T; combinator] {}
+   |                                           ^^^^^^^^^^
+
+error: function items cannot be used as const args
+  --> $DIR/fn-item-self-reference-in-return-array-len-141882.rs:9:54
+   |
+LL | fn combinator_macro<T, const S: usize>() -> [T; gca!(combinator_macro)] {}
+   |                                                      ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

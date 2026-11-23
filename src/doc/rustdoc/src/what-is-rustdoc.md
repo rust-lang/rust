@@ -158,7 +158,18 @@ $ rustdoc README.md
 You will find an HTML file in `docs/doc/README.html` generated from its
 Markdown contents.
 
-Cargo currently does not understand standalone Markdown files, unfortunately.
+Cargo currently does not understand standalone Markdown files, unfortunately,
+but doc comments can copy the contents of external files by using the `include_str!` macro
+and `#[doc]` attribute.
+
+for example:
+
+```rust
+#![doc = include_str!("../README.md")]
+```
+
+This will copy the contents of `README.md` in the doc comment.
+Check out the [`#[doc]` attribute chapter](write-documentation/the-doc-attribute.md)
 
 ## Summary
 

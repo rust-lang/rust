@@ -855,16 +855,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     match rvalue {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
-                        Rvalue::Use(operand, _) => match operand {
-                            Operand::Copy(place) | Operand::Move(place) => {
-                                if let Some(from) = place.as_local() {
-                                    if from == target {
-                                        target = into;
-                                    }
-                                }
+                        Rvalue::Use(Operand::Copy(place) | Operand::Move(place), _) => {
+                            if place.as_local() == Some(target) {
+                                target = into;
                             }
-                            _ => {}
-                        },
+                        }
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(
@@ -874,24 +869,20 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         ) => {
                             match operand {
                                 Operand::Copy(place) | Operand::Move(place) => {
-                                    if let Some(from) = place.as_local() {
-                                        if from == target {
-                                            debug!("was_captured_by_trait_object: ty={:?}", ty);
-                                            // Check the type for a trait object.
-                                            return match ty.kind() {
-                                                // `&dyn Trait`
-                                                ty::Ref(_, ty, _) if ty.is_trait() => true,
-                                                // `Box<dyn Trait>`
-                                                _ if ty.boxed_ty().is_some_and(Ty::is_trait) => {
-                                                    true
-                                                }
+                                    if place.as_local() == Some(target) {
+                                        debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                        // Check the type for a trait object.
+                                        return match ty.kind() {
+                                            // `&dyn Trait`
+                                            ty::Ref(_, ty, _) if ty.is_trait() => true,
+                                            // `Box<dyn Trait>`
+                                            _ if ty.boxed_ty().is_some_and(Ty::is_trait) => true,
 
-                                                // `dyn Trait`
-                                                _ if ty.is_trait() => true,
-                                                // Anything else.
-                                                _ => false,
-                                            };
-                                        }
+                                            // `dyn Trait`
+                                            _ if ty.is_trait() => true,
+                                            // Anything else.
+                                            _ => false,
+                                        };
                                     }
                                     return false;
                                 }

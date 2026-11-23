@@ -16,6 +16,9 @@ pub(crate) struct SyntheticAttrState {
 
     /// Attribute state for `SyntheticAttr::CfgAttrTrace` attributes.
     cfg_attr_trace: ThinVec<(CfgEntry, Span)>,
+
+    /// Whether a `SyntheticAttr::TestEntrypoint` attribute was seen.
+    test_entrypoint: bool,
 }
 
 impl SyntheticAttrState {
@@ -36,6 +39,9 @@ impl SyntheticAttrState {
                 cfg.lower_spans(lower_span);
                 self.cfg_attr_trace.push((cfg, attr_span));
             }
+            SyntheticAttr::TestEntrypoint => {
+                self.test_entrypoint = true;
+            }
         }
     }
 
@@ -45,6 +51,9 @@ impl SyntheticAttrState {
         }
         if !self.cfg_attr_trace.is_empty() {
             attributes.push(Attribute::Parsed(AttributeKind::CfgAttrTrace(self.cfg_attr_trace)));
+        }
+        if self.test_entrypoint {
+            attributes.push(Attribute::Parsed(AttributeKind::RustcTestEntrypointMarker));
         }
     }
 }

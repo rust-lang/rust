@@ -821,10 +821,21 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
         {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
-            _ => sig_for_projection(cx, proj)
-                .or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds().all_clauses(cx.tcx).iter(), None)),
+            _ => sig_for_projection(cx, proj).or_else(|| {
+                sig_from_bounds(
+                    cx,
+                    ty,
+                    cx.param_env.caller_bounds().all_clauses_interned(cx.tcx).iter(),
+                    None,
+                )
+            }),
         },
-        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds().all_clauses(cx.tcx).iter(), None),
+        ty::Param(_) => sig_from_bounds(
+            cx,
+            ty,
+            cx.param_env.caller_bounds().all_clauses_interned(cx.tcx).iter(),
+            None,
+        ),
         _ => None,
     }
 }
@@ -1532,34 +1543,37 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
         cx: &LateContext<'tcx>,
         visited: &mut FxHashSet<Ty<'tcx>>,
         ty: Ty<'tcx>,
+        depth: usize,
     ) -> bool {
         // Avoid cycles and repeated work by skipping types that have already been visited during this traversal.
         if !visited.insert(ty) {
             return false;
         }
+        // Types recursive through associated types (e.g. `S<T>` containing `S<T::Assoc>`)
+        // never repeat, so `visited` alone does not terminate.
+        if !cx.tcx.recursion_limit().value_within_limit(depth) {
+            return true;
+        }
+        let mut recurse = |ty| has_non_owning_mutable_access_inner(cx, visited, ty, depth + 1);
         match ty.kind() {
-            ty::Adt(adt_def, args) if adt_def.is_phantom_data() => args
-                .types()
-                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
-            ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
-                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, *args)))
-            }),
-            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, visited, *elem_ty),
+            ty::Adt(adt_def, args) if adt_def.is_phantom_data() => args.types().any(recurse),
+            ty::Adt(adt_def, args) => adt_def
+                .all_fields()
+                .any(|field| recurse(normalize_ty(cx, field.ty(cx.tcx, *args)))),
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => recurse(*elem_ty),
             ty::RawPtr(pointee_ty, mutability) | ty::Ref(_, pointee_ty, mutability) => {
                 mutability.is_mut() || !pointee_ty.is_freeze(cx.tcx, cx.typing_env())
             },
             ty::Closure(_, closure_args) => {
                 matches!(closure_args.types().next_back(),
-                         Some(captures) if has_non_owning_mutable_access_inner(cx, visited, captures))
+                         Some(captures) if recurse(captures))
             },
-            ty::Tuple(tuple_args) => tuple_args
-                .iter()
-                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
+            ty::Tuple(tuple_args) => tuple_args.iter().any(recurse),
             _ => false,
         }
     }
 
-    has_non_owning_mutable_access_inner(cx, &mut FxHashSet::default(), iter_ty)
+    has_non_owning_mutable_access_inner(cx, &mut FxHashSet::default(), iter_ty, 0)
 }
 
 /// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.

@@ -5,9 +5,8 @@ macro_rules! x {
 }
 x! {
   trait MyTrait { fn bar(c self) }
-  //~^ ERROR expected identifier, found keyword `self`
-  //~^^ ERROR expected one of `:`, `@`, or `|`, found keyword `self`
-  //~^^^ ERROR expected one of `->`, `;`, `where`, or `{`, found `}`
+  //~^ ERROR expected one of `:`, `@`, or `|`, found keyword `self`
+  //~| ERROR expected one of `->`, `;`, `where`, or `{`, found `}`
 }
 
 fn main() {}

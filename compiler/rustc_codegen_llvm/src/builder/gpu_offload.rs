@@ -161,7 +161,6 @@ pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> 
     llvm::set_alignment(at_zero, Align::ONE);
 
     // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
-    let struct_ident_ty = cx.type_named_struct("struct.ident_t");
     let struct_elems = vec![
         cx.get_const_i32(0),
         cx.get_const_i32(2),
@@ -170,8 +169,8 @@ pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> 
         at_zero,
     ];
     let struct_elems_ty: Vec<_> = struct_elems.iter().map(|&x| cx.val_ty(x)).collect();
+    let struct_ident_ty = cx.type_named_struct("struct.ident_t", &struct_elems_ty);
     let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
-    cx.set_struct_body(struct_ident_ty, &struct_elems_ty);
     let at_one = add_unnamed_global(cx, "", initializer, PrivateLinkage);
     llvm::set_alignment(at_one, Align::EIGHT);
     at_one
@@ -191,15 +190,16 @@ pub(crate) struct TgtOffloadEntry {
 
 impl TgtOffloadEntry {
     pub(crate) fn new_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Type<'ll> {
-        let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
         let tptr = cx.type_ptr();
         let ti64 = cx.type_i64();
         let ti32 = cx.type_i32();
         let ti16 = cx.type_i16();
         // For each kernel to run on the gpu, we will later generate one entry of this type.
         // copied from LLVM
-        let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
-        cx.set_struct_body(offload_entry_ty, &entry_elements);
+        let offload_entry_ty = cx.type_named_struct(
+            "struct.__tgt_offload_entry",
+            &[ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr],
+        );
         offload_entry_ty
     }
 

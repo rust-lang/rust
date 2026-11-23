@@ -1150,9 +1150,9 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Creates a new `File` instance that shares the same underlying file handle
-    /// as the existing `File` instance. Reads, writes, and seeks will affect
-    /// both `File` instances simultaneously.
+    /// Creates a new `File` instance with a different OS handle referring to
+    /// the same underlying system resource as the existing `File` instance.
+    /// Reads, writes, and seeks will affect both `File` instances simultaneously.
     ///
     /// # Examples
     ///
@@ -2035,16 +2035,14 @@ impl OpenOptions {
 
     /// Sets the option for the append mode.
     ///
-    /// This option, when true, means that writes will append to a file instead
-    /// of overwriting previous contents.
-    /// Note that setting `.write(true).append(true)` has the same effect as
-    /// setting only `.append(true)`.
+    /// This option, when true, means that writes will append to a file instead of overwriting
+    /// previous contents. The `write` setting is ignored when `append` is true, i.e.,
+    /// `.write(true).append(true).open(...)` has the same effect as `.append(true).open(...)`.
     ///
     /// Append mode guarantees that writes will be positioned at the current end of file,
     /// even when there are other processes or threads appending to the same file. This is
-    /// unlike <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`, which
-    /// has a race between seeking and writing during which another writer can write, with
-    /// our `write()` overwriting their data.
+    /// a race-free version of <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`,
+    /// working correctly even if there are concurrent writers.
     ///
     /// Keep in mind that this does not necessarily guarantee that data appended by
     /// different processes or threads does not interleave. The amount of data accepted a
@@ -2872,6 +2870,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -2909,6 +2908,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -2942,6 +2942,7 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -3918,6 +3919,11 @@ impl DirBuilder {
             return Ok(());
         }
 
+        // For certain platforms, a path like "/tmp/foo/.", while the "/tmp" directory exists,
+        // the mkdir function may produce a `NotFound` error on that path instead of succeeding
+        // due to viewing the "foo" and "." as two separate missing components.
+        // See https://github.com/rust-lang/rust/issues/162243
+        let path = path.components().as_path();
         let ancestors = path.ancestors();
         let mut uncreated_dirs = 0;
 

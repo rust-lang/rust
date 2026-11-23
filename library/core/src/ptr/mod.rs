@@ -166,6 +166,20 @@
 //!
 //! [`null()`]: null
 //!
+//! # Thin and wide pointers
+//!
+//! Some pointers can also carry additional metadata alongside the address of the pointee. These are called
+//! **wide pointers** (or **fat pointers**).
+//! Pointers that only store the address of the pointee are instead called **thin pointers**, every
+//! pointer to a sized type is guaranteed to be thin.
+//!
+//! Currently, wide pointers are twice as big as the size of a thin pointer,
+//! however, this could be changed in the future.
+//!
+//! Wide pointers are commonly used when working with [`DSTs`].
+//!
+//! [`DSTs`]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
+//!
 //! # Provenance
 //!
 //! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
@@ -2503,7 +2517,7 @@ pub fn eq<T: PointeeSized>(a: *const T, b: *const T) -> bool {
 }
 
 /// Compares the *addresses* of the two pointers for equality,
-/// ignoring any metadata in fat pointers.
+/// ignoring any metadata in [wide](core::ptr#thin-and-wide-pointers) pointers.
 ///
 /// If the arguments are thin pointers of the same type,
 /// then this is the same as [`eq`].

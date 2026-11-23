@@ -16,11 +16,7 @@ SOURCE_FILE
           LET_KW "let"
           WHITESPACE " "
           CFG_PRED_PAT
-            BUILTIN_KW "builtin"
-            WHITESPACE " "
-            POUND "#"
-            WHITESPACE " "
-            CFG_KW "cfg"
+            CFG_KW "k#cfg"
             L_PAREN "("
             CFG_COMPOSITE
               IDENT "any"

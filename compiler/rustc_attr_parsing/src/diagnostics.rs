@@ -949,6 +949,24 @@ pub(crate) struct ToolReserved {
 }
 
 #[derive(Diagnostic)]
+#[diag("unrecognized tool option `{$option}`")]
+pub(crate) struct UnrecognizedToolOption {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) option: AttrPath,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "the tool attribute `{$tool}` is predefined and cannot be marked as being available for reflection"
+)]
+pub(crate) struct PredefinedToolReflective {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
+}
+
+#[derive(Diagnostic)]
 #[diag("unknown diagnostic attribute")]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]
@@ -1058,13 +1076,6 @@ pub(crate) struct DocAttrNotCrateLevel {
     #[primary_span]
     pub span: Span,
     pub attr_name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[doc(...)]` isn't allowed on parameters")]
-pub(crate) struct DocAttrNotParameters {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1339,14 +1350,18 @@ pub(crate) struct UnknownVersionLiteral {
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple `{$name}` attributes")]
-pub struct UnusedMultiple {
+#[diag("duplicate `{$name}` attributes")]
+pub struct DuplicateAttribute {
     #[primary_span]
     #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
     pub name: Symbol,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub warning: bool,
 }
 
 #[derive(Diagnostic)]
@@ -2181,19 +2196,6 @@ pub(crate) struct AdditionalCommaSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
-    pub this: Span,
-    #[note("attribute also specified here")]
-    pub other: Span,
-    #[warning(
-        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-    )]
-    pub warning: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[macro_export]` is not allowed on declarative macro definitions")]
 #[note("declarative macros follow the same exporting rules as regular items")]
 pub(crate) struct MacroExportOnDeclMacro {
@@ -2270,4 +2272,24 @@ pub(crate) struct UnknownLintHelper {
     #[primary_span]
     pub span: Span,
     pub unknown: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unused doc comment")]
+pub(crate) struct BuiltinUnusedDocComment {
+    #[subdiagnostic]
+    pub sub: BuiltinUnusedDocCommentSub,
+    pub target: &'static str,
+    #[label("rustdoc does not generate documentation for {$target}")]
+    pub label: Span,
+    #[context]
+    pub context: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum BuiltinUnusedDocCommentSub {
+    #[help("use `//` for a plain comment")]
+    PlainHelp,
+    #[help("use `/* */` for a plain comment")]
+    BlockHelp,
 }

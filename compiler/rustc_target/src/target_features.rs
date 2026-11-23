@@ -271,7 +271,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         &[],
     ),
     // FEAT_FP8
-    ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["faminmax", "lut", "bf16"]),
+    ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["neon"]),
     // FEAT_FP8DOT2
     ("fp8dot2", Unstable(sym::aarch64_unstable_target_feature), &["fp8dot4"]),
     // FEAT_FP8DOT4
@@ -971,7 +971,7 @@ static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     // For "backchain", https://github.com/rust-lang/rust/issues/142412 is a stabilization blocker
-    ("backchain", Unstable(sym::s390x_target_feature), &[]),
+    ("backchain", InternalOnly { reason: "use `-Cforce-frame-pointers` compiler flag instead", target_modifier: false, hard_error: true }, &[]),
     ("concurrent-functions", Unstable(sym::s390x_target_feature), &[]),
     ("deflate-conversion", Unstable(sym::s390x_target_feature), &[]),
     ("enhanced-sort", Unstable(sym::s390x_target_feature), &[]),
@@ -1524,7 +1524,15 @@ impl Target {
                 // There's no SPE for PowerPC64, and we currently don't support any soft-float
                 // targets. (If we ever add one, we need to match on `RustcAbi::Softfloat` similar
                 // to other targets above.)
-                FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+                match self.llvm_abiname {
+                    // The ELFv2 ABI requires vector registers for passing f128 and any future
+                    // 16-byte aligned types.
+                    LlvmAbi::ElfV2 => FeatureConstraints {
+                        required: &["hard-float", "altivec"],
+                        incompatible: &["spe"],
+                    },
+                    _ => FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] },
+                }
             }
             Arch::Sparc => {
                 // We currently don't have a soft-float target for SPARC.

@@ -24,7 +24,7 @@ pub fn _mm512_madd52hi_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_mask_madd52hi_epu64)
 #[inline]
@@ -71,7 +71,7 @@ pub fn _mm512_madd52lo_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_mask_madd52lo_epu64)
 #[inline]
@@ -133,7 +133,7 @@ pub fn _mm256_madd52hi_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_mask_madd52hi_epu64)
 #[inline]
@@ -195,7 +195,7 @@ pub fn _mm256_madd52lo_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_mask_madd52lo_epu64)
 #[inline]
@@ -257,7 +257,7 @@ pub fn _mm_madd52hi_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_mask_madd52hi_epu64)
 #[inline]
@@ -319,7 +319,7 @@ pub fn _mm_madd52lo_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 /// unsigned integer from the intermediate result with the
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst` using writemask `k` (elements are copied
-/// from `k` when the corresponding mask bit is not set).
+/// from `a` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_mask_madd52lo_epu64)
 #[inline]

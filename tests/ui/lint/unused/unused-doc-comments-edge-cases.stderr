@@ -19,10 +19,9 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:6:9
    |
 LL |         /// useless doc comment
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for match arms
 LL |
 LL |         _ => false,
-   |         ---------- rustdoc does not generate documentation for match arms
    |
    = help: use `//` for a plain comment
 note: the lint level is defined here
@@ -35,10 +34,9 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:23:5
    |
 LL |     /// useless doc comment
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for expressions
 ...
 LL |     num == 3
-   |     --- rustdoc does not generate documentation for expressions
    |
    = help: use `//` for a plain comment
 
@@ -46,10 +44,9 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:33:9
    |
 LL |         /// useless doc comment
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for struct fields
 LL |
 LL |         foo: 3
-   |         ------ rustdoc does not generate documentation for expression fields
    |
    = help: use `//` for a plain comment
 
@@ -57,10 +54,9 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:45:9
    |
 LL |         /// useless doc comment
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for pattern fields
 LL |
 LL |         foo
-   |         --- rustdoc does not generate documentation for pattern fields
    |
    = help: use `//` for a plain comment
 
@@ -68,33 +64,27 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:55:27
    |
 LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
-   |                           ^^^^^^^^^^^^ - rustdoc does not generate documentation for generic parameters
+   |                           ^^^^^^^^^^^^ rustdoc does not generate documentation for type parameters
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:59:5
    |
-LL |       /// unused doc comment
-   |       ^^^^^^^^^^^^^^^^^^^^^^
+LL |     /// unused doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for expressions
 LL |
-LL | /     {
-LL | |         let x = 12;
-LL | |     }
-   | |_____- rustdoc does not generate documentation for expressions
+LL |     {
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:66:1
    |
-LL |   /// unused doc comment
-   |   ^^^^^^^^^^^^^^^^^^^^^^
+LL | /// unused doc comment
+   | ^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for foreign modules
 LL |
-LL | / extern "C" {
-LL | |     fn foo();
-LL | | }
-   | |_- rustdoc does not generate documentation for extern blocks
+LL | extern "C" {
    |
    = help: use `//` for a plain comment
 

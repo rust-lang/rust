@@ -31,7 +31,7 @@ declare_tool_lint! {
     pub clippy::UNNECESSARY_DEF_PATH,
     Warn,
     "using a def path when a diagnostic item or a `LangItem` is available",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(UnnecessaryDefPath => [UNNECESSARY_DEF_PATH]);

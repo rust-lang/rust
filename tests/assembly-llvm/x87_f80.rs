@@ -56,32 +56,42 @@ pub extern "C" fn identity(x: x87_f80) -> x87_f80 {
 // CHECK-LABEL: mixed
 //
 // X86:      .cfi_startproc
-// X86-NEXT: fldl 4(%esp)
+// X86-NEXT: movl 24(%esp), %eax
+// X86-NEXT: movsd 4(%esp), %xmm0
+// X86-NEXT: movsd %xmm0, (%eax)
 // X86-NEXT: retl
 //
 // X86_64:      .cfi_startproc
 // X86_64-NEXT: movsd 8(%rsp), %xmm0
+// X86_64-NEXT: movsd %xmm0, (%rdi)
 // X86_64-NEXT: retq
 //
 // DARWIN:      .cfi_startproc
 // DARWIN-NEXT: pushl %ebp
 // DARWIN:      movl %esp, %ebp
-// DARWIN:      fldl 8(%ebp)
+// DARWIN:      movl 40(%ebp), %eax
+// DARWIN-NEXT: movsd 8(%ebp), %xmm0
+// DARWIN-NEXT: movsd %xmm0, (%eax)
 // DARWIN-NEXT: popl %ebp
 // DARWIN-NEXT: retl
 //
 // WIN64:      movsd (%rcx), %xmm0
+// WIN64-NEXT: movsd %xmm0, (%rdx)
 // WIN64-NEXT: retq
 //
 // WIN32:      .cfi_startproc
 // WIN32-NEXT: pushl %ebp
 // WIN32:      movl %esp, %ebp
-// WIN32:      fldl 8(%ebp)
+// WIN32:      movl 32(%ebp), %eax
+// WIN32-NEXT: movsd 8(%ebp), %xmm0
+// WIN32-NEXT: movsd %xmm0, (%eax)
 // WIN32-NEXT: popl %ebp
 // WIN32-NEXT: retl
 #[unsafe(no_mangle)]
-pub extern "C" fn mixed(value: Mixed) -> f64 {
-    value.a
+pub extern "C" fn mixed(value: Mixed, res: &mut f64) {
+    // Write the value to a pointer instead of returning it to avoid the extra `f32`/`f64` return
+    // assembly on 32-bit.
+    *res = value.a;
 }
 
 #[repr(C)]

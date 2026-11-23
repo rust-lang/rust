@@ -82,7 +82,7 @@ fn add_import(
 ) {
     if let Some(path_segment) = qualifier.segment() {
         // for `<i32 as std::ops::Add>`
-        let path_type = path_segment.qualifying_trait();
+        let path_type = path_segment.type_anchor().and_then(|it| it.trait_());
         let import = match path_type {
             Some(it) => {
                 if let Some(path) = it.path() {

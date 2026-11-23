@@ -7,6 +7,7 @@
 // Tests that an explicit static EII implementation overrides a local default.
 
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 #![allow(dead_code)]
 
 #[eii(eii1)]

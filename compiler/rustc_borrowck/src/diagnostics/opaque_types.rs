@@ -105,7 +105,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let tcx = self.infcx.tcx;
             let ControlFlow::Break((opaque_def_id, offending_region_idx, location)) = ty
                 .visit_with(&mut FindOpaqueRegion {
-                    regioncx: &self.regioncx,
+                    regioncx: self.regioncx,
                     tcx,
                     borrow_region: borrow.region,
                 })

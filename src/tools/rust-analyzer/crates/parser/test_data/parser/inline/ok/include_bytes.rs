@@ -1,1 +1,1 @@
-fn foo() { builtin # include_bytes }
+fn foo() { k#include_bytes }

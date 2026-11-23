@@ -1511,7 +1511,6 @@ mod repr {
                 ba i64
                 ba i8
                 ba isize
-                ba transparent
                 ba u128
                 ba u16
                 ba u32
@@ -1534,7 +1533,6 @@ mod repr {
                 ba i64
                 ba i8
                 ba isize
-                ba transparent
                 ba u128
                 ba u16
                 ba u32

@@ -14,9 +14,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           ASM_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            ASM_KW "asm"
+            ASM_KW "k#asm"
             L_PAREN "("
             WHITESPACE "\n        "
             PATH_EXPR
@@ -46,5 +44,5 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 41: expected COMMA
-error 50: expected asm operand
+error 35: expected COMMA
+error 44: expected asm operand

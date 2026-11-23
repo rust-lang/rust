@@ -47,7 +47,7 @@ pub(super) fn generate<'tcx>(
 
     let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
-        &typeck.universal_regions,
+        typeck.universal_regions,
         &typeck.constraints.outlives_constraints,
     );
 
@@ -121,7 +121,7 @@ pub(super) fn generate<'tcx>(
     record_regular_live_regions(
         typeck.tcx(),
         &mut typeck.constraints.liveness_constraints,
-        &typeck.universal_regions,
+        typeck.universal_regions,
         &mut typeck.polonius_context,
         typeck.body,
     );

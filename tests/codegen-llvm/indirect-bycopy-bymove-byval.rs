@@ -30,7 +30,7 @@ impl Copy for Thing {}
 // CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[normal_V1:%.*]], ptr{{.*}} %value,
 // CHECK: call void @opaque(ptr{{.*}} [[normal_V1]])
 // CHECK: call void @opaque(ptr{{.*}} %value)
-// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[normal_V3:%.*]], ptr{{.*}} @anon{{.*}},
+// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[normal_V3:%.*]], ptr{{.*}} @{{[0-9]+}},
 // CHECK: call void @opaque(ptr{{.*}} [[normal_V3]])
 #[unsafe(no_mangle)]
 pub fn normal() {
@@ -54,7 +54,7 @@ pub fn normal() {
 // CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} [[untupled_V1]])
 // CHECK: call indirect_bycopy_bymove_byval::untupled::{closure#1}
 // CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} %value)
-// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[untupled_V3:%.*]], ptr{{.*}} @anon{{.*}}
+// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[untupled_V3:%.*]], ptr{{.*}} @{{[0-9]+}}
 // CHECK: call indirect_bycopy_bymove_byval::untupled::{closure#2}
 // CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} [[untupled_V3]])
 #[unsafe(no_mangle)]
@@ -83,7 +83,7 @@ pub fn untupled() {
 // CHECK-LABEL: @byval
 // CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} %value)
 // CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} %value)
-// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} @anon{{.*}})
+// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} @{{[0-9]+}})
 #[unsafe(no_mangle)]
 pub fn byval() {
     #[repr(C)]

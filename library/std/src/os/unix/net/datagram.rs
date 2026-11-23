@@ -722,6 +722,7 @@ impl UnixDatagram {
     /// use std::time::Duration;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
     ///         .expect("`UnixDatagram::set_read_timeout` should not fail");
@@ -769,6 +770,7 @@ impl UnixDatagram {
     /// use std::time::Duration;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
     ///         .expect("`UnixDatagram::set_write_timeout` should not fail");
@@ -809,6 +811,7 @@ impl UnixDatagram {
     /// use std::time::Duration;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
     ///         .expect("`UnixDatagram::set_read_timeout` should not fail");
@@ -832,6 +835,7 @@ impl UnixDatagram {
     /// use std::time::Duration;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
     ///         .expect("`UnixDatagram::set_write_timeout` should not fail");
@@ -854,6 +858,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
+    /// #   if cfg!(skip_unsupported_miri_tests) { return Ok(()); }
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_nonblocking(true).expect("`UnixDatagram::set_nonblocking` should not fail");
     ///     Ok(())
@@ -965,7 +970,10 @@ impl UnixDatagram {
     ///
     /// The function must be called with valid byte array `buf` of sufficient size to
     /// hold the message bytes. If a message is too long to fit in the supplied buffer,
-    /// excess bytes may be discarded.
+    /// only the bytes that fit are copied into `buf`; the excess bytes are not returned
+    /// by this call. The datagram itself is left in the queue in full, so a later call
+    /// to [`UnixDatagram::recv_from`] with a large enough buffer still receives the
+    /// whole message.
     ///
     /// Successive calls return the same data. This is accomplished by passing
     /// `MSG_PEEK` as a flag to the underlying `recvfrom` system call.

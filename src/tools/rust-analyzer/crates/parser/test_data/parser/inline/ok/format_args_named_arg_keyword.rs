@@ -1,3 +1,3 @@
 fn main() {
-    builtin#format_args("{type}", type=1);
+    k#format_args("{type}", type=1);
 }

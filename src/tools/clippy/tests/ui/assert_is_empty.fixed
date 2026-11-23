@@ -2,6 +2,27 @@
 #![expect(clippy::needless_ifs, clippy::useless_vec)]
 #![allow(clippy::const_is_empty)]
 
+use std::collections::VecDeque;
+use std::fmt::Debug;
+
+//
+fn vecdeque_no_assert<T>(element: T) {
+    let mut vecdeque = VecDeque::new();
+    vecdeque.push_front(element);
+    // This doesn't trigger assert_is_empty since T implement neither Debug or PartialEq
+    assert!(vecdeque.is_empty());
+}
+
+// T now needs PartialEq and Debug
+fn vecdeque_eq<T: Debug + PartialEq>(element: T) {
+    let mut vecdeque = VecDeque::new();
+    vecdeque.push_front(element);
+    assert_eq!(vecdeque, VecDeque::new());
+    //~^ assert_is_empty
+    assert_ne!(vecdeque, VecDeque::new());
+    //~^ assert_is_empty
+}
+
 fn main() {
     let vec = vec![1, 2, 3];
     assert_eq!(vec, [] as [i32; 0]);
@@ -109,6 +130,18 @@ fn main() {
     struct NotDebug;
     let not_debug = vec![NotDebug];
     assert!(not_debug.is_empty());
+
+    let mut vec_deque: VecDeque<i32> = VecDeque::new();
+    vec_deque.push_back(0);
+    assert_eq!(vec_deque, VecDeque::new());
+    //~^ assert_is_empty
+    assert_ne!(vec_deque, VecDeque::new());
+    //~^ assert_is_empty
+
+    debug_assert_eq!(vec_deque, VecDeque::new());
+    //~^ assert_is_empty
+    debug_assert_ne!(vec_deque, VecDeque::new());
+    //~^ assert_is_empty
 }
 
 mod issue17935 {
