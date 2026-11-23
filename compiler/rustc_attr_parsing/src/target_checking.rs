@@ -100,7 +100,7 @@ impl<'sess> AttributeParser<'sess> {
         attribute_args: &str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
-        if matches!(cx.should_emit, ShouldEmit::Nothing) {
+        if matches!(cx.should_emit, ShouldEmit::Nothing { .. }) {
             return;
         }
 

@@ -678,10 +678,10 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         sess.dcx().emit_fatal(diagnostics::MultipleOutputTypesToStdout);
     }
 
-    let crate_name =
-        sess.opts.crate_name.clone().or_else(|| {
-            parse_crate_name(sess, attrs, ShouldEmit::Nothing).map(|i| i.0.to_string())
-        });
+    let crate_name = sess.opts.crate_name.clone().or_else(|| {
+        parse_crate_name(sess, attrs, ShouldEmit::Nothing { no_bug: false })
+            .map(|i| i.0.to_string())
+    });
 
     let invocation_temp = sess
         .opts

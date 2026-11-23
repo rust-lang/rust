@@ -10,31 +10,5 @@ LL - #![allow(foo = "")]
 LL + #![allow(reason = "")]
    |
 
-error: malformed `allow` attribute input
-  --> $DIR/E0452.rs:1:10
-   |
-LL | #![allow(foo = "")]
-   |          ^^^^^^^^ not the name of a lint
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: to provide a reason, use `reason = ""`
-   |
-LL - #![allow(foo = "")]
-LL + #![allow(reason = "")]
-   |
-
-error: malformed `allow` attribute input
-  --> $DIR/E0452.rs:1:10
-   |
-LL | #![allow(foo = "")]
-   |          ^^^^^^^^ not the name of a lint
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: to provide a reason, use `reason = ""`
-   |
-LL - #![allow(foo = "")]
-LL + #![allow(reason = "")]
-   |
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 

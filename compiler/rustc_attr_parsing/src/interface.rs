@@ -82,7 +82,7 @@ impl<'sess> AttributeParser<'sess> {
             // Because we're not emitting warnings/errors, the target should not matter
             DUMMY_SP,
             None,
-            ShouldEmit::Nothing,
+            ShouldEmit::Nothing { no_bug: false },
         )
     }
 
@@ -523,7 +523,7 @@ impl<'sess> AttributeParser<'sess> {
                             span: attr_span,
                         };
 
-                        if !matches!(self.should_emit, ShouldEmit::Nothing)
+                        if !matches!(self.should_emit, ShouldEmit::Nothing { .. })
                             && Target::from_ast_target(&ast_target) == Target::Crate
                         {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
@@ -596,7 +596,7 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+        if !matches!(self.should_emit, ShouldEmit::Nothing { .. }) {
             for (check, attr_span) in deferred_checks {
                 check(
                     &mut FinalizeCheckContext {
@@ -617,7 +617,7 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        if !matches!(self.should_emit, ShouldEmit::Nothing)
+        if !matches!(self.should_emit, ShouldEmit::Nothing { .. })
             && Target::from_ast_target(&ast_target) == Target::WherePredicate
         {
             self.check_invalid_where_predicate_attrs(attributes.iter());
@@ -634,10 +634,12 @@ impl<'sess> AttributeParser<'sess> {
             for item in items.mixed() {
                 if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
                     if !item.are_args_checked() {
-                        self.dcx().span_delayed_bug(
+                        let mut diag = self.dcx().struct_span_err(
                             item.span(),
                             "attribute args were not properly checked",
                         );
+                        diag.downgrade_to_delayed_bug();
+                        self.should_emit.emit_err(diag);
                         return;
                     }
                     self.check_args_used(attr, item.args());

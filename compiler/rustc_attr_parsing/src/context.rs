@@ -911,7 +911,10 @@ pub enum ShouldEmit {
     ///
     /// The parser can still call `delay_bug`, so you *must* ensure that this operation will also be
     /// called with `ShouldEmit::ErrorsAndLints`.
-    Nothing,
+    ///
+    /// If `no_bug` is set, the parser will not emit bugs, use this only when parsing attributes that are configured out,
+    /// as they won't reach the HIR and invalid attributes should not be errored on.
+    Nothing { no_bug: bool },
 }
 
 impl ShouldEmit {
@@ -921,8 +924,13 @@ impl ShouldEmit {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit_err(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit_fatal(),
             ShouldEmit::ErrorsAndLints { .. } => diag.emit_err(),
-            ShouldEmit::Nothing => diag.delay_as_bug(),
+            ShouldEmit::Nothing { no_bug: false } => diag.delay_as_bug(),
+            ShouldEmit::Nothing { no_bug: true } => {
+                diag.cancel();
+                return ErrorGuaranteed::unchecked_error_guaranteed();
+            }
         }
+        .into()
     }
 }
 

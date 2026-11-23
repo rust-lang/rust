@@ -133,7 +133,10 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         .iter()
         .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
         .take_while(|attr| {
-            !is_cfg(attr) || strip_unconfigured.cfg_true(attr, ShouldEmit::Nothing).as_bool()
+            !is_cfg(attr)
+                || strip_unconfigured
+                    .cfg_true(attr, ShouldEmit::Nothing { no_bug: false })
+                    .as_bool()
         })
         .collect()
 }

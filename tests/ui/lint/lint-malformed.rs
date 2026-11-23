@@ -1,7 +1,4 @@
 #![deny = "foo"] //~ ERROR malformed `deny` attribute input
-#![allow(bar = "baz")]
-//~^ ERROR malformed
-//~| ERROR malformed
-//~| ERROR malformed
+#![allow(bar = "baz")] //~ ERROR malformed
 
 fn main() {}
