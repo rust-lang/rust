@@ -31,12 +31,12 @@ pub use env::CommandEnvs;
 pub use env::CommandResolvedEnvs;
 #[cfg(target_os = "linux")]
 pub use imp::PidFd;
-#[cfg(target_family = "unix")]
-pub use imp::getppid;
 pub use imp::{
     ChildPipe, Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
     getpid, read_output,
 };
+#[cfg(target_family = "unix")]
+pub use imp::{getegid, geteuid, getgid, getppid, getuid};
 
 #[cfg(any(
     all(
