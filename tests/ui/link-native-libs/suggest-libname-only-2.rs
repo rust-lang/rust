@@ -8,4 +8,5 @@ extern { } //~ WARN `extern` declarations without an explicit ABI are deprecated
 pub fn main() { }
 
 //~? ERROR could not find native static library `bar.lib`
+//~? HELP an `-L` flag might be missing
 //~? HELP only provide the library name `bar`, not the full filename
