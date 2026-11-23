@@ -69,6 +69,7 @@ impl<'sess> AttributeParser<'sess> {
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
     ///
     /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
+    #[inline]
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -87,6 +88,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This does the same as `parse_limited`, except that it takes a fixed symbol instead of a
     /// filter.
+    #[inline]
     pub fn parse_limited_sym(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -99,6 +101,7 @@ impl<'sess> AttributeParser<'sess> {
     /// Usually you want `parse_limited`, which emits no errors.
     ///
     /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
+    #[inline]
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -125,6 +128,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This does the same as `parse_limited_should_emit`, except that it takes a fixed symbol
     /// instead of a filter.
+    #[inline]
     pub fn parse_limited_sym_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -148,6 +152,7 @@ impl<'sess> AttributeParser<'sess> {
     ///
     /// Try to use this as little as possible. Attributes *should* be lowered during
     /// `rustc_ast_lowering`.
+    #[inline]
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -160,6 +165,10 @@ impl<'sess> AttributeParser<'sess> {
         attr_tools: Option<&'sess RegisteredTools>,
         lint_tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
+        if attrs.len() == 0 {
+            return vec![];
+        }
+
         // Some attributes require access to features to parse.
         // Therefore, if `parse_filter` is None, then features *must* be provided.
         assert!(parse_filter.is_some() || features.is_some());
@@ -179,6 +188,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This method parses a single attribute, using `parse_fn`.
     /// This is useful if you already know what exact attribute this is, and want to parse it.
+    #[inline]
     pub fn parse_single<T>(
         sess: &'sess Session,
         attr: &ast::Attribute,
@@ -225,6 +235,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This method is equivalent to `parse_single`, but parses arguments using `parse_fn` using manually created `args`.
     /// This is useful when you want to parse other things than attributes using attribute parsers.
+    #[inline]
     pub fn parse_single_args<T, I>(
         sess: &'sess Session,
         attr_span: Span,
