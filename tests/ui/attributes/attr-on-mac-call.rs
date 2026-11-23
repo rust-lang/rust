@@ -58,8 +58,7 @@ fn main() {
     //~| WARN previously accepted
     unreachable!();
     #[no_mangle]
-    //~^ WARN attribute cannot be used on macro calls
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
     #[deprecated]
     //~^ WARN attribute cannot be used on macro calls

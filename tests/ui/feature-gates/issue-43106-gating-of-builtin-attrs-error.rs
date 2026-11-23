@@ -25,8 +25,7 @@
 //~^ WARN may not be used in combination with `#[export_name]`
 //~| NOTE is ignored
 //~| NOTE requested on the command line
-//~| WARN cannot be used on crates
-//~| WARN previously accepted
+//~| ERROR cannot be used on crates
 #![no_link]
 //~^ ERROR: the `no_link` attribute cannot be used on crates
 //~| ERROR use of deprecated `no_link` attribute
@@ -184,6 +183,25 @@ mod repr_rust {
 
     #[repr(Rust)] impl S { }
     //~^ ERROR: attribute cannot be used on
+}
+
+#[no_mangle]
+//~^ ERROR attribute cannot be used on
+mod no_mangle {
+    mod inner { #![no_mangle] }
+    //~^ ERROR attribute cannot be used on
+
+    struct S;
+    #[no_mangle] impl S { }
+    //~^ ERROR attribute cannot be used on
+
+    trait Tr {
+        #[no_mangle] fn foo();
+        //~^ ERROR attribute cannot be used on
+
+        #[no_mangle] fn bar() {}
+        //~^ ERROR attribute cannot be used on
+    }
 }
 
 fn main() {}

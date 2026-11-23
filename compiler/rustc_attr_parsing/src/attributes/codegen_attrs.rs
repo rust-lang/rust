@@ -422,14 +422,20 @@ impl NoArgsAttributeParser for NoMangleParser {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
     };
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
         AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
-        Error(Target::Closure),
-        Error(Target::Param),
+        // Removing these warnings has shown to cause breakage in crater run on https://github.com/rust-lang/rust/pull/164789
+        Warn(Target::ForeignStatic),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::Struct),
+        Warn(Target::Enum),
+        Warn(Target::Use),
+        Warn(Target::TyAlias),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;

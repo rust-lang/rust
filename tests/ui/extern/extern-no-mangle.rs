@@ -5,7 +5,7 @@
 // The previous warning only talks about a "function or static" but foreign fns/statics
 // are also not allowed to have #[no_mangle]
 
-//@ build-pass
+//@ check-fail
 
 extern "C" {
     #[no_mangle]
@@ -22,8 +22,7 @@ extern "C" {
 fn no_new_warn() {
     // Should emit the generic "not a function or static" warning
     #[no_mangle]
-    //~^ WARNING attribute cannot be used on
-    //~| WARN previously accepted
+    //~^ ERROR attribute cannot be used on
     let x = 0_u8;
 }
 
