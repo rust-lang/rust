@@ -1339,7 +1339,8 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
             // FIXME(#155345): Both sides should be rigid in the future.
             // Currently we can't guarantee that.
             if let Ok(_) = relation.relate(
-                alias.to_ty(infcx.cx(), IsRigid::No),
+                set_aliases_to_non_rigid(infcx.cx(), alias.to_ty(infcx.cx(), IsRigid::No))
+                    .skip_norm_wip(),
                 set_aliases_to_non_rigid(infcx.cx(), alias2).skip_norm_wip(),
             ) {
                 candidates.push(And::new(relation.region_constraints));
