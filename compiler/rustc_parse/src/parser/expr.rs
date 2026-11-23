@@ -1383,6 +1383,8 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.eat_forced_keyword_noexpect(kw::Gca) {
+                this.parse_expr_gca(lo)
             } else if this.eat_forced_keyword_noexpect(kw::OffsetOf) {
                 this.parse_expr_offset_of(lo)
             } else if this.eat_forced_keyword_noexpect(kw::TypeAscribe) {
@@ -1832,7 +1834,16 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+    fn parse_expr_gca(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        let span = lo.to(self.prev_token.span);
+        self.psess.gated_spans.gate(sym::internal_syntax, span);
+        Ok(self.mk_expr(span, ExprKind::Gca(expr)))
+    }
+
+    fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         self.expect(exp!(OpenParen))?;
 
         let container = self.parse_ty()?;
@@ -1867,7 +1878,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
 
-    pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+    fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(Comma))?;
@@ -1880,7 +1891,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
-    pub(crate) fn parse_expr_unsafe_binder_cast(
+    fn parse_expr_unsafe_binder_cast(
         &mut self,
         lo: Span,
         kind: UnsafeBinderCastKind,
@@ -4217,7 +4228,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::IncludedBytes(_)
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
-            | ExprKind::GcaMacro(_)
+            | ExprKind::Gca(_)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }

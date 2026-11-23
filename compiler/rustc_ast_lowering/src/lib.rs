@@ -1464,7 +1464,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ct = self.arena.alloc(ct);
                         return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                     }
-                    TyKind::GcaMacro(expr) if self.tcx.features().gca() => {
+                    TyKind::Gca(expr) if self.tcx.features().gca() => {
                         let ct = match self.can_lower_expr_to_const_arg_direct(
                             expr,
                             self.direct_const_arg_context_enabled_by_gca_macro(),
@@ -1783,7 +1783,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let fields = self.arena.alloc_slice(fields);
                 hir::TyKind::View(ty, fields)
             }
-            TyKind::GcaMacro(expr) => {
+            TyKind::Gca(expr) => {
                 let e = self.emit_bad_gca_macro(t.span, expr, "type");
                 hir::TyKind::Err(e)
             }
@@ -2893,7 +2893,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::ConstBlock(_) if context.contains(DirectConstArgContext::CONST_BLOCK) => {
                 Ok(())
             }
-            ExprKind::GcaMacro(_) if context.contains(DirectConstArgContext::GCA_MACRO) => {
+            ExprKind::Gca(_) if context.contains(DirectConstArgContext::GCA_MACRO) => {
                 // Always report this as able to be represented directly. If it turns out not to be,
                 // `lower_expr_to_const_arg_direct` will report an error.
                 Ok(())
@@ -3074,9 +3074,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 }
             }
-            ExprKind::GcaMacro(expr) => {
+            ExprKind::Gca(expr) => {
                 // `can_lower_expr_to_const_arg_direct` always returns success upon encountering a
-                // ExprKind::GcaMacro, which effectively forces the expression to be lowered as a
+                // `ExprKind::Gca`, which effectively forces the expression to be lowered as a
                 // direct arg. If it actually turns out to not be possible, emit an error instead.
                 match self.can_lower_expr_to_const_arg_direct(
                     expr,

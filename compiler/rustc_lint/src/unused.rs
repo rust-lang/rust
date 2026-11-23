@@ -199,7 +199,7 @@ trait UnusedDelimLint {
             | Become(_) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
             // `gca!()` is invalid in function/method argument position.
-            GcaMacro(_) => false,
+            Gca(_) => false,
             // don't lint for placeholder/error-recovery
             Underscore | Err(_) | Dummy => false,
         }
