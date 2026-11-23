@@ -21,7 +21,7 @@ isX86() {
 }
 
 # Check if we're on a GitHub hosted runner.
-# In aws codebuild, the variable RUNNER_ENVIRONMENT is "self-hosted".
+# In self hosted runners, the variable RUNNER_ENVIRONMENT is "self-hosted".
 isGitHubRunner() {
     # `:-` means "use the value of RUNNER_ENVIRONMENT if it exists, otherwise use an empty string".
     if [[ "${RUNNER_ENVIRONMENT:-}" == "github-hosted" ]]; then
