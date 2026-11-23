@@ -136,6 +136,7 @@ declare_passes! {
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
+    mod contract_equiv_blocks : ContractEquivBlocks;
     mod copy_prop : CopyProp;
     mod coroutine : StateTransform;
     mod coverage : InstrumentCoverage;
@@ -755,6 +756,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
+            &contract_equiv_blocks::ContractEquivBlocks,
             &simplify::SimplifyLocals::AfterGVN,
             // This pass does attempt to track assignments.
             // Keep it close to GVN which merges identical values into the same local.
