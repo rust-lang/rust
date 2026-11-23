@@ -146,6 +146,7 @@ mod export_name {
         //~^ ERROR attribute cannot be used on
 
         #[export_name = "2200"] fn bar() {}
+        //~^ ERROR attribute cannot be used on
     }
 }
 

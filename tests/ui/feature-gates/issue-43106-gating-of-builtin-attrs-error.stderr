@@ -216,8 +216,16 @@ LL |         #[export_name = "2200"] fn foo();
    |
    = help: the `export_name` attribute can be applied to functions with a body and statics
 
+error: the `export_name` attribute cannot be used on provided trait methods
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:148:11
+   |
+LL |         #[export_name = "2200"] fn bar() {}
+   |           ^^^^^^^^^^^
+   |
+   = help: the `export_name` attribute can be applied to functions, inherent methods, statics, and trait methods in impl blocks
+
 error: the `repr(C)` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:152:3
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:153:3
    |
 LL | #[repr(C)]
    |   ^^^^^^^
@@ -227,7 +235,7 @@ LL | mod repr {
    = help: the `repr(C)` attribute can only be applied to data types
 
 error: the `repr(C)` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:155:20
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:156:20
    |
 LL |     mod inner { #![repr(C)] }
    |                    ^^^^^^^
@@ -235,7 +243,7 @@ LL |     mod inner { #![repr(C)] }
    = help: the `repr(C)` attribute can only be applied to data types
 
 error: the `repr(C)` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:158:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:159:7
    |
 LL |     #[repr(C)] fn f() { }
    |       ^^^^^^^
@@ -243,7 +251,7 @@ LL |     #[repr(C)] fn f() { }
    = help: the `repr(C)` attribute can only be applied to data types
 
 error: the `repr(C)` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:163:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:164:7
    |
 LL |     #[repr(C)] type T = S;
    |       ^^^^^^^
@@ -251,7 +259,7 @@ LL |     #[repr(C)] type T = S;
    = help: the `repr(C)` attribute can only be applied to data types
 
 error: the `repr(C)` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:166:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:167:7
    |
 LL |     #[repr(C)] impl S { }
    |       ^^^^^^^
@@ -259,7 +267,7 @@ LL |     #[repr(C)] impl S { }
    = help: the `repr(C)` attribute can only be applied to data types
 
 error: the `repr(Rust)` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:171:3
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:172:3
    |
 LL | #[repr(Rust)]
    |   ^^^^^^^^^^
@@ -269,7 +277,7 @@ LL | mod repr_rust {
    = help: the `repr(Rust)` attribute can only be applied to data types
 
 error: the `repr(Rust)` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:174:20
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:175:20
    |
 LL |     mod inner { #![repr(Rust)] }
    |                    ^^^^^^^^^^
@@ -277,7 +285,7 @@ LL |     mod inner { #![repr(Rust)] }
    = help: the `repr(Rust)` attribute can only be applied to data types
 
 error: the `repr(Rust)` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:177:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:178:7
    |
 LL |     #[repr(Rust)] fn f() { }
    |       ^^^^^^^^^^
@@ -285,7 +293,7 @@ LL |     #[repr(Rust)] fn f() { }
    = help: the `repr(Rust)` attribute can only be applied to data types
 
 error: the `repr(Rust)` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:182:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:183:7
    |
 LL |     #[repr(Rust)] type T = S;
    |       ^^^^^^^^^^
@@ -293,7 +301,7 @@ LL |     #[repr(Rust)] type T = S;
    = help: the `repr(Rust)` attribute can only be applied to data types
 
 error: the `repr(Rust)` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:185:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:186:7
    |
 LL |     #[repr(Rust)] impl S { }
    |       ^^^^^^^^^^
@@ -468,7 +476,7 @@ LL |     #[no_link]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
 
-error: aborting due to 47 previous errors; 6 warnings emitted
+error: aborting due to 48 previous errors; 6 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
 Future incompatibility report: Future breakage diagnostic:
