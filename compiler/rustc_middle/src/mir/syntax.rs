@@ -1370,7 +1370,11 @@ pub enum Rvalue<'tcx> {
 
     /// Creates an array where each element is the value of the operand.
     ///
-    /// Corresponds to source code like `[x; 32]`.
+    /// Corresponds to source code like `[x; 32]` or `[x; N]`.
+    ///
+    /// Note: `[x; 0]` and `[x; 1]` don't compile down to this;
+    /// instead, they become [`Self::Aggregate`]
+    /// (preceded by [`StatementKind::PlaceMention`] for the former).
     Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
     /// Creates a reference of the indicated kind to the place.

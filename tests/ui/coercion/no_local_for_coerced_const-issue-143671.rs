@@ -1,5 +1,3 @@
-//@ run-pass
-
 #![feature(unsize)]
 #![feature(coerce_unsized)]
 
@@ -35,6 +33,7 @@ fn main() {
 fn coercion_on_weak_in_const() {
     const X: Weak<i32> = Weak::new();
     const Y: [Weak<dyn Send>; 0] = [X; 0];
+    //~^ ERROR destructor of `std::rc::Weak<dyn Send>` cannot be evaluated at compile-time
     let _ = Y;
 }
 
