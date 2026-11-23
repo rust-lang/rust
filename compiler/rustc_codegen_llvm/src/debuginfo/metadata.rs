@@ -156,9 +156,15 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
     let pointee_type_di_node = match pointee_type.kind() {
         // `&[T]` will look like `{ data_ptr: *const T, length: usize }`
-        ty::Slice(element_type) => spanned_type_di_node(cx, *element_type, span),
+        ty::Slice(element_type) => Some(spanned_type_di_node(cx, *element_type, span)),
         // `&str` will look like `{ data_ptr: *const u8, length: usize }`
-        ty::Str => type_di_node(cx, cx.tcx.types.u8),
+        ty::Str => Some(type_di_node(cx, cx.tcx.types.u8)),
+
+        // `c_void` is the `void` of C's `void *`. It is a lang item, and its definition
+        // in Rust source (currently an enum) must not leak into debuginfo. Emit no pointee
+        // type, which is how `void *` is represented, so that `*mut c_void`, `*const c_void`
+        // and `&c_void` have the same debuginfo as `void *` on all targets.
+        _ if pointee_type.is_c_void(cx.tcx) => None,
 
         // `&dyn K` will look like `{ pointer: _, vtable: _}`
         // any Adt `Foo` containing an unsized type (eg `&[_]` or `&dyn _`)
@@ -166,7 +172,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         // and thin pointers `&Foo` will just look like `*const Foo`.
         //
         // in all those cases, we just use the pointee_type
-        _ => spanned_type_di_node(cx, pointee_type, span),
+        _ => Some(spanned_type_di_node(cx, pointee_type, span)),
     };
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
@@ -329,7 +335,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align()),
         _ => unreachable!(),
     };
-    let di_node = create_pointer_type(cx, fn_di_node, size, align, &name);
+    let di_node = create_pointer_type(cx, Some(fn_di_node), size, align, &name);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -349,9 +355,10 @@ pub(super) fn create_subroutine_type<'ll>(
     }
 }
 
+/// A `None` pointee makes a `void *`.
 fn create_pointer_type<'ll>(
     cx: &CodegenCx<'ll, '_>,
-    pointee_ty: &'ll llvm::Metadata,
+    pointee_ty: Option<&'ll llvm::Metadata>,
     size: Size,
     align: Align,
     name: &str,
@@ -1561,6 +1568,38 @@ pub(crate) fn build_global_var_di_node<'ll>(
         None,   // (decl)
         Some(global_align),
     );
+}
+
+/// Attaches a non-defining `DIGlobalVariable` to the declaration of a foreign static.
+/// Without a type, or with `c_void` (C's `void`, which has no debuginfo type), a
+/// typeless foreign declaration is emitted.
+pub(crate) fn build_extern_global_var_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    def_id: DefId,
+    variable_type: Option<Ty<'tcx>>,
+    global: Value<'ll>,
+) {
+    let variable_type = variable_type.filter(|&ty| !ty.is_c_void(cx.tcx));
+
+    let var_scope = get_namespace_for_item(cx, def_id);
+    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
+    let type_di_node = variable_type.map(|ty| type_di_node(cx, ty));
+    let var_name = llvm::get_value_name(global);
+    let align_in_bits = variable_type.map_or(0, |ty| cx.align_of(ty).bits() as u32);
+
+    unsafe {
+        let global_var_expr = llvm::LLVMRustDIBuilderCreateExternGlobalVariableExpression(
+            DIB(cx),
+            Some(var_scope),
+            var_name.as_ptr(),
+            var_name.len(),
+            file_metadata,
+            line_number,
+            type_di_node,
+            align_in_bits,
+        );
+        llvm::LLVMGlobalSetMetadata(global, llvm::MD_dbg, global_var_expr);
+    }
 }
 
 /// Generates LLVM debuginfo for a vtable.
