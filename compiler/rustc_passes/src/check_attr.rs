@@ -1339,8 +1339,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for LintCheck { lint_name, lint_span, .. } in lints {
-            if lint_name.is(sym::dead_code_pub_in_binary) {
+        for LintCheck { lint_name_normalized, lint_span, .. } in lints {
+            if lint_name_normalized.is(sym::dead_code_pub_in_binary) {
                 if !self.tcx.crate_types().contains(&CrateType::Executable) {
                     self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
@@ -1354,7 +1354,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if lint_name.is(sym::linker_messages) | lint_name.is(sym::linker_info) {
+            if lint_name_normalized.is(sym::linker_messages)
+                | lint_name_normalized.is(sym::linker_info)
+            {
                 if hir_id == CRATE_HIR_ID
                     && self
                         .tcx

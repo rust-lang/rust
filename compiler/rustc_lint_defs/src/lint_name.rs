@@ -1,11 +1,10 @@
 use std::fmt;
 
-#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{Symbol, sym};
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
-#[cfg_attr(feature = "nightly", derive(StableHash, Encodable, Decodable))]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct LintName {
     /// The lint's tool name, if present.
     pub tool: Option<Symbol>,
@@ -82,7 +81,6 @@ impl fmt::Display for LintName {
     }
 }
 
-#[cfg(feature = "nightly")]
 impl rustc_error_messages::IntoDiagArg for LintName {
     fn into_diag_arg(
         self,
