@@ -58,6 +58,8 @@ pub(crate) struct DocContext<'tcx> {
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
 
+    pub(crate) disguise_sized_hierarchy: bool,
+
     // FIXME: I'm pretty that the only reason we "need" these caches is because we also invoke
     //        `synthesize_auto_trait_and_blanket_impls` on all impls(!) for primitive types
     //        instead of calling it only once per primitive type (see also #97129).
@@ -393,6 +395,7 @@ pub(crate) fn run_global_ctxt(
         args: Default::default(),
         current_type_aliases: Default::default(),
         impl_trait_bounds: Default::default(),
+        disguise_sized_hierarchy: !tcx.features().sized_hierarchy(),
         synthetic_auto_trait_impls: Default::default(),
         synthetic_blanket_impls: Default::default(),
         auto_traits,

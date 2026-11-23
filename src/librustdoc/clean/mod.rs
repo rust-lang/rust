@@ -282,18 +282,44 @@ fn generate_item_with_correct_attrs(
     item
 }
 
+// FIXME(fmease): Docs!
+#[derive(Clone, Copy)]
+enum DefaultSizedness {
+    MetaSized,
+    Sized,
+}
+
 fn clean_generic_bound<'tcx>(
     bound: &hir::GenericBound<'_>,
+    default_sizedness: Option<DefaultSizedness>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<GenericBound> {
     Some(match bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
         hir::GenericBound::Trait(t) => {
-            // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
-            if let hir::BoundConstness::Maybe(_) = t.modifiers.constness
-                && cx.tcx.lang_items().destruct_trait() == Some(t.trait_ref.trait_def_id().unwrap())
-            {
-                return None;
+            let trait_def_id = t.trait_ref.trait_def_id().unwrap();
+
+            match cx.tcx.as_lang_item(trait_def_id) {
+                Some(LangItem::Destruct)
+                    if let hir::BoundConstness::Maybe(_) = t.modifiers.constness =>
+                {
+                    // NOTE(const_trait_impl): For now, we hide anything CTI-related until its
+                    // design is set in stone! This not only includes constness modifiers but also
+                    // `[const] Destruct` bounds in their entirety (rendering it as `Destruct` would
+                    // not make sense as that bound would trivially hold).
+                    return None;
+                }
+                Some(LangItem::MetaSized | LangItem::PointeeSized)
+                    if cx.disguise_sized_hierarchy
+                        && let Some(def_sz) = default_sizedness
+                        && let hir::TraitBoundModifiers::NONE = t.modifiers =>
+                {
+                    return match def_sz {
+                        DefaultSizedness::MetaSized => None,
+                        DefaultSizedness::Sized => Some(GenericBound::maybe_sized(cx)),
+                    };
+                }
+                _ => {}
             }
 
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), t.modifiers)
@@ -431,15 +457,23 @@ fn clean_where_predicate<'tcx>(
                 .iter()
                 .map(|param| clean_generic_param(cx, None, param))
                 .collect();
+            let ty = clean_ty(wbp.bounded_ty, cx);
+            // FIXME(fmease): Well, *own* param to be precise!
+            let default_sizedness =
+                matches!(ty, Type::Generic(_)).then_some(DefaultSizedness::Sized);
             WherePredicate::BoundPredicate {
-                ty: clean_ty(wbp.bounded_ty, cx),
-                bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+                ty,
+                bounds: wbp
+                    .bounds
+                    .iter()
+                    .filter_map(|x| clean_generic_bound(x, default_sizedness, cx))
+                    .collect(),
                 bound_params,
             }
         }
         hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
-            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, None, cx)).collect(),
         },
     })
 }
@@ -702,7 +736,7 @@ fn clean_generic_param<'tcx>(
                     .bounds_for_param(param.def_id)
                     .filter(|bp| bp.origin != PredicateOrigin::WhereClause)
                     .flat_map(|bp| bp.bounds)
-                    .filter_map(|x| clean_generic_bound(x, cx))
+                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
                     .collect()
             } else {
                 ThinVec::new()
@@ -1323,7 +1357,10 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Type(bounds, ty) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
+                let bounds = bounds
+                    .iter()
+                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
+                    .collect();
                 ItemKind::AssocType(Box::new(AssocType {
                     generics,
                     bounds,
@@ -1935,11 +1972,16 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
             Array(Box::new(clean_ty(ty, cx)), length.into())
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
-        TyKind::OpaqueDef(ty) => {
-            ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
-        }
+        TyKind::OpaqueDef(ty) => ImplTrait(
+            ty.bounds
+                .iter()
+                .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
+                .collect(),
+        ),
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, lifetime) => {
+            // NOTE(sized_hierarchy): We don't disguise anything here. `dyn PointeeSized` is illegal
+            // anyway and `dyn MetaSized` cannot be rewritten to `dyn ?Sized` or `dyn`.
             let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
             let lifetime = if !lifetime.is_elided() {
                 Some(clean_lifetime(lifetime.pointer(), cx))
@@ -2984,7 +3026,10 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             hir::ItemKind::TraitAlias(_, _, generics, bounds) => ItemKind::TraitAlias(TraitAlias {
                 generics: clean_generics(generics, cx),
-                bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+                bounds: bounds
+                    .iter()
+                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::MetaSized), cx))
+                    .collect(),
             }),
             hir::ItemKind::Union(_, generics, variant_data) => ItemKind::Union(Union {
                 generics: clean_generics(generics, cx),
@@ -3020,7 +3065,12 @@ fn clean_maybe_renamed_item<'tcx>(
                     def_id,
                     items,
                     generics: clean_generics(generics, cx),
-                    bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+                    bounds: bounds
+                        .iter()
+                        .filter_map(|x| {
+                            clean_generic_bound(x, Some(DefaultSizedness::MetaSized), cx)
+                        })
+                        .collect(),
                 }))
             }
             hir::ItemKind::ExternCrate(orig_name, _) => {
@@ -3432,7 +3482,7 @@ fn clean_assoc_item_constraint<'tcx>(
                 AssocItemConstraintKind::Equality { term: clean_hir_term(assoc_item, term, cx) }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
-                bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, cx)).collect(),
+                bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, None, cx)).collect(),
             },
         },
     }
