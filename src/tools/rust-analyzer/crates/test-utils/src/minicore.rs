@@ -1317,7 +1317,7 @@ pub mod range {
 pub mod cmp {
     use crate::marker::PointeeSized;
 
-    #[lang = "eq"]
+    #[lang = "partial_eq"]
     pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
         fn eq(&self, other: &Rhs) -> bool;
         fn ne(&self, other: &Rhs) -> bool {
@@ -1325,6 +1325,7 @@ pub mod cmp {
         }
     }
 
+    #[lang = "eq"]
     pub trait Eq: PartialEq<Self> + PointeeSized {}
 
     // region:builtin_impls

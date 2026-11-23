@@ -791,7 +791,7 @@ impl<'db> CompletionContext<'_, 'db> {
         self.scope
             .generic_def()
             .and_then(|def| ty.try_rebase_into_owner(self.db, def))
-            .unwrap_or_else(|| ty.instantiate_with_errors())
+            .unwrap_or_else(|| ty.instantiate_with_errors(self.db))
     }
 }
 

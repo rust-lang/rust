@@ -72,7 +72,7 @@ pub(crate) fn replace_with_lazy_method(
                     .is_some_and(|result| {
                         result
                             .ty(ctx.db())
-                            .instantiate_with_errors()
+                            .instantiate_with_errors(ctx.db())
                             .could_unify_with(ctx.db(), &receiver_ty)
                     }),
                 _ => false,

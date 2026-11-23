@@ -1288,23 +1288,16 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                     params.next();
                     force_infer_lt = Some((arg_idx as u32, param_id));
                 }
-                (HirGenericArg::Type(type_ref), GenericParamDataRef::ConstParamData(_)) => {
-                    if let Some(konst) = type_looks_like_const(store, *type_ref) {
-                        let GenericParamId::ConstParamId(param_id) = param_id else {
-                            panic!("unmatching param kinds");
-                        };
-                        let const_ty = const_param_ty(db, param_id);
-                        substs
-                            .push(ctx.provided_type_like_const(*type_ref, const_ty, konst).into());
-                        args.next();
-                        params.next();
-                    } else {
-                        // See the `_ => { ... }` branch.
-                        if !had_count_error {
-                            ctx.report_arg_mismatch(param_id, arg_idx as u32, has_self_arg);
-                        }
-                        while args.next().is_some() {}
-                    }
+                (HirGenericArg::Type(type_ref), GenericParamDataRef::ConstParamData(_))
+                    if let Some(konst) = type_looks_like_const(store, *type_ref) =>
+                {
+                    let GenericParamId::ConstParamId(param_id) = param_id else {
+                        panic!("unmatching param kinds");
+                    };
+                    let const_ty = const_param_ty(db, param_id);
+                    substs.push(ctx.provided_type_like_const(*type_ref, const_ty, konst).into());
+                    args.next();
+                    params.next();
                 }
                 _ => {
                     // We expected one kind of parameter, but the user provided
