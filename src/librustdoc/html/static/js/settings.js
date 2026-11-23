@@ -128,12 +128,14 @@
      */
     function buildSettingsPageSections(tabs) {
         let output = "";
+        let headers = "<div class='tabs-header'>";
 
         for (const [index, tab] of tabs.entries()) {
-            output += `\
+            headers += `\
 <input type="radio" ${index === 0 ? " checked" : ""} id="setting-tab-${tab.name}" \
-    name="setting-radio"><label for="setting-tab-${tab.name}">${tab.name}</label>
-<div class="content">`;
+    name="setting-radio" tabindex=-1><label for="setting-tab-${tab.name}" tabindex=0>${tab.name}\
+    </label>`;
+            output += "<section class='content'>";
             for (const setting of tab.settings) {
                 const js_data_name = setting["js_name"];
                 const setting_name = setting["name"];
@@ -170,9 +172,9 @@
 </div>`;
                 }
             }
-            output += "</div>";
+            output += "</section>";
         }
-        return output;
+        return headers + "</div>" + output;
     }
 
     /**

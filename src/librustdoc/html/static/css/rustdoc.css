@@ -2114,7 +2114,7 @@ span.tooltip:hover::after {
 	flex-direction: row;
 	gap: 1px;
 }
-#search-tabs button, .tabs > label {
+#search-tabs button, .tabs-header > label {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -2123,41 +2123,42 @@ span.tooltip:hover::after {
 	line-height: 1.5;
 	color: inherit;
 }
-#search-tabs button:not(.selected), .tabs > input + label {
+#search-tabs button:not(.selected), .tabs-header > input + label {
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
 #search-tabs button:hover, #search-tabs button.selected,
-.tabs > label:hover, .tabs > input:checked + label {
+.tabs-header > label:hover, .tabs-header > input:checked + label {
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
 }
 
 .tabs {
 	display: flex;
-	flex-wrap: wrap;
-	align-content: flex-start;
+	flex-direction: column;
 }
-.tabs > label {
+.tabs-header {
+	display: flex;
+}
+.tabs-header > label {
 	flex: 1;
-	position: sticky;
-	top: 0;
-	z-index: 1;
 	cursor: pointer;
 }
-.tabs > label:not(:last-of-type) {
+.tabs-header > label:not(:last-of-type) {
 	border-right: 1px solid var(--main-background-color);
 }
 .tabs > .content {
-	order: 1;
-	flex-basis: 100%;
 	display: none;
+	min-height: 0;
+	overflow-y: auto;
 }
-.tabs > input:checked + label + .content {
+.tabs:has(> .tabs-header > input:nth-of-type(1):checked) > section.content:nth-of-type(1),
+.tabs:has(> .tabs-header > input:nth-of-type(2):checked) > section.content:nth-of-type(2),
+.tabs:has(> .tabs-header > input:nth-of-type(3):checked) > section.content:nth-of-type(3) {
 	display: block;
 }
 /* We don't want them to be visible but still "focusable". */
-.tabs > input {
+.tabs-header > input {
 	position: absolute;
 	opacity: 0;
 }
@@ -2882,7 +2883,7 @@ in src-script.js and main.js
 	}
 	/* The `overflow-y` property is used on an internal content instead of the top one otherwise the
 	   little arrow at the top can't be displayed. */
-	#settings.popover .tabs, #help.popover .content {
+	#help.popover .content {
 		overflow-y: scroll;
 	}
 
