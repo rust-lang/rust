@@ -20,7 +20,7 @@ use crate::mir::*;
 use crate::ty::CoroutineArgsExt;
 
 mod alloc_names;
-use alloc_names::{AllocIdPrinter, AllocationNames, RawAllocIds, WithAllocNames};
+use alloc_names::{AllocationNames, MirFormat};
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -318,30 +318,13 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
 /// Write out a human-readable textual representation of this crate's MIR,
 /// with the default [`PrettyPrintMirOptions`].
 pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
-    write_mir_pretty_with_alloc_names(tcx, w, RawAllocIds)
-}
-
-pub fn write_mir_pretty_for_emit(tcx: TyCtxt<'_>, w: &mut dyn io::Write) -> io::Result<()> {
-    let alloc_names = AllocationNames::default();
-    write_mir_pretty_with_alloc_names(tcx, w, &alloc_names)
-}
-
-fn write_mir_pretty_with_alloc_names<'tcx, N: AllocIdPrinter>(
-    tcx: TyCtxt<'tcx>,
-    w: &mut dyn io::Write,
-    alloc_id_printer: N,
-) -> io::Result<()> {
-    let writer = MirWriter::new(tcx);
+    let ids = Default::default();
+    let names = AllocationNames(Some(&ids));
+    let writer = MirWriter { names, ..MirWriter::new(tcx) };
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
     writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
-    if N::USE_LOCAL_ALLOC_NAMES {
-        writeln!(
-            w,
-            "// Allocation names are local to this file; -Zunpretty=mir shows internal IDs."
-        )?;
-    }
 
     let mut first = true;
     for &def_id in tcx.mir_keys(()) {
@@ -353,17 +336,16 @@ fn write_mir_pretty_with_alloc_names<'tcx, N: AllocIdPrinter>(
         }
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
-            if let Some(mut extra_data) = tcx.mir_pretty_extra_data(body) {
-                let mut writer = MirWriter::new(tcx);
-                writer.extra_data = &mut *extra_data;
-                writer.write_mir_fn_with_alloc_names(body, w, alloc_id_printer)?;
+            if let Some(extra_data) = tcx.mir_pretty_extra_data(body) {
+                let writer = MirWriter { extra_data: &*extra_data, ..writer };
+                writer.write_mir_fn(body, w)?;
             } else {
-                writer.write_mir_fn_with_alloc_names(body, w, alloc_id_printer)?;
+                writer.write_mir_fn(body, w)?;
             }
 
             for body in tcx.promoted_mir(def_id) {
                 writeln!(w)?;
-                writer.write_mir_fn_with_alloc_names(body, w, alloc_id_printer)?;
+                writer.write_mir_fn(body, w)?;
             }
             Ok(())
         };
@@ -380,11 +362,7 @@ fn write_mir_pretty_with_alloc_names<'tcx, N: AllocIdPrinter>(
                 writeln!(w, "// MIR FOR CTFE")?;
                 // Do not use `render_body`, as that would render the promoteds again, but these
                 // are shared between mir_for_ctfe and optimized_mir
-                writer.write_mir_fn_with_alloc_names(
-                    tcx.mir_for_ctfe(def_id),
-                    w,
-                    alloc_id_printer,
-                )?;
+                writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
             }
         } else {
             if let Some((val, ty)) = tcx.trivial_const(def_id) {
@@ -392,7 +370,7 @@ fn write_mir_pretty_with_alloc_names<'tcx, N: AllocIdPrinter>(
                     // see notes on #41697 elsewhere
                     write!(w, "const {}", tcx.def_path_str(def_id))?
                 }
-                writeln!(w, ": {} = const {};", ty, alloc_id_printer.wrap(&Const::Val(val, ty)))?;
+                writeln!(w, ": {} = const {};", ty, names.wrap(&Const::Val(val, ty)))?;
             } else {
                 let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()));
                 render_body(w, instance_mir)?;
@@ -404,6 +382,7 @@ fn write_mir_pretty_with_alloc_names<'tcx, N: AllocIdPrinter>(
 
 /// Does the writing of MIR to output, e.g. a file.
 pub struct MirWriter<'a, 'tcx> {
+    names: AllocationNames<'a>,
     tcx: TyCtxt<'tcx>,
     extra_data: &'a dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
@@ -411,24 +390,21 @@ pub struct MirWriter<'a, 'tcx> {
 
 impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        MirWriter { tcx, extra_data: &|_, _| Ok(()), options: PrettyPrintMirOptions::from_cli(tcx) }
+        MirWriter {
+            names: AllocationNames(None),
+            tcx,
+            extra_data: &|_, _| Ok(()),
+            options: PrettyPrintMirOptions::from_cli(tcx),
+        }
     }
 
     /// Write out a human-readable textual representation for the given function.
     pub fn write_mir_fn(&self, body: &Body<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
-        self.write_mir_fn_with_alloc_names(body, w, RawAllocIds)
-    }
-
-    fn write_mir_fn_with_alloc_names<N: AllocIdPrinter>(
-        &self,
-        body: &Body<'tcx>,
-        w: &mut dyn io::Write,
-        alloc_id_printer: N,
-    ) -> io::Result<()> {
-        write_mir_intro(self.tcx, body, w, self.options, alloc_id_printer)?;
+        let names = self.names;
+        write_mir_intro(self.tcx, body, w, self.options, names)?;
         for block in body.basic_blocks.indices() {
             (self.extra_data)(PassWhere::BeforeBlock(block), w)?;
-            self.write_basic_block(block, body, w, alloc_id_printer)?;
+            self.write_basic_block(block, body, w)?;
             if block.index() + 1 != body.basic_blocks.len() {
                 writeln!(w)?;
             }
@@ -436,14 +412,14 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         writeln!(w, "}}")?;
 
-        write_allocations_with_names(self.tcx, body, w, alloc_id_printer)?;
+        write_body_allocations(self.tcx, body, w, names)?;
 
         Ok(())
     }
 }
 
 /// Prints local variables in a scope tree.
-fn write_scope_tree<N: AllocIdPrinter>(
+fn write_scope_tree(
     tcx: TyCtxt<'_>,
     body: &Body<'_>,
     scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
@@ -451,7 +427,7 @@ fn write_scope_tree<N: AllocIdPrinter>(
     parent: SourceScope,
     depth: usize,
     options: PrettyPrintMirOptions,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
@@ -463,7 +439,7 @@ fn write_scope_tree<N: AllocIdPrinter>(
         }
 
         let indented_debug_info =
-            format!("{0:1$}debug {2:?};", INDENT, indent, alloc_id_printer.wrap(var_debug_info));
+            format!("{0:1$}debug {2:?};", INDENT, indent, names.wrap(var_debug_info));
 
         if options.include_extra_comments {
             writeln!(
@@ -583,7 +559,7 @@ fn write_scope_tree<N: AllocIdPrinter>(
             writeln!(w, "{indented_header}")?;
         }
 
-        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1, options, alloc_id_printer)?;
+        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1, options, names)?;
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
@@ -592,14 +568,14 @@ fn write_scope_tree<N: AllocIdPrinter>(
 
 impl Debug for VarDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&RawAllocIds.wrap(self), fmt)
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&VarDebugInfo<'tcx>, N> {
+impl<'tcx> Debug for MirFormat<'_, &VarDebugInfo<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         if let Some(VarDebugInfoFragment { ty, ref projection }) = value.composite {
             pre_fmt_projection(&projection[..], fmt)?;
             write!(fmt, "({}: {})", value.name, ty)?;
@@ -608,7 +584,10 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&VarDebugInfo<'tcx>, N> {
             write!(fmt, "{}", value.name)?;
         }
 
-        write!(fmt, " => {:?}", alloc_id_printer.wrap(&value.value))
+        match &value.value {
+            VarDebugInfoContents::Const(c) => write!(fmt, " => {}", names.wrap(c)),
+            VarDebugInfoContents::Place(p) => write!(fmt, " => {p:?}"),
+        }
     }
 }
 
@@ -654,12 +633,12 @@ fn write_coroutine_layout<'tcx>(
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro<'tcx, N: AllocIdPrinter>(
+fn write_mir_intro<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'_>,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
@@ -679,16 +658,7 @@ fn write_mir_intro<'tcx, N: AllocIdPrinter>(
         }
     }
 
-    write_scope_tree(
-        tcx,
-        body,
-        &scope_tree,
-        w,
-        OUTERMOST_SOURCE_SCOPE,
-        1,
-        options,
-        alloc_id_printer,
-    )?;
+    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1, options, names)?;
 
     // Add an empty line before the first block is printed.
     writeln!(w)?;
@@ -835,13 +805,13 @@ fn write_user_type_annotations(
 
 impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     /// Write out a human-readable textual representation for the given basic block.
-    fn write_basic_block<N: AllocIdPrinter>(
+    fn write_basic_block(
         &self,
         block: BasicBlock,
         body: &Body<'tcx>,
         w: &mut dyn io::Write,
-        alloc_id_printer: N,
     ) -> io::Result<()> {
+        let names = self.names;
         let data = &body[block];
 
         // Basic block label at the top.
@@ -857,7 +827,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
                 writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
             }
 
-            let statement_kind = alloc_id_printer.wrap(&statement.kind);
+            let statement_kind = names.wrap(&statement.kind);
             let indented_body = format!("{INDENT}{INDENT}{statement_kind:?};");
             if self.options.include_extra_comments {
                 writeln!(
@@ -881,7 +851,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
                 w,
                 &|visitor| visitor.visit_statement(statement, current_location),
                 self.options,
-                alloc_id_printer,
+                names,
             )?;
 
             (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
@@ -896,7 +866,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
         // Terminator at the bottom.
         (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
         let indented_terminator =
-            format!("{0}{0}{1:?};", INDENT, alloc_id_printer.wrap(&data.terminator().kind));
+            format!("{0}{0}{1:?};", INDENT, names.wrap(&data.terminator().kind));
         if self.options.include_extra_comments {
             writeln!(
                 w,
@@ -919,7 +889,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
             w,
             &|visitor| visitor.visit_terminator(data.terminator(), current_location),
             self.options,
-            alloc_id_printer,
+            names,
         )?;
 
         (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
@@ -931,18 +901,18 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
 impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&RawAllocIds.wrap(self), fmt)
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&StatementKind<'tcx>, N> {
+impl<'tcx> Debug for MirFormat<'_, &StatementKind<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         use self::StatementKind::*;
         match *value {
             Assign((ref place, ref rv)) => {
-                write!(fmt, "{place:?} = {:?}", alloc_id_printer.wrap(rv))
+                write!(fmt, "{place:?} = {:?}", names.wrap(rv))
             }
             FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
@@ -959,7 +929,7 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&StatementKind<'tcx>, N> 
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(ref kind) => write!(fmt, "Coverage::{kind:?}"),
-            Intrinsic(ref intrinsic) => write!(fmt, "{}", alloc_id_printer.wrap(&**intrinsic)),
+            Intrinsic(ref intrinsic) => write!(fmt, "{}", names.wrap(&**intrinsic)),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
@@ -991,25 +961,25 @@ impl Debug for StmtDebugInfo<'_> {
 
 impl Display for NonDivergingIntrinsic<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(&RawAllocIds.wrap(self), fmt)
+        Display::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Display for WithAllocNames<&NonDivergingIntrinsic<'tcx>, N> {
+impl<'tcx> Display for MirFormat<'_, &NonDivergingIntrinsic<'tcx>> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         match value {
             NonDivergingIntrinsic::Assume(op) => {
-                write!(f, "assume({:?})", alloc_id_printer.wrap(op))
+                write!(f, "assume({:?})", names.wrap(op))
             }
             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
                 write!(
                     f,
                     "copy_nonoverlapping(dst = {:?}, src = {:?}, count = {:?})",
-                    alloc_id_printer.wrap(dst),
-                    alloc_id_printer.wrap(src),
-                    alloc_id_printer.wrap(count)
+                    names.wrap(dst),
+                    names.wrap(src),
+                    names.wrap(count)
                 )
             }
         }
@@ -1018,15 +988,14 @@ impl<'tcx, N: AllocIdPrinter> Display for WithAllocNames<&NonDivergingIntrinsic<
 
 impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&RawAllocIds.wrap(self), fmt)
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&TerminatorKind<'tcx>, N> {
+impl<'tcx> Debug for MirFormat<'_, &TerminatorKind<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
-        value.fmt_head_with_alloc_names(fmt, alloc_id_printer)?;
+        self.fmt_head(fmt)?;
         let successor_count = value.successors().count();
         let labels = value.fmt_successor_labels();
         assert_eq!(successor_count, labels.len());
@@ -1081,18 +1050,17 @@ impl<'tcx> TerminatorKind<'tcx> {
     /// successor basic block, if any. The only information not included is the list of possible
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: fmt::Write>(&self, fmt: &mut W) -> fmt::Result {
-        self.fmt_head_with_alloc_names(fmt, RawAllocIds)
+        AllocationNames(None).wrap(self).fmt_head(fmt)
     }
+}
 
-    fn fmt_head_with_alloc_names<W: fmt::Write, N: AllocIdPrinter>(
-        &self,
-        fmt: &mut W,
-        alloc_id_printer: N,
-    ) -> fmt::Result {
+impl<'tcx> MirFormat<'_, &TerminatorKind<'tcx>> {
+    fn fmt_head<W: fmt::Write>(&self, fmt: &mut W) -> fmt::Result {
+        let names = self.names;
         use self::TerminatorKind::*;
-        match self {
+        match self.value {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", alloc_id_printer.wrap(discr)),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", names.wrap(discr)),
             Return => write!(fmt, "return"),
             CoroutineDrop => write!(fmt, "coroutine_drop"),
             UnwindResume => write!(fmt, "resume"),
@@ -1100,28 +1068,28 @@ impl<'tcx> TerminatorKind<'tcx> {
                 write!(fmt, "terminate({})", reason.as_short_str())
             }
             Yield { value, resume_arg, .. } => {
-                write!(fmt, "{resume_arg:?} = yield({:?})", alloc_id_printer.wrap(value))
+                write!(fmt, "{resume_arg:?} = yield({:?})", names.wrap(value))
             }
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({place:?})"),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
-                write!(fmt, "{:?}(", alloc_id_printer.wrap(func))?;
+                write!(fmt, "{:?}(", names.wrap(func))?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", alloc_id_printer.wrap(&arg.node))?;
+                    write!(fmt, "{:?}", names.wrap(&arg.node))?;
                 }
                 write!(fmt, ")")
             }
             TailCall { func, args, .. } => {
-                write!(fmt, "tailcall {:?}(", alloc_id_printer.wrap(func))?;
+                write!(fmt, "tailcall {:?}(", names.wrap(func))?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", alloc_id_printer.wrap(&arg.node))?;
+                    write!(fmt, "{:?}", names.wrap(&arg.node))?;
                 }
                 write!(fmt, ")")
             }
@@ -1130,8 +1098,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, ", alloc_id_printer.wrap(cond))?;
-                msg.fmt_assert_args_with_operand_formatter(fmt, |op| alloc_id_printer.wrap(op))?;
+                write!(fmt, "{:?}, ", names.wrap(cond))?;
+                msg.fmt_operands(fmt, |op| names.wrap(op))?;
                 write!(fmt, ")")
             }
             FalseEdge { .. } => write!(fmt, "falseEdge"),
@@ -1143,7 +1111,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     let print_late = |&late| if late { "late" } else { "" };
                     match op {
                         InlineAsmOperand::In { reg, value } => {
-                            write!(fmt, "in({reg}) {:?}", alloc_id_printer.wrap(value))?;
+                            write!(fmt, "in({reg}) {:?}", names.wrap(value))?;
                         }
                         InlineAsmOperand::Out { reg, late, place: Some(place) } => {
                             write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
@@ -1162,7 +1130,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 "in{}out({}) {:?} => {:?}",
                                 print_late(late),
                                 reg,
-                                alloc_id_printer.wrap(in_value),
+                                names.wrap(in_value),
                                 out_place
                             )?;
                         }
@@ -1172,14 +1140,14 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 "in{}out({}) {:?} => _",
                                 print_late(late),
                                 reg,
-                                alloc_id_printer.wrap(in_value)
+                                names.wrap(in_value)
                             )?;
                         }
                         InlineAsmOperand::Const { value } => {
-                            write!(fmt, "const {:?}", alloc_id_printer.wrap(&**value))?;
+                            write!(fmt, "const {}", names.wrap(&**value))?;
                         }
                         InlineAsmOperand::SymFn { value } => {
-                            write!(fmt, "sym_fn {:?}", alloc_id_printer.wrap(&**value))?;
+                            write!(fmt, "sym_fn {}", names.wrap(&**value))?;
                         }
                         InlineAsmOperand::SymStatic { def_id } => {
                             write!(fmt, "sym_static {def_id:?}")?;
@@ -1193,7 +1161,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
         }
     }
+}
 
+impl<'tcx> TerminatorKind<'tcx> {
     /// Returns the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
@@ -1255,41 +1225,36 @@ impl<'tcx> TerminatorKind<'tcx> {
 
 impl<'tcx> Debug for Rvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&RawAllocIds.wrap(self), fmt)
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
+impl<'tcx> Debug for MirFormat<'_, &Rvalue<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         use self::Rvalue::*;
 
         match *value {
             Use(ref operand, with_retag) => {
-                let operand = alloc_id_printer.wrap(operand);
+                let operand = names.wrap(operand);
                 // With retag is more common so we only print when it's without.
                 write!(fmt, "{}{operand:?}", if with_retag.no() { "no_retag " } else { "" })
             }
             Repeat(ref a, b) => {
-                let a = alloc_id_printer.wrap(a);
+                let a = names.wrap(a);
                 write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
             }
             Cast(ref kind, ref place, ref ty) => {
-                let place = alloc_id_printer.wrap(place);
+                let place = names.wrap(place);
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
             BinaryOp(ref op, (ref a, ref b)) => {
-                write!(
-                    fmt,
-                    "{op:?}({:?}, {:?})",
-                    alloc_id_printer.wrap(a),
-                    alloc_id_printer.wrap(b)
-                )
+                write!(fmt, "{op:?}({:?}, {:?})", names.wrap(a), names.wrap(b))
             }
-            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({:?})", alloc_id_printer.wrap(a)),
+            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({:?})", names.wrap(a)),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
@@ -1335,25 +1300,23 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
             }
 
             Aggregate(ref kind, ref places) => {
-                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str| {
+                let places = places.iter().map(|place| names.wrap(place));
+                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str, places| {
                     let mut tuple_fmt = fmt.debug_tuple(name);
                     for place in places {
-                        tuple_fmt.field(&alloc_id_printer.wrap(place));
+                        tuple_fmt.field(&place);
                     }
                     tuple_fmt.finish()
                 };
 
                 match **kind {
-                    AggregateKind::Array(_) => fmt
-                        .debug_list()
-                        .entries(places.iter().map(|place| alloc_id_printer.wrap(place)))
-                        .finish(),
+                    AggregateKind::Array(_) => fmt.debug_list().entries(places).finish(),
 
                     AggregateKind::Tuple => {
-                        if places.is_empty() {
+                        if places.len() == 0 {
                             write!(fmt, "()")
                         } else {
-                            fmt_tuple(fmt, "")
+                            fmt_tuple(fmt, "", places)
                         }
                     }
 
@@ -1367,14 +1330,11 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
 
                             match variant_def.ctor_kind() {
                                 Some(CtorKind::Const) => fmt.write_str(&name),
-                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name),
+                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name, places),
                                 None => {
                                     let mut struct_fmt = fmt.debug_struct(&name);
                                     for (field, place) in iter::zip(&variant_def.fields, places) {
-                                        struct_fmt.field(
-                                            field.name.as_str(),
-                                            &alloc_id_printer.wrap(place),
-                                        );
+                                        struct_fmt.field(field.name.as_str(), &place);
                                     }
                                     struct_fmt.finish()
                                 }
@@ -1400,15 +1360,11 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
                             let captures = tcx.closure_captures(def_id);
                             assert_eq!(captures.len(), places.len());
                             for (&capture, place) in iter::zip(captures, places) {
-                                struct_fmt.field(
-                                    capture.to_symbol().as_str(),
-                                    &alloc_id_printer.wrap(place),
-                                );
+                                struct_fmt.field(capture.to_symbol().as_str(), &place);
                             }
                         } else {
-                            for (index, place) in places.iter().enumerate() {
-                                struct_fmt
-                                    .field(&format!("{index}"), &alloc_id_printer.wrap(place));
+                            for (index, place) in places.enumerate() {
+                                struct_fmt.field(&format!("{index}"), &place);
                             }
                         }
 
@@ -1423,15 +1379,11 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
                             let captures = tcx.closure_captures(def_id);
                             assert_eq!(captures.len(), places.len());
                             for (&capture, place) in iter::zip(captures, places) {
-                                struct_fmt.field(
-                                    capture.to_symbol().as_str(),
-                                    &alloc_id_printer.wrap(place),
-                                );
+                                struct_fmt.field(capture.to_symbol().as_str(), &place);
                             }
                         } else {
-                            for (index, place) in places.iter().enumerate() {
-                                struct_fmt
-                                    .field(&format!("{index}"), &alloc_id_printer.wrap(place));
+                            for (index, place) in places.enumerate() {
+                                struct_fmt.field(&format!("{index}"), &place);
                             }
                         }
 
@@ -1444,14 +1396,13 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
                             Mutability::Not => "const",
                         };
                         with_no_trimmed_paths!(write!(fmt, "*{kind_str} {pointee_ty} from "))?;
-                        fmt_tuple(fmt, "")
+                        fmt_tuple(fmt, "", places)
                     }
                 }
             }
 
             WrapUnsafeBinder(ref op, ty) => {
-                let op = alloc_id_printer.wrap(op);
-                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
+                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({:?}; {ty})", names.wrap(op)))
             }
         }
     }
@@ -1459,17 +1410,17 @@ impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Rvalue<'tcx>, N> {
 
 impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&RawAllocIds.wrap(self), fmt)
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Debug for WithAllocNames<&Operand<'tcx>, N> {
+impl<'tcx> Debug for MirFormat<'_, &Operand<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         use self::Operand::*;
         match *value {
-            Constant(ref a) => write!(fmt, "{}", alloc_id_printer.wrap(&**a)),
+            Constant(ref a) => write!(fmt, "{}", names.wrap(&**a)),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
             RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
@@ -1485,19 +1436,19 @@ impl<'tcx> Debug for ConstOperand<'tcx> {
 
 impl<'tcx> Display for ConstOperand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(&RawAllocIds.wrap(self), fmt)
+        Display::fmt(&AllocationNames(None).wrap(self), fmt)
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Display for WithAllocNames<&ConstOperand<'tcx>, N> {
+impl<'tcx> Display for MirFormat<'_, &ConstOperand<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         let value = self.value;
-        let alloc_id_printer = self.alloc_id_printer;
+        let names = self.names;
         match value.ty().kind() {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        Display::fmt(&alloc_id_printer.wrap(&value.const_), fmt)
+        Display::fmt(&names.wrap(&value.const_), fmt)
     }
 }
 
@@ -1592,15 +1543,15 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'tcx, N: AllocIdPrinter>(
+fn write_extra<'tcx>(
     tcx: TyCtxt<'tcx>,
     write: &mut dyn io::Write,
-    visit_op: &dyn Fn(&mut ExtraComments<'tcx, N>),
+    visit_op: &dyn Fn(&mut ExtraComments<'_, 'tcx>),
     options: PrettyPrintMirOptions,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     if options.include_extra_comments {
-        let mut extra_comments = ExtraComments { tcx, comments: vec![], alloc_id_printer };
+        let mut extra_comments = ExtraComments { tcx, comments: vec![], names };
         visit_op(&mut extra_comments);
         for comment in extra_comments.comments {
             writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
@@ -1609,13 +1560,13 @@ fn write_extra<'tcx, N: AllocIdPrinter>(
     Ok(())
 }
 
-struct ExtraComments<'tcx, N> {
-    alloc_id_printer: N,
+struct ExtraComments<'a, 'tcx> {
+    names: AllocationNames<'a>,
     tcx: TyCtxt<'tcx>,
     comments: Vec<String>,
 }
 
-impl<'tcx, N> ExtraComments<'tcx, N> {
+impl<'tcx> ExtraComments<'_, 'tcx> {
     fn push(&mut self, lines: &str) {
         for line in lines.split('\n') {
             self.comments.push(line.to_string());
@@ -1635,7 +1586,7 @@ fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
     }
 }
 
-impl<'tcx, N: AllocIdPrinter> Visitor<'tcx> for ExtraComments<'tcx, N> {
+impl<'tcx> Visitor<'tcx> for ExtraComments<'_, 'tcx> {
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
         let ConstOperand { span, user_ty, const_ } = constant;
         if use_verbose(const_.ty(), true) {
@@ -1650,9 +1601,9 @@ impl<'tcx, N: AllocIdPrinter> Visitor<'tcx> for ExtraComments<'tcx, N> {
 
             let fmt_val = |val: ConstValue, ty: Ty<'tcx>| {
                 let tcx = self.tcx;
-                let alloc_id_printer = self.alloc_id_printer;
+                let names = self.names;
                 rustc_data_structures::make_display(move |fmt| {
-                    pretty_print_const_value_tcx(tcx, val, ty, fmt, alloc_id_printer)
+                    pretty_print_const_value_tcx(tcx, val, ty, fmt, names)
                 })
             };
 
@@ -1747,14 +1698,14 @@ pub fn write_allocations<'tcx>(
     body: &Body<'_>,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    write_allocations_with_names(tcx, body, w, RawAllocIds)
+    write_body_allocations(tcx, body, w, AllocationNames(None))
 }
 
-fn write_allocations_with_names<'tcx, N: AllocIdPrinter>(
+fn write_body_allocations<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'_>,
     w: &mut dyn io::Write,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
@@ -1797,7 +1748,7 @@ fn write_allocations_with_names<'tcx, N: AllocIdPrinter>(
     // then push to `todo`.
     let mut seen = visitor.0;
     let mut todo: Vec<_> = seen.iter().copied().collect();
-    if N::USE_LOCAL_ALLOC_NAMES {
+    if names.0.is_some() {
         todo.reverse();
     } else {
         todo.sort_unstable();
@@ -1811,9 +1762,9 @@ fn write_allocations_with_names<'tcx, N: AllocIdPrinter>(
                         todo.push(id);
                     }
                 }
-                write!(w, "{}", alloc_id_printer.wrap(display_allocation(tcx, alloc.inner())))
+                write!(w, "{}", names.wrap(display_allocation(tcx, alloc.inner())))
             };
-        write!(w, "\n{:?}", alloc_id_printer.id(id))?;
+        write!(w, "\n{:?}", names.wrap(id))?;
         match tcx.try_get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
@@ -1892,12 +1843,12 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> std::fmt::Display
     for RenderAllocation<'a, 'tcx, Prov, Extra, Bytes>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.fmt_with_pointer_formatter(w, std::convert::identity)
+        self.fmt_contents(w, std::convert::identity)
     }
 }
 
 impl<Prov: Provenance, Extra, Bytes: AllocBytes> RenderAllocation<'_, '_, Prov, Extra, Bytes> {
-    fn fmt_with_pointer_formatter<D: Debug>(
+    fn fmt_contents<D: Debug>(
         &self,
         w: &mut Formatter<'_>,
         pointer: impl Fn(Pointer<Prov>) -> D,
@@ -1913,7 +1864,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> RenderAllocation<'_, '_, Prov, 
         }
         // Write allocation bytes.
         writeln!(w, " {{")?;
-        write_allocation_bytes_with_pointer(tcx, alloc, w, "    ", pointer)?;
+        write_hex_dump(tcx, alloc, w, "    ", pointer)?;
         write!(w, "}}")?;
         Ok(())
     }
@@ -1952,16 +1903,10 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
-    write_allocation_bytes_with_pointer(tcx, alloc, w, prefix, std::convert::identity)
+    write_hex_dump(tcx, alloc, w, prefix, std::convert::identity)
 }
 
-fn write_allocation_bytes_with_pointer<
-    'tcx,
-    Prov: Provenance,
-    Extra,
-    Bytes: AllocBytes,
-    D: Debug,
->(
+fn write_hex_dump<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes, D: Debug>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Prov, Extra, Bytes>,
     w: &mut dyn std::fmt::Write,
@@ -2110,34 +2055,34 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
     write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
-fn comma_sep<'tcx, N: AllocIdPrinter>(
+fn comma_sep<'tcx>(
     tcx: TyCtxt<'tcx>,
     fmt: &mut Formatter<'_>,
     elems: Vec<(ConstValue, Ty<'tcx>)>,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> fmt::Result {
     let mut first = true;
     for (ct, ty) in elems {
         if !first {
             fmt.write_str(", ")?;
         }
-        pretty_print_const_value_tcx(tcx, ct, ty, fmt, alloc_id_printer)?;
+        pretty_print_const_value_tcx(tcx, ct, ty, fmt, names)?;
         first = false;
     }
     Ok(())
 }
 
-fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
+fn pretty_print_const_value_tcx<'tcx>(
     tcx: TyCtxt<'tcx>,
     ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
-    alloc_id_printer: N,
+    names: AllocationNames<'_>,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
     if tcx.sess.verbose_internals() {
-        fmt.write_str(&format!("ConstValue({:?}: {ty})", alloc_id_printer.wrap(&ct)))?;
+        fmt.write_str(&format!("ConstValue({:?}: {ty})", names.wrap(&ct)))?;
         return Ok(());
     }
 
@@ -2190,12 +2135,12 @@ fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
                 match *ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
-                        comma_sep(tcx, fmt, fields, alloc_id_printer)?;
+                        comma_sep(tcx, fmt, fields, names)?;
                         fmt.write_str("]")?;
                     }
                     ty::Tuple(..) => {
                         fmt.write_str("(")?;
-                        comma_sep(tcx, fmt, fields, alloc_id_printer)?;
+                        comma_sep(tcx, fmt, fields, names)?;
                         if contents.fields.len() == 1 {
                             fmt.write_str(",")?;
                         }
@@ -2218,7 +2163,7 @@ fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
                             Some(CtorKind::Const) => {}
                             Some(CtorKind::Fn) => {
                                 fmt.write_str("(")?;
-                                comma_sep(tcx, fmt, fields, alloc_id_printer)?;
+                                comma_sep(tcx, fmt, fields, names)?;
                                 fmt.write_str(")")?;
                             }
                             None => {
@@ -2230,13 +2175,7 @@ fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
                                         fmt.write_str(", ")?;
                                     }
                                     write!(fmt, "{}: ", field_def.name)?;
-                                    pretty_print_const_value_tcx(
-                                        tcx,
-                                        ct,
-                                        ty,
-                                        fmt,
-                                        alloc_id_printer,
-                                    )?;
+                                    pretty_print_const_value_tcx(tcx, ct, ty, fmt, names)?;
                                     first = false;
                                 }
                                 fmt.write_str(" }}")?;
@@ -2252,18 +2191,13 @@ fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
             match scalar {
-                interpret::Scalar::Ptr(ptr, _) => p
-                    .pretty_print_const_scalar_ptr_with_pointer_formatter(
-                        ptr,
-                        ty,
-                        |p, ptr, ty| {
-                            p.typed_value(
-                                |p| write!(p, "{:?}", alloc_id_printer.pointer(ptr)),
-                                |p| p.print_type(ty),
-                                ": ",
-                            )
-                        },
-                    )?,
+                interpret::Scalar::Ptr(ptr, _) => p.print_scalar_ptr(ptr, ty, |p, ptr, ty| {
+                    p.typed_value(
+                        |p| write!(p, "{:?}", names.wrap(ptr)),
+                        |p| p.print_type(ty),
+                        ": ",
+                    )
+                })?,
                 interpret::Scalar::Int(_) => p.pretty_print_const_scalar(scalar, ty)?,
             };
             fmt.write_str(&p.into_buffer())?;
@@ -2281,7 +2215,7 @@ fn pretty_print_const_value_tcx<'tcx, N: AllocIdPrinter>(
         _ => {}
     }
     // Fall back to debug pretty printing for invalid constants.
-    write!(fmt, "{:?}: {ty}", alloc_id_printer.wrap(&ct))
+    write!(fmt, "{:?}: {ty}", names.wrap(&ct))
 }
 
 pub(crate) fn pretty_print_const_value<'tcx>(
@@ -2291,7 +2225,7 @@ pub(crate) fn pretty_print_const_value<'tcx>(
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let ty = tcx.lift(ty);
-        pretty_print_const_value_tcx(tcx, ct, ty, fmt, RawAllocIds)
+        pretty_print_const_value_tcx(tcx, ct, ty, fmt, AllocationNames(None))
     })
 }
 

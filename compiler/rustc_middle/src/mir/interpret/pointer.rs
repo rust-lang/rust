@@ -116,7 +116,7 @@ const SHARED_REF_MASK: u64 = 1 << 62;
 const ALLOC_ID_MASK: u64 = u64::MAX & !IMMUTABLE_MASK & !SHARED_REF_MASK;
 
 impl CtfeProvenance {
-    pub(crate) fn fmt_pointer_with_alloc_id(
+    pub(crate) fn fmt_pointer(
         ptr: &Pointer<Self>,
         f: &mut fmt::Formatter<'_>,
         alloc_id_repr: impl fmt::Debug,
@@ -190,7 +190,7 @@ impl Provenance for CtfeProvenance {
     const WILDCARD: Option<Self> = None;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Self::fmt_pointer_with_alloc_id(ptr, f, ptr.provenance.alloc_id())
+        Self::fmt_pointer(ptr, f, ptr.provenance.alloc_id())
     }
 
     fn get_alloc_id(self) -> Option<AllocId> {

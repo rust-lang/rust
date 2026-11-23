@@ -5,147 +5,83 @@ use rustc_data_structures::fx::FxIndexSet;
 
 use super::{RenderAllocation, pretty_print_const_value_tcx};
 use crate::mir::interpret::{AllocBytes, AllocId, CtfeProvenance, Pointer, Scalar};
-use crate::mir::{Const, ConstOperand, ConstValue, VarDebugInfoContents};
+use crate::mir::{Const, ConstValue};
 use crate::ty;
 
-/// Owned by one emitted file. IDs are keys, never an ordering criterion.
-#[derive(Default)]
-pub(super) struct AllocationNames(RefCell<FxIndexSet<AllocId>>);
+#[derive(Copy, Clone)]
+pub(super) struct AllocationNames<'a>(pub(super) Option<&'a RefCell<FxIndexSet<AllocId>>>);
 
-/// Static dispatch keeps the ordinary printers free of a naming table or a mode check.
-/// Only the explicit MIR entry point supplies `&AllocationNames`.
-pub(super) trait AllocIdPrinter: Copy {
-    const USE_LOCAL_ALLOC_NAMES: bool;
-    type Id: Debug;
-    type Ptr: Debug;
-
-    fn id(self, id: AllocId) -> Self::Id;
-    fn pointer(self, ptr: Pointer) -> Self::Ptr;
-
-    fn wrap<T>(self, value: T) -> WithAllocNames<T, Self> {
-        WithAllocNames { value, alloc_id_printer: self }
+impl<'a> AllocationNames<'a> {
+    pub(super) fn wrap<T>(self, value: T) -> MirFormat<'a, T> {
+        MirFormat { value, names: self }
     }
 }
 
-#[derive(Clone, Copy)]
-pub(super) struct RawAllocIds;
-
-impl AllocIdPrinter for RawAllocIds {
-    const USE_LOCAL_ALLOC_NAMES: bool = false;
-    type Id = AllocId;
-    type Ptr = Pointer;
-
-    fn id(self, id: AllocId) -> AllocId {
-        id
-    }
-
-    fn pointer(self, ptr: Pointer) -> Pointer {
-        ptr
-    }
-}
-
-impl AllocIdPrinter for &AllocationNames {
-    const USE_LOCAL_ALLOC_NAMES: bool = true;
-    type Id = AllocationName;
-    type Ptr = NamedPointer;
-
-    fn id(self, id: AllocId) -> AllocationName {
-        AllocationName(self.0.borrow_mut().insert_full(id).0 + 1)
-    }
-
-    fn pointer(self, ptr: Pointer) -> NamedPointer {
-        NamedPointer { ptr, name: self.id(ptr.provenance.alloc_id()) }
-    }
-}
-
-pub(super) struct AllocationName(usize);
-
-impl Debug for AllocationName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if f.alternate() { write!(f, "a{}", self.0) } else { write!(f, "alloc{}", self.0) }
-    }
-}
-
-pub(super) struct NamedPointer {
-    ptr: Pointer,
-    name: AllocationName,
-}
-
-impl Debug for NamedPointer {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        CtfeProvenance::fmt_pointer_with_alloc_id(&self.ptr, f, &self.name)
-    }
-}
-
-pub(super) struct WithAllocNames<T, N> {
+// Formatting a nested operand directly with `Debug` can print rustc's internal `AllocId`.
+// Its number can differ from the `allocN` used for the same allocation in the MIR output.
+pub(super) struct MirFormat<'a, T> {
     pub(super) value: T,
-    pub(super) alloc_id_printer: N,
+    pub(super) names: AllocationNames<'a>,
 }
 
-impl<N: AllocIdPrinter> Debug for WithAllocNames<&VarDebugInfoContents<'_>, N> {
+impl Debug for MirFormat<'_, AllocId> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.value {
-            VarDebugInfoContents::Const(c) => write!(f, "{}", self.alloc_id_printer.wrap(c)),
-            VarDebugInfoContents::Place(p) => write!(f, "{p:?}"),
-        }
+        let Some(names) = self.names.0 else { return Debug::fmt(&self.value, f) };
+        let number = names.borrow_mut().insert_full(self.value).0 + 1;
+        if f.alternate() { write!(f, "a{number}") } else { write!(f, "alloc{number}") }
     }
 }
 
-impl<N: AllocIdPrinter> Debug for WithAllocNames<&ConstOperand<'_>, N> {
+impl Debug for MirFormat<'_, Pointer> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(self, f)
+        CtfeProvenance::fmt_pointer(
+            &self.value,
+            f,
+            self.names.wrap(self.value.provenance.alloc_id()),
+        )
     }
 }
 
-impl<N: AllocIdPrinter> Display for WithAllocNames<&Const<'_>, N> {
+impl Display for MirFormat<'_, &Const<'_>> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if !N::USE_LOCAL_ALLOC_NAMES {
+        if self.names.0.is_none() {
             return Display::fmt(self.value, f);
         }
         match *self.value {
             Const::Val(value, ty) => ty::tls::with(|tcx| {
-                pretty_print_const_value_tcx(tcx, value, tcx.lift(ty), f, self.alloc_id_printer)
+                pretty_print_const_value_tcx(tcx, value, tcx.lift(ty), f, self.names)
             }),
-            _ => Display::fmt(self.value, f),
+            Const::Ty(..) | Const::Unevaluated(..) => Display::fmt(self.value, f),
         }
     }
 }
 
-impl<N: AllocIdPrinter> Debug for WithAllocNames<&Scalar, N> {
+impl Debug for MirFormat<'_, &ConstValue> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.value {
-            Scalar::Ptr(ptr, _) => write!(f, "{:?}", self.alloc_id_printer.pointer(*ptr)),
-            Scalar::Int(value) => write!(f, "{value:?}"),
-        }
-    }
-}
-
-impl<N: AllocIdPrinter> Debug for WithAllocNames<&ConstValue, N> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.value {
-            ConstValue::Scalar(value) => {
-                f.debug_tuple("Scalar").field(&self.alloc_id_printer.wrap(value)).finish()
+            ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
+                f.debug_tuple("Scalar").field(&format_args!("{:?}", self.names.wrap(*ptr))).finish()
             }
-            ConstValue::ZeroSized => f.write_str("ZeroSized"),
+            ConstValue::Scalar(Scalar::Int(_)) | ConstValue::ZeroSized => Debug::fmt(self.value, f),
             ConstValue::Slice { alloc_id, meta } => f
                 .debug_struct("Slice")
-                .field("alloc_id", &self.alloc_id_printer.id(*alloc_id))
+                .field("alloc_id", &self.names.wrap(*alloc_id))
                 .field("meta", meta)
                 .finish(),
             ConstValue::Indirect { alloc_id, offset } => f
                 .debug_struct("Indirect")
-                .field("alloc_id", &self.alloc_id_printer.id(*alloc_id))
+                .field("alloc_id", &self.names.wrap(*alloc_id))
                 .field("offset", offset)
                 .finish(),
         }
     }
 }
 
-impl<Extra, Bytes: AllocBytes, N: AllocIdPrinter> Display
-    for WithAllocNames<RenderAllocation<'_, '_, CtfeProvenance, Extra, Bytes>, N>
+impl<Extra, Bytes: AllocBytes> Display
+    for MirFormat<'_, RenderAllocation<'_, '_, CtfeProvenance, Extra, Bytes>>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.value.fmt_with_pointer_formatter(f, |ptr| self.alloc_id_printer.pointer(ptr))
+        self.value.fmt_contents(f, |ptr| self.names.wrap(ptr))
     }
 }
 

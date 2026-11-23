@@ -1781,14 +1781,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         ptr: Pointer,
         ty: Ty<'tcx>,
     ) -> Result<(), PrintError> {
-        self.pretty_print_const_scalar_ptr_with_pointer_formatter(
-            ptr,
-            ty,
-            Self::pretty_print_const_pointer,
-        )
+        self.print_scalar_ptr(ptr, ty, Self::pretty_print_const_pointer)
     }
 
-    fn pretty_print_const_scalar_ptr_with_pointer_formatter(
+    fn print_scalar_ptr(
         &mut self,
         ptr: Pointer,
         ty: Ty<'tcx>,
