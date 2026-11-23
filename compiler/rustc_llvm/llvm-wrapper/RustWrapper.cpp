@@ -1358,6 +1358,11 @@ extern "C" LLVMValueRef LLVMRustBuildVScale(LLVMBuilderRef B, LLVMTypeRef Ty) {
   return wrap(unwrap(B)->CreateVScale(unwrap(Ty)));
 }
 
+extern "C" LLVMValueRef
+LLVMRustBuildPtrToAddr(LLVMBuilderRef B, LLVMValueRef Val, const char *Name) {
+  return wrap(unwrap(B)->CreatePtrToAddr(unwrap(Val), Name));
+}
+
 extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Val,
                                             LLVMValueRef Size,

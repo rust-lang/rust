@@ -2172,6 +2172,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustBuildVScale<'ll>(B: &Builder<'ll>, Ty: Type<'ll>) -> Value<'ll>;
 
+    pub(crate) fn LLVMRustBuildPtrToAddr<'ll>(
+        B: &Builder<'ll>,
+        Val: Value<'ll>,
+        Name: *const c_char,
+    ) -> Value<'ll>;
+
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
 
     pub(crate) fn LLVMRustTimeTraceProfilerFinishThread();
