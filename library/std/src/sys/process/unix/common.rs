@@ -695,3 +695,19 @@ pub fn getpid() -> u32 {
 pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }
+
+pub fn getuid() -> u32 {
+    unsafe { libc::getuid() as u32 }
+}
+
+pub fn geteuid() -> u32 {
+    unsafe { libc::geteuid() as u32 }
+}
+
+pub fn getgid() -> u32 {
+    unsafe { libc::getgid() as u32 }
+}
+
+pub fn getegid() -> u32 {
+    unsafe { libc::getegid() as u32 }
+}
