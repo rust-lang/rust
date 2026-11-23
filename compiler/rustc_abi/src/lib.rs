@@ -1,7 +1,9 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+#![cfg_attr(feature = "nightly", feature(register_tool))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
+#![cfg_attr(feature = "nightly", register_tool(lint))]
 // tidy-alphabetical-end
 
 /*! ABI handling for rustc

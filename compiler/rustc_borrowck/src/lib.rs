@@ -7,9 +7,11 @@
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(option_into_flat_iter)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
