@@ -107,7 +107,7 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
   For more info about HIR bodies, please refer to the
   [HIR chapter][hir-bodies].
 
-These identifiers can be converted into one another through the `TyCtxt`.
+These identifiers can be converted into one another through the [`TyCtxt`].
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
@@ -121,7 +121,7 @@ These identifiers can be converted into one another through the `TyCtxt`.
 
 ## HIR Operations
 
-Most of the time when you are working with the HIR, you will do so via `TyCtxt`.
+Most of the time when you are working with the HIR, you will do so via [`TyCtxt`].
 It contains a number of methods, defined in the `hir::map` module and
 mostly prefixed with `hir_`, to convert between IDs of various kinds and to
 lookup data associated with a HIR node.
@@ -162,7 +162,7 @@ A [`rustc_hir::Body`] represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant.
 Bodies are associated with an **owner**, which is typically some kind of item
 (e.g. an `fn()` or `const`), but could also be a closure expression
-(e.g. `|x, y| x + y`). You can use the `TyCtxt` to find the body
+(e.g. `|x, y| x + y`). You can use the [`TyCtxt`] to find the body
 associated with a given def-id ([`hir_maybe_body_owned_by`]) or to find
 the owner of a body ([`hir_body_owner_def_id`]).
 
