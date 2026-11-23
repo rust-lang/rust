@@ -51,7 +51,7 @@ There is essentially a one-to-one relationship between `AdtDef` and `DefId`.
 You can get the `AdtDef` for a `DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].
 `AdtDef`s are all interned, as shown by the `'tcx` lifetime.
 
-[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
+[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.adt_def
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 
@@ -166,5 +166,5 @@ The general theme of how it works is outermost to innermost (`T` before `T2` in 
 Check out [`ty::Generics`] for exact specifics on how the flattening works.
 
 [`ty::Generics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html
-[`generics_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.generics_of
+[`generics_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.generics_of
 [late-bound generics]: ../early-late-parameters.md

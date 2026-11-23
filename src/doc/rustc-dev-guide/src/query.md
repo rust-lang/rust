@@ -60,7 +60,7 @@ For example, to invoke the `type_of` query, you would just do this:
 let ty = tcx.type_of(some_def_id);
 ```
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 
 ## How the compiler executes a query
 

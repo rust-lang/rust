@@ -352,8 +352,8 @@ before emitting it by calling the [`emit`] method.
 
 [spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_err
 [strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.struct_span_err
-[`emit`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.emit
-[cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.cancel
+[`emit`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html#method.emit
+[cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html#method.cancel
 
 ```rust,ignore
 // Get a `Diag`. This does _not_ emit an error yet.
@@ -412,7 +412,7 @@ some heuristics for verbosity are met)
 suggestion is obvious from the text, but we still want to let tools to apply them)
 - not shown (used for _very_ obvious cases, but we still want to allow tools to apply them)
 
-[span_suggestion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html#method.span_suggestion
+[span_suggestion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html#method.span_suggestion
 
 For example, to make our `qux` suggestion machine-applicable, we would do:
 
@@ -860,7 +860,7 @@ The JSON emitter defines [its own `Diagnostic`
 struct](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/json/struct.Diagnostic.html)
 (and sub-structs) for the JSON serialization.
 Don't confuse this with
-[`errors::Diag`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html)!
+[`errors::Diag`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html)!
 
 ## Diagnostic attributes
 
@@ -879,4 +879,4 @@ If possible, consider improving or implementing such an attribute rather than ad
 reporting code.
 
 [`rustc_on_unimplemented`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_ir/attribute.rustc_on_unimplemented.html
-[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html
+[diag]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic/struct.Diag.html
