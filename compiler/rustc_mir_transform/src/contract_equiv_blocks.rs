@@ -24,7 +24,7 @@ pub(super) struct ContractEquivBlocks;
 impl<'tcx> crate::MirPass<'tcx> for ContractEquivBlocks {
     fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
         PassPolicy::optional(
-            ctx.mir_opt_level() >= 4
+            ctx.mir_opt_level() >= 1
                 && matches!(ctx.opts.debuginfo, rustc_session::config::DebugInfo::None),
         )
     }
