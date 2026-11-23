@@ -7,14 +7,15 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric, PointeeInfo,
-    Primitive, Size, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, LayoutData, Niche, Numeric,
+    PointeeInfo, Primitive, Size, Variants,
 };
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
@@ -365,6 +366,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // one of the match branches.
         let primitive = scalar.primitive();
         match primitive {
+            Primitive::Bool => Some(Numeric::Int(Integer::I8, false)),
             Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
             Primitive::Float(
                 float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128 | Float::PpcF128),

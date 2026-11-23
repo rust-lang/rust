@@ -10,7 +10,9 @@
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(macro_metavar_expr)]
+#![feature(register_tool)]
 #![recursion_limit = "256"]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 pub mod util {
