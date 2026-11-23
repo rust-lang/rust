@@ -40,7 +40,6 @@ pub fn syscall<'tcx>(
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
     let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
 
-    // FIXME: Do these all have direct tests (#3179)?
     match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
         // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).

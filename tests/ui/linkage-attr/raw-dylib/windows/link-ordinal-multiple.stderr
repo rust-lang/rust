@@ -1,4 +1,4 @@
-error: multiple `link_ordinal` attributes
+error: duplicate `link_ordinal` attributes
   --> $DIR/link-ordinal-multiple.rs:5:5
    |
 LL |     #[link_ordinal(2)]
@@ -10,7 +10,7 @@ note: attribute also specified here
 LL |     #[link_ordinal(1)]
    |     ^^^^^^^^^^^^^^^^^^
 
-error: multiple `link_ordinal` attributes
+error: duplicate `link_ordinal` attributes
   --> $DIR/link-ordinal-multiple.rs:8:5
    |
 LL |     #[link_ordinal(2)]

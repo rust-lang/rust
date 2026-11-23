@@ -1,5 +1,5 @@
 fn foo() {
-    builtin#asm(
+    k#asm(
         label crashy = { return; }
     );
 }

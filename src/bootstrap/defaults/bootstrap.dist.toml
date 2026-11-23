@@ -7,6 +7,9 @@ test-stage = 2
 doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
+# Builds for distribution typically run beneath some other build
+# system that is expected to perform its own priority lowering.
+low-priority = false
 
 # Most users installing from source want to build all parts of the project from source.
 [llvm]

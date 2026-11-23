@@ -33,11 +33,7 @@ pub(crate) fn complete_type_path<'db>(
             ScopeDef::ImplSelfType(_) => location.complete_self_type(),
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),
-            ScopeDef::ModuleDef(Trait(_) | Module(_))
-                if matches!(location, TypeLocation::ImplTrait) =>
-            {
-                true
-            }
+            ScopeDef::ModuleDef(Trait(_) | Module(_)) if location.complete_traits_only() => true,
             ScopeDef::ModuleDef(Trait(_)) if !location.complete_traits() => false,
             ScopeDef::ModuleDef(Trait(_)) => {
                 !ctx.edition.at_least_2021() || ctx.config.enable_auto_dyn

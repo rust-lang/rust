@@ -2,7 +2,7 @@
 // grapheme cluster starts with a `Prepend` character and contains `_`.
 
 #![crate_name = "foo"]
-#![allow(mixed_script_confusables, non_camel_case_types)]
+#![allow(mixed_script_confusables, non_camel_case_types, uncommon_codepoints)]
 
 //@ hasraw foo/index.html 'abcൎ_<wbr>defgh'
 pub struct abcൎ_defgh;

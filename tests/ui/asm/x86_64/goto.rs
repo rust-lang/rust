@@ -157,3 +157,6 @@ fn main() {
     goto_noreturn();
     goto_noreturn_diverge();
 }
+
+//@ reference: asm.operand-type.supported-operands-label
+//@ reference: asm.options.supported-options-noreturn

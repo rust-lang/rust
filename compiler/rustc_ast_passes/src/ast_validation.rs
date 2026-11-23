@@ -1908,10 +1908,10 @@ impl Visitor<'_> for AstValidator<'_> {
                             }
                         }
                         // The lowered form of parenthesized generic args contains an associated type binding.
-                        Some(ast::GenericArgs::Parenthesized(args)) => {
+                        Some(ast::GenericArgs::Parenthesized(_)) => {
                             self.dcx().emit_err(
                                 diagnostics::NegativeBoundWithParentheticalNotation {
-                                    span: args.span,
+                                    span: segment.span(),
                                 },
                             );
                         }

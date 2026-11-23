@@ -1,1 +1,1 @@
-builtin # global_asm("", #[cfg(false)] options())
+k#global_asm("", #[cfg(false)] options())

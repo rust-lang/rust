@@ -1,5 +1,5 @@
 error[E0428]: the name `eii1` is defined multiple times
-  --> $DIR/multiple-default-impls.rs:16:1
+  --> $DIR/multiple-default-impls.rs:17:1
    |
 LL | #[eii(eii1)]
    | ------------ previous definition of the macro `eii1` here

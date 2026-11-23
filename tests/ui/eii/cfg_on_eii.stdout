@@ -1,4 +1,4 @@
-#![attr = Feature([extern_item_impls#0])]
+#![attr = Feature([extern_item_impls#0, extern_item_default_impls#0])]
 #![attr = LintCheck([LintCheck {lint_name: LintName { tool: None, name: "deprecated" },
 kind: Deny}])]
 extern crate std;
@@ -13,11 +13,11 @@ const _: () =
         fn cfg_on_eii() ({ } as ())
     } as ());
 extern "Rust" {
-    #[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:6:7: 6:11 (#0))])]
+    #[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:7:7: 7:11 (#0))])]
     #[attr = RustcEiiForeignItem]
     fn cfg_on_eii();
 }
-#[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:6:7: 6:11 (#0))])]
+#[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:7:7: 7:11 (#0))])]
 #[attr = RustcMacroTransparency(SemiOpaque)]
 #[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
 helper_attrs: []}]
@@ -32,11 +32,11 @@ const _: () =
         fn conditional_eii() ({ } as ())
     } as ());
 extern "Rust" {
-    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:10:12: 10:16 (#0))])]
+    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:11:12: 11:16 (#0))])]
     #[attr = RustcEiiForeignItem]
     fn conditional_eii();
 }
-#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:10:12: 10:16 (#0))])]
+#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:11:12: 11:16 (#0))])]
 #[attr = RustcMacroTransparency(SemiOpaque)]
 #[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
 helper_attrs: []}]
@@ -51,14 +51,14 @@ const _: () =
         fn cfg_attr_on_eii() ({ } as ())
     } as ());
 extern "Rust" {
-    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
+    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:14:12: 14:16 (#0))])]
     #[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
     note: bar#0},
     is_inner: false}]
     #[attr = RustcEiiForeignItem]
     fn cfg_attr_on_eii();
 }
-#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
+#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:14:12: 14:16 (#0))])]
 #[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
 note: bar#0}, is_inner: false}]
 #[attr = RustcMacroTransparency(SemiOpaque)]

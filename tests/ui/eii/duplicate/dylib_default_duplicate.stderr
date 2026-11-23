@@ -4,7 +4,7 @@ error: multiple implementations of `#[eii1]`
 LL | fn other(x: u64) {
    | ^^^^^^^^^^^^^^^^ first implemented here in crate `dylib_default_duplicate`
    |
-  ::: $DIR/auxiliary/dylib_default.rs:5:1
+  ::: $DIR/auxiliary/dylib_default.rs:6:1
    |
 LL | fn decl1(x: u64) {}
    | ---------------- also implemented here in crate `dylib_default`

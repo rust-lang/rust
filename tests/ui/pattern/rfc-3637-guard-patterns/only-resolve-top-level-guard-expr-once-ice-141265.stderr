@@ -22,10 +22,10 @@ LL |     else if b 0 {}
    |             ^ not found in this scope
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:13
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:10
    |
 LL |     else if b 0 {}
-   |             ^
+   |          ^^^^
    |
    = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable

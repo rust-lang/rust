@@ -1,5 +1,5 @@
 error[E0044]: externally implementable items may not have type parameters
-  --> $DIR/type_params_149983.rs:7:1
+  --> $DIR/type_params_149983.rs:8:1
    |
 LL | fn foo<T>() {}
    | ^^^^^^^^^^^ can't have type parameters

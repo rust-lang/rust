@@ -702,10 +702,12 @@ pub fn s_memrealtime() -> u64 {
 
 /// Scatter data across all lanes in a wavefront.
 ///
-/// Writes `value` to the lane `lane`.
+/// Writes `value` to the lane addressed by `lane`.
+///
+/// `lane` is a byte address, not a lane index: pass `n * 4` to write to lane `n`.
 ///
 /// Reading from inactive lanes returns `0`.
-/// In case multiple values get written to the same `lane`, the value from the source lane with the higher index is taken.
+/// In case multiple values get written to the same lane, the value from the source lane with the higher index is taken.
 ///
 #[doc = include_str!("intrinsic_is_convergent.md")]
 #[inline]
@@ -715,7 +717,9 @@ pub unsafe fn ds_permute(lane: u32, value: u32) -> u32 {
 }
 /// Gather data across all lanes in a wavefront.
 ///
-/// Returns the `value` given to `ds_permute` by lane `lane`.
+/// Returns the `value` given to `ds_bpermute` by the lane addressed by `lane`.
+///
+/// `lane` is a byte address, not a lane index: pass `n * 4` to read from lane `n`.
 ///
 /// Reading from inactive lanes returns `0`.
 ///

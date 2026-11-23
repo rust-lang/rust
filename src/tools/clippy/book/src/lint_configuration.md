@@ -833,7 +833,7 @@ The maximum size of a file included via `include_bytes!()` or `include_str!()`, 
 
 
 ## `max-struct-bools`
-The maximum number of bool fields a struct can have
+The maximum number of bool fields a struct can have. Use `0` to lint on any struct with a bool field.
 
 **Default Value:** `3`
 

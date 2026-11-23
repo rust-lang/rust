@@ -1,4 +1,4 @@
-error: relaxed bounds are not permitted in trait object types
+error: relaxed `Sized` bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:9:24
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
@@ -6,7 +6,7 @@ LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |
    = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
-error: relaxed bounds are not permitted in trait object types
+error: relaxed `Sized` bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:14:16
    |
 LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
@@ -14,7 +14,7 @@ LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |
    = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
-error: relaxed bounds are not permitted in trait object types
+error: relaxed `Sized` bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:19:44
    |
 LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;

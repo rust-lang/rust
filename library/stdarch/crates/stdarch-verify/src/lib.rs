@@ -110,37 +110,21 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 quote! { None }
             };
 
-            let required_const = find_required_const("rustc_args_required_const", &f.attrs);
-            let mut legacy_const_generics =
-                find_required_const("rustc_legacy_const_generics", &f.attrs);
-            if !required_const.is_empty() && !legacy_const_generics.is_empty() {
-                panic!(
-                    "Can't have both #[rustc_args_required_const] and \
-                     #[rustc_legacy_const_generics]"
-                );
-            }
+            let mut legacy_const_generics = find_legacy_const_generics(&f.attrs);
 
             // Newer intrinsics don't have `rustc_legacy_const_generics` - assume they belong at
             // the end of the argument list
-            if required_const.is_empty() && legacy_const_generics.is_empty() {
+            if legacy_const_generics.is_empty() {
                 legacy_const_generics =
                     (arguments.len()..(arguments.len() + const_arguments.len())).collect();
             }
 
-            // The list of required consts, used to verify the arguments, comes from either the
-            // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
-            let required_const = if required_const.is_empty() {
-                legacy_const_generics.clone()
-            } else {
-                required_const
-            };
-
             legacy_const_generics.sort();
             for (idx, ty) in legacy_const_generics
-                .into_iter()
+                .iter()
                 .zip(const_arguments.into_iter())
             {
-                arguments.insert(idx, ty);
+                arguments.insert(*idx, ty);
             }
 
             // Strip leading underscore from fn name when building a test
@@ -162,7 +146,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                     target_feature: #target_feature,
                     instrs: &[#(#instrs),*],
                     file: stringify!(#path),
-                    required_const: &[#(#required_const),*],
+                    legacy_const_generics: &[#(#legacy_const_generics),*],
                     has_test: #has_test,
                     doc: #doc
                 }
@@ -205,6 +189,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "__tile1024i" => quote! { &TILE1024I },
             "bool" => quote! { &BOOL },
             "bf16" => quote! { &BF16 },
+            "f16b" | "bfloat16_t" => quote! { &BF16 },
             "f16" => quote! { &F16 },
             "f32" => quote! { &F32 },
             "f64" => quote! { &F64 },
@@ -292,6 +277,14 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "uint64x2x3_t" => quote! { &U64X2X3 },
             "uint64x2x4_t" => quote! { &U64X2X4 },
             "float16x2_t" => quote! { &F16X2 },
+            "bfloat16x4_t" => quote! { &BF16X4 },
+            "bfloat16x4x2_t" => quote! { &BF16X4X2 },
+            "bfloat16x4x3_t" => quote! { &BF16X4X3 },
+            "bfloat16x4x4_t" => quote! { &BF16X4X4 },
+            "bfloat16x8_t" => quote! { &BF16X8 },
+            "bfloat16x8x2_t" => quote! { &BF16X8X2 },
+            "bfloat16x8x3_t" => quote! { &BF16X8X3 },
+            "bfloat16x8x4_t" => quote! { &BF16X8X4 },
             "float16x4_t" => quote! { &F16X4 },
             "float16x4x2_t" => quote! { &F16X4X2 },
             "float16x4x3_t" => quote! { &F16X4X3 },
@@ -407,23 +400,32 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
         },
         syn::Type::Ptr(syn::TypePtr {
             ref elem,
-            ref mutability,
+            mutability: syn::PointerMutability::Mut(_),
             ..
         })
         | syn::Type::Reference(syn::TypeReference {
             ref elem,
-            ref mutability,
+            mutability: Some(_),
             ..
         }) => {
-            // Both pointers and references can have a mut token (*mut and &mut)
-            if mutability.is_some() {
-                let tokens = to_type(elem);
-                quote! { &Type::MutPtr(#tokens) }
-            } else {
-                // If they don't (*const or &) then they are "const"
-                let tokens = to_type(elem);
-                quote! { &Type::ConstPtr(#tokens) }
-            }
+            // // Both pointers and references can have a mut token (*mut and &mut)
+            let tokens = to_type(elem);
+            quote! { &Type::MutPtr(#tokens) }
+        }
+
+        syn::Type::Ptr(syn::TypePtr {
+            ref elem,
+            mutability: syn::PointerMutability::Const(_),
+            ..
+        })
+        | syn::Type::Reference(syn::TypeReference {
+            ref elem,
+            mutability: None,
+            ..
+        }) => {
+            // If they don't (*const or &) then they are "const"
+            let tokens = to_type(elem);
+            quote! { &Type::ConstPtr(#tokens) }
         }
 
         syn::Type::Slice(_) => panic!("unsupported slice"),
@@ -596,7 +598,7 @@ fn find_doc(attrs: &[syn::Attribute]) -> String {
         .collect()
 }
 
-fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
+fn find_legacy_const_generics(attrs: &[syn::Attribute]) -> Vec<usize> {
     attrs
         .iter()
         .filter_map(|a| {
@@ -607,7 +609,7 @@ fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
             }
         })
         .flat_map(|l| {
-            if l.path.segments[0].ident == name {
+            if l.path.segments[0].ident == "rustc_legacy_const_generics" {
                 syn::parse2::<RustcArgsRequiredConst>(l.tokens.clone())
                     .unwrap()
                     .args

@@ -14,7 +14,7 @@ struct Function {
     target_feature: Option<&'static str>,
     instrs: &'static [&'static str],
     file: &'static str,
-    required_const: &'static [usize],
+    legacy_const_generics: &'static [usize],
     has_test: bool,
     doc: &'static str,
 }
@@ -94,6 +94,26 @@ enum MsaTy {
     MutVoidPtr,
 }
 
+impl MsaTy {
+    fn is_const(&self) -> bool {
+        matches!(
+            self,
+            MsaTy::imm0_1
+                | MsaTy::imm0_3
+                | MsaTy::imm0_7
+                | MsaTy::imm0_15
+                | MsaTy::imm0_31
+                | MsaTy::imm0_63
+                | MsaTy::imm0_255
+                | MsaTy::imm_n16_15
+                | MsaTy::imm_n512_511
+                | MsaTy::imm_n1024_1022
+                | MsaTy::imm_n2048_2044
+                | MsaTy::imm_n4096_4088
+        )
+    }
+}
+
 impl<'a> From<&'a str> for MsaTy {
     fn from(s: &'a str) -> MsaTy {
         match s {
@@ -168,6 +188,11 @@ impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
                 let arg = arg.trim();
                 arg_tys.push(MsaTy::from(arg));
             }
+
+            // Some of the functions extracted from mips-msa.h have immediate arguments between non-immediate arguments,
+            // but Rust const generics are not function arguments and cannot be expressed in a way that matches the header.
+            // For the sake of verification, rust const generics are treated as "the last arguments to a function".
+            arg_tys.sort_by(|arg1, arg2| arg1.is_const().cmp(&arg2.is_const()));
 
             // The instruction is the intrinsic name without the __msa_ prefix.
             let instruction = &id[6..];
@@ -261,6 +286,22 @@ fn verify_all_signatures() {
     assert!(all_valid);
 }
 
+// Intrinsics for which LLVM does not emit the exact instruction that you'd
+// expect based on the intrinsic name, but something equivalent.
+static LLVM_SELECTS_SOMETHING_EQUIVALENT: &[(&str, &str)] = &[
+    ("__msa_bclri_b", "andi.b"),
+    ("__msa_bmz_v", "bmnz.v"),
+    ("__msa_bmzi_b", "bmnzi.b"),
+    ("__msa_bsel_v", "bmnz.v"),
+    ("__msa_copy_u_d", "copy_s.d"),
+    ("__msa_ld_b", "ld.d"),
+    ("__msa_ld_h", "ld.d"),
+    ("__msa_ld_w", "ld.d"),
+    ("__msa_st_b", "st.d"),
+    ("__msa_st_h", "st.d"),
+    ("__msa_st_w", "st.d"),
+];
+
 fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
     macro_rules! bail {
         ($($t:tt)*) => (return Err(format!($($t)*)))
@@ -313,30 +354,15 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
             ),
         }
 
-        let is_const = matches!(
-            mips_arg,
-            MsaTy::imm0_1
-                | MsaTy::imm0_3
-                | MsaTy::imm0_7
-                | MsaTy::imm0_15
-                | MsaTy::imm0_31
-                | MsaTy::imm0_63
-                | MsaTy::imm0_255
-                | MsaTy::imm_n16_15
-                | MsaTy::imm_n512_511
-                | MsaTy::imm_n1024_1022
-                | MsaTy::imm_n2048_2044
-                | MsaTy::imm_n4096_4088
-        );
-        if is_const {
+        if mips_arg.is_const() {
             nconst += 1;
-            if !rust.required_const.contains(&i) {
+            if !rust.legacy_const_generics.contains(&i) {
                 bail!("argument const mismatch");
             }
         }
     }
 
-    if nconst != rust.required_const.len() {
+    if nconst != rust.legacy_const_generics.len() {
         bail!("wrong number of const arguments");
     }
 
@@ -348,7 +374,9 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
         // Normalize slightly to get rid of assembler differences
         let actual = rust.instrs[0].replace('.', "_");
         let expected = mips.instruction.replace('.', "_");
-        if actual != expected {
+        if actual != expected
+            && !LLVM_SELECTS_SOMETHING_EQUIVALENT.contains(&(rust.name, rust.instrs[0]))
+        {
             bail!(
                 "wrong instruction: \"{}\" != \"{}\"",
                 rust.instrs[0],

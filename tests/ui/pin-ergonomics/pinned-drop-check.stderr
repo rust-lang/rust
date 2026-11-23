@@ -8,7 +8,6 @@ LL |         fn pin_drop(&pin mut self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
    |
   --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
-  ::: $SRC_DIR/core/src/ops/drop.rs:LL:COL
    |
    = note: item in trait
 
@@ -22,7 +21,6 @@ LL |         fn pin_drop(&pin mut self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
    |
   --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
-  ::: $SRC_DIR/core/src/ops/drop.rs:LL:COL
    |
    = note: item in trait
 

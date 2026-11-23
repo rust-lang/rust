@@ -122,7 +122,7 @@ impl OutlivesSuggestionBuilder {
                     |(r, _)| {
                         self.constraints_to_add
                             .get(r)
-                            .is_some_and(|r_outlived| r_outlived.as_slice().contains(fr))
+                            .is_some_and(|r_outlived| r_outlived.contains(fr))
                     },
                 );
 

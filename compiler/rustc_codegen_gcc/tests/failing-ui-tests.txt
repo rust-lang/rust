@@ -1,8 +1,6 @@
 tests/ui/asm/may_unwind.rs
 tests/ui/asm/x86_64/may_unwind.rs
-tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
-tests/ui/process/println-with-broken-pipe.rs
 tests/ui/simd/repr_packed.rs
 tests/ui/simd/simd-bitmask-notpow2.rs
 tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs

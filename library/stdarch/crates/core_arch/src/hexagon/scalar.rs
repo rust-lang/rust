@@ -2021,7 +2021,6 @@ pub unsafe fn Q6_R_add_RlRl_sat(rt: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU32_ADDI
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(add, IS16 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_RI<const IS16: i32>(rs: i32) -> i32 {
@@ -2089,7 +2088,6 @@ pub unsafe fn Q6_R_and_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(and, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_and_RI<const IS10: i32>(rs: i32) -> i32 {
@@ -2179,7 +2177,6 @@ pub unsafe fn Q6_R_combine_RlRl(rt: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 1)]
 #[cfg_attr(test, assert_instr(combine, IS8 = 0, IS8_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_combine_II<const IS8: i32, const IS8_2: i32>() -> i64 {
@@ -2358,7 +2355,6 @@ pub unsafe fn Q6_R_or_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(or, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_or_RI<const IS10: i32>(rs: i32) -> i32 {
@@ -2602,7 +2598,6 @@ pub unsafe fn Q6_P_sub_PP(rtt: i64, rss: i64) -> i64 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(sub, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_sub_IR<const IS10: i32>(rs: i32) -> i32 {
@@ -2779,7 +2774,6 @@ pub unsafe fn Q6_R_equals_R(rs: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Rh_equals_I<const IU16: u32>(rx: i32) -> i32 {
     static_assert_uimm_bits!(IU16, 16);
@@ -2791,7 +2785,6 @@ pub unsafe fn Q6_Rh_equals_I<const IU16: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Rl_equals_I<const IU16: u32>(rx: i32) -> i32 {
     static_assert_uimm_bits!(IU16, 16);
@@ -2813,7 +2806,6 @@ pub unsafe fn Q6_P_equals_P(rss: i64) -> i64 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_equals_I<const IS8: i32>() -> i64 {
     static_assert_simm_bits!(IS8, 8);
@@ -2825,7 +2817,6 @@ pub unsafe fn Q6_P_equals_I<const IS8: i32>() -> i64 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_equals_I<const IS16: i32>() -> i32 {
     static_assert_simm_bits!(IS16, 16);
@@ -3607,7 +3598,6 @@ pub unsafe fn Q6_P_bitsplit_RR(rs: i32, rt: i32) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(bitsplit, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_bitsplit_RI<const IU5: u32>(rs: i32) -> i64 {
@@ -3642,7 +3632,6 @@ pub unsafe fn Q6_p_cmpb_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmpb, IU8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmpb_eq_RI<const IU8: u32>(rs: i32) -> i32 {
@@ -3666,7 +3655,6 @@ pub unsafe fn Q6_p_cmpb_gt_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmpb, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmpb_gt_RI<const IS8: i32>(rs: i32) -> i32 {
@@ -3690,7 +3678,6 @@ pub unsafe fn Q6_p_cmpb_gtu_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmpb, IU7 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmpb_gtu_RI<const IU7: u32>(rs: i32) -> i32 {
@@ -3714,7 +3701,6 @@ pub unsafe fn Q6_p_cmph_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmph, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmph_eq_RI<const IS8: i32>(rs: i32) -> i32 {
@@ -3738,7 +3724,6 @@ pub unsafe fn Q6_p_cmph_gt_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmph, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmph_gt_RI<const IS8: i32>(rs: i32) -> i32 {
@@ -3762,7 +3747,6 @@ pub unsafe fn Q6_p_cmph_gtu_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmph, IU7 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmph_gtu_RI<const IU7: u32>(rs: i32) -> i32 {
@@ -3775,7 +3759,6 @@ pub unsafe fn Q6_p_cmph_gtu_RI<const IU7: u32>(rs: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(combine, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_combine_IR<const IS8: i32>(rs: i32) -> i64 {
@@ -3788,7 +3771,6 @@ pub unsafe fn Q6_P_combine_IR<const IS8: i32>(rs: i32) -> i64 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(combine, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_combine_RI<const IS8: i32>(rs: i32) -> i64 {
@@ -3801,7 +3783,6 @@ pub unsafe fn Q6_P_combine_RI<const IS8: i32>(rs: i32) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cround, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_cround_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -3869,7 +3850,6 @@ pub unsafe fn Q6_R_cmp_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_cmp_eq_RI<const IS8: i32>(rs: i32) -> i32 {
@@ -3892,7 +3872,6 @@ pub unsafe fn Q6_R_not_cmp_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_not_cmp_eq_RI<const IS8: i32>(rs: i32) -> i32 {
     static_assert_simm_bits!(IS8, 8);
@@ -3904,7 +3883,6 @@ pub unsafe fn Q6_R_not_cmp_eq_RI<const IS8: i32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(round, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_round_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -3917,7 +3895,6 @@ pub unsafe fn Q6_R_round_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(round, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_round_RI_sat<const IU5: u32>(rs: i32) -> i32 {
@@ -3974,7 +3951,6 @@ pub unsafe fn Q6_p_any8_vcmpb_eq_PP(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpb, IU8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpb_eq_PI<const IU8: u32>(rss: i64) -> i32 {
@@ -3998,7 +3974,6 @@ pub unsafe fn Q6_p_vcmpb_gt_PP(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpb, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpb_gt_PI<const IS8: i32>(rss: i64) -> i32 {
@@ -4011,7 +3986,6 @@ pub unsafe fn Q6_p_vcmpb_gt_PI<const IS8: i32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpb, IU7 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpb_gtu_PI<const IU7: u32>(rss: i64) -> i32 {
@@ -4024,7 +3998,6 @@ pub unsafe fn Q6_p_vcmpb_gtu_PI<const IU7: u32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmph, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmph_eq_PI<const IS8: i32>(rss: i64) -> i32 {
@@ -4037,7 +4010,6 @@ pub unsafe fn Q6_p_vcmph_eq_PI<const IS8: i32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmph, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmph_gt_PI<const IS8: i32>(rss: i64) -> i32 {
@@ -4050,7 +4022,6 @@ pub unsafe fn Q6_p_vcmph_gt_PI<const IS8: i32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmph, IU7 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmph_gtu_PI<const IU7: u32>(rss: i64) -> i32 {
@@ -4063,7 +4034,6 @@ pub unsafe fn Q6_p_vcmph_gtu_PI<const IU7: u32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpw, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpw_eq_PI<const IS8: i32>(rss: i64) -> i32 {
@@ -4076,7 +4046,6 @@ pub unsafe fn Q6_p_vcmpw_eq_PI<const IS8: i32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpw, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpw_gt_PI<const IS8: i32>(rss: i64) -> i32 {
@@ -4089,7 +4058,6 @@ pub unsafe fn Q6_p_vcmpw_gt_PI<const IS8: i32>(rss: i64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vcmpw, IU7 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_vcmpw_gtu_PI<const IU7: u32>(rss: i64) -> i32 {
@@ -4256,7 +4224,6 @@ pub unsafe fn Q6_p_bitsclr_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(bitsclr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_bitsclr_RI<const IU6: u32>(rs: i32) -> i32 {
@@ -4291,7 +4258,6 @@ pub unsafe fn Q6_p_cmp_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmp_eq_RI<const IS10: i32>(rs: i32) -> i32 {
@@ -4315,7 +4281,6 @@ pub unsafe fn Q6_p_cmp_eq_PP(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmp_ge_RI<const IS8: i32>(rs: i32) -> i32 {
@@ -4328,7 +4293,6 @@ pub unsafe fn Q6_p_cmp_ge_RI<const IS8: i32>(rs: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IU8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmp_geu_RI<const IU8: u32>(rs: i32) -> i32 {
@@ -4352,7 +4316,6 @@ pub unsafe fn Q6_p_cmp_gt_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmp_gt_RI<const IS10: i32>(rs: i32) -> i32 {
@@ -4387,7 +4350,6 @@ pub unsafe fn Q6_p_cmp_gtu_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cmp, IU9 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_cmp_gtu_RI<const IU9: u32>(rs: i32) -> i32 {
@@ -4455,7 +4417,6 @@ pub unsafe fn Q6_R_mux_pRR(pu: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1, 2)]
 #[cfg_attr(test, assert_instr(mux, IS8 = 0, IS8_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mux_pII<const IS8: i32, const IS8_2: i32>(pu: i32) -> i32 {
@@ -4469,7 +4430,6 @@ pub unsafe fn Q6_R_mux_pII<const IS8: i32, const IS8_2: i32>(pu: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(mux, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mux_pRI<const IS8: i32>(pu: i32, rs: i32) -> i32 {
@@ -4482,7 +4442,6 @@ pub unsafe fn Q6_R_mux_pRI<const IS8: i32>(pu: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(mux, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mux_pIR<const IS8: i32>(pu: i32, rs: i32) -> i32 {
@@ -4645,7 +4604,6 @@ pub unsafe fn Q6_p_not_cmp_gt_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_cmp_gt_RI<const IS10: i32>(rs: i32) -> i32 {
     static_assert_simm_bits!(IS10, 10);
@@ -4667,7 +4625,6 @@ pub unsafe fn Q6_p_not_cmp_gtu_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_cmp_gtu_RI<const IU9: u32>(rs: i32) -> i32 {
     static_assert_uimm_bits!(IU9, 9);
@@ -4689,7 +4646,6 @@ pub unsafe fn Q6_p_not_cmp_eq_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU32_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_cmp_eq_RI<const IS10: i32>(rs: i32) -> i32 {
     static_assert_simm_bits!(IS10, 10);
@@ -4732,7 +4688,6 @@ pub unsafe fn Q6_p_not_bitsclr_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_bitsclr_RI<const IU6: u32>(rs: i32) -> i32 {
     static_assert_uimm_bits!(IU6, 6);
@@ -5084,7 +5039,6 @@ pub unsafe fn Q6_R_convert_w2sf_R(rs: i32) -> f32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(dfclass, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_dfclass_PI<const IU5: u32>(rss: f64) -> i32 {
@@ -5141,7 +5095,6 @@ pub unsafe fn Q6_p_dfcmp_uo_PP(rss: f64, rtt: f64) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(dfmake, IU10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_dfmake_I_neg<const IU10: u32>() -> f64 {
@@ -5154,7 +5107,6 @@ pub unsafe fn Q6_P_dfmake_I_neg<const IU10: u32>() -> f64 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(dfmake, IU10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_dfmake_I_pos<const IU10: u32>() -> f64 {
@@ -5178,7 +5130,6 @@ pub unsafe fn Q6_R_sfadd_RR(rs: f32, rt: f32) -> f32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(sfclass, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_sfclass_RI<const IU5: u32>(rs: f32) -> i32 {
@@ -5323,7 +5274,6 @@ pub unsafe fn Q6_R_sfmpynac_RR_lib(rx: f32, rs: f32, rt: f32) -> f32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(sfmake, IU10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_sfmake_I_neg<const IU10: u32>() -> f32 {
@@ -5336,7 +5286,6 @@ pub unsafe fn Q6_R_sfmake_I_neg<const IU10: u32>() -> f32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(sfmake, IU10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_sfmake_I_pos<const IU10: u32>() -> f32 {
@@ -5404,7 +5353,6 @@ pub unsafe fn Q6_R_addacc_RR(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(add, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_addacc_RI<const IS8: i32>(rx: i32, rs: i32) -> i32 {
@@ -5769,7 +5717,6 @@ pub unsafe fn Q6_R_mpyiacc_RR(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(mpyi, IU8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mpyinac_RI<const IU8: u32>(rx: i32, rs: i32) -> i32 {
@@ -5782,7 +5729,6 @@ pub unsafe fn Q6_R_mpyinac_RI<const IU8: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(mpyi, IU8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mpyiacc_RI<const IU8: u32>(rx: i32, rs: i32) -> i32 {
@@ -7830,7 +7776,6 @@ pub unsafe fn Q6_R_addnac_RR(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(add, IS8 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_addnac_RI<const IS8: i32>(rx: i32, rs: i32) -> i32 {
@@ -8459,7 +8404,6 @@ pub unsafe fn Q6_R_mpyacc_RR_s1_sat(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(add, IU6 = 0, IU6_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_mpyi_IRI<const IU6: u32, const IU6_2: u32>(rs: i32) -> i32 {
@@ -8473,7 +8417,6 @@ pub unsafe fn Q6_R_add_mpyi_IRI<const IU6: u32, const IU6_2: u32>(rs: i32) -> i3
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(add, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_mpyi_RRI<const IU6: u32>(ru: i32, rs: i32) -> i32 {
@@ -8486,7 +8429,6 @@ pub unsafe fn Q6_R_add_mpyi_RRI<const IU6: u32>(ru: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(add, IU6_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_mpyi_RIR<const IU6_2: u32>(ru: i32, rs: i32) -> i32 {
@@ -8499,7 +8441,6 @@ pub unsafe fn Q6_R_add_mpyi_RIR<const IU6_2: u32>(ru: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(add, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_mpyi_IRR<const IU6: u32>(rs: i32, rt: i32) -> i32 {
@@ -8864,7 +8805,6 @@ pub unsafe fn Q6_P_vrmpybu_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(addasl, IU3 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_addasl_RRI<const IU3: u32>(rt: i32, rs: i32) -> i32 {
@@ -8877,7 +8817,6 @@ pub unsafe fn Q6_R_addasl_RRI<const IU3: u32>(rt: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asl_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -8890,7 +8829,6 @@ pub unsafe fn Q6_P_asl_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_aslacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -8903,7 +8841,6 @@ pub unsafe fn Q6_P_aslacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asland_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -8916,7 +8853,6 @@ pub unsafe fn Q6_P_asland_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_aslnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -8929,7 +8865,6 @@ pub unsafe fn Q6_P_aslnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_aslor_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -8942,7 +8877,6 @@ pub unsafe fn Q6_P_aslor_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_aslxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -8955,7 +8889,6 @@ pub unsafe fn Q6_P_aslxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asl_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -8968,7 +8901,6 @@ pub unsafe fn Q6_R_asl_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_aslacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -8981,7 +8913,6 @@ pub unsafe fn Q6_R_aslacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asland_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -8994,7 +8925,6 @@ pub unsafe fn Q6_R_asland_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_aslnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9007,7 +8937,6 @@ pub unsafe fn Q6_R_aslnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_aslor_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9020,7 +8949,6 @@ pub unsafe fn Q6_R_aslor_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asl_RI_sat<const IU5: u32>(rs: i32) -> i32 {
@@ -9033,7 +8961,6 @@ pub unsafe fn Q6_R_asl_RI_sat<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asl, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_aslxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9046,7 +8973,6 @@ pub unsafe fn Q6_R_aslxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vaslh, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vaslh_PI<const IU4: u32>(rss: i64) -> i64 {
@@ -9059,7 +8985,6 @@ pub unsafe fn Q6_P_vaslh_PI<const IU4: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vaslw, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vaslw_PI<const IU5: u32>(rss: i64) -> i64 {
@@ -9226,7 +9151,6 @@ pub unsafe fn Q6_P_vaslw_PR(rss: i64, rt: i32) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asr_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -9239,7 +9163,6 @@ pub unsafe fn Q6_P_asr_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asracc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -9252,7 +9175,6 @@ pub unsafe fn Q6_P_asracc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asrand_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -9265,7 +9187,6 @@ pub unsafe fn Q6_P_asrand_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asrnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -9278,7 +9199,6 @@ pub unsafe fn Q6_P_asrnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asror_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -9291,7 +9211,6 @@ pub unsafe fn Q6_P_asror_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asr_PI_rnd<const IU6: u32>(rss: i64) -> i64 {
@@ -9304,7 +9223,6 @@ pub unsafe fn Q6_P_asr_PI_rnd<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asrrnd, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_asrrnd_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -9317,7 +9235,6 @@ pub unsafe fn Q6_P_asrrnd_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asr_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -9330,7 +9247,6 @@ pub unsafe fn Q6_R_asr_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asracc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9343,7 +9259,6 @@ pub unsafe fn Q6_R_asracc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asrand_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9356,7 +9271,6 @@ pub unsafe fn Q6_R_asrand_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asrnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9369,7 +9283,6 @@ pub unsafe fn Q6_R_asrnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asror_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -9382,7 +9295,6 @@ pub unsafe fn Q6_R_asror_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asr_RI_rnd<const IU5: u32>(rs: i32) -> i32 {
@@ -9395,7 +9307,6 @@ pub unsafe fn Q6_R_asr_RI_rnd<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(asrrnd, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_asrrnd_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -9408,7 +9319,6 @@ pub unsafe fn Q6_R_asrrnd_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrw, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_vasrw_PI<const IU5: u32>(rss: i64) -> i32 {
@@ -9421,7 +9331,6 @@ pub unsafe fn Q6_R_vasrw_PI<const IU5: u32>(rss: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrh, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vasrh_PI<const IU4: u32>(rss: i64) -> i64 {
@@ -9434,7 +9343,6 @@ pub unsafe fn Q6_P_vasrh_PI<const IU4: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrw, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vasrw_PI<const IU5: u32>(rss: i64) -> i64 {
@@ -9711,7 +9619,6 @@ pub unsafe fn Q6_R_clb_P(rss: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(clrbit, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_clrbit_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -9790,7 +9697,6 @@ pub unsafe fn Q6_P_deinterleave_P(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1, 2)]
 #[cfg_attr(test, assert_instr(extractu, IU5 = 0, IU5_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_extractu_RII<const IU5: u32, const IU5_2: u32>(rs: i32) -> i32 {
@@ -9815,7 +9721,6 @@ pub unsafe fn Q6_R_extractu_RP(rs: i32, rtt: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1, 2)]
 #[cfg_attr(test, assert_instr(extractu, IU6 = 0, IU6_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_extractu_PII<const IU6: u32, const IU6_2: u32>(rss: i64) -> i64 {
@@ -9840,7 +9745,6 @@ pub unsafe fn Q6_P_extractu_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(insert, IU5 = 0, IU5_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_insert_RII<const IU5: u32, const IU5_2: u32>(rx: i32, rs: i32) -> i32 {
@@ -9865,7 +9769,6 @@ pub unsafe fn Q6_R_insert_RP(rx: i32, rs: i32, rtt: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(insert, IU6 = 0, IU6_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_insert_PII<const IU6: u32, const IU6_2: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10055,7 +9958,6 @@ pub unsafe fn Q6_P_vlslw_PR(rss: i64, rt: i32) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsr_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -10068,7 +9970,6 @@ pub unsafe fn Q6_P_lsr_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsracc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10081,7 +9982,6 @@ pub unsafe fn Q6_P_lsracc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsrand_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10094,7 +9994,6 @@ pub unsafe fn Q6_P_lsrand_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsrnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10107,7 +10006,6 @@ pub unsafe fn Q6_P_lsrnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsror_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10120,7 +10018,6 @@ pub unsafe fn Q6_P_lsror_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_lsrxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -10133,7 +10030,6 @@ pub unsafe fn Q6_P_lsrxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsr_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -10146,7 +10042,6 @@ pub unsafe fn Q6_R_lsr_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsracc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10159,7 +10054,6 @@ pub unsafe fn Q6_R_lsracc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsrand_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10172,7 +10066,6 @@ pub unsafe fn Q6_R_lsrand_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsrnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10185,7 +10078,6 @@ pub unsafe fn Q6_R_lsrnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsror_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10198,7 +10090,6 @@ pub unsafe fn Q6_R_lsror_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(lsr, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsrxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10211,7 +10102,6 @@ pub unsafe fn Q6_R_lsrxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vlsrh, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vlsrh_PI<const IU4: u32>(rss: i64) -> i64 {
@@ -10224,7 +10114,6 @@ pub unsafe fn Q6_P_vlsrh_PI<const IU4: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vlsrw, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vlsrw_PI<const IU5: u32>(rss: i64) -> i64 {
@@ -10402,7 +10291,6 @@ pub unsafe fn Q6_R_parity_PP(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(setbit, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_setbit_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -10492,7 +10380,6 @@ pub unsafe fn Q6_R_vsathub_R(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(tableidxb, IU4 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_tableidxb_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10506,7 +10393,6 @@ pub unsafe fn Q6_R_tableidxb_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i3
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(tableidxd, IU4 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_tableidxd_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10520,7 +10406,6 @@ pub unsafe fn Q6_R_tableidxd_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i3
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(tableidxh, IU4 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_tableidxh_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10534,7 +10419,6 @@ pub unsafe fn Q6_R_tableidxh_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i3
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(2, 3)]
 #[cfg_attr(test, assert_instr(tableidxw, IU4 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_tableidxw_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -10548,7 +10432,6 @@ pub unsafe fn Q6_R_tableidxw_RII<const IU4: u32, const IU5: u32>(rx: i32, rs: i3
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(togglebit, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_togglebit_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -10572,7 +10455,6 @@ pub unsafe fn Q6_R_togglebit_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(tstbit, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_tstbit_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -10596,7 +10478,6 @@ pub unsafe fn Q6_p_tstbit_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(valignb, IU3 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_valignb_PPI<const IU3: u32>(rtt: i64, rss: i64) -> i64 {
@@ -10785,7 +10666,6 @@ pub unsafe fn Q6_P_vsplath_R(rs: i32) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vspliceb, IU3 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vspliceb_PPI<const IU3: u32>(rss: i64, rtt: i64) -> i64 {
@@ -10897,7 +10777,6 @@ pub unsafe fn Q6_P_vzxthw_R(rs: i32) -> i64 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(add, IS6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_add_RRI<const IS6: i32>(rs: i32, ru: i32) -> i32 {
@@ -10910,7 +10789,6 @@ pub unsafe fn Q6_R_add_add_RRI<const IS6: i32>(rs: i32, ru: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(add, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -10924,7 +10802,6 @@ pub unsafe fn Q6_R_add_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(add, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -10938,7 +10815,6 @@ pub unsafe fn Q6_R_add_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(and, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_and_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -10952,7 +10828,6 @@ pub unsafe fn Q6_R_and_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(and, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_and_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -10966,7 +10841,6 @@ pub unsafe fn Q6_R_and_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(add, IS6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_clb_RI<const IS6: i32>(rs: i32) -> i32 {
@@ -10979,7 +10853,6 @@ pub unsafe fn Q6_R_add_clb_RI<const IS6: i32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(add, IS6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_clb_PI<const IS6: i32>(rss: i64) -> i32 {
@@ -11003,7 +10876,6 @@ pub unsafe fn Q6_R_normamt_P(rss: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1, 2)]
 #[cfg_attr(test, assert_instr(extract, IU5 = 0, IU5_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_extract_RII<const IU5: u32, const IU5_2: u32>(rs: i32) -> i32 {
@@ -11028,7 +10900,6 @@ pub unsafe fn Q6_R_extract_RP(rs: i32, rtt: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1, 2)]
 #[cfg_attr(test, assert_instr(extract, IU6 = 0, IU6_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_extract_PII<const IU6: u32, const IU6_2: u32>(rss: i64) -> i64 {
@@ -11053,7 +10924,6 @@ pub unsafe fn Q6_P_extract_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0)]
 #[cfg_attr(test, assert_instr(lsl, IS6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_lsl_IR<const IS6: i32>(rt: i32) -> i32 {
@@ -11066,7 +10936,6 @@ pub unsafe fn Q6_R_lsl_IR<const IS6: i32>(rt: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_tstbit_RI<const IU5: u32>(rs: i32) -> i32 {
     static_assert_uimm_bits!(IU5, 5);
@@ -11088,7 +10957,6 @@ pub unsafe fn Q6_p_not_tstbit_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(and, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_andor_RI<const IS10: i32>(rx: i32, rs: i32) -> i32 {
@@ -11101,7 +10969,6 @@ pub unsafe fn Q6_R_andor_RI<const IS10: i32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(or, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_or_and_RRI<const IS10: i32>(ru: i32, rx: i32) -> i32 {
@@ -11114,7 +10981,6 @@ pub unsafe fn Q6_R_or_and_RRI<const IS10: i32>(ru: i32, rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(or, IS10 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_oror_RI<const IS10: i32>(rx: i32, rs: i32) -> i32 {
@@ -11127,7 +10993,6 @@ pub unsafe fn Q6_R_oror_RI<const IS10: i32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(or, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_or_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -11141,7 +11006,6 @@ pub unsafe fn Q6_R_or_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(or, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_or_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -11166,7 +11030,6 @@ pub unsafe fn Q6_R_parity_RR(rs: i32, rt: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(add, IS6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_add_sub_RIR<const IS6: i32>(rs: i32, ru: i32) -> i32 {
@@ -11179,7 +11042,6 @@ pub unsafe fn Q6_R_add_sub_RIR<const IS6: i32>(rs: i32, ru: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(sub, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_sub_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -11193,7 +11055,6 @@ pub unsafe fn Q6_R_sub_asl_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(0, 2)]
 #[cfg_attr(test, assert_instr(sub, IU8 = 0, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_sub_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
@@ -11207,7 +11068,6 @@ pub unsafe fn Q6_R_sub_lsr_IRI<const IU8: u32, const IU5: u32>(rx: i32) -> i32 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(vrcrotate, IU2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vrcrotate_PRI<const IU2: u32>(rss: i64, rt: i32) -> i64 {
@@ -11220,7 +11080,6 @@ pub unsafe fn Q6_P_vrcrotate_PRI<const IU2: u32>(rss: i64, rt: i32) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vrcrotate, IU2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vrcrotateacc_PRI<const IU2: u32>(rxx: i64, rss: i64, rt: i32) -> i64 {
@@ -11299,7 +11158,6 @@ pub unsafe fn Q6_P_vxsubaddw_PP_sat(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrhub, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_vasrhub_PI_rnd_sat<const IU4: u32>(rss: i64) -> i32 {
@@ -11312,7 +11170,6 @@ pub unsafe fn Q6_R_vasrhub_PI_rnd_sat<const IU4: u32>(rss: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrhub, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_vasrhub_PI_sat<const IU4: u32>(rss: i64) -> i32 {
@@ -11336,7 +11193,6 @@ pub unsafe fn Q6_R_popcount_P(rss: i64) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT0123
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vasrh, IU4 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vasrh_PI_rnd<const IU4: u32>(rss: i64) -> i64 {
@@ -11428,7 +11284,6 @@ pub unsafe fn Q6_l2fetch_AP(rs: i32, rtt: i64) {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_rol_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -11443,7 +11298,6 @@ pub unsafe fn Q6_P_rol_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_rolacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -11458,7 +11312,6 @@ pub unsafe fn Q6_P_rolacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_roland_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -11473,7 +11326,6 @@ pub unsafe fn Q6_P_roland_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_rolnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -11488,7 +11340,6 @@ pub unsafe fn Q6_P_rolnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_rolor_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -11503,7 +11354,6 @@ pub unsafe fn Q6_P_rolor_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_rolxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
@@ -11518,7 +11368,6 @@ pub unsafe fn Q6_P_rolxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_rol_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -11533,7 +11382,6 @@ pub unsafe fn Q6_R_rol_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_rolacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -11548,7 +11396,6 @@ pub unsafe fn Q6_R_rolacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_roland_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -11563,7 +11410,6 @@ pub unsafe fn Q6_R_roland_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_rolnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -11578,7 +11424,6 @@ pub unsafe fn Q6_R_rolnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_rolor_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -11593,7 +11438,6 @@ pub unsafe fn Q6_R_rolor_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Requires: V60
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_rolxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
@@ -11724,7 +11568,6 @@ pub unsafe fn Q6_R_mpyinac_RR(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Requires: V66
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v66"))]
-#[rustc_legacy_const_generics(0, 1)]
 #[cfg_attr(test, assert_instr(mask, IU5 = 0, IU5_2 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_mask_II<const IU5: u32, const IU5_2: u32>() -> i32 {
@@ -11740,7 +11583,6 @@ pub unsafe fn Q6_R_mask_II<const IU5: u32, const IU5_2: u32>() -> i32 {
 /// Requires: V67, Audio
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(clip, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_R_clip_RI<const IU5: u32>(rs: i32) -> i32 {
@@ -11755,7 +11597,6 @@ pub unsafe fn Q6_R_clip_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Requires: V67, Audio
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cround, IU6 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_cround_PI<const IU6: u32>(rss: i64) -> i64 {
@@ -11783,7 +11624,6 @@ pub unsafe fn Q6_P_cround_PR(rss: i64, rt: i32) -> i64 {
 /// Requires: V67, Audio
 #[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
-#[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vclip, IU5 = 0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_P_vclip_PI<const IU5: u32>(rss: i64) -> i64 {

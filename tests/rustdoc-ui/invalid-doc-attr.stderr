@@ -1,0 +1,39 @@
+error: didn't expect any arguments here
+  --> $DIR/invalid-doc-attr.rs:5:14
+   |
+LL | #[doc(hidden = "for some reason")]
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+note: the lint level is defined here
+  --> $DIR/invalid-doc-attr.rs:3:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: didn't expect any arguments here
+  --> $DIR/invalid-doc-attr.rs:8:17
+   |
+LL | #[doc(no_inline = "tada")]
+   |                 ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: didn't expect any arguments here
+  --> $DIR/invalid-doc-attr.rs:13:13
+   |
+LL | #[doc(hidden("for some reason"))]
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: didn't expect any arguments here
+  --> $DIR/invalid-doc-attr.rs:16:16
+   |
+LL | #[doc(no_inline("tada"))]
+   |                ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 4 previous errors
+

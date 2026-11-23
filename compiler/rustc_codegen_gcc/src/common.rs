@@ -126,6 +126,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         Ok((value, None))
     }
+
+    pub(crate) fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
+        let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
+        // FIXME(antoyo): cache the type? It's anonymous, so probably not.
+        let typ = self.type_struct(&fields, &struct_attributes(packed, None));
+        let struct_type = typ.is_struct().expect("struct type");
+        self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
+    }
 }
 
 /// The type [`bytes_in_context`] gives a run of `len` constant bytes.
@@ -257,14 +265,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
         (cs, self.const_usize(len as u64))
-    }
-
-    fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
-        let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
-        // FIXME(antoyo): cache the type? It's anonymous, so probably not.
-        let typ = self.type_struct(&fields, &struct_attributes(packed, None));
-        let struct_type = typ.is_struct().expect("struct type");
-        self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
     }
 
     fn const_vector(&self, values: &[RValue<'gcc>]) -> RValue<'gcc> {

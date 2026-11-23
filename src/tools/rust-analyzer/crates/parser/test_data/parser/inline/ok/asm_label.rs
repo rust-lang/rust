@@ -1,3 +1,3 @@
 fn foo() {
-    builtin#asm("", label {});
+    k#asm("", label {});
 }

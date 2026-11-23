@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// types at the end of type inference, then integer type is bound to `i32`, and similarly
     /// floating type is bound to `f64`.
     ///
-    /// See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback.
+    /// See [RFC0212](https://github.com/rust-lang/rfcs/blob/main/text/0212-restore-int-fallback.md) for more information about the fallback.
     ///
     /// ### Why restrict this?
     /// To ensure that every numeric type is chosen explicitly rather than implicitly.

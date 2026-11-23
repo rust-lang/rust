@@ -1027,7 +1027,7 @@ macro_rules! format_args {}
 
 fn main() {
     /* parse error: expected field name or number */
-builtin #format_args ("{}", line.1.);
+k#format_args ("{}", line.1.);
 }
 
 "##]],
@@ -1061,7 +1061,7 @@ fn main() {
 /* parse error: expected R_PAREN */
 /* parse error: expected expression, item or let statement */
 /* parse error: expected expression, item or let statement */
-builtin #format_args ("{}", &[0 2]);
+k#format_args ("{}", &[0 2]);
 }
 
 "##]],

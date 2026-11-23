@@ -186,12 +186,14 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &[0, 1, 2];
+    /// let many = &[0, 1, 2];
+    /// assert_eq!(many.split_first(), Some((&0, &[1, 2][..])));
     ///
-    /// if let Some((first, elements)) = x.split_first() {
-    ///     assert_eq!(first, &0);
-    ///     assert_eq!(elements, &[1, 2]);
-    /// }
+    /// let one = &[42];
+    /// assert_eq!(one.split_first(), Some((&42, &[][..])));
+    ///
+    /// let none: &[i32] = &[];
+    /// assert_eq!(none.split_first(), None);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
@@ -206,14 +208,22 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &mut [0, 1, 2];
+    /// let many = &mut [0, 1, 2];
     ///
-    /// if let Some((first, elements)) = x.split_first_mut() {
+    /// if let Some((first, rest)) = many.split_first_mut() {
     ///     *first = 3;
-    ///     elements[0] = 4;
-    ///     elements[1] = 5;
+    ///     rest[0] = 4;
+    ///     rest[1] = 5;
     /// }
-    /// assert_eq!(x, &[3, 4, 5]);
+    /// assert_eq!(many, &[3, 4, 5]);
+    ///
+    /// let mut one = [42];
+    /// let (first, rest) = one.split_first_mut().unwrap();
+    /// assert_eq!(*first, 42);
+    /// assert!(rest.is_empty());
+    ///
+    /// let none: &mut [i32] = &mut [];
+    /// assert!(none.split_first_mut().is_none());
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
@@ -228,12 +238,14 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &[0, 1, 2];
+    /// let many = &[0, 1, 2];
+    /// assert_eq!(many.split_last(), Some((&2, &[0, 1][..])));
     ///
-    /// if let Some((last, elements)) = x.split_last() {
-    ///     assert_eq!(last, &2);
-    ///     assert_eq!(elements, &[0, 1]);
-    /// }
+    /// let one = &[42];
+    /// assert_eq!(one.split_last(), Some((&42, &[][..])));
+    ///
+    /// let none: &[i32] = &[];
+    /// assert_eq!(none.split_last(), None);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
@@ -248,14 +260,22 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &mut [0, 1, 2];
+    /// let many = &mut [0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_mut() {
+    /// if let Some((last, rest)) = many.split_last_mut() {
     ///     *last = 3;
-    ///     elements[0] = 4;
-    ///     elements[1] = 5;
+    ///     rest[0] = 4;
+    ///     rest[1] = 5;
     /// }
-    /// assert_eq!(x, &[4, 5, 3]);
+    /// assert_eq!(many, &[4, 5, 3]);
+    ///
+    /// let mut one = [42];
+    /// let (last, rest) = one.split_last_mut().unwrap();
+    /// assert_eq!(*last, 42);
+    /// assert!(rest.is_empty());
+    ///
+    /// let none: &mut [i32] = &mut [];
+    /// assert!(none.split_last_mut().is_none());
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]

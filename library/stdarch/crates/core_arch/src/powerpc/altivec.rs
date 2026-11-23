@@ -408,6 +408,11 @@ unsafe extern "llvm-intrinsic" {
 
     #[link_name = "llvm.nearbyint.v4f32"]
     fn vrfin(a: vector_float) -> vector_float;
+
+    #[link_name = "llvm.ppc.altivec.vclzlsbb"]
+    fn vclzlsbb(a: vector_signed_char) -> i32;
+    #[link_name = "llvm.ppc.altivec.vctzlsbb"]
+    fn vctzlsbb(a: vector_signed_char) -> i32;
 }
 
 #[macro_use]
@@ -3305,6 +3310,62 @@ mod sealed {
             vec_vrfin(self)
         }
     }
+
+    #[inline]
+    #[target_feature(enable = "power9-vector")]
+    #[cfg_attr(test, assert_instr(vclzlsbb))]
+    pub unsafe fn vec_vcntlz_lsbb(a: vector_signed_char) -> i32 {
+        vclzlsbb(a)
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorCntlzLsbb {
+        unsafe fn vec_cntlz_lsbb(self) -> i32;
+    }
+
+    macro_rules! impl_vec_cntlz_lsbb {
+        ($a:ty) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorCntlzLsbb for $a {
+                #[inline]
+                #[target_feature(enable = "power9-vector")]
+                unsafe fn vec_cntlz_lsbb(self) -> i32 {
+                    vec_vcntlz_lsbb(transmute(self))
+                }
+            }
+        };
+    }
+
+    impl_vec_cntlz_lsbb! { vector_signed_char }
+    impl_vec_cntlz_lsbb! { vector_unsigned_char }
+
+    #[inline]
+    #[target_feature(enable = "power9-vector")]
+    #[cfg_attr(test, assert_instr(vctzlsbb))]
+    pub unsafe fn vec_vcnttz_lsbb(a: vector_signed_char) -> i32 {
+        vctzlsbb(a)
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorCnttzLsbb {
+        unsafe fn vec_cnttz_lsbb(self) -> i32;
+    }
+
+    macro_rules! impl_vec_cnttz_lsbb {
+        ($a:ty) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorCnttzLsbb for $a {
+                #[inline]
+                #[target_feature(enable = "power9-vector")]
+                unsafe fn vec_cnttz_lsbb(self) -> i32 {
+                    vec_vcnttz_lsbb(transmute(self))
+                }
+            }
+        };
+    }
+
+    impl_vec_cnttz_lsbb! { vector_signed_char }
+    impl_vec_cnttz_lsbb! { vector_unsigned_char }
 }
 
 /// Vector Insert
@@ -4236,6 +4297,30 @@ mod endian {
     {
         a.vec_mule(b)
     }
+
+    // Trailing and leading are swapped in little-endian
+
+    /// Vector Count Leading Zero Least-Significant Bits Byte
+    #[inline]
+    #[target_feature(enable = "power9-vector")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub unsafe fn vec_cntlz_lsbb<T>(a: T) -> i32
+    where
+        T: sealed::VectorCnttzLsbb,
+    {
+        a.vec_cnttz_lsbb()
+    }
+
+    /// Vector Count Trailing Zero Least-Significant Bits Byte
+    #[inline]
+    #[target_feature(enable = "power9-vector")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub unsafe fn vec_cnttz_lsbb<T>(a: T) -> i32
+    where
+        T: sealed::VectorCntlzLsbb,
+    {
+        a.vec_cntlz_lsbb()
+    }
 }
 
 /// Vector Multiply
@@ -4678,6 +4763,28 @@ mod endian {
         T: sealed::VectorMulo<U>,
     {
         a.vec_mulo(b)
+    }
+
+    /// Vector Count Leading Zero Least-Significant Bits Byte
+    #[inline]
+    #[target_feature(enable = "power9-altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub unsafe fn vec_cntlz_lsbb<T>(a: T) -> i32
+    where
+        T: sealed::VectorCntlzLsbb,
+    {
+        a.vec_cntlz_lsbb()
+    }
+
+    /// Vector Count Trailing Zero Least-Significant Bits Byte
+    #[inline]
+    #[target_feature(enable = "power9-altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub unsafe fn vec_cnttz_lsbb<T>(a: T) -> i32
+    where
+        T: sealed::VectorCnttzLsbb,
+    {
+        a.vec_cnttz_lsbb()
     }
 }
 
@@ -6766,5 +6873,23 @@ mod tests {
         [0x12345678, 0x9ABCDEF0, 0x0F0F0F0F, 0x12345678],
         [4, 8, 12, 68],
         [0x23456781, 0xBCDEF09A, 0xF0F0F0F0, 0x23456781]
+    }
+
+    #[simd_test(enable = "power9-vector")]
+    fn test_vec_cntlz_lsbb() {
+        let a = i8x16::new(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0);
+
+        let count = unsafe { vec_cntlz_lsbb(transmute::<_, vector_signed_char>(a)) };
+
+        assert_eq!(count, 4);
+    }
+
+    #[simd_test(enable = "power9-vector")]
+    fn test_vec_cnttz_lsbb() {
+        let a = i8x16::new(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0);
+
+        let count = unsafe { vec_cnttz_lsbb(transmute::<_, vector_signed_char>(a)) };
+
+        assert_eq!(count, 2);
     }
 }

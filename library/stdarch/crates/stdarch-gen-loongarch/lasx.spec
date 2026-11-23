@@ -1708,21 +1708,25 @@ asm-fmts = xd, xj
 data-types = V4DI, V4DI
 
 /// lasx_xvclo_b
+impl = portable
 name = lasx_xvclo_b
 asm-fmts = xd, xj
 data-types = V32QI, V32QI
 
 /// lasx_xvclo_h
+impl = portable
 name = lasx_xvclo_h
 asm-fmts = xd, xj
 data-types = V16HI, V16HI
 
 /// lasx_xvclo_w
+impl = portable
 name = lasx_xvclo_w
 asm-fmts = xd, xj
 data-types = V8SI, V8SI
 
 /// lasx_xvclo_d
+impl = portable
 name = lasx_xvclo_d
 asm-fmts = xd, xj
 data-types = V4DI, V4DI

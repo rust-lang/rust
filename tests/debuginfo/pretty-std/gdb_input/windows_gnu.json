@@ -1,0 +1,409 @@
+{
+ "bless_metadata": {
+  "python_version": "3.9.7 (heads/mingw-v3.9.7-dirty:aa916ed5c9, Oct  4 2025, 17:26:50)  [GCC 15.2.0 64 bit (AMD64)]",
+  "debugger_version": "GNU gdb (GDB for MinGW-W64 x86_64, built by Brecht Sanders, r2) 16.3",
+  "feature_flags": ""
+ },
+ "breakpoints": [
+  {
+   "slice": {
+    "type": "&[i32]",
+    "pretty_print": "&[i32](size=4) = {0, 1, 2, 3}",
+    "synthetic": "StdSliceProvider",
+    "summary": "StdSliceProvider.to_string",
+    "children": [
+     {
+      "name": "[0]",
+      "type": "i32",
+      "value": "0"
+     },
+     {
+      "name": "[1]",
+      "type": "i32",
+      "value": "1"
+     },
+     {
+      "name": "[2]",
+      "type": "i32",
+      "value": "2"
+     },
+     {
+      "name": "[3]",
+      "type": "i32",
+      "value": "3"
+     }
+    ]
+   },
+   "vec": {
+    "type": "alloc::vec::Vec<u64, alloc::alloc::Global>",
+    "pretty_print": "Vec(size=4) = {4, 5, 6, 7}",
+    "synthetic": "StdVecProvider",
+    "summary": "StdVecProvider.to_string",
+    "children": [
+     {
+      "name": "[0]",
+      "type": "u64",
+      "value": "4"
+     },
+     {
+      "name": "[1]",
+      "type": "u64",
+      "value": "5"
+     },
+     {
+      "name": "[2]",
+      "type": "u64",
+      "value": "6"
+     },
+     {
+      "name": "[3]",
+      "type": "u64",
+      "value": "7"
+     }
+    ]
+   },
+   "str_slice": {
+    "type": "&str",
+    "pretty_print": "\"IAMA string slice!\"",
+    "synthetic": "StdStrProvider",
+    "summary": "StdStrProvider.to_string"
+   },
+   "string": {
+    "type": "alloc::string::String",
+    "pretty_print": "\"IAMA string!\"",
+    "synthetic": "StdStringProvider",
+    "summary": "StdStringProvider.to_string"
+   },
+   "some": {
+    "type": "core::option::Option<i16>",
+    "pretty_print": "core::option::Option<i16>::Some(8)",
+    "children": [
+     {
+      "name": "Some",
+      "type": "core::option::Option<i16>::Some",
+      "children": [
+       {
+        "name": "__0",
+        "type": "i16",
+        "value": "8"
+       }
+      ]
+     }
+    ]
+   },
+   "none": {
+    "type": "core::option::Option<i64>",
+    "pretty_print": "core::option::Option<i64>::None",
+    "children": [
+     {
+      "name": "None",
+      "type": "core::option::Option<i64>::None"
+     }
+    ]
+   },
+   "os_string": {
+    "type": "std::ffi::os_str::OsString",
+    "pretty_print": "\"IAMA OS string \\360\\237\\230\\203\"",
+    "synthetic": "StdOsStringProvider",
+    "summary": "StdOsStringProvider.to_string"
+   },
+   "some_string": {
+    "type": "core::option::Option<alloc::string::String>",
+    "pretty_print": "core::option::Option<alloc::string::String>::Some(\"IAMA optional string!\")",
+    "children": [
+     {
+      "name": "Some",
+      "type": "core::option::Option<alloc::string::String>::Some",
+      "children": [
+       {
+        "name": "__0",
+        "type": "alloc::string::String"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "types": {
+  "&[i32]": {
+   "size": 16,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "*mut i32",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "&str": {
+   "size": 16,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "*mut u8",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "*mut i32": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 1
+  },
+  "*mut u8": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 1
+  },
+  "alloc::alloc::Global": {
+   "size": 0,
+   "type_class": 0,
+   "basic_type": 3
+  },
+  "alloc::raw_vec::RawVec<u64, alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "_marker",
+     "type": "core::marker::PhantomData<u64>",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "u64",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<u8, alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "_marker",
+     "type": "core::marker::PhantomData<u8>",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "u8",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVecInner<alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "ptr",
+     "type": "core::ptr::non_null::NonNull<u8>",
+     "offset": 8
+    },
+    {
+     "name": "cap",
+     "type": "core::num::niche_types::UsizeNoHighBit",
+     "offset": 0
+    },
+    {
+     "name": "alloc",
+     "type": "alloc::alloc::Global",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::string::String": {
+   "size": 24,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "vec",
+     "type": "alloc::vec::Vec<u8, alloc::alloc::Global>",
+     "offset": 0
+    }
+   ]
+  },
+  "alloc::vec::Vec<u64, alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<u64, alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "usize",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "u64",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<u8, alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<u8, alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "usize",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "u8",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::wtf8::Wtf8Buf": {
+   "size": 32,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "bytes",
+     "type": "alloc::vec::Vec<u8, alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "is_known_utf8",
+     "type": "bool",
+     "offset": 24
+    }
+   ]
+  },
+  "bool": {
+   "size": 1,
+   "type_class": 0,
+   "basic_type": 21
+  },
+  "core::marker::PhantomData<u64>": {
+   "size": 0,
+   "type_class": 0,
+   "basic_type": 3,
+   "generic_params": [
+    "u64"
+   ]
+  },
+  "core::marker::PhantomData<u8>": {
+   "size": 0,
+   "type_class": 0,
+   "basic_type": 3,
+   "generic_params": [
+    "u8"
+   ]
+  },
+  "core::num::niche_types::UsizeNoHighBit": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "usize",
+     "offset": 0
+    }
+   ]
+  },
+  "core::ptr::non_null::NonNull<u8>": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "pointer",
+     "type": "*mut u8",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "u8"
+   ]
+  },
+  "i32": {
+   "size": 4,
+   "type_class": 0,
+   "basic_type": 8
+  },
+  "std::ffi::os_str::OsString": {
+   "size": 32,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "std::sys::os_str::wtf8::Buf",
+     "offset": 0
+    }
+   ]
+  },
+  "std::sys::os_str::wtf8::Buf": {
+   "size": 32,
+   "type_class": 0,
+   "basic_type": 3,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::wtf8::Wtf8Buf",
+     "offset": 0
+    }
+   ]
+  },
+  "u64": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 8
+  },
+  "u8": {
+   "size": 1,
+   "type_class": 0,
+   "basic_type": 8
+  },
+  "usize": {
+   "size": 8,
+   "type_class": 0,
+   "basic_type": 23
+  }
+ }
+}

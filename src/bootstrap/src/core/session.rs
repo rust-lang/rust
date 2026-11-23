@@ -89,10 +89,14 @@ impl Deref for Session {
 /// When building Rust various objects are handled differently.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum DependencyType {
-    /// Libraries originating from proc-macros.
-    Host,
+    /// proc-macros compiled for the host.
+    HostProcMacro,
     /// Typical Rust libraries.
-    Target,
+    /// Can include cross-compiled proc-macros.
+    Target {
+        /// Is this dependency a proc macro?
+        proc_macro: bool,
+    },
     /// Non Rust libraries and objects shipped to ease usage of certain targets.
     TargetSelfContained,
 }
@@ -559,9 +563,7 @@ impl Session {
     #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Session::build", skip_all))]
     pub(crate) fn build(&mut self) {
         trace!("setting up job management");
-        unsafe {
-            crate::utils::job::setup(self);
-        }
+        crate::utils::job::setup(self);
 
         // Handle hard-coded subcommands.
         {
@@ -1469,9 +1471,10 @@ impl Session {
                 continue;
             }
             let dependency_type = match part[0] as char {
-                'h' => DependencyType::Host,
+                'h' => DependencyType::HostProcMacro,
                 's' => DependencyType::TargetSelfContained,
-                't' => DependencyType::Target,
+                't' => DependencyType::Target { proc_macro: false },
+                'p' => DependencyType::Target { proc_macro: true },
                 _ => unreachable!(),
             };
             let path = PathBuf::from(t!(str::from_utf8(&part[1..])));

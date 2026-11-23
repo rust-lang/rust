@@ -513,7 +513,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
-                        &self.borrow_set.locals_state_at_exit(),
+                        self.borrow_set.locals_state_at_exit(),
                     ) {
                         return;
                     }

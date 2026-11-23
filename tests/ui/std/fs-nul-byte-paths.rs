@@ -2,7 +2,7 @@
 
 //@ run-pass
 #![allow(deprecated)]
-//@ ignore-wasm32 no cwd
+//@ ignore-wasm no cwd
 //@ ignore-sgx no files
 
 use std::{fs, io};

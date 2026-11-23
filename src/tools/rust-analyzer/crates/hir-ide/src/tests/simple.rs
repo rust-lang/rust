@@ -3830,8 +3830,8 @@ fn offset_of() {
     check_types(
         r#"
 fn main() {
-    builtin#offset_of((,), 0);
- // ^^^^^^^^^^^^^^^^^^^^^^^^^ usize
+    k#offset_of((,), 0);
+ // ^^^^^^^^^^^^^^^^^^^ usize
 }
 "#,
     );
@@ -3845,8 +3845,8 @@ fn builtin_format_args() {
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
- // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'?>
+    k#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'?>
 }
 "#,
     );
@@ -4101,13 +4101,13 @@ fn foo() {
             24..27 '123': i32
             37..38 's': &'? str
             46..48 '{}': ()
-            !0..68 'builti...");},)': ()
-            !40..43 'bar': fn bar() -> i32
-            !40..45 'bar()': i32
-            !51..66 '{baz("hello");}': ()
-            !52..55 'baz': fn baz(&'? str)
-            !52..64 'baz("hello")': ()
-            !56..63 '"hello"': &'static str
+            !0..62 'k#asm(...");},)': ()
+            !34..37 'bar': fn bar() -> i32
+            !34..39 'bar()': i32
+            !45..60 '{baz("hello");}': ()
+            !46..49 'baz': fn baz(&'? str)
+            !46..58 'baz("hello")': ()
+            !50..57 '"hello"': &'static str
             59..257 '{     ...   } }': ()
             65..255 'unsafe...     }': ()
         "#]],

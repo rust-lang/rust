@@ -804,7 +804,7 @@ intrinsics:
     assert_instr: ["ldnt1{size_literal[0]}"]
     test: { load: 1 }
     compose:
-      - LLVMLink: { name: "ldnt1.gather.index.{sve_type[1]}" }
+      - LLVMLink: { name: "ldnt1.gather.index.{sve_type[1]}.p0" }
 
   - name: svldnt1_gather_[{type[0]}]offset[_{type[1]}]
     attr: [*sve-unstable]
@@ -826,9 +826,9 @@ intrinsics:
       - MatchSize:
           - "{type[0]}"
           - default:
-              LLVMLink: { name: "ldnt1.gather.uxtw.{sve_type[1]}" }
+              LLVMLink: { name: "ldnt1.gather.uxtw.{sve_type[1]}.p0" }
             doubleword:
-              LLVMLink: { name: "ldnt1.gather.{sve_type[1]}" }
+              LLVMLink: { name: "ldnt1.gather.{sve_type[1]}.p0" }
 
   - name: svldnt1_gather[_{type[0]}base]_offset_{type[1]}
     attr: [*sve-unstable]
@@ -913,7 +913,7 @@ intrinsics:
     test: { load: 2 }
     compose:
       - LLVMLink:
-          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}"
+          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}.p0"
           return_type: "{sve_type[1] as {type[2]}}"
       - FnCall:
           - "crate::intrinsics::simd::simd_cast"
@@ -936,7 +936,7 @@ intrinsics:
     test: { load: 2 }
     compose:
       - LLVMLink:
-          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}"
+          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}.p0"
           return_type: "{sve_type[1] as {type[2]}}"
       - FnCall:
           - "crate::intrinsics::simd::simd_cast"
@@ -965,11 +965,11 @@ intrinsics:
           - "{type[0]}"
           - default:
               LLVMLink:
-                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}"
+                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}.p0"
                 return_type: "{sve_type[1] as {type[2]}}"
             doubleword:
               LLVMLink:
-                name: "ldnt1.gather.{sve_type[1] as {type[2]}}"
+                name: "ldnt1.gather.{sve_type[1] as {type[2]}}.p0"
                 return_type: "{sve_type[1] as {type[2]}}"
       - FnCall:
           - "crate::intrinsics::simd::simd_cast"
@@ -996,11 +996,11 @@ intrinsics:
           - "{type[0]}"
           - default:
               LLVMLink:
-                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}"
+                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}.p0"
                 return_type: "{sve_type[1] as {type[2]}}"
             doubleword:
               LLVMLink:
-                name: "ldnt1.gather.{sve_type[1] as {type[2]}}"
+                name: "ldnt1.gather.{sve_type[1] as {type[2]}}.p0"
                 return_type: "{sve_type[1] as {type[2]}}"
       - FnCall:
           - "crate::intrinsics::simd::simd_cast"
@@ -1169,7 +1169,7 @@ intrinsics:
     test: { store: 1 }
     compose:
       - LLVMLink:
-          name: "stnt1.scatter.index.{sve_type[1]}"
+          name: "stnt1.scatter.index.{sve_type[1]}.p0"
           arguments:
             - "data: {sve_type[1]}"
             - "pg: {predicate[0]}"
@@ -1200,7 +1200,7 @@ intrinsics:
           - "{type[0]}"
           - default:
               LLVMLink:
-                name: "stnt1.scatter.uxtw.{sve_type[1]}"
+                name: "stnt1.scatter.uxtw.{sve_type[1]}.p0"
                 arguments:
                   - "data: {sve_type[1]}"
                   - "pg: {predicate[0]}"
@@ -1208,7 +1208,7 @@ intrinsics:
                   - "offsets: {sve_type[0]}"
             doubleword:
               LLVMLink:
-                name: "stnt1.scatter.{sve_type[1]}"
+                name: "stnt1.scatter.{sve_type[1]}.p0"
                 arguments:
                   - "data: {sve_type[1]}"
                   - "pg: {predicate[0]}"
@@ -1316,7 +1316,7 @@ intrinsics:
     test: { store: 2 }
     compose:
       - LLVMLink:
-          name: "stnt1.scatter.index.{sve_type[1] as {type[2]}}"
+          name: "stnt1.scatter.index.{sve_type[1] as {type[2]}}.p0"
           arguments:
             - "data: {sve_type[1] as {type[2]}}"
             - "pg: {predicate[0]}"
@@ -1351,7 +1351,7 @@ intrinsics:
           - "{type[0]}"
           - default:
               LLVMLink:
-                name: "stnt1.scatter.uxtw.{sve_type[1] as {type[2]}}"
+                name: "stnt1.scatter.uxtw.{sve_type[1] as {type[2]}}.p0"
                 arguments:
                   - "data: {sve_type[1] as {type[2]}}"
                   - "pg: {predicate[0]}"
@@ -1359,7 +1359,7 @@ intrinsics:
                   - "offsets: {sve_type[0]}"
             doubleword:
               LLVMLink:
-                name: "stnt1.scatter.{sve_type[1] as {type[2]}}"
+                name: "stnt1.scatter.{sve_type[1] as {type[2]}}.p0"
                 arguments:
                   - "data: {sve_type[1] as {type[2]}}"
                   - "pg: {predicate[0]}"

@@ -60,7 +60,7 @@ book](../lints.md).
 [hir]: https://rustc-dev-guide.rust-lang.org/hir.html
 [rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
 [map_of_territory]: https://craftinginterpreters.com/a-map-of-the-territory.html
-[clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
-[rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
-[rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+[clippy_rfc]: https://github.com/rust-lang/rfcs/blob/main/text/2476-clippy-uno.md
+[rfc_stability]: https://github.com/rust-lang/rfcs/blob/main/text/2476-clippy-uno.md#stability-guarantees
+[rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/main/text/2476-clippy-uno.md#lint-audit-and-categories
 [`CONTRIBUTING.md`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md

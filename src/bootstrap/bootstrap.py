@@ -194,12 +194,16 @@ def verify(path, expected, verbose):
     return verified
 
 
-def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
+def unpack(tarball, tarball_suffix, dst, verbose=0, match=None, directories_only=False):
     """Unpack the given tarball file"""
-    eprint("extracting", tarball)
+    if not directories_only:
+        eprint("extracting", tarball)
     fname = os.path.basename(tarball).replace(tarball_suffix, "")
     with contextlib.closing(tarfile.open(tarball)) as tar:
-        for member in tar.getnames():
+        for member_info in tar:
+            if directories_only and not member_info.isdir():
+                break
+            member = member_info.name
             if "/" not in member:
                 continue
             name = member.replace(fname + "/", "", 1)
@@ -210,7 +214,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
             dst_path = os.path.join(dst, name)
             if verbose > 0:
                 eprint("  extracting", member)
-            tar.extract(member, dst)
+            tar.extract(member_info, dst)
             src_path = os.path.join(dst, member)
             if os.path.isdir(src_path) and os.path.exists(dst_path):
                 continue
@@ -535,13 +539,14 @@ def download_component(download_info):
         )
 
 
-def unpack_component(download_info):
+def unpack_component(download_info, directories_only=False):
     unpack(
         download_info.tarball_path,
         download_info.tarball_suffix,
         download_info.bin_root,
         match=download_info.pattern,
         verbose=download_info.verbose,
+        directories_only=directories_only,
     )
 
 
@@ -695,6 +700,11 @@ class RustBuild(object):
             # Download the components serially to show the progress bars properly.
             for download_info in tarballs_download_info:
                 download_component(download_info)
+
+            # rust-installer writes all directories before files. Move them serially
+            # so parallel extraction cannot race when creating shared directories.
+            for download_info in tarballs_download_info:
+                unpack_component(download_info, directories_only=True)
 
             # Unpack the tarballs in parallel.
             # In Python 2.7, Pool cannot be used as a context manager.

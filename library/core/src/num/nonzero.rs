@@ -1340,8 +1340,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(nonzero_ops)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1355,12 +1353,17 @@ macro_rules! nonzero_integer {
             /// ```
             ///
             /// [`checked_mul`]: Self::checked_mul
-            #[unstable(feature = "nonzero_ops", issue = "84186")]
+            #[stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             pub const unsafe fn unchecked_mul(self, other: Self) -> Self {
-                // SAFETY: The caller ensures there is no overflow.
+                // SAFETY:
+                // - the caller promises that the multiplication does not overflow;
+                // - `self` and `other` are non-zero;
+                // - the only way to get zero from a multiplication without overflow
+                //   is for either factor to be zero.
                 unsafe { Self::new_unchecked(self.get().unchecked_mul(other.get())) }
             }
 
@@ -1527,8 +1530,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1541,13 +1542,11 @@ macro_rules! nonzero_integer {
             /// Trailing space returns error:
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             /// # use std::num::NonZero;
             /// #
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii_bytes(b\"1 \").is_err());")]
             /// ```
-            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[stable(feature = "int_from_ascii", since = "CURRENT_RUSTC_VERSION")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
             pub const fn from_ascii_bytes<T>(src: T) -> Result<Self, ParseIntError>
@@ -1586,8 +1585,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1600,13 +1597,11 @@ macro_rules! nonzero_integer {
             /// Trailing space returns error:
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             /// # use std::num::NonZero;
             /// #
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii_bytes_radix(b\"1 \", 10).is_err());")]
             /// ```
-            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[stable(feature = "int_from_ascii", since = "CURRENT_RUSTC_VERSION")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
             pub const fn from_ascii_bytes_radix<T>(src: T, radix: u32) -> Result<Self, ParseIntError>
@@ -2050,8 +2045,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(nonzero_ops)]
-        ///
         /// # use std::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
@@ -2065,12 +2058,17 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         ///
         /// [`checked_add`]: Self::checked_add
-        #[unstable(feature = "nonzero_ops", issue = "84186")]
+        #[stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const unsafe fn unchecked_add(self, other: $Int) -> Self {
-            // SAFETY: The caller ensures there is no overflow.
+            // SAFETY:
+            // - the caller promises that the addition does not overflow;
+            // - `self` is non-zero;
+            // - the only way to get zero from an addition of unsigned integers
+            //   without overflow is for both addends to be zero.
             unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }
         }
 

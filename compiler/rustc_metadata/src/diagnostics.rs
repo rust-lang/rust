@@ -525,10 +525,17 @@ impl Diagnostic<'_> for CannotFindCrate {
             // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
             // it's the recommended way to use the target, the user should switch to nightly.
             if self.is_nightly_build || !has_precompiled_std {
-                diag.help(msg!(
-                    "consider building the standard library from source with \
-                     `cargo build -Zbuild-std`"
-                ));
+                if self.crate_name == sym::core && self.missing_core {
+                    diag.help(msg!(
+                        "consider building the `core` library from source with \
+                        `cargo build -Zbuild-std=core`"
+                    ));
+                } else {
+                    diag.help(msg!(
+                        "consider building the standard library from source with \
+                        `cargo build -Zbuild-std`"
+                    ));
+                }
             }
         } else if self.crate_name == self.profiler_runtime {
             diag.note(msg!("the compiler may have been built without the profiler runtime"));
@@ -568,96 +575,6 @@ pub(crate) struct CrateLocationUnknownType<'a> {
 pub(crate) struct WasmCAbi {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
-#[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
-     values of this flag cannot be used together safely"
-)]
-#[note(
-    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with \
-     `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
-)]
-#[help(
-    "set `{$flag_name_prefixed}={$extern_value}` in this crate or \
-     `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
-)]
-#[help(
-    "if you are sure this will not cause problems, you may use \
-     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
-)]
-pub(crate) struct IncompatibleTargetModifiers {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-    pub flag_name: String,
-    pub flag_name_prefixed: String,
-    pub local_value: String,
-    pub extern_value: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
-#[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
-     values of this flag cannot be used together safely"
-)]
-#[note(
-    "`{$flag_name_prefixed}` is unset in this crate which is incompatible with {$has_extern_value ->
-        [false]  `{$flag_name_prefixed}` being set
-        *[other] `{$flag_name_prefixed}={$extern_value}`
-    } in dependency `{$extern_crate}`"
-)]
-#[help(
-    "set {$has_extern_value ->
-        [false]  `{$flag_name_prefixed}`
-        *[other] `{$flag_name_prefixed}={$extern_value}`
-    } in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
-)]
-#[help(
-    "if you are sure this will not cause problems, you may use \
-     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
-)]
-pub(crate) struct IncompatibleTargetModifiersLMissed {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-    pub flag_name: String,
-    pub flag_name_prefixed: String,
-    pub extern_value: String,
-    pub has_extern_value: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
-#[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
-     values of this flag cannot be used together safely"
-)]
-#[note(
-    "{$has_local_value ->
-        [false]  `{$flag_name_prefixed}` being set
-        *[other] `{$flag_name_prefixed}={$local_value}`
-    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency \
-     `{$extern_crate}`"
-)]
-#[help(
-    "unset `{$flag_name_prefixed}` in this crate or set {$has_local_value ->
-        [false]  `{$flag_name_prefixed}`
-        *[other] `{$flag_name_prefixed}={$local_value}`
-    } in `{$extern_crate}`"
-)]
-#[help(
-    "if you are sure this will not cause problems, you may use \
-     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
-)]
-pub(crate) struct IncompatibleTargetModifiersRMissed {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-    pub flag_name: String,
-    pub flag_name_prefixed: String,
-    pub local_value: String,
-    pub has_local_value: bool,
 }
 
 #[derive(Diagnostic)]

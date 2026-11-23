@@ -27,11 +27,46 @@ pub struct CrateSource {
     pub rmeta: Option<PathBuf>,
     pub sdylib_interface: Option<PathBuf>,
 }
+/// Flags about where a crate came from on the local filesystem.
+///
+/// Used to avoid introducing dependencies on absolute paths for incrementals when
+/// the caller only needs to know if a field of `CrateSource` is_some.
+#[derive(PartialEq, Clone, StableHash, Copy)]
+pub struct CrateSourceFlags(u8);
+bitflags::bitflags! {
+    impl CrateSourceFlags: u8 {
+        const DYLIB = 1 << 0;
+        const RLIB = 1 << 1;
+        const RMETA = 1 << 2;
+        const SDYLIB_INTERFACE = 1 << 3;
+    }
+}
+rustc_data_structures::external_bitflags_debug! { CrateSourceFlags }
 
 impl CrateSource {
     #[inline]
     pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
         self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter())
+    }
+
+    #[inline]
+    pub fn flags(&self) -> CrateSourceFlags {
+        let mut flags = CrateSourceFlags::empty();
+
+        if self.dylib.is_some() {
+            flags |= CrateSourceFlags::DYLIB;
+        }
+        if self.rlib.is_some() {
+            flags |= CrateSourceFlags::RLIB;
+        }
+        if self.rmeta.is_some() {
+            flags |= CrateSourceFlags::RMETA;
+        }
+        if self.sdylib_interface.is_some() {
+            flags |= CrateSourceFlags::SDYLIB_INTERFACE;
+        }
+
+        flags
     }
 }
 

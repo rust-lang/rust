@@ -1473,7 +1473,7 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(packsswb))]
+#[cfg_attr(test, assert_instr(packsswb, limit(5), not(pmin), not(pmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(packsswb(a.as_i16x8(), b.as_i16x8())) }
@@ -1485,7 +1485,7 @@ pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(packssdw))]
+#[cfg_attr(test, assert_instr(packssdw, limit(5), not(pmin), not(pmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(packssdw(a.as_i32x4(), b.as_i32x4())) }
@@ -1497,7 +1497,7 @@ pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(packuswb))]
+#[cfg_attr(test, assert_instr(packuswb, limit(5), not(pmin), not(pmax)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(packuswb(a.as_i16x8(), b.as_i16x8())) }

@@ -269,6 +269,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![feature(abort_immediate)]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -279,6 +280,7 @@
 #![feature(cfg_target_has_threads)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(const_eval_select)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -349,7 +351,6 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
-#![feature(int_from_ascii)]
 #![feature(io_error_inprogress)]
 #![feature(io_error_input_output_error)]
 #![feature(io_error_more)]
@@ -713,6 +714,8 @@ pub mod arch {
     pub use std_detect::is_arm_feature_detected;
     #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
+    #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
+    pub use std_detect::is_mips_feature_detected;
     #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
     pub use std_detect::is_powerpc_feature_detected;
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
@@ -721,8 +724,6 @@ pub mod arch {
     pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
-    #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
-    pub use std_detect::{is_mips_feature_detected, is_mips64_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.

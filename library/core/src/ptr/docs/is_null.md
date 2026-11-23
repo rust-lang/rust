@@ -1,9 +1,11 @@
 Returns `true` if the pointer is null.
 
-Note that unsized types have many possible null pointers, as only the
-raw data pointer is considered, not their length, vtable, etc.
+Note that, for [wide] pointers, only the address of the pointee is considered,
+ignoring the metadata (such as a slice's length or a trait object's vtable).
 Therefore, two pointers that are null may still not compare equal to
 each other.
+
+[wide]: core::ptr#thin-and-wide-pointers
 
 # Panics during const evaluation
 

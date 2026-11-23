@@ -1815,27 +1815,6 @@ pub(crate) struct ParenthesesInForHeadSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("unexpected parentheses surrounding `match` arm pattern")]
-pub(crate) struct ParenthesesInMatchPat {
-    #[primary_span]
-    pub span: Vec<Span>,
-    #[subdiagnostic]
-    pub sugg: ParenthesesInMatchPatSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "remove parentheses surrounding the pattern",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct ParenthesesInMatchPatSugg {
-    #[suggestion_part(code = "")]
-    pub left: Span,
-    #[suggestion_part(code = "")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("patterns aren't allowed in {$target}", code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]

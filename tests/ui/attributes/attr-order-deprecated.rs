@@ -1,7 +1,7 @@
 #[deprecated = "AAA"]
 //~^ NOTE also specified here
 #[deprecated = "BBB"]
-//~^ ERROR multiple `deprecated` attributes
+//~^ ERROR duplicate `deprecated` attributes
 fn deprecated() { }
 
 fn main() {

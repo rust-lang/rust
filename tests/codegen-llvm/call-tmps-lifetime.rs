@@ -15,7 +15,7 @@ use minicore::*;
 //
 // CHECK-LABEL: define void @const_indirect(
 // CHECK-NEXT: start:
-// CHECK-NEXT: call void %h(ptr {{.*}}byval([4096 x i8]){{.*}} [[C:@anon.*]])
+// CHECK-NEXT: call void %h(ptr {{.*}}byval([4096 x i8]){{.*}} [[C:@[0-9]+]])
 // CHECK-NEXT: call void %h(ptr {{.*}}byval([4096 x i8]){{.*}} [[C]])
 #[no_mangle]
 pub fn const_indirect(h: extern "C" fn([u32; 1024])) {

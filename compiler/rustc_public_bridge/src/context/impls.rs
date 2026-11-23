@@ -18,9 +18,9 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
-    ExistentialTraitRef, FnSig, GenericArgs, Instance, InstanceKind, IntrinsicDef, List, PolyFnSig,
-    ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy, ValTree,
-    VariantDef, VtblEntry,
+    ExistentialTraitRef, FnSig, GenericArgs, Instance, InstanceKind, Intrinsic, IntrinsicDef, List,
+    PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
+    ValTree, VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -310,9 +310,9 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         };
         attrs_iter
             .filter_map(|attribute| {
-                if let Attribute::Tool(u) = attribute {
+                if let Attribute::Tool { item, .. } = attribute {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
-                    Some((attr_str, u.span))
+                    Some((attr_str, item.span))
                 } else {
                     None
                 }
@@ -376,6 +376,20 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         def.repr()
     }
 
+    /// Returns if the ADT is a PhantomData
+    pub fn adt_is_phantom_data(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_phantom_data()
+    }
+
+    /// Returns if the ADT is ManuallyDrop
+    pub fn adt_is_manually_drop(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_manually_drop()
+    }
+
+    /// Returns if the ADT is an UnsafeCell
+    pub fn adt_is_unsafe_cell(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_unsafe_cell()
+    }
     /// Retrieve the function signature for the given generic arguments.
     pub fn fn_sig(&self, def_id: DefId, args_ref: GenericArgs<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref).skip_norm_wip();
@@ -400,7 +414,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Retrieve the plain function name of an intrinsic.
     pub fn intrinsic_name(&self, def_id: DefId) -> String {
-        self.tcx.intrinsic(def_id).unwrap().name.to_string()
+        match self.tcx.intrinsic(def_id).unwrap().name {
+            Intrinsic::Rustc(s) => s,
+            Intrinsic::Backend { llvm } => llvm,
+        }
+        .to_string()
     }
 
     /// Retrieve the closure signature for the given generic arguments.

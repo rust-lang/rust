@@ -1,7 +1,10 @@
+// Always setting -Zmir-opt-level to overwrite the test harness.
+// Assumes that -Copt-level=0 maps to mir-opt-level=1, and other -Copt-level map to
+// mir-opt-level=2.
 //@ revisions: NO-OPT SPEED-OPT ABSOLUTELY-NO-OPT
-//@[NO-OPT] compile-flags: -Copt-level=0
+//@[NO-OPT] compile-flags: -Copt-level=0 -Zmir-opt-level=1
 //@[ABSOLUTELY-NO-OPT] compile-flags: -Copt-level=0 -Zmir-opt-level=0
-//@[SPEED-OPT] compile-flags: -Copt-level=3 -Coverflow-checks=y
+//@[SPEED-OPT] compile-flags: -Copt-level=3 -Zmir-opt-level=2 -Coverflow-checks=y
 #![feature(core_intrinsics)]
 
 #[optimize(none)]
@@ -35,7 +38,7 @@ pub fn align_of_val_noopt() -> usize {
     unsafe {
         let ptr: *const [u8] = std::mem::transmute((42usize, usize::MAX));
         // InstCombine would optimize away the intrinsic call here.
-        // ABSOLUTELY-NO-OPT: align_of_val
+        // ABSOLUTELY-NO-OPT: intrinsics::align_of_val
         // With mir-opt-level 1, we do run InstSimplify but don't compute the final constant.
         // NO-OPT: const <u8 as std::mem::SizedTypeProperties>::ALIGN
         // SPEED-OPT: const <u8 as std::mem::SizedTypeProperties>::ALIGN
@@ -43,13 +46,15 @@ pub fn align_of_val_noopt() -> usize {
     }
 }
 
-// With optimize(speed), we optimize this all the way to a constant
+// Even with optimize(speed), a mir-opt-level of 0 suppresses MIR opts.
 #[optimize(speed)]
 pub fn align_of_val_opt() -> usize {
     // CHECK-LABEL: fn align_of_val_opt(
     unsafe {
         let ptr: *const [u8] = std::mem::transmute((42usize, usize::MAX));
-        // CHECK: _0 = const 1_usize;
+        // ABSOLUTELY-NO-OPT: intrinsics::align_of_val
+        // NO-OPT: _0 = const <u8 as std::mem::SizedTypeProperties>::ALIGN;
+        // SPEED-OPT: _0 = const 1_usize;
         std::intrinsics::align_of_val(ptr)
     }
 }

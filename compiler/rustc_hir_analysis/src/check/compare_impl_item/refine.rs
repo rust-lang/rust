@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
+use rustc_trait_selection::error_reporting::traits::suggest_new_overflow_limit;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -99,6 +100,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
+                trait_m_sig,
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
@@ -119,6 +121,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
+                trait_m_sig,
                 trait_m.def_id,
                 impl_m.def_id,
                 None,
@@ -148,8 +151,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
-    let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
+    let param_env =
+        normalize_param_env_or_error(tcx, hybrid_clauses.collect(), ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
@@ -223,6 +226,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
+                trait_m_sig,
                 trait_m.def_id,
                 impl_m.def_id,
                 Some(span),
@@ -283,10 +287,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
             if !self.tcx.recursion_limit().value_within_limit(self.depth) {
-                self.tcx.dcx().span_delayed_bug(
+                let mut err = self.tcx.dcx().struct_span_err(
                     self.tcx.def_span(proj.kind),
                     "recursion limit exceeded while collecting implied RPITIT bounds",
                 );
+                suggest_new_overflow_limit(self.tcx, &mut err);
+                err.emit();
                 return ControlFlow::Break(());
             }
             if self.types.insert(proj) {
@@ -311,6 +317,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
 fn report_mismatched_rpitit_signature<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_m_sig: ty::FnSig<'tcx>,
+    trait_m_sig_with_impl_self: ty::FnSig<'tcx>,
     trait_m_def_id: DefId,
     impl_m_def_id: DefId,
     unmatched_bound: Option<Span>,
@@ -338,6 +345,10 @@ fn report_mismatched_rpitit_signature<'tcx>(
 
     let mut return_ty = trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping });
 
+    // An `async fn` suggestion replaces the desugared `Future` output rather than an opaque, so
+    // there is no `use<..>` bound to carry over.
+    let mut maybe_use_bounds_for_impl = None;
+
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
         let &ty::Alias(
             _,
@@ -361,6 +372,9 @@ fn report_mismatched_rpitit_signature<'tcx>(
             span_bug!(tcx.def_span(trait_m_def_id), "expected `Future` projection bound in AFIT");
         };
         return_ty = future_output_ty;
+    } else {
+        maybe_use_bounds_for_impl =
+            rpitit_use_bounds_for_impl(tcx, trait_m_def_id, trait_m_sig_with_impl_self.output());
     }
 
     let (span, impl_return_span, pre, post) =
@@ -383,7 +397,10 @@ fn report_mismatched_rpitit_signature<'tcx>(
     // standard approach used elsewhere in the compiler for formatting types in suggestions
     // (e.g., see `rustc_hir_typeck/src/demand.rs`).
     let return_ty_suggestion =
-        with_no_trimmed_paths!(with_types_for_signature!(format!("{return_ty}")));
+        with_no_trimmed_paths!(with_types_for_signature!(match &maybe_use_bounds_for_impl {
+            Some(use_bound) => format!("{return_ty} + {use_bound}"),
+            None => format!("{return_ty}"),
+        }));
 
     let span = unmatched_bound.unwrap_or(span);
     tcx.emit_node_span_lint(
@@ -501,6 +518,52 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectParams<'_, 'tcx> {
             ct.super_visit_with(self);
         }
     }
+}
+
+/// The `use<..>` bound of an impl has to be repeated so that its opaque captures no more than the
+/// trait's RPITIT does, phrased in terms of the impl's own generics.
+///
+/// A capture list is not part of how an opaque prints, and everything but in the method's late-bound
+/// lifetimes has to appear, so a suggestion built from the trait's bounds alone would only
+/// capture those lifetimes and would be rejected by the check `use<..>` exists to satisfy.
+fn rpitit_use_bounds_for_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_m_def_id: DefId,
+    trait_return_ty: Ty<'tcx>,
+) -> Option<String> {
+    let ty::Alias(_, alias) = *trait_return_ty.kind() else {
+        return None;
+    };
+    let projection = alias.try_to_projection()?;
+    if !tcx.is_impl_trait_in_trait(projection.kind) {
+        return None;
+    }
+
+    // An opaque only declares the late-bound lifetimes it captured, so declaring all of them
+    // means the impl captures the same set on its own.
+    let captured_lifetimes = tcx
+        .generics_of(projection.kind)
+        .own_params
+        .iter()
+        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
+        .count();
+    let late_bound_lifetimes = tcx
+        .fn_sig(trait_m_def_id)
+        .skip_binder()
+        .bound_vars()
+        .iter()
+        .filter(|var| matches!(var, ty::BoundVariableKind::Region(_)))
+        .count();
+    if captured_lifetimes == late_bound_lifetimes {
+        return None;
+    }
+
+    let mut captures = FxIndexSet::default();
+    for arg in projection.args {
+        arg.visit_with(&mut CollectParams { params: &mut captures });
+    }
+    captures.sort_by_cached_key(|arg| !matches!(arg.kind(), ty::GenericArgKind::Lifetime(_)));
+    Some(format!("use<{}>", captures.iter().join(", ")))
 }
 
 fn report_mismatched_rpitit_captures<'tcx>(

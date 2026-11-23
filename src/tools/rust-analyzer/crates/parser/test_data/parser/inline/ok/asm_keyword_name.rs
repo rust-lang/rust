@@ -1,3 +1,3 @@
 fn foo() {
-    builtin # asm("", fn = const 0);
+    k#asm("", fn = const 0);
 }

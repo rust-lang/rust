@@ -1,0 +1,29 @@
+//@ run-rustfix
+//@ check-pass
+#![allow(dead_code)]
+#![warn(unused_parens)]
+
+pub struct S {}
+pub struct TS ();
+
+fn main() {
+    let _x @ S{}; //~ WARN: unnecessary parentheses around pattern
+
+    let &_y: &i32; //~ WARN: unnecessary parentheses around pattern
+
+    let &(_x @ S{});
+
+    let &(_x @ ()): &();
+
+    let &(_x @ TS());
+
+    let &(_x @ _nums): &[i32; 0];
+
+    let &(_x @ _y): &i32;
+
+    let &(mut _x @ S{});
+
+    let &(ref _x @ S{});
+
+    let &(ref mut _x @ S{});
+}

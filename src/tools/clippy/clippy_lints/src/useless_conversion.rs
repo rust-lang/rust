@@ -352,7 +352,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 .all_clauses(cx.tcx)
                                 .iter()
                                 .any(|clause| {
-                                    if let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder() {
+                                    if let ty::ClauseKind::Trait(trait_pred) = clause.skip_binder() {
                                         trait_pred.self_ty() == *second_ty
                                             && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())
                                     } else {

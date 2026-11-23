@@ -1,9 +1,15 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //
-//@ revisions: SPARC SPARC64
-//@ [SPARC] compile-flags: -Copt-level=3 --target sparc-unknown-linux-gnu
-//@ [SPARC] needs-llvm-components: sparc
+//@ revisions: SPARC_LLVM23 SPARC_LLVM24 SPARC64
+//@ [SPARC_LLVM23] max-llvm-major-version: 23
+//@ [SPARC_LLVM23] compile-flags: -Copt-level=3 --target sparc-unknown-linux-gnu
+//@ [SPARC_LLVM23] needs-llvm-components: sparc
+//@ [SPARC_LLVM23] filecheck-flags: --check-prefix SPARC
+//@ [SPARC_LLVM24] min-llvm-version: 24
+//@ [SPARC_LLVM24] compile-flags: -Copt-level=3 --target sparc-unknown-linux-gnu
+//@ [SPARC_LLVM24] needs-llvm-components: sparc
+//@ [SPARC_LLVM24] filecheck-flags: --check-prefix SPARC
 //@ [SPARC64] compile-flags: -Copt-level=3 --target sparc64-unknown-linux-gnu
 //@ [SPARC64] needs-llvm-components: sparc
 #![feature(no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
@@ -67,15 +73,19 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // SPARC: ld [%o0], %o1
     // SPARC-NEXT: add %o1, 8, %o2
     // SPARC-NEXT: st %o2, [%o0]
-    // SPARC-NEXT: ld [%o1+4], %o0
-    // SPARC-NEXT: add %sp, 96, %o2
-    // SPARC-NEXT: or %o2, 4, %o2
-    // SPARC-NEXT: st %o0, [%o2]
-    // SPARC-NEXT: ld [%o1], %o0
-    // SPARC-NEXT: st %o0, [%sp+96]
-    // SPARC-NEXT: ldd [%sp+96], %o0
-    // SPARC-NEXT: retl
-    // SPARC-NEXT: add %sp, 104, %sp
+    // SPARC_LLVM23-NEXT: ld [%o1+4], %o0
+    // SPARC_LLVM23-NEXT: add %sp, 96, %o2
+    // SPARC_LLVM23-NEXT: or %o2, 4, %o2
+    // SPARC_LLVM23-NEXT: st %o0, [%o2]
+    // SPARC_LLVM23-NEXT: ld [%o1], %o0
+    // SPARC_LLVM23-NEXT: st %o0, [%sp+96]
+    // SPARC_LLVM23-NEXT: ldd [%sp+96], %o0
+    // SPARC_LLVM23-NEXT: retl
+    // SPARC_LLVM23-NEXT: add %sp, 104, %sp
+    //
+    // SPARC_LLVM24-NEXT: ld [%o1], %o0
+    // SPARC_LLVM24-NEXT: retl
+    // SPARC_LLVM24-NEXT: ld [%o1+4], %o1
     //
     // SPARC64: ldx [%o0], %o1
     // SPARC64-NEXT: add %o1, 8, %o2

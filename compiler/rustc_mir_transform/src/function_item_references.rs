@@ -77,48 +77,46 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         args: &[Spanned<Operand<'tcx>>],
         source_info: SourceInfo,
     ) {
-        let param_env = self.tcx.param_env(def_id);
-        for bound in param_env.caller_bounds().all_clauses(self.tcx).iter() {
-            if let Some(bound_ty) = self.is_pointer_trait(bound) {
-                // Get the argument types as they appear in the function signature.
-                let arg_defs =
-                    self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().inputs();
-                for (arg_num, arg_def) in arg_defs.iter().enumerate() {
-                    // For all types reachable from the argument type in the fn sig
-                    for inner_ty in arg_def.walk().filter_map(|arg| arg.as_type()) {
-                        // If the inner type matches the type bound by `Pointer`
-                        if inner_ty == bound_ty {
-                            // Do an instantiation using the parameters from the callsite
-                            let instantiated_ty = EarlyBinder::bind(self.tcx, inner_ty)
-                                .instantiate(self.tcx, args_ref)
-                                .skip_norm_wip();
-                            if let Some((fn_id, fn_args)) =
-                                FunctionItemRefChecker::is_fn_ref(instantiated_ty)
-                            {
-                                let mut span = self.nth_arg_span(args, arg_num);
-                                if span.from_expansion() {
-                                    // The operand's ctxt wouldn't display the lint since it's
-                                    // inside a macro so we have to use the callsite's ctxt.
-                                    let callsite_ctxt = span.source_callsite().ctxt();
-                                    span = span.with_ctxt(callsite_ctxt);
-                                }
-                                self.emit_lint(fn_id, fn_args, source_info, span);
+        let param_env: ty::ParamEnv<'tcx> = self.tcx.param_env(def_id);
+        let Some(pointer_trait) = self.tcx.get_diagnostic_item(sym::Pointer) else {
+            return;
+        };
+
+        for bound in param_env
+            .caller_bounds()
+            .trait_clauses(self.tcx)
+            .with_polarity(ty::ClausePolarity::Positive)
+            .for_trait(pointer_trait)
+            .iter()
+        {
+            let bound_ty = bound.self_ty().skip_binder();
+
+            // Get the argument types as they appear in the function signature.
+            let arg_defs = self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().inputs();
+            for (arg_num, arg_def) in arg_defs.iter().enumerate() {
+                // For all types reachable from the argument type in the fn sig
+                for inner_ty in arg_def.walk().filter_map(|arg| arg.as_type()) {
+                    // If the inner type matches the type bound by `Pointer`
+                    if inner_ty == bound_ty {
+                        // Do an instantiation using the parameters from the callsite
+                        let instantiated_ty = EarlyBinder::bind(self.tcx, inner_ty)
+                            .instantiate(self.tcx, args_ref)
+                            .skip_norm_wip();
+                        if let Some((fn_id, fn_args)) =
+                            FunctionItemRefChecker::is_fn_ref(instantiated_ty)
+                        {
+                            let mut span = self.nth_arg_span(args, arg_num);
+                            if span.from_expansion() {
+                                // The operand's ctxt wouldn't display the lint since it's
+                                // inside a macro so we have to use the callsite's ctxt.
+                                let callsite_ctxt = span.source_callsite().ctxt();
+                                span = span.with_ctxt(callsite_ctxt);
                             }
+                            self.emit_lint(fn_id, fn_args, source_info, span);
                         }
                     }
                 }
             }
-        }
-    }
-
-    /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
-    fn is_pointer_trait(&self, bound: ty::Clause<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::ClauseKind::Trait(predicate) = bound.kind().skip_binder() {
-            self.tcx
-                .is_diagnostic_item(sym::Pointer, predicate.def_id())
-                .then(|| predicate.trait_ref.self_ty())
-        } else {
-            None
         }
     }
 

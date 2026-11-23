@@ -1526,7 +1526,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_version_suffix,
             local_rebuild,
             locked_deps: build_locked_deps.unwrap_or(false),
-            low_priority: build_low_priority.unwrap_or(false),
+            low_priority: build_low_priority.unwrap_or(true),
             mandir: install_mandir.map(PathBuf::from),
             miri_info,
             musl_root: rust_musl_root.map(PathBuf::from),
@@ -2566,7 +2566,7 @@ pub(crate) fn update_submodule<'a>(
             // This syntax isn't accepted by `branch.{branch}`. Strip it.
             let branch = current_branch.stdout();
             let branch = branch.trim();
-            let branch = branch.strip_prefix("heads/").unwrap_or(branch);
+            let branch = branch.trim_prefix("heads/");
             git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
         }
         git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);

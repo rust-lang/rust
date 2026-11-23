@@ -1,1 +1,1 @@
-fn foo() { let builtin # cfg(any(true, x = "y")) = true; }
+fn foo() { let k#cfg(any(true, x = "y")) = true; }

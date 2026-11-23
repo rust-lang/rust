@@ -14,9 +14,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           FORMAT_ARGS_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            FORMAT_ARGS_KW "format_args"
+            FORMAT_ARGS_KW "k#format_args"
             L_PAREN "("
             LITERAL
               STRING "\"{type}\""

@@ -529,32 +529,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
-                        // We want to get the variable name that the method
-                        // is being called on. If it is a method call.
-                        let err_span = match (mode, self.tcx.hir_node(scope_expr_id)) {
+                        // Keep the method receiver so its span remains available when the
+                        // index-specific diagnostic does not apply.
+                        let receiver = match (mode, self.tcx.hir_node(scope_expr_id)) {
                             (
                                 Mode::MethodCall,
                                 Node::Expr(hir::Expr {
                                     kind: ExprKind::MethodCall(_, recv, ..),
                                     ..
                                 }),
-                            ) => recv.span,
-                            _ => span,
+                            ) => Some(recv),
+                            _ => None,
+                        };
+
+                        // A known index can still yield an unknown element type. Only redirect
+                        // the diagnostic when both the indexing result and the index are unknown.
+                        let (err_span, diagnostic_ty) = if let Some(recv) = receiver
+                            && let ExprKind::Index(_, idx, _) = recv.kind
+                            && self.shallow_resolve(self.node_ty(recv.hir_id)).is_ty_var()
+                            && let index_ty = self.shallow_resolve(self.node_ty(idx.hir_id))
+                            && index_ty.is_ty_var()
+                        {
+                            (idx.span, index_ty)
+                        } else {
+                            (receiver.map_or(span, |recv| recv.span), ty)
                         };
 
                         let raw_ptr_call = bad_ty.reached_raw_pointer
                             && !self.tcx.features().arbitrary_self_types();
 
+                        // Suppress the generic secondary label when the pointer-specific label
+                        // below will explain the failure.
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_def_id,
                             err_span,
-                            ty.into(),
+                            diagnostic_ty.into(),
                             TypeAnnotationNeeded::E0282,
                             !raw_ptr_call,
                         );
+
                         if raw_ptr_call {
-                            err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
+                            err.span_label(
+                                span,
+                                "cannot call a method on a raw pointer with an unknown pointee type",
+                            );
                         }
+
                         err.emit_err()
                     }
                     ty::Error(guar) => guar,
@@ -1285,7 +1305,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some((kind, def_id)) = private_candidate {
             return Err(MethodError::PrivateMatch(kind, def_id, out_of_scope_traits));
         }
-        let similar_candidate = self.probe_for_similar_candidate()?;
+        let similar_candidate = self.probe_for_similar_candidate(&out_of_scope_traits)?;
 
         Err(MethodError::NoMatch(NoMatchData {
             static_candidates,
@@ -1893,7 +1913,7 @@ impl<'tcx> Pick<'tcx> {
                         // the code from `report_method_error()`.
                         lint.help(format!(
                             "call with fully qualified syntax `{}(...)` to keep using the current \
-                                 method",
+                             method",
                             tcx.def_path_str(this.item.def_id),
                         ));
                     }
@@ -2499,6 +2519,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn probe_for_similar_candidate(
         &mut self,
+        out_of_scope_traits: &[DefId],
     ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
@@ -2527,6 +2548,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
+                    // Methods of out-of-scope traits can't be called here. Drop them before
+                    // picking, or they could win over (or be ambiguous with) one that can.
+                    pcx.extension_candidates.retain(|candidate| {
+                        !out_of_scope_traits.contains(&candidate.item.container_id(self.tcx))
+                    });
                     pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();

@@ -204,9 +204,9 @@ fn desugar_builtin_format_args() {
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
-    builtin#format_args("hello world");
-    builtin#format_args("hello world", orphan = ());
+    k#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+    k#format_args("hello world");
+    k#format_args("hello world", orphan = ());
 }
 "#,
         expect![[r#"
@@ -643,7 +643,7 @@ fn foo() {
     Foo(#[cfg(false)] 1);
     (|#[cfg(false)] a| {})();
 
-    builtin # asm(
+    k#asm(
         "",
         #[cfg(false)] x = const 4,
         #[cfg(false)] options(),
@@ -662,7 +662,7 @@ fn foo() {
                 [];
                 Foo();
                 (|| {})();
-                builtin#asm(_);
+                k#asm(_);
             }"#]],
     );
 }

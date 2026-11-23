@@ -1,5 +1,6 @@
 //! Things related to consts in the next-trait-solver.
 
+mod int;
 mod valtree;
 
 use std::hash::Hash;
@@ -25,7 +26,7 @@ use crate::{
 
 use super::{DbInterner, ErrorGuaranteed, GenericArgs, Ty};
 
-pub use self::valtree::*;
+pub use self::{int::*, valtree::*};
 
 pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
 pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
@@ -48,7 +49,7 @@ const _: () = {
 };
 
 impl<'db> Const<'db> {
-    /// You should avoid using this if you can, since we want `Ty` to be defined in `rustc_type_ir` and then this method
+    /// You should avoid using this if you can, since we want `Const` to be defined in `rustc_type_ir` and then this method
     /// will become more difficult to use.
     #[inline]
     pub fn new_without_interner(kind: ConstKind<'db>) -> Self {

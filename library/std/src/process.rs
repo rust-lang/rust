@@ -24,6 +24,18 @@
 //! waits until the process terminates, while [`spawn`] will return a [`Child`]
 //! that represents the spawned child process.
 //!
+//! Spawning a command may return an error if:
+//! - The command does not exist, or is not in the platform-specific PATH search list.
+//! - A platform-specific limit on memory, number of processes, or number of threads is reached.
+//! - The current process doesn't have enough permissions to spawn the command.
+//! - A dynamic library required by the command could not be found.
+//!
+//! This list is not exhaustive. Other errors may occur depending on the platform.
+//!
+//! Note that the function will error only while attempting to spawn the child. If the child is
+//! successfully spawned, any error that happens afterwards will be reported through
+//! its [`ExitStatus`].
+//!
 //! # Handling I/O
 //!
 //! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
@@ -161,6 +173,8 @@
     ))
 ))]
 mod tests;
+
+use core::intrinsics;
 
 use crate::ffi::OsStr;
 use crate::io::prelude::*;
@@ -536,7 +550,7 @@ impl fmt::Debug for ChildStderr {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+/// # if cfg!(all(not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
 /// use std::process::Command;
 ///
 /// let output = if cfg!(target_os = "windows") {
@@ -1235,6 +1249,7 @@ impl Command {
     /// # Examples
     ///
     /// ```
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::ffi::OsStr;
     /// use std::process::Command;
     ///
@@ -1269,6 +1284,7 @@ impl Command {
     ///
     /// ```
     /// #![feature(command_resolved_envs)]
+    /// # if cfg!(all(windows, skip_unsupported_miri_tests)) { return; }
     /// use std::process::Command;
     /// use std::ffi::{OsString, OsStr};
     /// use std::env;
@@ -1495,7 +1511,7 @@ impl Output {
     /// ```
     /// # #![allow(unused_features)]
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests)))] {
     /// use std::process::Command;
     /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
     /// # }
@@ -1842,7 +1858,7 @@ impl From<io::Stdout> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1871,7 +1887,7 @@ impl From<io::Stderr> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1943,7 +1959,7 @@ impl ExitStatus {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// use std::process::Command;
     ///
     /// let status = Command::new("ls")
@@ -2046,7 +2062,7 @@ impl fmt::Display for ExitStatus {
 ///
 /// ```
 /// #![feature(exit_status_error)]
-/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
 /// use std::process::{Command, ExitStatusError};
 ///
 /// fn run(cmd: &str) -> Result<(), ExitStatusError> {
@@ -2090,7 +2106,7 @@ impl ExitStatusError {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests)))] {
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
@@ -2115,7 +2131,7 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     ///
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))), not(skip_unsupported_miri_tests))) {
     /// use std::num::NonZero;
     /// use std::process::Command;
     ///
@@ -2630,11 +2646,15 @@ pub fn exit(code: i32) -> ! {
 ///
 /// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
+#[rustc_const_unstable(feature = "const_abort", issue = "166193")]
 #[cold]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-pub fn abort() -> ! {
-    crate::sys::abort_internal();
+pub const fn abort() -> ! {
+    // Some code uses `abort` as a non-unwinding alternative to `panic`. That
+    // should work in const, but `sys` code invokes native host functions. So we
+    // invoke `intrinsics::crash` instead to safely hard-abort execution.
+    intrinsics::const_eval_select((), crash, crate::sys::abort_internal)
 }
 
 #[doc(inline)]

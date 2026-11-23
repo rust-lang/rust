@@ -305,13 +305,11 @@ pub(crate) fn complete_postfix(
                 format!("while {receiver_text} {{\n    $0\n}}"),
             )
             .add_to(acc, ctx.db);
-        } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator()
-            && receiver_ty.impls_trait(ctx.db, trait_, &[])
-        {
+        } else if let Some(extra) = seems_impls_into_iterator(ctx, receiver_ty, &prefix) {
             postfix_snippet(
                 "for",
                 "for ele in expr {}",
-                format!("for ele in {receiver_text} {{\n    $0\n}}"),
+                format!("for ele in {extra}{receiver_text} {{\n    $0\n}}"),
             )
             .add_to(acc, ctx.db);
         }
@@ -543,6 +541,31 @@ fn add_custom_postfix_completions(
         },
     );
     None
+}
+
+/// Heuristic: roughly check for existing/needs references prefix
+fn seems_impls_into_iterator(
+    ctx: &CompletionContext<'_, '_>,
+    receiver_ty: &hir::Type<'_>,
+    prefix: &str,
+) -> Option<&'static str> {
+    let trait_ = ctx.famous_defs().core_iter_IntoIterator()?;
+
+    if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
+        return Some("");
+    }
+    let mutability = hir::Mutability::from_mutable(prefix.starts_with("&mut"));
+    let added_ref = receiver_ty.add_reference(ctx.db, mutability);
+
+    if !added_ref.impls_trait(ctx.db, trait_, &[]) {
+        return None;
+    }
+
+    match (prefix.starts_with('&'), mutability) {
+        (true, _) => Some(""),
+        (false, hir::Mutability::Shared) => Some("&"),
+        (false, hir::Mutability::Mut) => Some("&mut "),
+    }
 }
 
 pub(crate) fn is_in_condition(it: &ast::Expr) -> bool {
@@ -1498,6 +1521,40 @@ fn main() {
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2); }"#,
+        );
+    }
+
+    #[test]
+    fn postfix_completion_for_for_loop() {
+        check_edit(
+            "for",
+            r#"
+//- minicore: iterator
+fn main() { [2].$0 }"#,
+            r#"
+fn main() { for ele in [2] {
+    $0
+} }"#,
+        );
+        check_edit(
+            "for",
+            r#"
+//- minicore: iterator, index, slice
+fn main() { &[2][..].$0 }"#,
+            r#"
+fn main() { for ele in &[2][..] {
+    $0
+} }"#,
+        );
+        check_edit(
+            "for",
+            r#"
+//- minicore: iterator, index, slice
+fn main() { [2][..].$0 }"#,
+            r#"
+fn main() { for ele in &[2][..] {
+    $0
+} }"#,
         );
     }
 

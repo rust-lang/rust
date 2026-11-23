@@ -43,7 +43,7 @@ use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::diagnostics::{
     AssocTypeWithSameName, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
-    CoroClosureNotFn,
+    CoroClosureNotFn, RefToFnOnce,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -804,7 +804,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::Ambiguous
                     | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature { .. })
                     | ty::PredicateKind::NormalizesTo { .. }
-                    | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
+                    | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. })
+                    | ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(..)) => {
                         span_bug!(
                             span,
                             "Unexpected `Predicate` for `SelectionError`: `{:?}`",
@@ -1123,17 +1124,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let self_ty = if is_ref_to_closure { peeled_self_ty } else { original_self_ty };
 
-        let (expected_kind, is_async) =
-            if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
-                (expected_kind, false)
-            } else if let Some(expected_kind) =
-                self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
-            {
-                (expected_kind, true)
-            } else {
-                return None;
-            };
-        let trait_prefix = if is_async { "Async" } else { "" };
+        let (asyncness, expected_kind) =
+            self.tcx.maybe_async_fn_trait_kind_from_def_id(trait_pred.def_id())?;
+
+        let trait_prefix = asyncness.as_trait_prefix_str();
 
         let (closure_def_id, found_args, has_self_borrows) = match *self_ty.kind() {
             ty::Closure(def_id, args) => {
@@ -1167,12 +1161,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if found_kind.is_none()
             && is_ref_to_closure
-            && !is_async
+            && !asyncness.is_async()
             && let Some(local_def_id) = closure_def_id.as_local()
             && let Some((inferred_kind, origin)) = (self.infer_closure_kind)(local_def_id)
         {
             found_kind = Some(inferred_kind);
             kind_origin = origin;
+        }
+
+        let (_, root_trait_pred) = obligation.cause.code().peel_derives_with_predicate();
+        let root_expected = root_trait_pred
+            .and_then(|pred| self.tcx.maybe_async_fn_trait_kind_from_def_id(pred.def_id()));
+
+        // Prevent confusing errors when `&FnOnce` was provided when `FnOnce` was expected
+        // in function arguments
+        if let ty::ClosureKind::Fn | ty::ClosureKind::FnMut = expected_kind
+            && let Some(ty::ClosureKind::FnOnce) = found_kind
+            && let Some((root_asyncness, ty::ClosureKind::FnOnce)) = root_expected
+            && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+            && let arg = self.tcx.hir_expect_expr(*arg_hir_id)
+            && asyncness == root_asyncness
+        {
+            let mut err = self.report_ref_to_fn_once_error(
+                closure_def_id,
+                trait_prefix,
+                kind_origin,
+                arg.span,
+            );
+
+            self.suggest_remove_ref_for_closure(&mut err, obligation);
+            self.note_obligation_cause(&mut err, obligation);
+            return Some(err.emit_err());
         }
 
         if let Some(found_kind) = found_kind
@@ -1186,7 +1205,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_prefix,
                 kind_origin,
             );
-            self.suggest_change_mut_ref_for_closure(&mut err, &obligation);
+
+            self.suggest_change_mut_ref_for_closure(&mut err, obligation);
             self.note_obligation_cause(&mut err, &obligation);
             return Some(err.emit_err());
         }
@@ -2680,11 +2700,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             types.dedup();
             let all_types_equal = types.len() == 1;
 
-            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
-                candidates.len()
-            } else {
-                8
-            };
             if candidates.len() < 5 {
                 let spans: Vec<_> =
                     candidates.iter().map(|&(_, def_id)| self.tcx.def_span(def_id)).collect();
@@ -2728,7 +2743,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut tuple_min_arity = usize::MAX;
                 let mut tuple_max_arity = 0_usize;
                 let mut last_arity = None;
-                let mut all_types_tuples_cont_arity = true;
+                let mut all_tuples_cont_arity = true;
                 candidates.sort_by(|(c1, _), (c2, _)| {
                     if let ty::Tuple(tys1) = c1.self_ty().kind()
                         && let ty::Tuple(tys2) = c2.self_ty().kind()
@@ -2738,24 +2753,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         std::cmp::Ordering::Equal
                     }
                 });
-                let candidate_names: Vec<String> = candidates
+
+                let mut candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
                         if all_traits_equal {
-                            if all_types_tuples_cont_arity
-                                && let ty::Tuple(tys) = c.self_ty().kind()
-                                && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
-                            {
-                                last_arity = Some(tys.len());
-                                if tys.len() > tuple_max_arity {
-                                    tuple_max_arity = tys.len();
-                                }
-                                if tys.len() < tuple_min_arity {
-                                    tuple_min_arity = tys.len();
-                                }
-                            } else {
-                                all_types_tuples_cont_arity = false;
-                            }
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2777,28 +2779,97 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect();
 
-                let details = if all_traits_equal && all_types_tuples_cont_arity {
-                    if tuple_min_arity == 0 {
+                let mut all_tuples_impl_the_same_trait = true;
+                let mut last_tuple_trait_ref = None;
+
+                fn have_same_trait_path(a: &TraitRef<'_>, b: &TraitRef<'_>) -> bool {
+                    a.print_only_trait_path().to_string() == b.print_only_trait_path().to_string()
+                }
+                // `candidates` can contain only tuples or a variety of other types that include tuples.
+                // Find and locates tuples in `candidates` and computes some metrics: checks if they
+                // are continuous by arity, if so compute the min and the max arity of these tuples and
+                // check if they implement all the same trait or not.
+                let (tuples_candidates, tuples_range) = {
+                    let tuples_indexes: Vec<usize> = candidates
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, (c, _))| {
+                            if let ty::Tuple(tys) = c.self_ty().kind() {
+                                if all_tuples_cont_arity
+                                    && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
+                                {
+                                    last_arity = Some(tys.len());
+                                    if tys.len() > tuple_max_arity {
+                                        tuple_max_arity = tys.len();
+                                    }
+                                    if tys.len() < tuple_min_arity {
+                                        tuple_min_arity = tys.len();
+                                    }
+                                    if all_tuples_impl_the_same_trait
+                                        && have_same_trait_path(
+                                            last_tuple_trait_ref.map_or(c, |e: &TraitRef<'_>| e),
+                                            c,
+                                        )
+                                    {
+                                        last_tuple_trait_ref = Some(c);
+                                    } else {
+                                        all_tuples_impl_the_same_trait = false;
+                                    }
+                                } else {
+                                    all_tuples_cont_arity = false;
+                                }
+                                Some(idx)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    let (start, end) = (
+                        tuples_indexes.first().map_or_default(|idx| *idx),
+                        tuples_indexes.last().map_or_default(|idx| *idx + 1),
+                    );
+                    (&candidates[start..end], start..end)
+                };
+
+                // When all the types contained in `candidates` are tuples that are contiguous by arity
+                // and implement the same trait, or when there exists a subset of tuples in `candidates`
+                // that are contiguous by arity and implement the same trait, then the list of tuples can
+                // be factorized from `candidates_names`.
+                if !tuples_candidates.is_empty()
+                    && all_tuples_cont_arity
+                    && (all_traits_equal || all_tuples_impl_the_same_trait)
+                {
+                    let details = if tuple_min_arity == 0 {
                         format!("up to tuples of arity {tuple_max_arity}")
+                    } else if !all_traits_equal {
+                        format!("for tuples of arity {tuple_min_arity} to {tuple_max_arity}")
                     } else {
                         format!(
                             "for tuples of arity {tuple_min_arity} up to and including {tuple_max_arity}"
                         )
-                    }
+                    };
+                    let impl_trait = if all_traits_equal {
+                        String::new()
+                    } else {
+                        let c = tuples_candidates[0].0;
+                        format!(
+                            " implements `{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
+                    };
+                    let simplified_output = [
+                        // (T₁, T₂, …, Tₙ)
+                        format!("\n  `(T\u{2081}, T\u{2082}, …, T\u{2099})` {details}{impl_trait}"),
+                    ];
+                    candidate_names.splice(tuples_range, simplified_output);
+                }
+
+                let end = if candidate_names.len() <= 9 || self.tcx.sess.opts.verbose {
+                    candidate_names.len()
                 } else {
-                    String::new()
+                    8
                 };
-                let (candidate_names, end) = if all_traits_equal && all_types_tuples_cont_arity {
-                    (
-                        vec![
-                            // (T₁, T₂, …, Tₙ)
-                            format!("\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) {details}"),
-                        ],
-                        1,
-                    )
-                } else {
-                    (candidate_names, end)
-                };
+
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",
@@ -3234,6 +3305,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Use the whole argument so `suggest_change_mut` can replace the shared borrow.
             obligation.cause.span = arg.span;
             self.suggest_change_mut(&obligation, err, root_trait_pred);
+        }
+    }
+
+    fn suggest_remove_ref_for_closure(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+            && let (_, Some(root_trait_pred)) =
+                obligation.cause.code().peel_derives_with_predicate()
+            && let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id)
+            && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, _) = arg.kind
+        {
+            let mut obligation = obligation.clone();
+            // Error reporting may narrow the cause span to the borrow's operand.
+            // Use the whole argument so `suggest_remove_reference` can replace the borrow.
+            obligation.cause.span = arg.span;
+
+            self.suggest_remove_reference(&obligation, err, root_trait_pred);
         }
     }
 
@@ -3785,6 +3876,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn infer_closure_origin(
+        &self,
+        closure_def_id: DefId,
+    ) -> Option<(Span, rustc_middle::hir::place::Place<'tcx>)> {
+        let typeck_results = self.typeck_results.as_ref()?;
+        let local_def_id = closure_def_id.as_local()?;
+        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+        typeck_results.closure_kind_origins().get(hir_id).cloned()
+    }
+
+    fn report_ref_to_fn_once_error(
+        &self,
+        closure_def_id: DefId,
+        trait_prefix: &'static str,
+        kind_origin: Option<(Span, rustc_middle::hir::place::Place<'tcx>)>,
+        cause_span: Span,
+    ) -> Diag<'a> {
+        let origin = kind_origin.or_else(|| self.infer_closure_origin(closure_def_id));
+
+        let err = RefToFnOnce {
+            cause_span,
+            trait_prefix,
+            fn_once_label: origin.map(|(span, place)| ClosureFnOnceLabel {
+                span,
+                place: ty::place_to_string_for_capture(self.tcx, &place),
+                trait_prefix,
+            }),
+        };
+
+        self.dcx().create_err(err)
+    }
+
     fn report_closure_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -3808,12 +3931,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Additional context information explaining why the closure only implements
         // a particular trait.
-        let origin = kind_origin.or_else(|| {
-            let typeck_results = self.typeck_results.as_ref()?;
-            let local_def_id = closure_def_id.as_local()?;
-            let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
-            typeck_results.closure_kind_origins().get(hir_id).cloned()
-        });
+        let origin = kind_origin.or_else(|| self.infer_closure_origin(closure_def_id));
 
         match (found_kind, origin) {
             (ty::ClosureKind::FnOnce, Some((span, place))) => {
@@ -3832,6 +3950,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+
         self.dcx().create_err(err)
     }
 

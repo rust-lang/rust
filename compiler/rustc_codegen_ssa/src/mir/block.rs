@@ -2,7 +2,8 @@ use std::cmp;
 use std::ops::Range;
 
 use rustc_abi::{
-    Align, ArmCall, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx, Variants,
+    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx,
+    Variants,
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -14,10 +15,12 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned, bug, span_bug};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
+use rustc_target::callconv::{
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode,
+};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -299,7 +302,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 // If the return value was retagged as it was stored,
                 // then we might be in a different basic block now.
                 // Update the cached block for `target` to point to this new
-                // block, where codegen will continue.
+                // block, where codegen will continue. Additionally, store_return() may have
+                // required a branch into a new codegen backend basic block (currently this occurs
+                // when `cast_target.pass_via_x87_floating_point_stack` is set).
                 fx.cached_llbbs[target] = CachedLlbb::Some(bx.llbb());
             }
             MergingSucc::False
@@ -898,7 +903,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        let Some(requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) else {
+        let Intrinsic::Rustc(name) = intrinsic.name else {
+            return None;
+        };
+        let Some(requirement) = ValidityRequirement::from_rustc_intrinsic(name) else {
             return None;
         };
 
@@ -1159,38 +1167,42 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let result_layout =
                 self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
 
-            let return_dest = if result_layout.is_zst() {
-                ReturnDest::Nothing
-            } else if let Some(index) = destination.as_local() {
-                match self.locals[index] {
-                    LocalRef::Place(dest) => ReturnDest::Store(dest),
-                    LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
-                    LocalRef::PendingOperand => {
-                        // Handle temporary places, specifically `Operand` ones, as
-                        // they don't have `alloca`s.
-                        ReturnDest::DirectOperand(index)
-                    }
-                    LocalRef::Operand(_) => bug!("place local already assigned to"),
+            let return_mode = if result_layout.is_zst() {
+                PassMode::Ignore
+            } else if let BackendRepr::ScalarPair { .. } = result_layout.backend_repr {
+                PassMode::Pair(ArgAttributes::new(), ArgAttributes::new())
+            } else if result_layout.is_aggregate() {
+                PassMode::Indirect {
+                    attrs: ArgAttributes::new(),
+                    address_space: None,
+                    mode: IndirectMode::Pointer,
                 }
             } else {
-                ReturnDest::Store(self.codegen_place(bx, destination.as_ref()))
+                PassMode::Direct(ArgAttributes::new())
             };
+            let return_abi = ArgAbi { layout: result_layout, mode: return_mode };
+            let (return_dest, memory_return_place) =
+                self.make_return_place(bx, destination, &return_abi);
+            assert_eq!(
+                memory_return_place.is_some(),
+                !result_layout.is_zst()
+                    && matches!(result_layout.backend_repr, BackendRepr::Memory { sized: true })
+            );
 
             let args =
                 args.into_iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect::<Vec<_>>();
 
             self.set_debug_loc(bx, source_info);
 
-            let llret =
-                bx.codegen_llvm_intrinsic_call(instance, &args, self.mir[helper.bb].is_cleanup);
+            let llret = bx.codegen_llvm_intrinsic_call(
+                instance,
+                &args,
+                memory_return_place,
+                self.mir[helper.bb].is_cleanup,
+            );
 
             if let Some(target) = target {
-                self.store_return(
-                    bx,
-                    return_dest,
-                    &ArgAbi { layout: result_layout, mode: PassMode::Direct(ArgAttributes::new()) },
-                    llret,
-                );
+                self.store_return(bx, return_dest, &return_abi, llret);
                 return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
             } else {
                 bx.unreachable();
@@ -2428,15 +2440,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    // This function is separate from `make_return_place` as `ReturnSlot` should only be constructed
+    // when it will be used for an indirect return (sret) from an actual backend function call.
     fn make_return_dest(
         &mut self,
         bx: &mut Bx,
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
     ) -> (ReturnDest<'tcx, Bx::Value>, ReturnSlot<Bx::Value>) {
+        let (dest, place) = self.make_return_place(bx, dest, fn_ret);
+        (
+            dest,
+            match place {
+                None => ReturnSlot::Direct,
+                Some(place) => ReturnSlot::Indirect(place.llval),
+            },
+        )
+    }
+
+    fn make_return_place(
+        &mut self,
+        bx: &mut Bx,
+        dest: mir::Place<'tcx>,
+        fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
+    ) -> (ReturnDest<'tcx, Bx::Value>, Option<PlaceValue<Bx::Value>>) {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
-            return (ReturnDest::Nothing, ReturnSlot::Direct);
+            return (ReturnDest::Nothing, None);
         }
         let dest = if let Some(index) = dest.as_local() {
             match self.locals[index] {
@@ -2450,12 +2480,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but the calling convention has an indirect return.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
-                        (
-                            ReturnDest::IndirectOperand(tmp, index),
-                            ReturnSlot::Indirect(tmp.val.llval),
-                        )
+                        (ReturnDest::IndirectOperand(tmp, index), Some(tmp.val))
                     } else {
-                        (ReturnDest::DirectOperand(index), ReturnSlot::Direct)
+                        (ReturnDest::DirectOperand(index), None)
                     };
                 }
                 LocalRef::Operand(_) => {
@@ -2475,13 +2502,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // to create a temporary.
                 span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
-            (ReturnDest::Nothing, ReturnSlot::Indirect(dest.val.llval))
+            (ReturnDest::Nothing, Some(dest.val))
         } else {
-            (ReturnDest::Store(dest), ReturnSlot::Direct)
+            (ReturnDest::Store(dest), None)
         }
     }
 
-    // Stores the return value of a function call into it's final location.
+    /// Stores the return value of a function call into it's final location.
     fn store_return(
         &mut self,
         bx: &mut Bx,
@@ -2548,7 +2575,7 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     align: Align,
 ) -> Bx::Value {
     let cast_ty = bx.cast_backend_type(cast);
-    if let Some(offset_from_start) = cast.rest_offset {
+    let value = if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
         let first_ty = bx.reg_backend_type(&cast.prefix[0]);
@@ -2560,7 +2587,21 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let res = bx.insert_value(res, first, 0);
         bx.insert_value(res, second, 1)
     } else {
-        bx.load(cast_ty, ptr, align)
+        let load_ty = if cast.pass_via_x87_floating_point_stack {
+            match cast.rest.unit.size.bytes() {
+                4 => bx.type_f32(),
+                8 => bx.type_f64(),
+                _ => bug!(),
+            }
+        } else {
+            cast_ty
+        };
+        bx.load(load_ty, ptr, align)
+    };
+    if cast.pass_via_x87_floating_point_stack {
+        bx.x87_lossless_float_to_fp_stack(value, cast.attrs.contains(ArgAttribute::NoUndef))
+    } else {
+        value
     }
 }
 
@@ -2571,6 +2612,20 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ptr: Bx::Value,
     align: Align,
 ) {
+    let value = if cast.pass_via_x87_floating_point_stack {
+        let float_type = match cast.rest.unit.size.bytes() {
+            4 => bx.type_f32(),
+            8 => bx.type_f64(),
+            _ => bug!(),
+        };
+        bx.x87_lossless_fp_stack_to_float(
+            value,
+            float_type,
+            cast.attrs.contains(ArgAttribute::NoUndef),
+        )
+    } else {
+        value
+    };
     if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
@@ -2582,4 +2637,65 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         bx.store(value, ptr, align);
     };
+}
+
+/// This function returns the fields of a Rust struct or tuple for use with
+/// [`store_intrinsic_return_struct`] below. All fields must be scalar or SIMD types. This returns
+/// a [`Vec`] of `(field_type, field_offset)` pairs.
+pub fn intrinsic_return_struct_fields<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
+    ret_layout: TyAndLayout<'tcx>,
+) -> Vec<(Cx::Type, Size)> {
+    let ret_layout = ret_layout.peel_transparent_wrappers_from_non_1zst(cx);
+    match ret_layout.ty.kind() {
+        ty::Adt(adt_def, _) if adt_def.is_struct() => {}
+        ty::Tuple(_) => {}
+        _ => bug!("invalid intrinsic return type: {ret_layout:?}"),
+    }
+    let fields = (0..ret_layout.fields.count())
+        .map(|i| {
+            let field = ret_layout.field(cx, i);
+            assert!(!field.is_aggregate(), "invalid intrinsic return field: {field:?}");
+            (cx.immediate_backend_type(field), ret_layout.fields.offset(i))
+        })
+        .collect::<Vec<_>>();
+    assert!(fields.len() >= 2, "invalid intrinsic return type: {ret_layout:?}");
+    fields
+}
+
+/// Some LLVM intrinsics return LLVM structs that don't have an equivalent in the Rust type system.
+/// This function allows the fields of a LLVM struct to be stored in the fields of a Rust struct.
+/// The Rust struct's fields can be obtained using [`intrinsic_return_struct_fields`]. `fields` must
+/// be a [`Vec`] of (field_offset, field_value) pairs.
+pub fn store_intrinsic_return_struct<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    ret_layout: TyAndLayout<'tcx>,
+    memory_return_place: Option<PlaceValue<Bx::Value>>,
+    fields: Vec<(Size, Bx::Value)>,
+) -> IntrinsicResult<'tcx, Bx::Value> {
+    match ret_layout.backend_repr {
+        BackendRepr::ScalarPair { a: _, b: _, b_offset } => {
+            let &[(offset0, value0), (offset1, value1)] = fields.as_slice() else {
+                bug!("Invalid fields for ScalarPair: {fields:?}")
+            };
+            assert_ne!(offset0, offset1);
+            assert!(offset0 == Size::ZERO || offset1 == Size::ZERO);
+            assert!(offset0 == b_offset || offset1 == b_offset);
+            let (a, b) = if offset0 < offset1 { (value0, value1) } else { (value1, value0) };
+            IntrinsicResult::Operand(OperandValue::Pair(a, b))
+        }
+        BackendRepr::Memory { sized: true } => {
+            let dest =
+                memory_return_place.expect("BackendRepr::Memory return with no return place");
+            for (offset, value) in fields.into_iter() {
+                let pointer = match offset.bytes() {
+                    0 => dest.llval,
+                    bytes => bx.inbounds_ptradd(dest.llval, bx.const_usize(bytes)),
+                };
+                bx.store(value, pointer, dest.align.restrict_for_offset(offset));
+            }
+            IntrinsicResult::WroteIntoPlace
+        }
+        _ => bug!("unexpected aggregate return layout: {ret_layout:?}"),
+    }
 }

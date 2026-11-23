@@ -22,8 +22,8 @@ use rustc_codegen_ssa::{MemFlags, RetagInfo};
 use rustc_data_structures::fx::FxHashSet;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
@@ -35,38 +35,20 @@ use crate::context::CodegenCx;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 use crate::type_of::LayoutGccExt;
 
-fn float_intrinsic<'gcc, 'tcx>(
+// GCC doesn't have the intrinsic we want so we use the compiler-builtins one
+fn binop_libcall<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     typ: Type<'gcc>,
     name: &str,
-) -> Option<Function<'gcc>> {
-    // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-    Some(cx.context.new_function(
+) -> Function<'gcc> {
+    cx.context.new_function(
         None,
         FunctionType::Extern,
         typ,
         &[cx.context.new_parameter(None, typ, "a"), cx.context.new_parameter(None, typ, "b")],
         name,
         false,
-    ))
-}
-
-fn get_simple_intrinsic<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    let gcc_name = match name {
-        sym::minimumf32 => return float_intrinsic(cx, cx.type_f32(), "fminimumf"),
-        sym::minimumf64 => return float_intrinsic(cx, cx.type_f64(), "fminimum"),
-        sym::minimumf128 => return float_intrinsic(cx, cx.type_f128(), "fminimumf128"),
-        sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
-        sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
-        sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
-        sym::copysignf32 => "copysignf",
-        sym::copysignf64 => "copysign",
-        _ => return None,
-    };
-    Some(cx.context.get_builtin_function(gcc_name))
+    )
 }
 
 fn get_simple_function_f128<'gcc, 'tcx>(
@@ -76,6 +58,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
 ) -> Function<'gcc> {
     let f128_type = cx.type_f128();
     let (func_name, args): (&str, &[gccjit::Type<'_>]) = match name {
+        sym::copysign => ("copysignf128", &[f128_type, f128_type]),
         sym::ceil => ("ceilf128", &[f128_type]),
         sym::cos => ("cosf128", &[f128_type]),
         sym::fabs => ("fabsf128", &[f128_type]),
@@ -92,6 +75,8 @@ fn get_simple_function_f128<'gcc, 'tcx>(
         sym::sqrt => ("sqrtf128", &[f128_type]),
         sym::powf => ("powf128", &[f128_type, f128_type]),
         sym::fma => ("fmaf128", &[f128_type, f128_type, f128_type]),
+        sym::minimum => ("fminimumf128", &[f128_type, f128_type]),
+        sym::maximum => ("fmaximumf128", &[f128_type, f128_type]),
         _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
     };
     let args: Vec<_> = args
@@ -110,7 +95,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceil => "__builtin_ceilf",
-        sym::copysignf16 => "__builtin_copysignf",
+        sym::copysign => "__builtin_copysignf",
         sym::cos => "cosf",
         sym::exp => "expf",
         sym::exp2 => "exp2f",
@@ -148,64 +133,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
         let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
 
-        let name = tcx.item_name(instance.def_id());
+        let intrinsic = tcx.intrinsic(instance.def_id()).unwrap();
+        let Intrinsic::Rustc(name) = intrinsic.name else {
+            // Backend intrinsics use their fallback bodies for now.
+            let fallback = Instance::new_raw(instance.def_id(), instance.args);
+            return IntrinsicResult::Fallback(fallback);
+        };
         let name_str = name.as_str();
         let fn_args = instance.args;
 
-        let simple = get_simple_intrinsic(self, name);
-
         let value = match name {
-            _ if let Some(func) = simple => self.cx.context.new_call(
-                self.location,
-                func,
-                &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-            ),
-            // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
-            sym::minimumf32 | sym::minimumf64 | sym::maximumf32 | sym::maximumf64 => {
-                let (ty, func_name) = match name {
-                    sym::minimumf32 => (self.cx.float_type, "fminimumf"),
-                    sym::maximumf32 => (self.cx.float_type, "fmaximumf"),
-                    sym::minimumf64 => (self.cx.double_type, "fminimum"),
-                    sym::maximumf64 => (self.cx.double_type, "fmaximum"),
-                    _ => unreachable!(),
-                };
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    ty,
-                    &[
-                        self.cx.context.new_parameter(None, ty, "a"),
-                        self.cx.context.new_parameter(None, ty, "b"),
-                    ],
-                    func_name,
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::copysignf16 => f16_builtin(self, name, args),
-            sym::copysignf128 if self.cx.supports_f128_type => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, f128_type, "b"),
-                    ],
-                    "copysignf128",
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
@@ -310,14 +247,17 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     None => {
                         let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
-                            name,
+                            name: Intrinsic::Rustc(name),
                             ty: args[0].layout.ty,
                         });
                         return IntrinsicResult::Err(err);
                     }
                 }
             }
-            sym::fabs
+            sym::copysign
+            | sym::fabs
+            | sym::minimum
+            | sym::maximum
             | sym::sqrt
             | sym::powf
             | sym::fma
@@ -337,12 +277,27 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
-                    span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
+                    span_bug!(span, "expected float type for {:?} intrinsic: {:?}", name, ty);
                 };
                 use ty::FloatTy::*;
                 let func = match (name, float_ty) {
+                    (sym::copysign, F32) => self.context.get_builtin_function("copysignf"),
+                    (sym::copysign, F64) => self.context.get_builtin_function("copysign"),
+
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
+
+                    // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
+                    (sym::minimum, F32) => binop_libcall(self, self.type_f32(), "fminimumf"),
+                    (sym::minimum, F64) => binop_libcall(self, self.type_f64(), "fminimum"),
+                    (sym::maximum, F32) => binop_libcall(self, self.type_f32(), "fmaximumf"),
+                    (sym::maximum, F64) => binop_libcall(self, self.type_f64(), "fmaximum"),
+
+                    // `f16` has no builtin for these, use the intrinsic fallback bodies instead.
+                    (sym::minimum | sym::maximum, F16) => {
+                        let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
 
                     (sym::sqrt, F32) => self.context.get_builtin_function("sqrtf"),
                     (sym::sqrt, F64) => self.context.get_builtin_function("sqrt"),
@@ -556,6 +511,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
+        memory_return_place: Option<PlaceValue<Self::Value>>,
         is_cleanup: bool,
     ) -> Self::Value {
         let func = if let Some(&func) = self.intrinsic_instances.borrow().get(&instance) {
@@ -602,7 +558,48 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             self.apply_attrs_to_cleanup_callsite(llret);
         }
 
-        llret
+        let fn_sig = match *instance.ty(self.tcx, self.typing_env()).kind() {
+            ty::FnDef(def_id, args) => self.tcx.instantiate_bound_regions_with_erased(
+                self.tcx
+                    .fn_sig(def_id)
+                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
+                    .skip_norm_wip(),
+            ),
+            _ => unreachable!(),
+        };
+        let ret_layout = self.layout_of(fn_sig.output());
+
+        if !ret_layout.is_zst() && ret_layout.is_aggregate() {
+            let fields =
+                rustc_codegen_ssa::mir::intrinsic_return_struct_fields(self.cx, ret_layout)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (_, offset))| (offset, self.extract_value(llret, i as u64)))
+                    .collect();
+            let is_memory = matches!(ret_layout.backend_repr, BackendRepr::Memory { .. });
+            match rustc_codegen_ssa::mir::store_intrinsic_return_struct(
+                self,
+                ret_layout,
+                memory_return_place,
+                fields,
+            ) {
+                IntrinsicResult::Operand(val) => {
+                    assert!(!is_memory);
+                    assert!(memory_return_place.is_none());
+                    OperandRef { val, layout: ret_layout, move_annotation: None }
+                        .immediate_or_packed_pair(self)
+                }
+                IntrinsicResult::WroteIntoPlace => {
+                    assert!(is_memory);
+                    assert!(memory_return_place.is_some());
+                    // Return value won't be used.
+                    self.const_u8(0)
+                }
+                res => bug!("Unexpected LLVM intrinsic result {res:?}"),
+            }
+        } else {
+            llret
+        }
     }
 
     fn abort_immediate(&mut self) {

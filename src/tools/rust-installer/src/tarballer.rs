@@ -67,6 +67,8 @@ impl Tarballer {
 
         // Write the tar into both encoded files. We write all directories
         // first, so files may be directly created. (See rust-lang/rustup.rs#1092.)
+        // Bootstrap also relies on this ordering. It prepares directories up to the
+        // first non-directory entry before extracting toolchain components in parallel.
         let buf = BufWriter::with_capacity(1024 * 1024, encoder);
         let mut builder = Builder::new(buf);
         // Make uid, gid and mtime deterministic to improve reproducibility

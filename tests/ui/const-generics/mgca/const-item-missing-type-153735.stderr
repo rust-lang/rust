@@ -1,0 +1,22 @@
+error[E0423]: cannot find value `usize` in this scope
+  --> $DIR/const-item-missing-type-153735.rs:4:24
+   |
+LL | const INC = core::gca!(usize);
+   |                        ^^^^^ not found in this scope
+   |
+   = note: a builtin type named `usize` exists in another namespace
+
+error: missing type for `const` item
+  --> $DIR/const-item-missing-type-153735.rs:4:10
+   |
+LL | const INC = core::gca!(usize);
+   |          ^
+   |
+help: provide a type for the item
+   |
+LL | const INC: <type> = core::gca!(usize);
+   |          ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

@@ -64,12 +64,12 @@ pub(super) fn trace<'tcx>(
 
     let mut results = LivenessResults::new(typeck, comp);
 
-    results.record_legacy_polonius_drop_facts(relevant_live_locals, &deferred_locals);
+    results.record_legacy_polonius_drop_facts(relevant_live_locals, deferred_locals);
 
     results.compute_for_all_locals(relevant_live_locals);
 
     let mut deferred_liveness = DeferredRegionLiveness::default();
-    results.dropck_boring_locals(boring_locals, &deferred_locals, &mut deferred_liveness);
+    results.dropck_boring_locals(boring_locals, deferred_locals, &mut deferred_liveness);
 
     if let Some(polonius_context) = &mut typeck.polonius_context {
         polonius_context.deferred_liveness = deferred_liveness;
@@ -158,7 +158,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
                 let local_ty = self.comp.body.local_decls[local].ty;
                 let local_span = self.comp.body.local_decls[local].source_info.span;
                 let drop_data =
-                    dropck_local(&self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
+                    dropck_local(self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
                 let drop_data = computed_drop_data.insert(drop_data);
                 &drop_data.dropck_result.kinds
             },
@@ -235,7 +235,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // FIXME: there is an argument to be made that we don't need to do this for boring locals
         // without drop-liveness, because we skip it for *relevant* locals without drop-liveness.
         // But, this is preexisting even on NLL, so leaving it for now.
-        let drop_data = dropck_local(&typeck.infcx, &mut self.drop_data, local_ty, local_span);
+        let drop_data = dropck_local(typeck.infcx, &mut self.drop_data, local_ty, local_span);
 
         // We are done with *truly* boring locals.
         if !is_local_deferred {
@@ -316,7 +316,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         for (local, local_ty, location) in facts_to_add {
             let local_span = self.comp.body.local_decls[local].source_info.span;
             let drop_data =
-                dropck_local(&self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
+                dropck_local(self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
 
             if let Some(data) = &drop_data.region_constraint_data {
                 self.typeck.push_region_constraints(
@@ -728,10 +728,9 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
             // case), there are a few dozens compared to e.g. thousands or tens of thousands of
             // locals and move paths.
             let _timer = tcx.prof.generic_activity("borrowck_dataflow_maybe_inits");
-            let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
+            MaybeInitializedPlaces::new(tcx, body, self.move_data)
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
-                .into_results_cursor(body);
-            flow_inits
+                .into_results_cursor(body)
         });
         let states = match init_at_location {
             InitAtLocation::Terminator => &mut self.term_states,

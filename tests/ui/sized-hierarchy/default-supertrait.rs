@@ -6,21 +6,19 @@ use std::marker::{MetaSized, PointeeSized};
 trait Sized_: Sized { }
 
 trait NegSized: ?Sized { }
-//~^ ERROR relaxed bounds are not permitted in supertrait bounds
+//~^ ERROR relaxed `Sized` bounds are not permitted in supertrait bounds
 
 trait MetaSized_: MetaSized { }
 
 trait NegMetaSized: ?MetaSized { }
-//~^ ERROR relaxed bounds are not permitted in supertrait bounds
-//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~^ ERROR bound modifier `?` can only be applied to `Sized`
 //~| ERROR bound modifier `?` can only be applied to `Sized`
 //~| ERROR bound modifier `?` can only be applied to `Sized`
 
 trait PointeeSized_: PointeeSized { }
 
 trait NegPointeeSized: ?PointeeSized { }
-//~^ ERROR relaxed bounds are not permitted in supertrait bounds
-//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~^ ERROR bound modifier `?` can only be applied to `Sized`
 //~| ERROR bound modifier `?` can only be applied to `Sized`
 //~| ERROR bound modifier `?` can only be applied to `Sized`
 

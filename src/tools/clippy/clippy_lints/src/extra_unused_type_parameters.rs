@@ -1,12 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
-use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
+use clippy_utils::{is_empty_block, is_from_proc_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_impl_item, walk_item, walk_param_bound, walk_ty, walk_unambig_ty};
 use rustc_hir::{
-    AmbigArg, BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
-    ItemKind, PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
+    AmbigArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind,
+    PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
@@ -250,10 +250,6 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     }
 }
 
-fn is_empty_body(cx: &LateContext<'_>, body: BodyId) -> bool {
-    matches!(cx.tcx.hir_body(body).value.kind, ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none())
-}
-
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Fn {
@@ -262,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
             ..
         } = item.kind
             && !generics.params.is_empty()
-            && !is_empty_body(cx, body_id)
+            && !is_empty_block(cx.tcx.hir_body(body_id).value)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
             && !item.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, item)
@@ -278,7 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
         if let ImplItemKind::Fn(.., body_id) = item.kind
             && !item.generics.params.is_empty()
             && trait_ref_of_method(cx, item.owner_id).is_none()
-            && !is_empty_body(cx, body_id)
+            && !is_empty_block(cx.tcx.hir_body(body_id).value)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
             && !item.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, item)

@@ -12,6 +12,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_lint_defs::ToolOptions;
 use rustc_macros::{
     Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
 };
@@ -612,6 +613,7 @@ pub enum RustcShowSpansKind {
     Expr,
     Ty,
     Path,
+    GenericArgs,
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
@@ -958,7 +960,7 @@ pub enum AttributeKind {
     InstrumentFn(InstrumentFnAttr),
 
     /// Represents `#[lang]`
-    Lang(LangItem),
+    Lang(LangItem, Span),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
@@ -1166,8 +1168,8 @@ pub enum AttributeKind {
 
     /// Represents `#[register_attribute_tool]`, `#[register_lint_tool]` and `#[register_tool]`
     RegisterTool {
-        attr_tools: ThinVec<Ident>,
-        lint_tools: ThinVec<Ident>,
+        attr_tools: ThinVec<(Ident, ToolOptions)>,
+        lint_tools: ThinVec<(Ident, ToolOptions)>,
     },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
@@ -1365,8 +1367,10 @@ pub enum AttributeKind {
     /// Represents `#[rustc_insignificant_dtor]`
     RustcInsignificantDtor,
 
-    /// Represents `#[rustc_intrinsic]`
-    RustcIntrinsic,
+    /// Represents `#[rustc_intrinsic]` / `#[rustc_intrinsic(llvm = "...")]`
+    RustcIntrinsic {
+        llvm: Option<Symbol>,
+    },
 
     /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,
@@ -1512,6 +1516,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
+
+    /// Represents the trace attribute of the `test` macro.
+    RustcTestEntrypointMarker,
 
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),

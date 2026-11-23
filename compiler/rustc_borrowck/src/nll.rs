@@ -93,11 +93,11 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     // Computing the region graph should take at least some of it by reference/`Rc`.
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints.clone(),
-        &universal_region_relations,
+        universal_region_relations,
         infcx,
     );
     let (_, closure_region_requirements, _nll_errors) = RegionInferenceContext::solve(
-        &infcx,
+        infcx,
         lowered_constraints,
         universal_region_relations.clone(),
         location_map,
@@ -124,7 +124,7 @@ pub(crate) fn compute_regions<'tcx>(
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
     mut polonius_context: Option<PoloniusContext<'tcx>>,
 ) -> NllOutput<'tcx> {
-    let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
+    let polonius_output = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
     let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(

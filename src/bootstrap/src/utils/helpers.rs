@@ -274,10 +274,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     builder: &Builder<'_>,
 ) -> TestFilterCategory<'a> {
     let suite_path = suite_path.as_ref();
-    let path = match path.strip_prefix(".") {
-        Ok(p) => p,
-        Err(_) => path,
-    };
+    let path = path.trim_prefix(".");
     if !path.starts_with(suite_path) {
         return TestFilterCategory::Uninteresting;
     }

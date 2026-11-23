@@ -38,3 +38,5 @@ fn main() {
 global_asm!("mov eax, {}", const 5);
 global_asm!("mov eax, {}", const constfn(5));
 global_asm!("mov eax, {}", const constfn(5) + constfn(5));
+
+//@ reference: asm.operand-type.supported-operands-const

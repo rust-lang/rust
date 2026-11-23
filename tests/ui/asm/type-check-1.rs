@@ -28,3 +28,7 @@ fn main() {
         //~| ERROR cannot use value of type `[u64]` for inline assembly
     }
 }
+
+//@ reference: asm.operand-type.supported-operands-inout
+//@ reference: asm.operand-type.supported-operands-out
+//@ reference: asm.register-operands.allowed-types

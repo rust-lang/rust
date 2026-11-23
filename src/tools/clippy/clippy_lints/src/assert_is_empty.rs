@@ -19,7 +19,7 @@ declare_clippy_lint! {
     ///
     /// Checks assertions that only test whether a supported value is empty.
     ///
-    /// The lint handles `assert!` and `debug_assert!` calls on strings, slices, arrays, `Vec`, and
+    /// The lint handles `assert!` and `debug_assert!` calls on strings, slices, arrays, `Vec`, `VecDeque` and
     /// `BinaryHeap`.
     ///
     /// ### Why is this bad?
@@ -221,8 +221,8 @@ fn assertion_suggestion<'tcx>(
 
 /// Returns the receiver suffix and empty value for this receiver type.
 ///
-/// Arrays and borrowed vectors are compared through slices because direct comparison with `[]` does
-/// not compile for those receiver types. Returns `None` when the receiver has no compact
+/// Arrays and borrowed vectors are compared through slices because direct comparison with `[]`
+/// does not compile for those receiver types. Returns `None` when the receiver has no compact
 /// empty-literal comparison.
 fn suggestion_for_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<(&'static str, String)> {
     match ty.kind() {
@@ -237,8 +237,8 @@ fn suggestion_for_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<(&'
 ///
 /// `String` and `str` compare against `""`. Slices compare against `[]`. `Vec<T>` compares
 /// against `[] as [T; 0]` so the empty value carries the element type. Binary heaps are compared
-/// through `as_slice()` because they do not implement `PartialEq`. Returns `None` for other
-/// receiver types.
+/// through `as_slice()` because they do not implement `PartialEq`. `VecDeque<T>` compares
+/// against `VecDeque::new()`. Returns `None` for other receiver types.
 fn suggestion_for_peeled_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<(&'static str, String)> {
     if ty.is_str() || ty.is_lang_item(cx, LangItem::String) {
         Some(("", "\"\"".to_string()))
@@ -247,6 +247,7 @@ fn suggestion_for_peeled_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Opt
     } else {
         match ty.opt_diag_name(cx) {
             Some(sym::Vec) => Some(("", format!("[] as [{}; 0]", collection_element_type(cx, ty)?))),
+            Some(sym::VecDeque) => Some(("", "VecDeque::new()".to_string())),
             Some(sym::BinaryHeap) => {
                 let element_ty = collection_element_type(cx, ty)?;
                 element_ty
@@ -281,12 +282,15 @@ fn type_is_printable_and_comparable<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) 
 
 /// Extracts the element type from supported sequences and heaps.
 ///
+///
 /// The element type is used for trait checks and for typed empty-array suggestions. Returns `None`
 /// for unsupported receiver types.
 fn collection_element_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.kind() {
         ty::Array(ty, _) | ty::Slice(ty) => Some(*ty),
-        ty::Adt(_, args) if matches!(ty.opt_diag_name(cx), Some(sym::Vec | sym::BinaryHeap)) => args.types().next(),
+        ty::Adt(_, args) if matches!(ty.opt_diag_name(cx), Some(sym::Vec | sym::VecDeque | sym::BinaryHeap)) => {
+            args.types().next()
+        },
         _ => None,
     }
 }

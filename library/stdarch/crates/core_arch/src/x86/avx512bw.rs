@@ -6478,7 +6478,7 @@ pub fn _mm_maskz_maddubs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vpackssdw))]
+#[cfg_attr(test, assert_instr(vpackssdw, limit(5), not(vpmin), not(vpmax)))]
 pub fn _mm512_packs_epi32(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(vpackssdw(a.as_i32x16(), b.as_i32x16())) }
 }
@@ -6573,7 +6573,7 @@ pub fn _mm_maskz_packs_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vpacksswb))]
+#[cfg_attr(test, assert_instr(vpacksswb, limit(5), not(vpmin), not(vpmax)))]
 pub fn _mm512_packs_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(vpacksswb(a.as_i16x32(), b.as_i16x32())) }
 }
@@ -6668,7 +6668,7 @@ pub fn _mm_maskz_packs_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vpackusdw))]
+#[cfg_attr(test, assert_instr(vpackusdw, limit(5), not(vpmin), not(vpmax)))]
 pub fn _mm512_packus_epi32(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(vpackusdw(a.as_i32x16(), b.as_i32x16())) }
 }
@@ -6763,7 +6763,7 @@ pub fn _mm_maskz_packus_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vpackuswb))]
+#[cfg_attr(test, assert_instr(vpackuswb, limit(5), not(vpmin), not(vpmax)))]
 pub fn _mm512_packus_epi16(a: __m512i, b: __m512i) -> __m512i {
     unsafe { transmute(vpackuswb(a.as_i16x32(), b.as_i16x32())) }
 }

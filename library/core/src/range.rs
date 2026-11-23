@@ -17,6 +17,7 @@
 
 use crate::fmt;
 use crate::hash::Hash;
+use crate::marker::Destruct;
 
 mod iter;
 
@@ -757,5 +758,454 @@ where
 {
     fn bound(self) -> (OneSidedRangeBound, T) {
         (OneSidedRangeBound::EndInclusive, self.last)
+    }
+}
+
+/// Computes the intersection of two ranges, returning the most specific range type possible.
+///
+/// This trait is not implemented for all combinations, only the ones with a good
+/// `Self::Intersection` type available.
+///
+/// However, because `(Bound<T>, Bound<T>): RangeIntersect`, you can always use
+/// `a.into_bounds().intersect(b.into_bounds())` for any two [`IntoBounds`] types if needed.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(range_intersect)]
+/// use core::range::{Range, RangeFrom, RangeInclusive, RangeIntersect};
+///
+/// assert_eq!(
+///     Range::from(-12..387).intersect(Range::from(0..256)),
+///     Range::from(0..256),
+/// );
+/// assert_eq!(
+///     RangeFrom::from(3..).intersect(..5),
+///     Range::from(3..5),
+/// );
+/// assert_eq!(
+///     RangeInclusive::from(1..=9).intersect(RangeFrom::from(5..)),
+///     RangeInclusive::from(5..=9),
+/// );
+/// ```
+///
+/// Combine with `is_empty` to determine if two ranges overlap:
+///
+/// ```
+/// #![feature(range_intersect)]
+/// use core::range::{Range, RangeFrom, RangeIntersect};
+///
+/// assert!(!RangeFrom::from(3..).intersect(..5).is_empty());
+/// assert!(!Range::from(-12..387).intersect(Range::from(0..256)).is_empty());
+/// assert!(Range::from(1..5).intersect(RangeFrom::from(6..)).is_empty());
+/// ```
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+pub const trait RangeIntersect<Rhs = Self>: Sized {
+    /// The resulting range type of the intersection.
+    #[unstable(feature = "range_intersect", issue = "165428")]
+    type Intersection;
+
+    /// Computes the intersection of `self` and `rhs`.
+    #[unstable(feature = "range_intersect", issue = "165428")]
+    #[must_use]
+    fn intersect(self, rhs: Rhs) -> Self::Intersection;
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for (Bound<T>, Bound<T>)
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Self;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        let (self_start, self_end) = self;
+        let (other_start, other_end) = rhs;
+
+        let start = match (self_start, other_start) {
+            (Included(a), Included(b)) => Included(Ord::max(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::max(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i > e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+        let end = match (self_end, other_end) {
+            (Included(a), Included(b)) => Included(Ord::min(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::min(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i < e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+
+        (start, end)
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for Range<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        Range { start: Ord::max(self.start, rhs.start), end: Ord::min(self.end, rhs.end) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFrom<T>> for Range<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeFrom<T>) -> Self::Intersection {
+        Range { start: Ord::max(self.start, rhs.start), end: self.end }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeTo<T>> for Range<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeTo<T>) -> Self::Intersection {
+        Range { start: self.start, end: Ord::min(self.end, rhs.end) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFull> for Range<T> {
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        self
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<Range<T>> for RangeFrom<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Range<T>) -> Self::Intersection {
+        Range { start: Ord::max(self.start, rhs.start), end: rhs.end }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for RangeFrom<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeFrom<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        RangeFrom { start: Ord::max(self.start, rhs.start) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeTo<T>> for RangeFrom<T> {
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeTo<T>) -> Self::Intersection {
+        Range { start: self.start, end: rhs.end }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFull> for RangeFrom<T> {
+    type Intersection = RangeFrom<T>;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        self
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeInclusive<T>> for RangeFrom<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeInclusive<T>) -> Self::Intersection {
+        RangeInclusive { start: Ord::max(self.start, rhs.start), last: rhs.last }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeToInclusive<T>> for RangeFrom<T> {
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeToInclusive<T>) -> Self::Intersection {
+        RangeInclusive { start: self.start, last: rhs.last }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<Range<T>> for RangeTo<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Range<T>) -> Self::Intersection {
+        Range { start: rhs.start, end: Ord::min(self.end, rhs.end) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFrom<T>> for RangeTo<T> {
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeFrom<T>) -> Self::Intersection {
+        Range { start: rhs.start, end: self.end }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for RangeTo<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeTo<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        RangeTo { end: Ord::min(self.end, rhs.end) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFull> for RangeTo<T> {
+    type Intersection = RangeTo<T>;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        self
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<Range<T>> for RangeFull {
+    type Intersection = Range<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Range<T>) -> Self::Intersection {
+        rhs
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFrom<T>> for RangeFull {
+    type Intersection = RangeFrom<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeFrom<T>) -> Self::Intersection {
+        rhs
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeTo<T>> for RangeFull {
+    type Intersection = RangeTo<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeTo<T>) -> Self::Intersection {
+        rhs
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl RangeIntersect for RangeFull {
+    type Intersection = RangeFull;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        RangeFull
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeInclusive<T>> for RangeFull {
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeInclusive<T>) -> Self::Intersection {
+        rhs
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeToInclusive<T>> for RangeFull {
+    type Intersection = RangeToInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeToInclusive<T>) -> Self::Intersection {
+        rhs
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFrom<T>> for RangeInclusive<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeFrom<T>) -> Self::Intersection {
+        RangeInclusive { start: Ord::max(self.start, rhs.start), last: self.last }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFull> for RangeInclusive<T> {
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        self
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for RangeInclusive<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        RangeInclusive {
+            start: Ord::max(self.start, rhs.start),
+            last: Ord::min(self.last, rhs.last),
+        }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeToInclusive<T>> for RangeInclusive<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeToInclusive<T>) -> Self::Intersection {
+        RangeInclusive { start: self.start, last: Ord::min(self.last, rhs.last) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFrom<T>> for RangeToInclusive<T> {
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeFrom<T>) -> Self::Intersection {
+        RangeInclusive { start: rhs.start, last: self.last }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeFull> for RangeToInclusive<T> {
+    type Intersection = RangeToInclusive<T>;
+
+    #[inline]
+    fn intersect(self, _rhs: RangeFull) -> Self::Intersection {
+        self
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect<RangeInclusive<T>> for RangeToInclusive<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: RangeInclusive<T>) -> Self::Intersection {
+        RangeInclusive { start: rhs.start, last: Ord::min(self.last, rhs.last) }
+    }
+}
+
+#[unstable(feature = "range_intersect", issue = "165428")]
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+const impl<T> RangeIntersect for RangeToInclusive<T>
+where
+    T: [const] Ord + [const] Destruct,
+{
+    type Intersection = RangeToInclusive<T>;
+
+    #[inline]
+    fn intersect(self, rhs: Self) -> Self::Intersection {
+        RangeToInclusive { last: Ord::min(self.last, rhs.last) }
     }
 }

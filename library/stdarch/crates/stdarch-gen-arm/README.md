@@ -91,7 +91,7 @@ attribute:
 - `target_features` (_Optional_)
     - A sequence of target features to enable for this intrinsic (merged with any global `arch_cfgs` settings).
 - `assert_instr` (_Optional_)
-    - A sequence of strings expected to be found in the assembly. Required if `attr` is not set.
+    - A string expected to be found in the assembly, followed by value assignments for const generic arguments to be used for this test. Required if `attr` is not set.
 - `safety` (_Optional_)
     - Use `safe`, or map `unsafe:` to a sequence of unsafety comments:
         - `custom: "<string>"`

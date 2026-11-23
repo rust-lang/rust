@@ -455,10 +455,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME(move_trait): We likely want to not add an implicit `Move` super trait
                 // at which point we shouldn't allow relaxed bounds here. Even if we do, we should
                 // make sure to only allow `?Move`.
+                let mut dedup = Default::default();
                 let policy = if self.tcx.features().move_trait() {
-                    RelaxedBoundPolicy::Allowed(&mut Default::default())
+                    RelaxedBoundPolicy::allow_all(&mut dedup)
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait)
+                    RelaxedBoundPolicy::forbidden(
+                        &mut dedup,
+                        RelaxedBoundForbiddenReason::SuperTrait,
+                    )
                 };
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
@@ -496,7 +500,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitAlias),
+                            RelaxedBoundPolicy::forbidden(
+                                &mut Default::default(),
+                                RelaxedBoundForbiddenReason::TraitAlias,
+                            ),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
@@ -630,16 +637,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        // Parameters are discarded because foreign functions don't have a body
                         this.lower_fn_decl(
                             fdec,
                             i.id,
                             hir_id,
                             FnDeclKind::ExternFn,
                             None,
-                            DiscardParams::Yes,
+                            DiscardParams::No,
                         ),
-                        this.lower_fn_params_to_idents(fdec),
+                        this.lower_fn_params(fdec),
                     )
                 });
 
@@ -940,7 +946,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
-                                RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                                RelaxedBoundPolicy::allow_all(&mut Default::default()),
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
@@ -1246,7 +1252,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_id
     }
 
-    fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
+    pub(super) fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs, param.span, AstTarget::Param(param));
         hir::Param {
@@ -1319,7 +1325,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if find_attr!(attrs, RustcIntrinsic) || this.tcx.is_sdylib_interface_build() {
+                if find_attr!(attrs, RustcIntrinsic { .. }) || this.tcx.is_sdylib_interface_build()
+                {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),
@@ -1801,7 +1808,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.bounds,
                 param.colon_span,
                 generics.span,
-                RelaxedBoundPolicy::Allowed(
+                RelaxedBoundPolicy::allow_all(
                     dedup_map.entry(self.local_def_id(param.id)).or_default(),
                 ),
                 itctx,
@@ -1965,15 +1972,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
+                let mut forbidden_dedup_map;
                 let rbp = if bound_generic_params.is_empty()
                     && let Some(res) =
                         self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {
-                    RelaxedBoundPolicy::Allowed(dedup_map.entry(def_id.expect_local()).or_default())
+                    RelaxedBoundPolicy::allow_all(
+                        dedup_map.entry(def_id.expect_local()).or_default(),
+                    )
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
+                    forbidden_dedup_map = Default::default();
+                    RelaxedBoundPolicy::forbidden(
+                        &mut forbidden_dedup_map,
+                        RelaxedBoundForbiddenReason::WhereBound,
+                    )
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(
@@ -2001,7 +2015,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                     bounds: self.lower_param_bounds(
                         bounds,
-                        RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                        RelaxedBoundPolicy::allow_all(&mut Default::default()),
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,

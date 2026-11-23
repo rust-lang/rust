@@ -1,0 +1,41 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/repr-simd-error-const-len-138009.rs:8:23
+   |
+LL | struct T([isize; gca!(N)]);
+   |                       ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | struct T<const N: /* Type */>([isize; gca!(N)]);
+   |         +++++++++++++++++++++
+
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/repr-simd-error-const-len-138009.rs:6:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0061]: this struct takes 1 argument but 0 arguments were supplied
+  --> $DIR/repr-simd-error-const-len-138009.rs:11:15
+   |
+LL | static X: T = T();
+   |               ^-- argument #1 is missing
+   |
+note: tuple struct defined here
+  --> $DIR/repr-simd-error-const-len-138009.rs:8:8
+   |
+LL | struct T([isize; gca!(N)]);
+   |        ^
+help: provide the argument
+   |
+LL | static X: T = T(/* value */);
+   |                 +++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0061, E0425, E0658.
+For more information about an error, try `rustc --explain E0061`.

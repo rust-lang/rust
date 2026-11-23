@@ -1,33 +1,122 @@
 //! Isolates the APIs used by `bin/main.rs`, to help minimize the surface area
 //! of public exports from the compiletest library crate.
 
-use std::env;
+use std::fmt::Write;
 use std::io::IsTerminal;
 use std::sync::{Arc, OnceLock};
+use std::{env, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 
 use crate::common::{CodegenBackend, CompareMode, Config, ForcePassMode, TestMode, TestSuite};
 use crate::edition::Edition;
-use crate::{debuggers, directives, early_config_check, run_tests};
+use crate::{
+    debuggers, directives, discovery, executor, help, panic_hook, raise_fd_limit, warning,
+};
 
 pub fn main() {
+    // sadly osx needs some file descriptor limits raised for running tests in
+    // parallel (especially when we have lots and lots of child processes).
+    // For context, see #8904
+    unsafe { raise_fd_limit::raise_fd_limit() };
+
+    // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
+    // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
+
     tracing_subscriber::fmt::init();
+    panic_hook::install_panic_hook();
 
     // colored checks stdout by default, but for some reason only stderr is a terminal.
     // compiletest *does* print many things to stdout, but it doesn't really matter.
     if std::io::stderr().is_terminal()
-        && matches!(std::env::var("NO_COLOR").as_deref(), Err(_) | Ok("0"))
+        && matches!(env::var("NO_COLOR").as_deref(), Err(_) | Ok("0"))
     {
         colored::control::set_override(true);
     }
 
     let config = Arc::new(parse_config(env::args().collect()));
-
     early_config_check(&config);
 
-    run_tests(config);
+    // If we want to collect rustfix coverage information,
+    // we first make sure that the coverage file does not exist.
+    // It will be created later on.
+    if config.rustfix_coverage {
+        let mut coverage_file_path = config.build_test_suite_root.clone();
+        coverage_file_path.push("rustfix_missing_coverage.txt");
+        if coverage_file_path.exists() {
+            fs::remove_file(&coverage_file_path)
+                .unwrap_or_else(|e| panic!("Could not delete {coverage_file_path} due to {e}"));
+        }
+    }
+
+    // FIXME: this should ideally happen somewhere else..
+    if config.mode == TestMode::DebugInfo && config.target.contains("android") {
+        println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
+
+        // android debug-info test uses remote debugger so, we test 1 thread
+        // at once as they're all sharing the same TCP port to communicate
+        // over.
+        //
+        // we should figure out how to lift this restriction! (run them all
+        // on different ports allocated dynamically).
+        //
+        // SAFETY: at this point we are still single-threaded.
+        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
+    }
+
+    // Scan the test directory for tests, and create a test struct for each test/variant.
+    let tests = discovery::discover_tests(&config);
+
+    // Delegate to the executor to filter and run the big list of test structures
+    // created during test discovery. When the executor decides to run a test,
+    // it will return control to the rest of compiletest by calling `runtest::run`.
+    let ok = executor::run_tests(&config, tests);
+
+    // Check the outcome reported by the executor.
+    if !ok {
+        // We want to report that the tests failed, but we also want to give
+        // some indication of just what tests we were running. Especially on
+        // CI, where there can be cross-compiled tests for a lot of
+        // architectures, without this critical information it can be quite
+        // easy to miss which tests failed, and as such fail to reproduce
+        // the failure locally.
+
+        let mut msg = String::from("Some tests failed in compiletest");
+        write!(msg, " suite={}", config.suite).unwrap();
+
+        if let Some(compare_mode) = config.compare_mode.as_ref() {
+            write!(msg, " compare_mode={}", compare_mode).unwrap();
+        }
+
+        if let Some(pass_mode) = config.force_pass_mode.as_ref() {
+            write!(msg, " pass_mode={}", pass_mode).unwrap();
+        }
+
+        write!(msg, " mode={}", config.mode).unwrap();
+        write!(msg, " host={}", config.host).unwrap();
+        write!(msg, " target={}", config.target).unwrap();
+
+        println!("{msg}");
+
+        std::process::exit(1);
+    }
+}
+
+fn early_config_check(config: &Config) {
+    if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
+        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
+    }
+
+    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
+    }
 }
 
 /// Compiletest command-line arguments.
@@ -43,6 +132,15 @@ struct Args {
     /// Path to rustc to use for compiling.
     #[arg(long)]
     rustc_path: Utf8PathBuf,
+    /// Path to the aux-lint rustc driver.
+    #[arg(long)]
+    rustc_lint_driver_path: Option<Utf8PathBuf>,
+    /// Path to the aux-lint rustc driver libdir.
+    #[arg(long)]
+    rustc_lint_driver_lib_path: Option<Utf8PathBuf>,
+    /// Path to the aux-lint rustc driver sysroot.
+    #[arg(long)]
+    rustc_lint_driver_sysroot: Option<Utf8PathBuf>,
     /// Path to python to use for doc tests.
     #[arg(long)]
     python: String,
@@ -497,6 +595,9 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         run_make_support_rmeta: args.run_make_support_rmeta,
         runner: args.runner,
         rust_randomized_layout: args.rust_randomized_layout,
+        rustc_lint_driver_lib_path: args.rustc_lint_driver_lib_path,
+        rustc_lint_driver_path: args.rustc_lint_driver_path,
+        rustc_lint_driver_sysroot: args.rustc_lint_driver_sysroot,
         rustc_path: args.rustc_path,
         rustdoc_path: args.rustdoc_path,
         rustfix_coverage: args.rustfix_coverage,
