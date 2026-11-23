@@ -51,6 +51,9 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         match c.kind() {
             ty::ConstKind::Alias(_, alias_const) => convert.alias_to_pat(alias_const, ty),
             ty::ConstKind::Value(value) => convert.valtree_to_pat(value),
+            ty::ConstKind::Error(guard) => {
+                Box::new(Pat { span, ty, kind: PatKind::Error(guard), extra: None })
+            }
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
