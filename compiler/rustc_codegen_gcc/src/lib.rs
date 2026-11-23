@@ -83,7 +83,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::target_features::internal_target_features;
+use rustc_codegen_ssa::target_features::{self, internal_target_features};
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -139,6 +139,7 @@ type SharedTargetInfo = Arc<IntoDynSyncSend<TargetInfo>>;
 
 #[derive(Clone)]
 pub struct BackendConfig {
+    /// Target info computed with the "base" target features, *without* `-Ctarget-feature`.
     target_info: SharedTargetInfo,
     lto_supported: bool,
 }
@@ -238,7 +239,9 @@ impl CodegenBackend for GccCodegenBackend {
                 panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
             }
         }
-        let global_backend_features = gcc_util::global_gcc_features(sess, false);
+
+        // Get GCC features *without* `-Ctarget-feature`.
+        let mut global_backend_features = gcc_util::base_gcc_features(sess);
 
         #[cfg(feature = "master")]
         {
@@ -247,6 +250,8 @@ impl CodegenBackend for GccCodegenBackend {
             let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
+            // This is used to populate `cfg(target_feature)`, so we only include the base
+            // backend feature here, matching the LLVM backend.
             let context = Context::default();
             if target_cpu != "generic" {
                 context.add_command_line_option(format!("-march={}", target_cpu));
@@ -254,7 +259,7 @@ impl CodegenBackend for GccCodegenBackend {
             gcc_util::add_target_info_feature_options(
                 &context,
                 &sess.target.arch,
-                &gcc_util::global_gcc_features(sess, true),
+                &global_backend_features,
             );
             // libgccjit always passes -fPIC, which some targets reject (e.g. MIPS without -mabicalls).
             gcc_util::add_pic_option(&context, sess.relocation_model());
@@ -285,6 +290,12 @@ impl CodegenBackend for GccCodegenBackend {
                 lto_supported: false,
             });
         }
+
+        // Add `-Ctarget-feature`. This will later be picked up by `new_context` and `from_fn_attrs`.
+        target_features::flag_to_backend_features(
+            sess,
+            gcc_util::extend_with_gcc_features_for_rust_feature(sess, &mut global_backend_features),
+        );
 
         let init = CodegenBackendInit {
             global_backend_features,
@@ -494,6 +505,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &EarlySession, target_info: &SharedTargetInfo) -> TargetConfig {
+    // Compute Rust features from backend features. This also adds `-Ctarget-feature`.
     let internal_target_features = internal_target_features(
         sess,
         |feature| to_gcc_features(&sess.target, feature),
