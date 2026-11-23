@@ -35,7 +35,11 @@ error: malformed `warn` attribute input
 LL | #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
    |
-   = help: for example, write `#[warn(dead_code)]` for `dead_code`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
+LL + #![warn(bare_trait_objects, reason = "leaders to no sure land, guides their bearings lost")]
+   |
 
 error: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:13:22
@@ -43,7 +47,11 @@ error: malformed `warn` attribute input
 LL | #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
    |
-   = help: for example, write `#[warn(dead_code)]` for `dead_code`
+help: to provide a reason, use `reason = ""`
+   |
+LL - #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
+LL + #![warn(unsafe_code, reason = "or in league with robbers have reversed the signposts")]
+   |
 
 error: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:16:36

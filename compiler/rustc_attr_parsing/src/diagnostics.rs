@@ -2234,6 +2234,16 @@ pub(crate) struct MalformedLintAttributeInput {
 pub(crate) enum MalformedLintAttributeInputHelp {
     #[help("try using `#[{$kind}({$sym})]`")]
     StrLit { sym: Symbol, kind: Symbol },
+    #[suggestion(
+        "to provide a reason, use `reason = \"\"`",
+        code = "reason",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    Reason {
+        #[primary_span]
+        reason_span: Span,
+    },
     #[help("for example, write `#[{$kind}(dead_code)]` for `dead_code`")]
     Other { kind: Symbol },
 }
