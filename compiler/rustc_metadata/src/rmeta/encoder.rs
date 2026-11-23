@@ -42,7 +42,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, LocalExpnId, SourceFile, SpanData, SpanEncoder,
-    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug,
+    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug, sym,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -2933,18 +2933,33 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
         }
     }
 
+    // For non-macro literals, we avoid invoking the pretty-printer and use the source snippet
+    // instead to preserve certain stylistic choices the user likely made for the sake of
+    // legibility, like:
+    //
+    // * hexadecimal notation
+    // * underscores
+    // * character escapes
+    //
+    // However, for certain literal-producing macros (i.e. `include_*`),
+    // emitting a source snippet is clearer.
+    //
+    // FIXME: This passes through `-/*spacer*/0` verbatim.
+    fn use_snippet_for_literal(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> bool {
+        if !expr.span.from_expansion() {
+            true
+        } else {
+            const UNEXPANDED_MACROS: &[Symbol] =
+                &[sym::include_bytes_macro, sym::include_str_macro];
+            expr.span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
+                UNEXPANDED_MACROS.iter().any(|&mac| tcx.is_diagnostic_item(mac, def_id))
+            })
+        }
+    }
+
     match classify(value) {
-        // For non-macro literals, we avoid invoking the pretty-printer and use the source snippet
-        // instead to preserve certain stylistic choices the user likely made for the sake of
-        // legibility, like:
-        //
-        // * hexadecimal notation
-        // * underscores
-        // * character escapes
-        //
-        // FIXME: This passes through `-/*spacer*/0` verbatim.
         Literal
-            if !value.span.from_expansion()
+            if use_snippet_for_literal(tcx, value)
                 && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) =>
         {
             snippet
