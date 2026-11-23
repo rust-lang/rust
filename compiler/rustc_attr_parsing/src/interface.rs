@@ -147,9 +147,7 @@ impl<'sess> AttributeParser<'sess> {
     /// This can be used for attributes that would be removed before `rustc_ast_lowering`, such as attributes on macro calls.
     ///
     /// Try to use this as little as possible. Attributes *should* be lowered during
-    /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
-    /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
-    /// Therefore, if `parse_filter` is None, then features *must* be provided.
+    /// `rustc_ast_lowering`.
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -162,6 +160,10 @@ impl<'sess> AttributeParser<'sess> {
         attr_tools: Option<&'sess RegisteredTools>,
         lint_tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
+        // Some attributes require access to features to parse.
+        // Therefore, if `parse_filter` is None, then features *must* be provided.
+        assert!(parse_filter.is_some() || features.is_some());
+
         let mut p =
             AttributeParser { features, attr_tools, lint_tools, parse_filter, sess, should_emit };
         p.parse_attribute_list(
