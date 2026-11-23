@@ -317,7 +317,7 @@ pub trait Emitter {
                         ExpnKind::Macro(MacroKind::Bang, _) => "this macro invocation".into(),
                         ExpnKind::Root => "the crate root".into(),
                         ExpnKind::AstPass(kind) => kind.descr().into(),
-                        ExpnKind::Desugaring(kind) => {
+                        ExpnKind::Desugaring(kind, ..) => {
                             format!("this {} desugaring", kind.descr()).into()
                         }
                     };

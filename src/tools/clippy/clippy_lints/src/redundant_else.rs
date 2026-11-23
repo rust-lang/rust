@@ -118,7 +118,7 @@ fn expr_needs_semi(ctxt: SyntaxContext, e: &Expr<'_>) -> bool {
         },
         ExprKind::Loop(..) => {
             let expn = e.span.ctxt().outer_expn_data();
-            ctxt != expn.call_site.ctxt() || !matches!(expn.kind, ExpnKind::Desugaring(_))
+            ctxt != expn.call_site.ctxt() || !matches!(expn.kind, ExpnKind::Desugaring(..))
         },
         ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => ctxt != e.span.ctxt().outer_expn_data().call_site.ctxt(),
         _ => true,

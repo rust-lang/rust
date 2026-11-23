@@ -1875,7 +1875,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             c if matches!(
                 span.ctxt().outer_expn_data().kind,
-                ExpnKind::Desugaring(DesugaringKind::ForLoop)
+                ExpnKind::Desugaring(DesugaringKind::ForLoop, ..)
             ) =>
             {
                 c
@@ -1950,7 +1950,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // ```
             if !matches!(
                 span.ctxt().outer_expn_data().kind,
-                ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
+                ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop, ..)
             ) {
                 return false;
             }

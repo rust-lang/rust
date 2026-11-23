@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
                 && ty.peel_refs().is_sized(cx.tcx, cx.typing_env())
                 && !ctxt.in_external_macro(cx.tcx.sess.source_map())
                 // Don't lint on the explicit borrow in for-loop desugarings.
-                && !matches!(ctxt.outer_expn_data().kind, ExpnKind::Desugaring(_))
+                && !matches!(ctxt.outer_expn_data().kind, ExpnKind::Desugaring(..))
                 && let Some(sp) = walk_span_to_context(base.span, ctxt)
             {
                 span_lint_and_then(cx, MUT_MUT, e.span.until(sp), "borrow of a mutable reference", |diag| {

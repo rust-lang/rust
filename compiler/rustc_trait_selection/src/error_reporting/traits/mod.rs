@@ -211,7 +211,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // if one is the result of a desugaring and the other is not.
             let mut span = error.obligation.cause.span;
             let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(_) = expn_data.kind {
+            if let ExpnKind::Desugaring(..) = expn_data.kind {
                 span = expn_data.call_site;
             }
 
@@ -367,7 +367,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // if one is the result of a desugaring and the other is not.
                         let mut span = error.obligation.cause.span;
                         let expn_data = span.ctxt().outer_expn_data();
-                        if let ExpnKind::Desugaring(_) = expn_data.kind {
+                        if let ExpnKind::Desugaring(..) = expn_data.kind {
                             span = expn_data.call_site;
                         }
                         self.reported_trait_errors

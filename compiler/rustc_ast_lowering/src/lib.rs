@@ -1053,7 +1053,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         allow_internal_unstable: Option<Arc<[Symbol]>>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
+            span.mark_with_reason(
+                allow_internal_unstable,
+                reason,
+                self.curr_owner.owner_id().def_id,
+                span.edition(),
+                hcx,
+            )
         })
     }
 
