@@ -162,7 +162,7 @@ pub fn emit_malformed_attribute(
 ) {
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
+    let should_warn = |name| matches!(name, sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];
