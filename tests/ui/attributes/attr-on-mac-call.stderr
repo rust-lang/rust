@@ -436,6 +436,30 @@ LL |     unreachable!();
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
 
-error: aborting due to 8 previous errors; 30 warnings emitted
+warning: the `deprecated` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:155:7
+   |
+LL |     #[deprecated]
+   |       ^^^^^^^^^^
+...
+LL |     unreachable!();
+   |
+   = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
+
+warning: the `deprecated` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:158:7
+   |
+LL |     #[deprecated]
+   |       ^^^^^^^^^^
+...
+LL |     unreachable!();
+   |
+   = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
+
+error: aborting due to 8 previous errors; 32 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
