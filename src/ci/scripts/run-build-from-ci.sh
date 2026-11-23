@@ -15,7 +15,10 @@ echo "::add-matcher::src/ci/github-actions/problem_matchers.json"
 # Remove any preexisting rustup installation since it can interfere
 # with the cargotest step and its auto-detection of things like Clippy in
 # the environment
-rustup self uninstall -y || true
+if [[ "${KEEP_RUSTUP_INSTALLED-0}" -ne "1" ]]; then
+    rustup self uninstall -y || true
+fi
+
 if [ -z "${IMAGE+x}" ]; then
     src/ci/run.sh
 else

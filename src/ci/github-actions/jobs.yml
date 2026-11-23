@@ -399,6 +399,7 @@ auto:
 
   # Runs Cargo tests with the stable compiler toolchain.
   - name: test-x86_64-cargo-stable
+    keep_rustup: true
     <<: *job-linux-4c
 
   - name: test-x86_64-gnu
