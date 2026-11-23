@@ -36,8 +36,8 @@ use rustc_middle::middle::resolve::{
 };
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{AssocTag, Visibility};
-use rustc_session::config::ResolveDocLinks;
 use rustc_session::diagnostics::feature_err;
+use rustc_session::output::ResolveDocLinks;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, bug, kw, respan, span_bug, sym};
 use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
