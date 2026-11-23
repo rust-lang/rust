@@ -103,15 +103,19 @@ use crate::sync::atomic::{
 /// A type for atomic ordering parameters for intrinsics. This is a separate type from
 /// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
 /// risk of leaking that to stable code.
-#[allow(missing_docs)]
 #[derive(Debug, ConstParamTy, PartialEq, Eq)]
 pub enum AtomicOrdering {
     // These values must match the compiler's `AtomicOrdering` defined in
     // `rustc_middle/src/ty/consts/int.rs`!
+    /// [`Ordering::Relaxed`][`crate::sync::atomic::Ordering::Relaxed`]
     Relaxed = 0,
+    /// [`Ordering::Release`][`crate::sync::atomic::Ordering::Release`]
     Release = 1,
+    /// [`Ordering::Acquire`][`crate::sync::atomic::Ordering::Acquire`]
     Acquire = 2,
+    /// [`Ordering::AcqRel`][`crate::sync::atomic::Ordering::AcqRel`]
     AcqRel = 3,
+    /// [`Ordering::SeqCst`][`crate::sync::atomic::Ordering::SeqCst`]
     SeqCst = 4,
 }
 
@@ -2396,6 +2400,7 @@ pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
 /// which is UB if any of their inputs are `undef`.)
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[lang = "raw_eq"]
 pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 
 /// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
@@ -2415,6 +2420,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[lang = "compare_bytes"]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
@@ -2697,7 +2703,7 @@ pub const fn ub_checks() -> bool {
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn overflow_checks() -> bool {
-    cfg!(debug_assertions)
+    cfg!(overflow_checks)
 }
 
 /// Allocates a block of memory at compile time.

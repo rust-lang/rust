@@ -1,4 +1,4 @@
-error: unused attribute
+error: duplicate `diagnostic::opaque` attributes
   --> $DIR/duplicate.rs:5:1
    |
 LL | #[diagnostic::opaque]

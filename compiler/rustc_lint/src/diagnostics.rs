@@ -313,6 +313,17 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("identifier `{$ident}` is bound more than once in this parameter list")]
+pub(crate) struct BuiltinDuplicateParameterNames {
+    #[primary_span]
+    #[label("used as parameter more than once")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("used here already")]
+    pub(crate) prev_use: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("const items should never be `#[no_mangle]`")]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
@@ -3145,12 +3156,16 @@ pub(crate) struct EqInternalMethodImplemented;
 #[derive(Diagnostic)]
 #[diag("cast from `{$expr_ty}` to `{$cast_ty}` implicitly relies on exposed provenance")]
 #[help(
-    "if conforming to strict provenance is not possible, use `std::ptr::with_exposed_provenance()`"
+    "if conforming to strict provenance is not possible, use `{$krate}::ptr::with_exposed_provenance()`"
 )]
-#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+#[note(
+    "for more information, visit <https://doc.rust-lang.org/{$krate}/ptr/index.html#provenance>"
+)]
 pub(crate) struct ImplicitProvenanceCastsInt2Ptr<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
+    /// Either `std` or `core`.
+    pub krate: &'static str,
     #[subdiagnostic]
     pub sugg: Option<Int2PtrSuggestion>,
 }
@@ -3170,10 +3185,14 @@ pub(crate) struct Int2PtrSuggestion {
 #[derive(Diagnostic)]
 #[diag("cast from `{$cast_from_ty}` to `{$cast_to_ty}` implicitly exposes pointer provenance")]
 #[help("if conforming to strict provenance is not possible, use `.expose_provenance()`")]
-#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+#[note(
+    "for more information, visit <https://doc.rust-lang.org/{$krate}/ptr/index.html#provenance>"
+)]
 pub(crate) struct ImplicitProvenanceCastsPtr2Int<'tcx> {
     pub cast_from_ty: Ty<'tcx>,
     pub cast_to_ty: Ty<'tcx>,
+    /// Either `std` or `core`, used to link to the matching documentation.
+    pub krate: &'static str,
     #[subdiagnostic]
     pub sugg: Option<Ptr2IntSuggestion<'tcx>>,
 }

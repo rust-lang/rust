@@ -1,0 +1,14 @@
+error: function `unused_foreign` is never used
+  --> $DIR/lint-check-params.rs:8:8
+   |
+LL |     fn unused_foreign(
+   |        ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-check-params.rs:4:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

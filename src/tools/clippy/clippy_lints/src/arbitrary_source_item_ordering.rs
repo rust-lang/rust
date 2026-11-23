@@ -78,7 +78,7 @@ declare_clippy_lint! {
     /// module-item-order-groupings = [
     ///     [ "modules", [ "extern_crate", "mod", "foreign_mod" ], ],
     ///     [ "use", [ "use", ], ],
-    ///     [ "everything_else", [ "macro", "global_asm", "static", "const", "ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl", "fn", ], ],
+    ///     [ "everything_else", [ "macro", "global_asm", "static", "const", "ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl", "fn", "test_binder_constraints" ], ],
     /// ]
     /// ```
     ///

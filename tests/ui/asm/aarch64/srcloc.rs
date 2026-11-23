@@ -134,3 +134,6 @@ fn main() {
         //~^^ ERROR: unrecognized instruction mnemonic
     }
 }
+
+//@ reference: asm.ts-args.one-or-more
+//@ reference: asm.validity.non-exhaustive

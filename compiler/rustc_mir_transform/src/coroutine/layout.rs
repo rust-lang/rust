@@ -23,7 +23,7 @@
 use std::ops;
 
 use itertools::izip;
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{FieldIdx, PackCoroutineLayout, VariantIdx};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
@@ -443,8 +443,14 @@ pub(super) fn compute_layout<'tcx>(
         tys[saved_local].debuginfo_name.get_or_insert(var.name);
     }
 
-    let layout =
-        CoroutineLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
+    let layout = CoroutineLayout {
+        field_tys: tys,
+        variant_fields,
+        variant_source_info,
+        storage_conflicts,
+        // FIXME(-Zpack-coroutine-layout): Stop ignoring the flag here.
+        pack: PackCoroutineLayout::Classic,
+    };
     debug!(?remap);
     debug!(?layout);
     debug!(?storage_liveness);

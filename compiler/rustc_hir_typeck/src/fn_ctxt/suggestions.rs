@@ -3927,7 +3927,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
     ) {
-        if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().eq_trait()
+        if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().partial_eq_trait()
             && self
                 .infcx
                 .type_implements_trait(partial_eq_def_id, [rhs_ty, lhs_ty], self.param_env)

@@ -156,6 +156,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::trunc
         | sym::type_id
         | sym::type_id_array_len
+        | sym::type_id_docs
+        | sym::type_id_dyn_trait
         | sym::type_id_element_ty
         | sym::type_id_eq
         | sym::type_id_field_representing_type
@@ -169,6 +171,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_reflected_attrs
         | sym::type_id_size_of
         | sym::type_id_type_of
+        | sym::type_id_variant_docs
         | sym::type_id_variant_name
         | sym::type_id_variant_non_exhaustive
         | sym::type_id_variant_reflected_attrs
@@ -291,6 +294,18 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_array_len => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_element_ty => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
+        sym::type_id_dyn_trait => {
+            let dyn_trait = tcx.require_lang_item(LangItem::DynTrait, span);
+            (
+                0,
+                0,
+                vec![type_id_ty()],
+                Ty::new_option(
+                    tcx,
+                    Ty::new_adt(tcx, tcx.adt_def(dyn_trait), ty::GenericArgs::empty()),
+                ),
+            )
+        }
         sym::type_id_field_representing_type => {
             (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
@@ -323,6 +338,26 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_variant_name => {
             (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx))
         }
+        sym::type_id_variant_docs => (
+            0,
+            0,
+            vec![type_id_ty(), tcx.types.usize],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(tcx, Ty::new_static_str(tcx)),
+            ),
+        ),
+        sym::type_id_docs => (
+            0,
+            0,
+            vec![type_id_ty()],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(tcx, Ty::new_static_str(tcx)),
+            ),
+        ),
         sym::type_id_variant_non_exhaustive => {
             (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.bool)
         }
@@ -344,7 +379,7 @@ pub(crate) fn check_intrinsic_type(
             0,
             0,
             vec![type_id_ty()],
-            tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
+            tcx.type_of(tcx.lang_items().type_kind().unwrap()).no_bound_vars().unwrap(),
         ),
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
         sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),

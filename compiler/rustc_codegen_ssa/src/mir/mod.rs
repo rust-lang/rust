@@ -28,7 +28,7 @@ mod retag;
 mod rvalue;
 mod statement;
 
-pub use self::block::store_cast;
+pub use self::block::{intrinsic_return_struct_fields, store_cast, store_intrinsic_return_struct};
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::operand::{OperandRef, OperandValue};
 use self::place::PlaceRef;
@@ -160,6 +160,7 @@ enum LocalRef<'tcx, V> {
     PendingOperand,
 }
 
+#[derive(Debug)]
 pub enum IntrinsicResult<'tcx, V> {
     /// This intrinsic created an operand without using the `result_place` argument.
     ///

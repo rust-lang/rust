@@ -352,7 +352,7 @@ impl LintStore {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
             if tool_name != sym::rustc
                 && tool_name != sym::rustdoc
-                && !registered_lint_tools.contains(&Ident::with_dummy_span(tool_name))
+                && !registered_lint_tools.contains_key(&Ident::with_dummy_span(tool_name))
             {
                 return CheckLintNameResult::NoTool(tool_name);
             }

@@ -16,6 +16,7 @@
 #![feature(casefold)]
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
+#![feature(char_case)]
 #![feature(char_internals)]
 #![feature(char_is_xid)]
 #![feature(clamp_magnitude)]
@@ -105,7 +106,10 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(range_intersect)]
+#![feature(range_into_bounds)]
 #![feature(raw_os_error_ty)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(signed_bigint_helpers)]
 #![feature(slice_from_ptr_range)]
@@ -121,7 +125,6 @@
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(strict_provenance_lints)]
-#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]
@@ -139,6 +142,7 @@
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![register_tool(reflective_tool(reflect))] // to allow testing of attribute reflection in `mem/type_info.rs`
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {

@@ -75,7 +75,7 @@ help: try specifying a deprecated since version
 LL |     #[deprecated(since = "1.2.3")]
    |                  +++++++
 
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/deprecation-sanity.rs:32:1
    |
 LL | #[deprecated(since = "a", note = "b")]

@@ -380,7 +380,9 @@ impl<'sess> AttributeParser<'sess> {
                     Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
-                    Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.span),
+                    Attribute::Tool { item: attr, .. } | Attribute::DeriveHelper(attr) => {
+                        Some(attr.span)
+                    }
                 }
             })
             .collect::<Vec<_>>();

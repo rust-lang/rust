@@ -20,11 +20,11 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(titlecase))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
-#![feature(titlecase)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -184,6 +184,7 @@ early_lint_methods!(
             // tidy-alphabetical-start
             AnonymousParameters: AnonymousParameters,
             DoubleNegations: DoubleNegations,
+            DuplicateParameterNames: DuplicateParameterNames,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             Expr2024: Expr2024,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
@@ -723,6 +724,11 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "dependency_on_unit_never_type_fallback",
         "the code warned by this lint no longer compiles",
+    );
+    store.register_removed(
+        "conflicting_repr_hints",
+        "converted into a hard error, \
+         see <https://github.com/rust-lang/rust/issues/68585> for more information",
     );
 }
 

@@ -385,7 +385,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
         let body_ty = self.tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
-            ty::FnDef(..) => body_ty.fn_sig(self.tcx).abi(),
+            ty::FnDef(..) => body_ty.fn_sig_abi(self.tcx),
             ty::Closure(..) => ExternAbi::RustCall,
             ty::Coroutine(..) => ExternAbi::Rust,
             _ => bug!("unexpected body ty: {body_ty:?}"),

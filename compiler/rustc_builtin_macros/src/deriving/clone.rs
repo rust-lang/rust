@@ -28,7 +28,7 @@ pub(crate) fn expand_derive_clone(
     //   enough. Whether Clone is implemented for fields is irrelevant so we
     //   don't assert it.)
     let bounds;
-    let body: MethodBodyFunc<'_>;
+    let body;
     let is_simple;
     match &item.kind {
         ItemKind::Struct(_, Generics { params, .. }, _)
@@ -42,16 +42,22 @@ pub(crate) fn expand_derive_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
+                body = MethodBody::Directly(clone_simple_body(cx, span, item, false));
             } else {
                 is_simple = false;
-                body = Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
+                body = MethodBody::SubstructureFunc {
+                    body_func: Box::new(|c, s, sub| {
+                        clone_body(c, s, sub, item.kind.ident().unwrap())
+                    }),
+                    strategy: FieldlessVariantsStrategy::Default,
+                    has_other_selflike_arg: false,
+                };
             }
         }
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
+            body = MethodBody::Directly(clone_simple_body(cx, span, item, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -86,28 +92,25 @@ pub(crate) fn expand_derive_clone(
         methods: smallvec![MethodDef {
             name: sym::clone,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: SmallVec::new(),
-            has_other_selflike_arg: false,
+            args: thin_vec![cx.param_self_ref(span)],
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body,
         }],
         is_const,
         ..
     };
 
-    trait_def.expand_ext(cx, item, push, is_simple)
+    trait_def.expand(cx, item, push);
 }
 
 fn clone_simple_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: Substructure<'_>,
+    item: &ast::Item,
     is_union: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
@@ -148,16 +151,16 @@ fn clone_simple_body(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr {
-            StaticStruct(vdata, ..) => {
+        match &item.kind {
+            ast::ItemKind::Struct(.., vdata) => {
                 process_variant(vdata);
             }
-            StaticEnum(enum_def, ..) => {
+            ast::ItemKind::Enum(.., enum_def) => {
                 for variant in &enum_def.variants {
                     process_variant(&variant.data);
                 }
             }
-            _ => cx.dcx().span_bug(trait_span, "unexpected substructure in simple `derive(Clone)`"),
+            _ => unreachable!(),
         }
     }
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
@@ -169,7 +172,7 @@ fn clone_body(
     substr: Substructure<'_>,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let subcall = |field: FieldInfo| {
+    let subcall = |field: FieldInfo<'_>| {
         let args = thin_vec![field.self_expr];
         cx.expr_call_global(
             field.span,
@@ -201,7 +204,7 @@ fn clone_body(
         VariantData::Struct { .. } => {
             let fields = all_fields
                 .into_iter()
-                .map(|field| cx.field_imm(field.span, field.name.unwrap(), subcall(field)))
+                .map(|field| cx.field_imm(field.span, field.def.ident.unwrap(), subcall(field)))
                 .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)

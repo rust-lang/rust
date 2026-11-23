@@ -5,11 +5,11 @@
 fn main() {}
 
 #[sanitize(address = "off")]
-#[sanitize(address = "off")] //~ ERROR multiple `sanitize` attributes
+#[sanitize(address = "off")] //~ ERROR duplicate `sanitize` attributes
 fn multiple_consistent() {}
 
 #[sanitize(address = "on")]
-#[sanitize(address = "off")] //~ ERROR multiple `sanitize` attributes
+#[sanitize(address = "off")] //~ ERROR duplicate `sanitize` attributes
 fn multiple_inconsistent() {}
 
 #[sanitize(address = "bogus")] //~ ERROR malformed `sanitize` attribute input

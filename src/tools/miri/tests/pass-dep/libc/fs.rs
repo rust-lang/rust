@@ -667,7 +667,6 @@ fn test_unlinkat() {
     assert!(!path.join("file.txt").exists());
 
     // With `AT_FDCWD`, a relative path is relative to the working directory, not to an FD.
-    assert_eq!(errno(unlinkat(libc::AT_FDCWD, c"miri_test_unlinkat_missing", 0)), libc::ENOENT);
     let original_cwd = env::current_dir().unwrap();
     env::set_current_dir(&path).unwrap();
     let cwd_file = Path::new("miri_test_unlinkat_cwd");

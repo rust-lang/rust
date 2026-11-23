@@ -55,11 +55,11 @@ impl Foo for () {
 }
 
 #[optimize(speed)]
-#[optimize(speed)] //~ ERROR multiple `optimize` attributes
+#[optimize(speed)] //~ ERROR duplicate `optimize` attributes
 fn duplicate_same() {}
 
 #[optimize(speed)]
-#[optimize(size)] //~ ERROR multiple `optimize` attributes
+#[optimize(size)] //~ ERROR duplicate `optimize` attributes
 fn duplicate_different() {}
 
 #[optimize(none)] //~ ERROR `#[optimize(none)]` cannot be used with `#[inline]` attributes

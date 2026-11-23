@@ -41,11 +41,12 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
             .caller_bounds()
             .all_clauses(cx.tcx)
             .iter()
-            .any(|bound| {
-                bound.as_trait_clause().is_some_and(|clause| {
+            .any(|bound| match bound.skip_binder() {
+                ty::ClauseKind::Trait(clause) => {
                     let did = clause.def_id();
                     did != sized_did && did != meta_sized_did
-                })
+                },
+                _ => false,
             })
     {
         return Err((

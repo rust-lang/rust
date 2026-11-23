@@ -1,7 +1,5 @@
-use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_middle::ty::{
-    AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, Ty,
-};
+use rustc_abi::FieldIdx;
+use rustc_middle::ty::{Const, ConstKind, GenericArgKind, GenericArgs, Region, Ty};
 use rustc_span::{bug, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -10,29 +8,6 @@ use crate::interpret::{
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
-    // FIXME(type_info): No semver considerations for now
-    pub(crate) fn write_adt_type_info(
-        &mut self,
-        place: &impl Writeable<'tcx, CtfeProvenance>,
-        adt_def: AdtDef<'tcx>,
-    ) -> InterpResult<'tcx, VariantIdx> {
-        let variant_idx = match adt_def.adt_kind() {
-            AdtKind::Struct => {
-                let (variant, _) = self.project_downcast_named(place, sym::Struct)?;
-                variant
-            }
-            AdtKind::Union => {
-                let (variant, _) = self.project_downcast_named(place, sym::Union)?;
-                variant
-            }
-            AdtKind::Enum => {
-                let (variant, _) = self.project_downcast_named(place, sym::Enum)?;
-                variant
-            }
-        };
-        interp_ok(variant_idx)
-    }
-
     pub(super) fn write_generics(
         &mut self,
         place: &impl Writeable<'tcx, CtfeProvenance>,

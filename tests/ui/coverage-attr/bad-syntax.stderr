@@ -1,4 +1,4 @@
-error: multiple `coverage` attributes
+error: duplicate `coverage` attributes
   --> $DIR/bad-syntax.rs:8:1
    |
 LL | #[coverage(off)]
@@ -10,7 +10,7 @@ note: attribute also specified here
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 
-error: multiple `coverage` attributes
+error: duplicate `coverage` attributes
   --> $DIR/bad-syntax.rs:12:1
    |
 LL | #[coverage(on)]

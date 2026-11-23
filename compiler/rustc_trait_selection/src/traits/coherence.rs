@@ -447,7 +447,6 @@ fn impl_intersection_has_negative_obligation(
             .into_iter()
             .map(|(c, s)| (c.skip_norm_wip(), s)),
     )
-    .elaborate_sized()
     .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 

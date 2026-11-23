@@ -52,7 +52,6 @@
 #![feature(string_replace_in_place)]
 #![feature(test)]
 #![feature(thin_box)]
-#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
@@ -60,6 +59,7 @@
 #![feature(unique_rc_arc)]
 #![feature(vec_deque_retain_range)]
 #![feature(vec_peek_mut)]
+#![feature(word_to_titlecase)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 

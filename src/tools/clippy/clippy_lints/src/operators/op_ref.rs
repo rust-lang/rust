@@ -32,7 +32,7 @@ pub(crate) fn check<'tcx>(
         BinOpKind::BitOr => (cx.tcx.lang_items().bitor_trait(), false),
         BinOpKind::Shl => (cx.tcx.lang_items().shl_trait(), false),
         BinOpKind::Shr => (cx.tcx.lang_items().shr_trait(), false),
-        BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().eq_trait(), true),
+        BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().partial_eq_trait(), true),
         BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => {
             (cx.tcx.lang_items().partial_ord_trait(), true)
         },

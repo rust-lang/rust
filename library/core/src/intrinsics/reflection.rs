@@ -25,7 +25,7 @@ pub fn type_id<T: ?Sized>() -> crate::any::TypeId;
 /// not implement it.
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub fn type_id_type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
+pub fn type_id_type_of(_id: crate::any::TypeId) -> crate::mem::type_info::TypeKind;
 
 /// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
 /// same type. This is necessary because at const-eval time the actual discriminating
@@ -118,6 +118,19 @@ pub fn type_id_variant_reflected_attrs(
     _variant_index: usize,
 ) -> &'static [&'static str];
 
+/// Gets the raw documentation attributes of the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::docs`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_variant_docs(
+    _base: crate::any::TypeId,
+    _variant_index: usize,
+) -> &'static [&'static str];
+
 /// Returns true when the variant represented by the base `TypeId` and variant_idx is non
 /// exhaustive.
 ///
@@ -176,6 +189,14 @@ pub fn type_id_points_to(_id: crate::any::TypeId) -> Option<crate::any::TypeId>;
 #[rustc_comptime]
 pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 
+/// Given a `TypeId` that represents a dyn trait returns an [`core::mem::type_info::DynTrait`]. When called on
+/// something else this returns `None`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::dyn_trait`].
+#[rustc_intrinsic]
+#[rustc_comptime]
+pub fn type_id_dyn_trait(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::DynTrait>;
+
 /// Given a `TypeId` that represents a function pointer returns an [`core::mem::type_info::FnPtr`].
 /// When called on something else this returns `None`.
 ///
@@ -190,3 +211,11 @@ pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::
 #[rustc_intrinsic]
 #[rustc_comptime]
 pub fn type_id_reflected_attrs(_type_id: crate::any::TypeId) -> &'static [&'static str];
+
+/// Returns the raw documentation attributes given a `TypeId` which represents a structure, enumeration, union or `FieldId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::docs`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_docs(_type_id: crate::any::TypeId) -> &'static [&'static str];

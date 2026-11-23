@@ -1,0 +1,72 @@
+// MIR for `short_slice_match` after built
+
+fn short_slice_match(_1: &[u8]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: usize;
+    let mut _3: usize;
+    let mut _4: usize;
+    let mut _5: bool;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _3 = PtrMetadata(copy _1);
+        _2 = move _3;
+        _4 = const 3_usize;
+        _5 = Eq(move _2, move _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb12;
+    }
+
+    bb2: {
+        switchInt(copy (*_1)[0 of 3]) -> [65: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        switchInt(copy (*_1)[1 of 3]) -> [66: bb6, otherwise: bb5];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        switchInt(copy (*_1)[2 of 3]) -> [67: bb8, otherwise: bb7];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        falseEdge -> [real: bb11, imaginary: bb1];
+    }
+
+    bb9: {
+        goto -> bb7;
+    }
+
+    bb10: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb11: {
+        _0 = const true;
+        goto -> bb12;
+    }
+
+    bb12: {
+        return;
+    }
+}

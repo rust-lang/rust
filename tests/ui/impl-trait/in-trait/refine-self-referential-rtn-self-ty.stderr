@@ -1,0 +1,10 @@
+error: recursion limit exceeded while collecting implied RPITIT bounds
+  --> $DIR/refine-self-referential-rtn-self-ty.rs:4:25
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): Send>;
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`refine_self_referential_rtn_self_ty`)
+
+error: aborting due to 1 previous error
+

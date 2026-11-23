@@ -544,6 +544,7 @@ impl IpAddr {
     ///            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
     /// ```
     #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[must_use]
     #[inline]
     pub const fn as_octets(&self) -> &[u8] {
         match self {
@@ -730,6 +731,7 @@ impl Ipv4Addr {
     /// assert_eq!(addr.as_octets(), &[127, 0, 0, 1]);
     /// ```
     #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[must_use]
     #[inline]
     pub const fn as_octets(&self) -> &[u8; 4] {
         &self.octets
@@ -2160,6 +2162,7 @@ impl Ipv6Addr {
     ///            &[255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     /// ```
     #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[must_use]
     #[inline]
     pub const fn as_octets(&self) -> &[u8; 16] {
         &self.octets

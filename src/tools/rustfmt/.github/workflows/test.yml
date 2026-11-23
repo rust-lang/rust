@@ -54,27 +54,18 @@ jobs:
         Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
         .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
         del rustup-init.exe
+        rustup toolchain install
         rustup target add ${env:MATRIX_TARGET}
       env:
         MATRIX_TARGET: ${{ matrix.target }}
       shell: powershell
-
-    - name: Add mingw32 to path for i686-gnu
-      run: |
-        echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
-      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-      shell: bash
-
-    - name: Add mingw64 to path for x86_64-gnu
-      run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
-      if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
-      shell: bash
 
     - name: install rustup
       if: ${{ matrix.os != 'windows-latest' }}
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
         sh rustup-init.sh -y --default-toolchain none
+        rustup toolchain install
         rustup target add ${MATRIX_TARGET}
       env:
         MATRIX_TARGET: ${{ matrix.target }}

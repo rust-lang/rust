@@ -3,7 +3,7 @@ use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
 use std::str;
 
-use rustc_abi::Align;
+use rustc_abi::{Align, PackCoroutineLayout};
 use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -70,8 +70,8 @@ pub struct ExtendedTargetModifierInfo {
     /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags). And empty string
     /// indicates a synthetic target modifier, which does not correspond directly to a flag.
     pub prefix: String,
-    /// Flag name. For synthetic features, this is still relevant as the name used to suppress
-    /// the error for mismatches involving this target modifier.
+    /// Flag name. For synthetic target modifiers, this is still relevant as the name is used with
+    /// `-Cunsafe-allow-abi-mismatch`.
     pub name: String,
     /// Flag parsed technical value
     pub tech_value: String,
@@ -916,6 +916,7 @@ mod desc {
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
+    pub(crate) const parse_pack_coroutine_layout: &str = "either `classic` or `captures-only`";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
@@ -2177,6 +2178,18 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_pack_coroutine_layout(
+        slot: &mut PackCoroutineLayout,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("classic") => PackCoroutineLayout::Classic,
+            Some("captures-only") => PackCoroutineLayout::CapturesOnly,
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
         match v {
             Some("always" | "yes") => {
@@ -2822,6 +2835,8 @@ options! {
         "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
+    pack_coroutine_layout: PackCoroutineLayout = (PackCoroutineLayout::default(), parse_pack_coroutine_layout, [TRACKED],
+        "set strategy to pack coroutine state layout (default: classic)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
         "change rlib format to store native libraries as archives"),
     packed_stack: bool = (false, parse_bool, [TRACKED],

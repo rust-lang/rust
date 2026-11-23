@@ -71,4 +71,14 @@ fn foo(x: LargeAndCopy) {
     todo!();
 }
 
+#[derive(Clone, Copy)]
+struct Big([u64; 1024]);
+
+trait Trait {
+    fn named(x: Big);
+    //~^ large_types_passed_by_value
+    fn unnamed(_: Big);
+    //~^ large_types_passed_by_value
+}
+
 fn main() {}
