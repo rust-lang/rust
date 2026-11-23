@@ -26,12 +26,8 @@
 //!    that mirrors the type categories used by Clang when computing function
 //!    pointer discriminators.
 //!
-//!    One notable exception is C `_Complex`. Rust has no corresponding native type,
-//!    so there is no canonical Rust representation to map onto Clang's `_Complex`
-//!    type category. Rather than infer one (for example, by treating `(f32, f32)`
-//!    or `(f64, f64)` as complex numbers), this implementation leaves such
-//!    representation choices to users and does not provide dedicated `_Complex`
-//!    encoding.
+//!    C `_Complex T` corresponds to `core::num::Complex<T>` (the `complex` lang
+//!    item) for float and integer `T`s.
 //!
 //! ### 2. Type encoding
 //!
@@ -307,10 +303,9 @@ enum ClangDiscTy<'tcx> {
 
     Array { elem: Ty<'tcx> },
 
-    // FIXME(jchlands) Decide if to support Complex types in future. Clang has
-    // dedicated node for this `Type::Complex`, Rust does not. So we could match
-    // against a Tuple(FP_TYPE, FP_TYPE).
-    // Complex(Ty<'tcx>),
+    // C `_Complex T`: `core::num::Complex<T>` (`#[repr(complex)]`).
+    Complex { elem: Ty<'tcx> },
+
     Vector { bytes: u64 },
 
     EnumLikeInt,
@@ -388,18 +383,14 @@ fn canonicalize_abi_compatible_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -
 /// that intentionally matches Clang's function pointer authentication encoding
 /// rules where Rust has a direct language-level equivalent.
 ///
-/// In particular C `_Complex`, without a canonical Rust equivalent, is not
-/// recognized. This avoids introducing heuristics for user-defined
-/// representations that may vary across codebases.
-///
 /// Important invariants:
 /// - All pointer-like types (Rust refs, raw pointers, fn pointers) collapse to
 ///   `Pointer`.
 /// - Struct/union types are encoded using name only, not layout.
 /// - Enums are treated as integers.
 /// - SIMD types are encoded only by total byte size (no lane semantics).
-/// - No attempt is made to recognize user-defined representations of C
-///   `_Complex` types.
+/// - Only `core::num::Complex<T>` with the C `_Complex` ABI is encoded as
+///   `_Complex`.
 /// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
 fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
     let ty = canonicalize_abi_compatible_type(tcx, ty);
@@ -430,6 +421,9 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         // general Adt(_) => AdtName(..) arm below instead.
         ty::Adt(def, _) if def.is_enum() && def.is_payloadfree() => ClangDiscTy::EnumLikeInt,
 
+        // C `_Complex T`, recurses into the element type.
+        ty::Adt(_, args) if is_c_complex(tcx, ty) => ClangDiscTy::Complex { elem: args.type_at(0) },
+
         // simd vectors
         ty::Adt(def, args) if def.repr().simd() => {
             // Clang encodes SIMD vectors by their total size
@@ -457,6 +451,17 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
 
         _ => ClangDiscTy::Opaque,
     }
+}
+
+/// Returns true if `ty` is `core::num::Complex<T>` with the ABI of C `_Complex
+/// T`.
+///
+/// Uses the same check as the calling convention code, so a type is encoded as
+/// `_Complex` exactly when it is passed as one.
+fn is_c_complex<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let cx = LayoutCx::new(tcx, typing_env);
+    tcx.layout_of(typing_env.as_query_input(ty)).is_ok_and(|layout| layout.is_complex_number(&cx))
 }
 
 // Encoder
@@ -511,6 +516,11 @@ fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
             },
             _ => enc.push(b'?'),
         },
+
+        ClangDiscTy::Complex { elem } => {
+            enc.push(b'C');
+            encode_ty(enc, tcx, elem);
+        }
 
         ClangDiscTy::Void => enc.push(b'v'),
 

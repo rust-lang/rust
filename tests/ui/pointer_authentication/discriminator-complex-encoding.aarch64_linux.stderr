@@ -1,0 +1,56 @@
+error: ptrauth discriminator encoding: "FvCfE"
+  --> $DIR/discriminator-complex-encoding.rs:40:1
+   |
+LL | extern "C" fn cf(_: Complex<f32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvCdE"
+  --> $DIR/discriminator-complex-encoding.rs:44:1
+   |
+LL | extern "C" fn cd(_: Complex<f64>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvCiE"
+  --> $DIR/discriminator-complex-encoding.rs:48:1
+   |
+LL | extern "C" fn ci(_: Complex<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FCDF16_E"
+  --> $DIR/discriminator-complex-encoding.rs:52:1
+   |
+LL | extern "C" fn ret_ch() -> Complex<f16> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FCeE"
+  --> $DIR/discriminator-complex-encoding.rs:58:1
+   |
+LL | extern "C" fn ret_cq() -> Complex<f128> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FCdCfE"
+  --> $DIR/discriminator-complex-encoding.rs:64:1
+   |
+LL | extern "C" fn cf_to_cd(_: Complex<f32>) -> Complex<f64> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvCfCiCdE"
+  --> $DIR/discriminator-complex-encoding.rs:70:1
+   |
+LL | extern "C" fn mixed(_: Complex<f32>, _: Complex<i32>, _: Complex<f64>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvCfE"
+  --> $DIR/discriminator-complex-encoding.rs:74:1
+   |
+LL | extern "C" fn wrap(_: Wrap) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv7ComplexE"
+  --> $DIR/discriminator-complex-encoding.rs:78:1
+   |
+LL | extern "C" fn user_complex(_: user::Complex) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
