@@ -85,7 +85,7 @@ As you can see, the `TyCtxt` type takes a lifetime parameter.
 When you see a reference with a lifetime like `'tcx`,
 you know that it refers to arena-allocated data (or data that lives as long as the arenas, anyhow).
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 
 ### A Note On Lifetimes
 

@@ -107,7 +107,7 @@ The HIR uses a bunch of different identifiers that coexist and serve different p
   For more info about HIR bodies, please refer to the
   [HIR chapter][hir-bodies].
 
-These identifiers can be converted into one another through the `TyCtxt`.
+These identifiers can be converted into one another through the [`TyCtxt`].
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
@@ -121,18 +121,18 @@ These identifiers can be converted into one another through the `TyCtxt`.
 
 ## HIR Operations
 
-Most of the time when you are working with the HIR, you will do so via `TyCtxt`.
+Most of the time when you are working with the HIR, you will do so via [`TyCtxt`].
 It contains a number of methods, defined in the `hir::map` module and
 mostly prefixed with `hir_`, to convert between IDs of various kinds and to
 lookup data associated with a HIR node.
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 
 For example, if you have a [`LocalDefId`], and you would like to convert it
 to a [`HirId`], you can use [`tcx.local_def_id_to_hir_id(def_id)`][local_def_id_to_hir_id].
 You need a `LocalDefId`, rather than a `DefId`, since only local items have HIR nodes.
 
-[local_def_id_to_hir_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.local_def_id_to_hir_id
+[local_def_id_to_hir_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.local_def_id_to_hir_id
 
 Similarly, you can use [`tcx.hir_node(n)`][hir_node] to lookup the node for a
 [`HirId`].
@@ -145,15 +145,15 @@ that `n` must be some HIR expression, you can do
 [`tcx.hir_expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
-[hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_node
+[hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.hir_node
 [`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
-[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.expect_expr
+[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.expect_expr
 [Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Expr.html
 
 Finally, you can find the parents of nodes, via
 calls like [`tcx.parent_hir_node(n)`][parent_hir_node].
 
-[parent_hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.parent_hir_node
+[parent_hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.parent_hir_node
 
 
 ## HIR Bodies
@@ -162,10 +162,10 @@ A [`rustc_hir::Body`] represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant.
 Bodies are associated with an **owner**, which is typically some kind of item
 (e.g. an `fn()` or `const`), but could also be a closure expression
-(e.g. `|x, y| x + y`). You can use the `TyCtxt` to find the body
+(e.g. `|x, y| x + y`). You can use the [`TyCtxt`] to find the body
 associated with a given def-id ([`hir_maybe_body_owned_by`]) or to find
 the owner of a body ([`hir_body_owner_def_id`]).
 
 [`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
-[`hir_maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_maybe_body_owned_by
-[`hir_body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir_body_owner_def_id
+[`hir_maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.hir_maybe_body_owned_by
+[`hir_body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.hir_body_owner_def_id
