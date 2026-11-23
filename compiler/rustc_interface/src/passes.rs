@@ -909,6 +909,13 @@ pub fn finish_and_emit_metadata<'tcx>(tcx: TyCtxt<'tcx>) -> EncodedMetadata {
         tcx.ensure_ok().trigger_delayed_bug(def_id);
     }
 
+    // Don't do code generation if there were any errors. Likewise if
+    // there were any delayed bugs, because codegen will likely cause
+    // more ICEs, obscuring the original problem.
+    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+        guar.raise_fatal();
+    }
+
     let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
         Ok(metadata) => metadata,
         Err(guar) => guar.raise_fatal(),
