@@ -1,3 +1,5 @@
+use crate::ops::Range;
+
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
 fn get_stack_start() -> Option<*mut libc::c_void> {
     // SAFETY: C types are always zero-initializable.
@@ -120,9 +122,7 @@ fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
 /// # Safety
 /// This function must only be called from the main thread, and there must
 /// be sufficient stack space remaining to place a stack guard.
-unsafe fn install_main_guard() -> Option<Range<usize>> {
-    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-
+pub unsafe fn install_main_guard(page_size: usize) -> Option<Range<usize>> {
     // this way someone on any unix-y OS can check that all these compile
     if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
         install_main_guard_linux(page_size)
@@ -191,7 +191,13 @@ fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
     let mut size = size_of_val(&guard);
     let oid = c"security.bsd.stack_guard_page";
     let r = unsafe {
-        libc::sysctlbyname(oid.as_ptr(), (&raw mut guard).cast(), &raw mut size, ptr::null_mut(), 0)
+        libc::sysctlbyname(
+            oid.as_ptr(),
+            (&raw mut guard).cast(),
+            &raw mut size,
+            crate::ptr::null_mut(),
+            0,
+        )
     };
     let pages = if r == 0 { guard } else { 1 };
 
@@ -219,6 +225,14 @@ fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
 /// This function must only be called from the main thread, and there must
 /// be sufficient stack space remaining to place a stack guard.
 unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
+    use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
+    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+    use libc::{mmap as mmap64, mprotect};
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use libc::{mmap64, mprotect};
+
+    use crate::io;
+
     // Reallocate the last page of the stack.
     // This ensures SIGBUS will be raised on
     // stack overflow.
@@ -267,10 +281,10 @@ unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
     target_os = "solaris",
     target_os = "illumos",
 ))]
-fn current_guard() -> Option<Range<usize>> {
+pub fn current_guard(page_size: usize) -> Option<Range<usize>> {
     let stackptr = get_stack_start()?;
     let stackaddr = stackptr.addr();
-    Some(stackaddr - PAGE_SIZE.load(Ordering::Relaxed)..stackaddr)
+    Some(stackaddr - page_size..stackaddr)
 }
 
 #[cfg(any(
@@ -281,7 +295,7 @@ fn current_guard() -> Option<Range<usize>> {
     target_os = "netbsd",
     target_os = "l4re"
 ))]
-fn current_guard() -> Option<Range<usize>> {
+pub fn current_guard(page_size: usize) -> Option<Range<usize>> {
     use crate::pin::pin;
     use crate::sys::helpers::COpaque;
 
@@ -321,7 +335,7 @@ fn current_guard() -> Option<Range<usize>> {
                 // musl versions before 1.1.19 always reported guard
                 // size obtained from pthread_attr_get_np as zero.
                 // Use page size as a fallback.
-                guardsize = PAGE_SIZE.load(Ordering::Relaxed);
+                guardsize = page_size;
             } else {
                 panic!("there is no guard page");
             }

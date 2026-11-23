@@ -1,15 +1,14 @@
 use libc::{
-    MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK,
-    SA_SIGINFO, SIG_DFL, SIGBUS, SIGSEGV, SS_DISABLE, sigaction, sigaltstack, sighandler_t,
+    MAP_ANON, MAP_FAILED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK, SA_SIGINFO,
+    SIG_DFL, SIGBUS, SIGSEGV, SS_DISABLE, sigaction, sigaltstack, sighandler_t,
 };
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-use libc::{mmap as mmap64, mprotect, munmap};
+use libc::{mmap as mmap64, munmap};
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
-use libc::{mmap64, mprotect, munmap};
+use libc::{mmap64, munmap};
 
 use super::Handler;
 use super::thread_info::{delete_current_info, set_current_info, with_current_info};
-use crate::ops::Range;
 use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
 use crate::sys::pal::unix::conf;
 use crate::{io, mem, ptr};
@@ -98,13 +97,14 @@ static NEED_ALTSTACK: Atomic<bool> = AtomicBool::new(false);
 /// # Safety
 /// Must be called only once, on the main thread, during program startup.
 pub unsafe fn init() {
-    PAGE_SIZE.store(conf::page_size(), Ordering::Relaxed);
+    let page_size = conf::page_size();
+    PAGE_SIZE.store(page_size, Ordering::Relaxed);
 
     // SAFETY:
     // This is only called on the main thread, and since it is still early
     // in the programs lifetime there is (almost) certainly enough stack
     // space left to install the guard page.
-    let mut guard_page_range = unsafe { install_main_guard() };
+    let mut guard_page_range = unsafe { super::guard_page::install_main_guard(page_size) };
 
     // Even for panic=immediate-abort, installing the guard pages is important for soundness.
     // That said, we do not care about giving nice stackoverflow messages via our custom
@@ -126,7 +126,7 @@ pub unsafe fn init() {
             if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                 // haven't set up our sigaltstack yet
                 NEED_ALTSTACK.store(true, Ordering::Release);
-                let handler = install_sigaltstack();
+                let handler = install_sigaltstack(page_size);
                 MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                 mem::forget(handler);
 
@@ -152,14 +152,15 @@ pub fn make_handler() -> Handler {
         return Handler::null();
     }
 
-    if let Some(guard_page_range) = current_guard() {
+    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
+    if let Some(guard_page_range) = super::guard_page::current_guard(page_size) {
         set_current_info(guard_page_range);
     }
 
-    install_sigaltstack()
+    install_sigaltstack(page_size)
 }
 
-fn get_stack() -> libc::stack_t {
+fn get_stack(page_size: usize) -> libc::stack_t {
     // OpenBSD requires this flag for stack mapping
     // otherwise the said mapping will fail as a no-op on most systems
     // and has a different meaning on FreeBSD
@@ -179,7 +180,6 @@ fn get_stack() -> libc::stack_t {
     let flags = MAP_PRIVATE | MAP_ANON;
 
     let sigstack_size = sigstack_size();
-    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
 
     // SAFETY: this does not unmap any existing pages.
     let stackp = unsafe {
@@ -201,7 +201,7 @@ fn get_stack() -> libc::stack_t {
     libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
 }
 
-fn install_sigaltstack() -> Handler {
+fn install_sigaltstack(page_size: usize) -> Handler {
     // Load the current alternate signal stack to see if we need to install
     // our own.
     //
@@ -212,7 +212,7 @@ fn install_sigaltstack() -> Handler {
 
     // Configure alternate signal stack, if one is not already set.
     if stack.ss_flags & SS_DISABLE != 0 {
-        let stack = get_stack();
+        let stack = get_stack(page_size);
         // SAFETY:
         // `stack_t` is a freshly allocated stack that's not used anywhere
         // else. It contains a guard page, so stack overflows in signal
