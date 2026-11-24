@@ -420,3 +420,9 @@ pub fn threads_from_config(v: u32) -> u32 {
         n => n,
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SnapshotSources {
+    Named(String),
+    Unnamed,
+}
