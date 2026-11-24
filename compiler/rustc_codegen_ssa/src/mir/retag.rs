@@ -394,7 +394,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for U
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
     /// Retags the pointers within an [`OperandRef`].
     pub(crate) fn codegen_retag_operand(
         &mut self,

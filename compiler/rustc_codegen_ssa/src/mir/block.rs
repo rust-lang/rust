@@ -61,9 +61,9 @@ struct TerminatorCodegenHelper<'tcx> {
 impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// Returns the appropriate `Funclet` for the current funclet, if on MSVC,
     /// either already previously cached, or newly created, by `landing_pad_for`.
-    fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
+    fn funclet<'b, 'arena, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &'b mut FunctionCx<'a, 'arena, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
         let cleanup_kinds = fx.cleanup_kinds.as_ref()?;
         let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb)?;
@@ -87,9 +87,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Get a basic block (creating it if necessary), possibly with cleanup
     /// stuff in it or next to it.
-    fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
+    fn llbb_with_cleanup<'arena, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'arena, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
@@ -111,9 +111,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
+    fn llbb_characteristics<'arena, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'arena, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
         if let Some(ref cleanup_kinds) = fx.cleanup_kinds {
@@ -136,9 +136,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
+    fn funclet_br<'arena, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'arena, 'tcx, Bx>,
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// shall be stored.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, '_, 'tcx, Bx>,
         bx: &mut Bx,
         fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
@@ -339,7 +339,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// Generates inline assembly with optional `destination` and `unwind`.
     fn do_inlineasm<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, '_, 'tcx, Bx>,
         bx: &mut Bx,
         template: &[InlineAsmTemplatePiece],
         operands: &[InlineAsmOperandRef<'tcx, Bx>],
@@ -412,7 +412,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 }
 
 /// Codegen implementations for some terminator variants.
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
     fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
         if let Some(funclet) = helper.funclet(self) {

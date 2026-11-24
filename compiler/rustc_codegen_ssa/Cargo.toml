@@ -8,6 +8,7 @@ edition = "2024"
 ar_archive_writer = "0.5"
 bitflags = "2.4.1"
 bstr = "1.11.3"
+bumpalo = { version = "3", features = ["allocator_api"] }
 find-msvc-tools = "0.1.2"
 itertools = "0.15"
 pathdiff = "0.2.0"

@@ -1,3 +1,4 @@
+use std::alloc::{Allocator, Global};
 use std::marker::PhantomData;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
@@ -75,12 +76,19 @@ fn inclusive_start_end<T: Idx>(
 /// will panic if the bitsets have differing domain sizes.
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
-#[derive(Eq, PartialEq)]
-pub struct DenseBitSet<T> {
+pub struct DenseBitSet<T, A: Allocator = Global> {
     domain_size: usize,
-    words: Box<[Word]>,
+    words: Box<[Word], A>,
     marker: PhantomData<T>,
 }
+
+impl<T, A: Allocator> PartialEq for DenseBitSet<T, A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.domain_size == other.domain_size && self.words.as_ref() == other.words.as_ref()
+    }
+}
+
+impl<T, A: Allocator> Eq for DenseBitSet<T, A> {}
 
 impl<T> DenseBitSet<T> {
     /// Gets the domain size.
@@ -93,27 +101,42 @@ impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
-        let num_words = num_words(domain_size);
-        DenseBitSet {
-            domain_size,
-            words: vec![0; num_words].into_boxed_slice(),
-            marker: PhantomData,
-        }
+        Self::new_empty_in(domain_size, Global)
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
+        Self::new_filled_in(domain_size, Global)
+    }
+}
+
+impl<T: Idx, A: Allocator> DenseBitSet<T, A> {
+    /// Creates a new, empty bitset with a given `domain_size`.
+    #[inline]
+    pub fn new_empty_in(domain_size: usize, a: A) -> DenseBitSet<T, A> {
         let num_words = num_words(domain_size);
-        let mut result = DenseBitSet {
-            domain_size,
-            words: vec![!0; num_words].into_boxed_slice(),
-            marker: PhantomData,
-        };
+
+        let mut words = Vec::with_capacity_in(num_words, a);
+        words.resize(num_words, 0);
+
+        DenseBitSet { domain_size, words: words.into_boxed_slice(), marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn new_filled_in(domain_size: usize, a: A) -> DenseBitSet<T, A> {
+        let num_words = num_words(domain_size);
+        let mut words = Vec::with_capacity_in(num_words, a);
+        words.resize(num_words, !0);
+
+        let mut result =
+            DenseBitSet { domain_size, words: words.into_boxed_slice(), marker: PhantomData };
         result.clear_excess_bits();
         result
     }
+}
 
+impl<T: Idx, A: Allocator> DenseBitSet<T, A> {
     /// Should only be called by `impl StableHash for DenseBitSet`.
     pub fn stable_hash_inner(this: &Self, hasher: &mut impl std::hash::Hasher) {
         let &DenseBitSet { domain_size, ref words, marker: PhantomData } = this;

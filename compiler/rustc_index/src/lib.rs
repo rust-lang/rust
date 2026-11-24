@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(allocator_ext)]
+#![feature(iter_collect_into)]
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(all(feature = "nightly", test), feature(test))]
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait))]

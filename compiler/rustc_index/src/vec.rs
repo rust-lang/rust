@@ -115,6 +115,26 @@ impl<I: Idx, T, A: Allocator> IndexVec<I, T, A> {
         IndexVec::from_raw(Vec::new_in(a))
     }
 
+    #[inline]
+    pub fn from_elem_in<S>(elem: T, universe: &IndexSlice<I, S>, a: A) -> Self
+    where
+        T: Clone,
+    {
+        let mut vec = Vec::with_capacity_in(universe.len(), a);
+        vec.resize(universe.len(), elem);
+        IndexVec::from_raw(vec)
+    }
+
+    #[inline]
+    pub fn from_fn_n_in(func: impl FnMut(I) -> T, n: usize, a: A) -> Self {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(n);
+
+        let mut vec = Vec::with_capacity_in(n, a);
+        (0..n).map(I::new).map(func).collect_into(&mut vec);
+        IndexVec::from_raw(vec)
+    }
+
     /// Constructs a new, empty `IndexVec<I, T>`.
     #[inline]
     pub fn with_capacity_in(capacity: usize, a: A) -> Self {

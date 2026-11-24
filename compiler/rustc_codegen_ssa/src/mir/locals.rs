@@ -2,8 +2,10 @@
 //! be careful wrt to subtyping. To deal with this we only allow updates by using
 //! `FunctionCx::overwrite_local` which handles it automatically.
 
+use std::alloc::{Allocator, Global};
 use std::ops::{Index, IndexMut};
 
+use bumpalo::Bump;
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -12,11 +14,11 @@ use tracing::{debug, warn};
 use crate::mir::{FunctionCx, LocalRef};
 use crate::traits::BuilderMethods;
 
-pub(super) struct Locals<'tcx, V> {
-    values: IndexVec<mir::Local, LocalRef<'tcx, V>>,
+pub(super) struct Locals<'tcx, V, A: Allocator = Global> {
+    values: IndexVec<mir::Local, LocalRef<'tcx, V>, A>,
 }
 
-impl<'tcx, V> Index<mir::Local> for Locals<'tcx, V> {
+impl<'tcx, V, A: Allocator> Index<mir::Local> for Locals<'tcx, V, A> {
     type Output = LocalRef<'tcx, V>;
     #[inline]
     fn index(&self, index: mir::Local) -> &LocalRef<'tcx, V> {
@@ -25,11 +27,15 @@ impl<'tcx, V> Index<mir::Local> for Locals<'tcx, V> {
 }
 
 /// To mutate locals, use `FunctionCx::overwrite_local` instead.
-impl<'tcx, V, Idx: ?Sized> !IndexMut<Idx> for Locals<'tcx, V> {}
+impl<'tcx, V, Idx: ?Sized, A: Allocator> !IndexMut<Idx> for Locals<'tcx, V, A> {}
 
-impl<'tcx, V> Locals<'tcx, V> {
+impl<'tcx, V, A: Allocator> Locals<'tcx, V, A> {
     pub(super) fn empty() -> Locals<'tcx, V> {
         Locals { values: IndexVec::default() }
+    }
+
+    pub(super) fn empty_in(a: A) -> Locals<'tcx, V, A> {
+        Locals { values: IndexVec::new_in(a) }
     }
 
     pub(super) fn indices(&self) -> impl DoubleEndedIterator<Item = mir::Local> + Clone + 'tcx {
@@ -37,8 +43,11 @@ impl<'tcx, V> Locals<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub(super) fn initialize_locals(&mut self, values: Vec<LocalRef<'tcx, Bx::Value>>) {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
+    pub(super) fn initialize_locals(
+        &mut self,
+        values: Vec<LocalRef<'tcx, Bx::Value>, &'arena Bump>,
+    ) {
         assert!(self.locals.values.is_empty());
         self.locals.values = IndexVec::from_raw(values);
         // FIXME(#115215): After #115025 get's merged this might not be necessary

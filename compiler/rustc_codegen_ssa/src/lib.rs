@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(deref_patterns)]
+#![feature(iter_collect_into)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(option_into_flat_iter)]

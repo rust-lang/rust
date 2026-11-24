@@ -10,7 +10,7 @@ use crate::diagnostics;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
     pub(crate) fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,

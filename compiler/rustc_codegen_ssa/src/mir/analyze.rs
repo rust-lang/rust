@@ -1,6 +1,7 @@
 //! An analysis to determine which locals require allocas and
 //! which do not.
 
+use bumpalo::Bump;
 use rustc_abi as abi;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::DenseBitSet;
@@ -15,21 +16,22 @@ use tracing::debug;
 use super::FunctionCx;
 use crate::traits::*;
 
-pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+pub(crate) fn non_ssa_locals<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    fx: &FunctionCx<'a, 'arena, 'tcx, Bx>,
     traversal_order: &[mir::BasicBlock],
-) -> DenseBitSet<mir::Local> {
+    arena: &'arena Bump,
+) -> DenseBitSet<mir::Local, &'arena Bump> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
-    let locals = mir
-        .local_decls
+    let mut locals = IndexVec::with_capacity_in(mir.local_decls.len(), arena);
+    mir.local_decls
         .iter()
         .map(|decl| {
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
             if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
-        .collect();
+        .collect_into(&mut locals);
 
     let mut analyzer = LocalAnalyzer { fx, dominators, locals };
 
@@ -46,7 +48,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         analyzer.visit_basic_block_data(bb, data);
     }
 
-    let mut non_ssa_locals = DenseBitSet::new_empty(analyzer.locals.len());
+    let mut non_ssa_locals = DenseBitSet::new_empty_in(analyzer.locals.len(), arena);
     for (local, kind) in analyzer.locals.iter_enumerated() {
         if matches!(kind, LocalKind::Memory) {
             non_ssa_locals.insert(local);
@@ -67,13 +69,13 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
-    fx: &'a FunctionCx<'b, 'tcx, Bx>,
+struct LocalAnalyzer<'a, 'arena, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
+    fx: &'a FunctionCx<'b, 'arena, 'tcx, Bx>,
     dominators: &'a Dominators<mir::BasicBlock>,
-    locals: IndexVec<mir::Local, LocalKind>,
+    locals: IndexVec<mir::Local, LocalKind, &'arena Bump>,
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'a, 'arena, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'arena, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let fx = self.fx;
         let kind = &mut self.locals[local];
@@ -168,7 +170,9 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
     }
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'a, 'arena, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx>
+    for LocalAnalyzer<'a, 'arena, 'b, 'tcx, Bx>
+{
     fn visit_assign(
         &mut self,
         place: &mir::Place<'tcx>,

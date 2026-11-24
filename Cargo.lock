@@ -3813,6 +3813,7 @@ dependencies = [
  "ar_archive_writer",
  "bitflags",
  "bstr",
+ "bumpalo",
  "find-msvc-tools",
  "itertools",
  "libc",

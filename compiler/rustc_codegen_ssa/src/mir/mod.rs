@@ -1,5 +1,6 @@
 use std::iter;
 
+use bumpalo::Bump;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -45,16 +46,16 @@ enum CachedLlbb<T> {
     Skip,
 }
 
-type PerLocalVarDebugInfoIndexVec<'tcx, V> =
-    IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, V>>>;
+type PerLocalVarDebugInfoIndexVec<'tcx, 'arena, V> =
+    IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, V>, &'arena Bump>, &'arena Bump>;
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'tcx mir::Body<'tcx>,
 
-    debug_context: Option<FunctionDebugContext<Bx::DIScope, Bx::DILocation>>,
+    debug_context: Option<FunctionDebugContext<'arena, Bx::DIScope, Bx::DILocation>>,
 
     llfn: Bx::Function,
 
@@ -75,7 +76,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// as-needed (e.g. RPO reaching it or another block branching to it).
     // FIXME(eddyb) rename `llbbs` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbbs`).
-    cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>>,
+    cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>, &'arena Bump>,
 
     /// The funclet status of each basic block
     cleanup_kinds: Option<IndexVec<mir::BasicBlock, analyze::CleanupKind>>,
@@ -83,11 +84,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// When targeting MSVC, this stores the cleanup info for each funclet BB.
     /// This is initialized at the same time as the `landing_pads` entry for the
     /// funclets' head block, i.e. when needed by an unwind / `cleanup_ret` edge.
-    funclets: IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
+    funclets: IndexVec<mir::BasicBlock, Option<Bx::Funclet>, &'arena Bump>,
 
     /// This stores the cached landing/cleanup pad block for a given BB.
     // FIXME(eddyb) rename this to `eh_pads`.
-    landing_pads: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>, &'arena Bump>,
 
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
@@ -96,10 +97,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// targets, there is at most one such block per function, stored at index
     /// `START_BLOCK`. For wasm targets, each funclet needs its own terminate
     /// block, indexed by the cleanup block that is the funclet's head.
-    terminate_blocks: IndexVec<mir::BasicBlock, Option<(Bx::BasicBlock, UnwindTerminateReason)>>,
+    terminate_blocks:
+        IndexVec<mir::BasicBlock, Option<(Bx::BasicBlock, UnwindTerminateReason)>, &'arena Bump>,
 
     /// A cold block is a block that is unlikely to be executed at runtime.
-    cold_blocks: DenseBitSet<mir::BasicBlock>,
+    cold_blocks: DenseBitSet<mir::BasicBlock, &'arena Bump>,
 
     nop_landing_pads: DenseBitSet<mir::BasicBlock>,
 
@@ -118,17 +120,17 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: locals::Locals<'tcx, Bx::Value>,
+    locals: locals::Locals<'tcx, Bx::Value, &'arena Bump>,
 
     /// All `VarDebugInfo` from the MIR body, partitioned by `Local`.
     /// This is `None` if no variable debuginfo/names are needed.
-    per_local_var_debug_info: Option<PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>>,
+    per_local_var_debug_info: Option<PerLocalVarDebugInfoIndexVec<'tcx, 'arena, Bx::DIVariable>>,
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: T) -> T
     where
         T: Copy + TypeFoldable<TyCtxt<'tcx>>,
@@ -241,13 +243,17 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let cleanup_kinds = base::wants_new_eh_instructions(&tcx.sess.target)
         .then(|| analyze::cleanup_kinds(&mir, &nop_landing_pads));
 
-    let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
-        mir.basic_blocks
-            .indices()
-            .map(|bb| {
+    let arena = Bump::new();
+    let mut cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>, _> =
+        IndexVec::new_in(&arena);
+    mir.basic_blocks
+        .indices()
+        .map(
+            |bb| {
                 if bb == mir::START_BLOCK { CachedLlbb::Some(start_llbb) } else { CachedLlbb::None }
-            })
-            .collect();
+            },
+        )
+        .collect_into(&mut cached_llbbs);
 
     let mut fx = FunctionCx {
         instance,
@@ -258,12 +264,12 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,
-        terminate_blocks: IndexVec::from_elem(None, &mir.basic_blocks),
+        terminate_blocks: IndexVec::from_elem_in(None, &mir.basic_blocks, &arena),
         cleanup_kinds,
-        landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
-        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
-        cold_blocks: find_cold_blocks(tcx, mir),
-        locals: locals::Locals::empty(),
+        landing_pads: IndexVec::from_elem_in(None, &mir.basic_blocks, &arena),
+        funclets: IndexVec::from_fn_n_in(|_| None, mir.basic_blocks.len(), &arena),
+        cold_blocks: find_cold_blocks(tcx, mir, &arena),
+        locals: locals::Locals::empty_in(&arena),
         debug_context: None,
         per_local_var_debug_info: None,
         caller_location: None,
@@ -275,10 +281,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // monomorphization, and if there is an error during collection then codegen never starts -- so
     // we don't have to do it again.
 
-    fx.fill_function_debug_context(&mut start_bx);
+    fx.fill_function_debug_context(&mut start_bx, &arena);
 
     let (per_local_var_debug_info, consts_debug_info) =
-        fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
+        fx.compute_per_local_var_debug_info(&mut start_bx, &arena).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
     let mut traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
@@ -313,11 +319,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         traversal_order.retain(|bb| reachable.contains(*bb));
     }
 
-    let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
+    let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order, &arena);
 
     // Allocate variable and temp allocas
     let local_values = {
-        let args = arg_local_refs(&mut start_bx, &mut fx, &memory_locals);
+        let args = arg_local_refs(&mut start_bx, &mut fx, &memory_locals, &arena);
 
         let mut allocate_local = |local: Local| {
             let decl = &mir.local_decls[local];
@@ -355,21 +361,23 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         let retptr = allocate_local(mir::RETURN_PLACE);
+        let mut local_values = Vec::new_in(&arena);
         iter::once(retptr)
             .chain(args.into_iter())
             .chain(mir.vars_and_temps_iter().map(allocate_local))
-            .collect()
+            .collect_into(&mut local_values);
+        local_values
     };
     fx.initialize_locals(local_values);
 
     // Apply debuginfo to the newly allocated locals.
-    fx.debug_introduce_locals(&mut start_bx, consts_debug_info.unwrap_or_default());
+    fx.debug_introduce_locals(&mut start_bx, consts_debug_info.unwrap_or(Vec::new_in(&arena)));
 
     // The builders will be created separately for each basic block at `codegen_block`.
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
+    let mut unreached_blocks = DenseBitSet::new_filled_in(mir.basic_blocks.len(), &arena);
     // Codegen the body of each reachable block using our reverse postorder list.
     for bb in traversal_order {
         fx.codegen_block(bb);
@@ -448,11 +456,12 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn arg_local_refs<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
-    memory_locals: &DenseBitSet<mir::Local>,
-) -> Vec<LocalRef<'tcx, Bx::Value>> {
+    fx: &mut FunctionCx<'a, 'arena, 'tcx, Bx>,
+    memory_locals: &DenseBitSet<mir::Local, &'arena Bump>,
+    arena: &'arena Bump,
+) -> Vec<LocalRef<'tcx, Bx::Value>, &'arena Bump> {
     let mir = fx.mir;
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
@@ -461,11 +470,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let codegen_fn_attrs = bx.tcx().codegen_instance_attrs(fx.instance.def);
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        return vec![];
+        return Vec::new_in(arena);
     }
 
-    let mut args = mir
-        .args_iter()
+    let mut args = Vec::with_capacity_in(mir.args_iter().len(), arena);
+    mir.args_iter()
         .enumerate()
         .map(|(arg_index, local)| {
             let arg_decl = &mir.local_decls[local];
@@ -607,11 +616,10 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             }
         })
-        .collect::<Vec<_>>();
+        .collect_into(&mut args);
     if bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
-        args = args
-            .iter()
-            .map(|arg| match arg {
+        args.iter_mut().for_each(|arg| {
+            *arg = match &*arg {
                 &LocalRef::Place(place_ref) => {
                     fx.codegen_retag_place(bx, place_ref, true);
                     LocalRef::Place(place_ref)
@@ -628,8 +636,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     LocalRef::Operand(retagged)
                 }
                 LocalRef::PendingOperand => LocalRef::PendingOperand,
-            })
-            .collect::<Vec<_>>();
+            };
+        });
         // If we branched during retagging, then we need to update the
         // start block to the new location.
         fx.cached_llbbs[mir::START_BLOCK] = CachedLlbb::Some(bx.llbb());
@@ -665,14 +673,15 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     args
 }
 
-fn find_cold_blocks<'tcx>(
+fn find_cold_blocks<'arena, 'tcx>(
     tcx: TyCtxt<'tcx>,
     mir: &mir::Body<'tcx>,
-) -> DenseBitSet<mir::BasicBlock> {
+    arena: &'arena Bump,
+) -> DenseBitSet<mir::BasicBlock, &'arena Bump> {
     let local_decls = &mir.local_decls;
 
-    let mut cold_blocks: DenseBitSet<mir::BasicBlock> =
-        DenseBitSet::new_empty(mir.basic_blocks.len());
+    let mut cold_blocks: DenseBitSet<mir::BasicBlock, &'arena Bump> =
+        DenseBitSet::new_empty_in(mir.basic_blocks.len(), arena);
 
     // Traverse all basic blocks from end of the function to the start.
     for (bb, bb_data) in traversal::postorder(mir) {

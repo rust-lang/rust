@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use bumpalo::Bump;
 use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
@@ -18,9 +19,9 @@ use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef, PerLocalVarDebugInfoIndexVec};
 use crate::traits::*;
 
-pub struct FunctionDebugContext<S, L> {
+pub struct FunctionDebugContext<'arena, S, L> {
     /// Maps from source code to the corresponding debug info scope.
-    pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
+    pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>, &'arena Bump>,
 }
 
 #[derive(Copy, Clone)]
@@ -214,7 +215,7 @@ fn calculate_debuginfo_offset<
     DebugInfoOffset { direct_offset, indirect_offsets, result: place }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'arena, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'arena, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         bx.set_span(source_info.span);
         if let Some(dbg_loc) = self.dbg_loc(bx, source_info) {
@@ -527,7 +528,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn debug_introduce_locals(
         &self,
         bx: &mut Bx,
-        consts: Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
+        consts: Vec<ConstDebugInfo<'a, 'tcx, Bx>, &'arena Bump>,
     ) {
         if bx.sess().opts.debuginfo == DebugInfo::Full || !bx.sess().fewer_names() {
             for local in self.locals.indices() {
@@ -550,9 +551,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn compute_per_local_var_debug_info(
         &self,
         bx: &mut Bx,
+        arena: &'arena Bump,
     ) -> Option<(
-        PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>,
-        Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
+        PerLocalVarDebugInfoIndexVec<'tcx, 'arena, Bx::DIVariable>,
+        Vec<ConstDebugInfo<'a, 'tcx, Bx>, &'arena Bump>,
     )> {
         let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
 
@@ -562,8 +564,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return None;
         }
 
-        let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
-        let mut constants = vec![];
+        let mut per_local =
+            IndexVec::from_elem_in(Vec::new_in(arena), &self.mir.local_decls, arena);
+        let mut constants = Vec::new_in(arena);
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
                 self.adjusted_span_and_dbg_scope(bx, var.source_info)
@@ -719,14 +722,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns the FunctionDebugContext for the function which holds state needed
     /// for debug info creation, if it is enabled.
-    pub(super) fn fill_function_debug_context(&mut self, bx: &mut Bx) {
+    pub(super) fn fill_function_debug_context(&mut self, bx: &mut Bx, arena: &'arena Bump) {
         if self.cx.sess().opts.debuginfo == DebugInfo::None {
             return;
         }
 
         // Initialize fn debug context (including scopes).
         self.debug_context = Some(FunctionDebugContext {
-            scopes: IndexVec::with_capacity(self.mir.source_scopes.len()),
+            scopes: IndexVec::with_capacity_in(self.mir.source_scopes.len(), arena),
         });
 
         // Find all scopes with variables defined in them.
