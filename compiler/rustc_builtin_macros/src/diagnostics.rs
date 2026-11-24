@@ -524,13 +524,6 @@ pub(crate) struct DeriveFromWrongFieldCount {
 }
 
 #[derive(Diagnostic)]
-#[diag("`derive` cannot be used on items with type macros")]
-pub(crate) struct DeriveMacroCall {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("this trait cannot be derived for unions")]
 pub(crate) struct DeriveUnion {
     #[primary_span]

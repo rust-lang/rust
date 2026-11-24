@@ -174,21 +174,16 @@ impl BlockOrExpr {
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
 /// Also include bound generic params from the input type.
-fn find_type_parameters(
-    ty: &ast::Ty,
-    ty_param_names: &[Symbol],
-    cx: &ExtCtxt<'_>,
-) -> Vec<TypeParameter> {
+fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[Symbol]) -> Vec<TypeParameter> {
     use rustc_ast::visit;
 
-    struct Visitor<'a, 'b> {
-        cx: &'a ExtCtxt<'b>,
+    struct Visitor<'a> {
         ty_param_names: &'a [Symbol],
         bound_generic_params_stack: ThinVec<ast::GenericParam>,
         type_params: Vec<TypeParameter>,
     }
 
-    impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
+    impl<'a> visit::Visitor<'a> for Visitor<'a> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             let stack_len = self.bound_generic_params_stack.len();
             if let ast::TyKind::FnPtr(fn_ptr) = &ty.kind
@@ -222,14 +217,9 @@ fn find_type_parameters(
 
             self.bound_generic_params_stack.truncate(stack_len);
         }
-
-        fn visit_mac_call(&mut self, mac: &ast::MacCall) {
-            self.cx.dcx().emit_err(diagnostics::DeriveMacroCall { span: mac.span() });
-        }
     }
 
     let mut visitor = Visitor {
-        cx,
         ty_param_names,
         bound_generic_params_stack: ThinVec::new(),
         type_params: Vec::new(),
@@ -389,7 +379,7 @@ impl<'a> TraitDef<'a> {
 
         if !ty_param_names.is_empty() {
             for field in fields {
-                let field_ty_params = find_type_parameters(&field.ty, &ty_param_names, cx);
+                let field_ty_params = find_type_parameters(&field.ty, &ty_param_names);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
