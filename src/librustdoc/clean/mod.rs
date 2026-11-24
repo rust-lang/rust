@@ -1001,22 +1001,20 @@ fn clean_ty_generics_inner<'tcx>(
         .collect::<Vec<_>>();
 
     for (idx, mut bounds) in impl_trait {
-        let mut has_sized = false;
-        bounds.retain(|b| {
-            if b.is_sized_bound(cx.tcx) {
-                has_sized = true;
-                false
-            } else if b.is_meta_sized_bound(cx.tcx) {
-                // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-                // is shown and none of the new sizedness traits leak into documentation.
-                false
-            } else {
-                true
+        let mut sizedness = Sizedness::PointeeSized;
+
+        bounds.retain(|bound| {
+            if let GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
+                && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
+                && let Some(sz) = Sizedness::from_lang_item(item)
+            {
+                sizedness.add(sz);
+                return false;
             }
+            true
         });
-        if !has_sized {
-            bounds.push(GenericBound::maybe_sized(cx));
-        }
+
+        bounds.extend(sizedness.to_bound(cx));
 
         // Move trait bounds to the front.
         bounds.sort_by_key(|b| !b.is_trait_bound());
