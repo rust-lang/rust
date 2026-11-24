@@ -2878,6 +2878,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -2900,6 +2902,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// following code is valid:
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let arc = Arc::new(5);
@@ -2925,7 +2929,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[stable(feature = "arc_is_unique", since = "1.101.0")]
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
     pub fn is_unique(this: &Self) -> bool {
         // lock the weak pointer count if we appear to be the sole weak pointer
         // holder.
