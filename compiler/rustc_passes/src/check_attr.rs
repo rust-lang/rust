@@ -1048,6 +1048,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 .collect();
 
             if !spans.is_empty() {
+                // Many regressions in libc < 0.2.190
                 self.tcx.emit_node_span_lint(
                     REPEATED_REPRS,
                     hir_id,

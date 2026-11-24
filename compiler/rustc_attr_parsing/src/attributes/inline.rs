@@ -63,6 +63,7 @@ impl AttributeParser for InlineParser {
                         cx.emit_err(InlineForceInlineConflict { inline_span, force_inline_span });
                     }
                     Some((_, first_inline_span)) => {
+                        // Regressions in almost all versions of `tinyvec`.
                         cx.warn_unused_duplicate(first_inline_span, inline_span, sym::inline, true);
                     }
                 }

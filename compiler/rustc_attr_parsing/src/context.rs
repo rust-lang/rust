@@ -475,6 +475,21 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         (self.emit_lint)(LintId::of(lint), span.into(), kind);
     }
 
+    pub(crate) fn err_unused_duplicate(
+        &mut self,
+        used_span: Span,
+        unused_span: Span,
+        name: Symbol,
+        future_error: bool,
+    ) {
+        self.emit_err(DuplicateAttribute {
+            this: unused_span,
+            other: used_span,
+            name,
+            warning: future_error,
+        });
+    }
+
     pub(crate) fn warn_unused_duplicate(
         &mut self,
         used_span: Span,
