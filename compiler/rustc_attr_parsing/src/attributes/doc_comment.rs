@@ -11,7 +11,6 @@ use rustc_span::Span;
 
 use crate::attributes::prelude::{Allow, Error};
 use crate::diagnostics::{BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub};
-use crate::target_checking::Policy::AllowSilent;
 use crate::target_checking::{AllowedResult, AllowedTargets};
 use crate::{AttributeParser, EmitAttribute, ShouldEmit};
 
@@ -99,7 +98,7 @@ pub(crate) const DOC_TARGETS: AllowedTargets<'static> = {
         Allow(Target::ExternCrate),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Impl { of_trait: true }),
-        AllowSilent(Target::WherePredicate), // Error, checked elsewhere
+        Error(Target::WherePredicate),
         Error(Target::Param),
     ])
 };
