@@ -282,16 +282,9 @@ fn generate_item_with_correct_attrs(
     item
 }
 
-// FIXME(fmease): Docs!
-#[derive(Clone, Copy)]
-enum DefaultSizedness {
-    MetaSized,
-    Sized,
-}
-
 fn clean_generic_bound<'tcx>(
     bound: &hir::GenericBound<'_>,
-    default_sizedness: Option<DefaultSizedness>,
+    default_sizedness: Sizedness,
     cx: &mut DocContext<'tcx>,
 ) -> Option<GenericBound> {
     Some(match bound {
@@ -311,13 +304,13 @@ fn clean_generic_bound<'tcx>(
                 }
                 Some(LangItem::MetaSized | LangItem::PointeeSized)
                     if cx.disguise_sized_hierarchy
-                        && let Some(def_sz) = default_sizedness
                         && let hir::TraitBoundModifiers::NONE = t.modifiers =>
                 {
-                    return match def_sz {
-                        DefaultSizedness::MetaSized => None,
-                        DefaultSizedness::Sized => Some(GenericBound::maybe_sized(cx)),
-                    };
+                    match default_sizedness {
+                        Sizedness::Sized => return Some(GenericBound::maybe_sized(cx)),
+                        Sizedness::MetaSized => return None,
+                        Sizedness::PointeeSized => {}
+                    }
                 }
                 // FIXME(sized_hierarchy): Rewrite user-written `?Sized` to `MetaSized` if !disguise?
                 _ => {}
@@ -460,8 +453,10 @@ fn clean_where_predicate<'tcx>(
                 .collect();
             let ty = clean_ty(wbp.bounded_ty, cx);
             // FIXME(fmease): Well, *own* param to be precise!
-            let default_sizedness =
-                matches!(ty, Type::Generic(_)).then_some(DefaultSizedness::Sized);
+            let default_sizedness = match ty {
+                Type::Generic(_) => Sizedness::Sized,
+                _ => Sizedness::PointeeSized,
+            };
             WherePredicate::BoundPredicate {
                 ty,
                 bounds: wbp
@@ -474,7 +469,11 @@ fn clean_where_predicate<'tcx>(
         }
         hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
-            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, None, cx)).collect(),
+            bounds: wrp
+                .bounds
+                .iter()
+                .filter_map(|x| clean_generic_bound(x, Sizedness::PointeeSized, cx))
+                .collect(),
         },
     })
 }
@@ -737,7 +736,7 @@ fn clean_generic_param<'tcx>(
                     .bounds_for_param(param.def_id)
                     .filter(|bp| bp.origin != PredicateOrigin::WhereClause)
                     .flat_map(|bp| bp.bounds)
-                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
+                    .filter_map(|x| clean_generic_bound(x, Sizedness::Sized, cx))
                     .collect()
             } else {
                 ThinVec::new()
@@ -1003,6 +1002,7 @@ fn clean_ty_generics_inner<'tcx>(
     for (idx, mut bounds) in impl_trait {
         let mut sizedness = Sizedness::PointeeSized;
 
+        // FIXME(fmease): [perf?] Don't do this here on the clean AST but on the middle::ty!!
         bounds.retain(|bound| {
             if let GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
                 && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
@@ -1014,7 +1014,7 @@ fn clean_ty_generics_inner<'tcx>(
             true
         });
 
-        bounds.extend(sizedness.to_bound(cx));
+        bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
 
         // Move trait bounds to the front.
         bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -1358,7 +1358,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds
                     .iter()
-                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
+                    .filter_map(|x| clean_generic_bound(x, Sizedness::Sized, cx))
                     .collect();
                 ItemKind::AssocType(Box::new(AssocType {
                     generics,
@@ -1522,6 +1522,8 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
+            // FIXME(fmease): Unrelated to everything but [perf] rewrite this so it doesn't
+            // check the clean AST but instead the middle::ty!!
             let (bounds, type_) = if let ty::AssocContainer::Trait = assoc_item.container {
                 // Move bounds that are (likely) directly attached to the associated type
                 // from the where-clause to the associated type.
@@ -1572,23 +1574,23 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     _ => true,
                 });
 
-                bounds.retain(|b| {
-                    // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-                    // is shown and none of the new sizedness traits leak into documentation.
-                    !b.is_meta_sized_bound(tcx)
+                let mut sizedness = Sizedness::PointeeSized;
+
+                bounds.retain(|bound| {
+                    // FIXME(fmease): [perf?] Don't do this here on the clean AST but on the middle::ty!!
+
+                    if let GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) =
+                        bound
+                        && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
+                        && let Some(sz) = Sizedness::from_lang_item(item)
+                    {
+                        sizedness.add(sz);
+                        return false;
+                    }
+                    true
                 });
 
-                // Our Sized/?Sized bound didn't get handled when creating the generics
-                // because we didn't actually get our whole set of bounds until just now
-                // (some of them may have come from the trait). If we do have a sized
-                // bound, we remove it, and if we don't then we add the `?Sized` bound
-                // at the end.
-                match bounds.iter().position(|b| b.is_sized_bound(tcx)) {
-                    Some(i) => {
-                        bounds.remove(i);
-                    }
-                    None => bounds.push(GenericBound::maybe_sized(cx)),
-                }
+                bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
 
                 let type_ = tcx.defaultness(assoc_item.def_id).has_value().then(|| {
                     let ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
@@ -1972,10 +1974,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
         TyKind::OpaqueDef(ty) => ImplTrait(
-            ty.bounds
-                .iter()
-                .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::Sized), cx))
-                .collect(),
+            ty.bounds.iter().filter_map(|x| clean_generic_bound(x, Sizedness::Sized, cx)).collect(),
         ),
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, lifetime) => {
@@ -2492,7 +2491,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    bounds.extend(sizedness.to_bound(cx));
+    bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
 
     // Move trait bounds to the front.
     bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -2521,7 +2520,7 @@ fn clean_middle_opaque_bounds<'tcx>(
     ImplTrait(bounds)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub(super) enum Sizedness {
     PointeeSized,
     MetaSized,
@@ -2543,14 +2542,20 @@ impl Sizedness {
         }
     }
 
-    fn to_bound(self, cx: &DocContext<'_>) -> Option<GenericBound> {
+    fn to_bound(mut self, cx: &DocContext<'_>, default: Self) -> Option<GenericBound> {
+        if cx.disguise_sized_hierarchy && self == Self::PointeeSized {
+            self = Self::MetaSized;
+        }
+
+        if self == default {
+            return None;
+        }
+
         Some(match self {
-            Self::PointeeSized | Self::MetaSized if cx.disguise_sized_hierarchy => {
-                GenericBound::maybe_sized(cx)
-            }
-            Self::PointeeSized => GenericBound::pointee_sized(cx),
+            Self::Sized => GenericBound::sized(cx),
+            Self::MetaSized if cx.disguise_sized_hierarchy => GenericBound::maybe_sized(cx),
             Self::MetaSized => GenericBound::meta_sized(cx),
-            Self::Sized => return None,
+            Self::PointeeSized => GenericBound::pointee_sized(cx),
         })
     }
 }
@@ -3053,7 +3058,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 bounds: bounds
                     .iter()
-                    .filter_map(|x| clean_generic_bound(x, Some(DefaultSizedness::MetaSized), cx))
+                    .filter_map(|x| clean_generic_bound(x, Sizedness::MetaSized, cx))
                     .collect(),
             }),
             hir::ItemKind::Union(_, generics, variant_data) => ItemKind::Union(Union {
@@ -3092,9 +3097,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     generics: clean_generics(generics, cx),
                     bounds: bounds
                         .iter()
-                        .filter_map(|x| {
-                            clean_generic_bound(x, Some(DefaultSizedness::MetaSized), cx)
-                        })
+                        .filter_map(|x| clean_generic_bound(x, Sizedness::MetaSized, cx))
                         .collect(),
                 }))
             }
@@ -3507,7 +3510,10 @@ fn clean_assoc_item_constraint<'tcx>(
                 AssocItemConstraintKind::Equality { term: clean_hir_term(assoc_item, term, cx) }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
-                bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, None, cx)).collect(),
+                bounds: bounds
+                    .iter()
+                    .filter_map(|b| clean_generic_bound(b, Sizedness::PointeeSized, cx))
+                    .collect(),
             },
         },
     }

@@ -1148,23 +1148,6 @@ impl GenericBound {
         matches!(self, Self::TraitBound(..))
     }
 
-    pub(crate) fn is_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
-        self.is_bounded_by_lang_item(tcx, LangItem::Sized)
-    }
-
-    pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
-        self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
-    }
-
-    fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
-        if let GenericBound::TraitBound(poly_trait_ref, rustc_hir::TraitBoundModifiers::NONE) = self
-            && tcx.is_lang_item(poly_trait_ref.trait_.def_id(), lang_item)
-        {
-            return true;
-        }
-        false
-    }
-
     pub(crate) fn get_trait_path(&self) -> Option<Path> {
         if let GenericBound::TraitBound(poly_trait_ref, _) = self {
             Some(poly_trait_ref.trait_.clone())

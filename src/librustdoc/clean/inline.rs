@@ -316,11 +316,22 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     let generics = clean_ty_generics(cx, did);
     let (generics, mut supertrait_bounds) = separate_self_bounds(generics);
 
-    supertrait_bounds.retain(|b| {
-        // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-        // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx.tcx)
+    let mut sizedness = clean::Sizedness::PointeeSized;
+
+    supertrait_bounds.retain(|bound| {
+        // FIXME(fmease): [perf?] dont act on cleanAST, act on middle::ty
+
+        if let clean::GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
+            && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
+            && let Some(sz) = clean::Sizedness::from_lang_item(item)
+        {
+            sizedness.add(sz);
+            return false;
+        }
+        true
     });
+
+    supertrait_bounds.extend(sizedness.to_bound(cx, clean::Sizedness::MetaSized));
 
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
@@ -329,11 +340,22 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     let generics = clean_ty_generics(cx, did);
     let (generics, mut bounds) = separate_self_bounds(generics);
 
-    bounds.retain(|b| {
-        // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-        // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx.tcx)
+    let mut sizedness = clean::Sizedness::PointeeSized;
+
+    bounds.retain(|bound| {
+        // FIXME(fmease): [perf?] dont act on cleanAST, act on middle::ty
+
+        if let clean::GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
+            && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
+            && let Some(sz) = clean::Sizedness::from_lang_item(item)
+        {
+            sizedness.add(sz);
+            return false;
+        }
+        true
     });
+
+    bounds.extend(sizedness.to_bound(cx, clean::Sizedness::MetaSized));
 
     clean::TraitAlias { generics, bounds }
 }
