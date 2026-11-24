@@ -449,9 +449,14 @@ impl LinkSelfContained {
             return Ok(());
         }
 
-        // `-C link-self-contained=-linker` is only stable on x64 linux.
+        // `-C link-self-contained=-linker` is only stable on x64 and loongarch64 linux.
         let has_minus_linker = self.disabled_components.is_linker_enabled();
-        if has_minus_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+        if has_minus_linker
+            && !matches!(
+                target_tuple.tuple(),
+                "x86_64-unknown-linux-gnu" | "loongarch64-unknown-linux-gnu"
+            )
+        {
             return Err(format!(
                 "`-C link-self-contained=-linker` is unstable on the `{target_tuple}` \
                     target. The `-Z unstable-options` flag must also be passed to use it on this target",
