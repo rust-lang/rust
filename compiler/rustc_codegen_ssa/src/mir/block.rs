@@ -2422,19 +2422,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
     pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
-        self.try_llbb(bb).unwrap()
-    }
-
-    /// Like `llbb`, but may fail if the basic block should be skipped.
-    pub(crate) fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
                 self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
-                Some(llbb)
+                llbb
             }
-            CachedLlbb::Some(llbb) => Some(llbb),
-            CachedLlbb::Skip => None,
+            CachedLlbb::Some(llbb) => llbb,
+            CachedLlbb::Skip => bug!(),
         }
     }
 
