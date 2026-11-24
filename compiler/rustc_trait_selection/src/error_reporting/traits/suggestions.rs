@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let InferOk { value: output, obligations: _ } =
-            self.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(output));
+            self.at(&ObligationCause::dummy(), &param_env).normalize(Unnormalized::new_wip(output));
 
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
@@ -5068,7 +5068,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             )
         });
         let InferOk { value: projection_ty, .. } = self
-            .at(&obligation.cause, obligation.param_env)
+            .at(&obligation.cause, &obligation.param_env)
             .normalize(Unnormalized::new_wip(projection_ty));
 
         debug!(
@@ -5424,7 +5424,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         for (expected, actual) in zipped {
                             self.probe(|_| {
                                 match self
-                                    .at(&ObligationCause::misc(expr.span, body_def_id), param_env)
+                                    .at(&ObligationCause::misc(expr.span, body_def_id), &param_env)
                                     // Doesn't actually matter if we define opaque types here, this is just used for
                                     // diagnostics, and the result is never kept around.
                                     .eq(DefineOpaqueTypes::Yes, expected, actual)
@@ -5550,7 +5550,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Extract `<U as Deref>::Target` assoc type and check that it is `T`
             && let Some(deref_target_did) = tcx.lang_items().deref_target()
             && let projection = Ty::new_projection_from_args(tcx,ty::IsRigid::No, deref_target_did, tcx.mk_args(&[ty::GenericArg::from(found_ty)]))
-            && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(projection))
+            && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), &param_env).normalize(Unnormalized::new_wip(projection))
             && obligations.iter().all(|obligation| infcx.predicate_must_hold_modulo_regions(obligation))
             && infcx.can_eq(param_env, deref_target, target_ty)
         {

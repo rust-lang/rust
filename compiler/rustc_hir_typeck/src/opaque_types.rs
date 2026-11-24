@@ -251,7 +251,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         let cause = ObligationCause::misc(hidden_type.span, self.body_def_id);
-        let at = self.at(&cause, self.param_env);
+        let at = self.at(&cause, &self.param_env);
         let hidden_type = match solve::deeply_normalize(at, Unnormalized::new_wip(hidden_type)) {
             Ok(hidden_type) => hidden_type,
             Err(errors) => {

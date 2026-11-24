@@ -14,9 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Unnormalized, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, IntoParamEnv, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast,
 };
 use rustc_span::{BytePos, DUMMY_SP, Span, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -253,7 +253,8 @@ fn compare_method_clause_entailment<'tcx>(
     //
     // cc trait-system-refactor-initiative/issues/166.
     let param_env =
-        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause);
+        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause)
+            .into_paramenv(tcx);
     debug!(?param_env);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -498,7 +499,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         tcx,
         hybrid_clauses.collect(),
         ObligationCause::misc(tcx.def_span(impl_m_def_id), impl_m_def_id),
-    );
+    )
+    .into_paramenv(tcx);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
@@ -2375,7 +2377,8 @@ fn compare_const_clause_entailment<'tcx>(
         tcx,
         hybrid_clauses.collect(),
         ObligationCause::misc(impl_ct_span, impl_ct_def_id),
-    );
+    )
+    .into_paramenv(tcx);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
@@ -2529,7 +2532,8 @@ fn compare_type_clause_entailment<'tcx>(
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
     let param_env =
-        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause);
+        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause)
+            .into_paramenv(tcx);
     debug!(?param_env);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());

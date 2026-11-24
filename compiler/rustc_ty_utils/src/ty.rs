@@ -5,8 +5,8 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
-    Upcast, fold_regions,
+    self, IntoParamEnv, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Unnormalized, Upcast, fold_regions,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, bug};
@@ -200,7 +200,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let local_did = def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), local_did);
-    traits::normalize_param_env_or_error(tcx, clauses, cause)
+    traits::normalize_param_env_or_error(tcx, clauses, cause).into_paramenv(tcx)
 }
 
 /// Walk through a function type, gathering all RPITITs and installing a

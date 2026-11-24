@@ -48,7 +48,7 @@ where
     let ParamEnvAnd { param_env, value: Normalize { value } } = key;
     let Normalized { value, obligations } = ocx
         .infcx
-        .at(&ObligationCause::dummy(), param_env)
+        .at(&ObligationCause::dummy(), &param_env)
         .query_normalize(value.skip_normalization())?;
     ocx.register_obligations(obligations);
     Ok(value)

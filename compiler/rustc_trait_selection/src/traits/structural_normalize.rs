@@ -1,13 +1,13 @@
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::{TraitEngine, TraitErrors};
 use rustc_macros::extension;
-use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_middle::ty::{self, IntoParamEnv, Ty, Unnormalized};
 use thin_vec::ThinVec;
 
 use crate::traits::{NormalizeExt, Obligation};
 
 #[extension(pub trait StructurallyNormalizeExt<'tcx>)]
-impl<'tcx> At<'_, 'tcx> {
+impl<'tcx, P: IntoParamEnv<'tcx>> At<'_, 'tcx, P> {
     fn structurally_normalize_ty<E: 'tcx>(
         &self,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
@@ -59,7 +59,7 @@ impl<'tcx> At<'_, 'tcx> {
             let obligation = Obligation::new(
                 self.infcx.tcx,
                 self.cause.clone(),
-                self.param_env,
+                self.param_env.into_paramenv(self.infcx.tcx),
                 ty::ProjectionClause { projection_term: alias, term: new_infer },
             );
 

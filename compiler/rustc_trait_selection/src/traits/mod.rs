@@ -32,9 +32,9 @@ use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, CallerBoundsIterator, Clause, GenericArgs, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
-    Unnormalized, Upcast,
+    self, BottomUpFolder, CallerBoundsIterator, Clause, GenericArgs, IntoParamEnv, ParamEnvClauses,
+    Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypingMode, Unnormalized, Upcast,
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -336,18 +336,9 @@ where
 fn do_normalize_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
-    elaborated_env: ty::ParamEnv<'tcx>,
-    elaborated_env_clauses: Vec<ty::Clause<'tcx>>,
+    elaborated_env: ParamEnvClauses<'tcx>,
     clauses: Vec<ty::Clause<'tcx>>,
 ) -> Vec<ty::Clause<'tcx>> {
-    // sanity check: it's a perf optimization to ask for a `ParamEnv` *and*
-    // an equivalent list of clauses here to avoid a decompression. In debug
-    // mode we ensure that no callsite accidentally passed in mismatching clauses.
-    debug_assert_eq!(
-        ty::ParamEnv::new(tcx, elaborated_env_clauses.iter().copied()),
-        elaborated_env
-    );
-
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
@@ -367,10 +358,10 @@ fn do_normalize_clauses<'tcx>(
     // consistent with the old solver.
     let elaborated_env =
         if tcx.next_trait_solver_globally() && !tcx.disable_param_env_normalization_hack() {
-            let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env_clauses);
+            let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
             let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env);
 
-            ty::ParamEnv::new(tcx, elaborated_env)
+            elaborated_env.collect()
         } else {
             elaborated_env
         };
@@ -450,9 +441,9 @@ fn do_normalize_clauses<'tcx>(
 #[instrument(level = "debug", skip(tcx))]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    unnormalized_env: Vec<ty::Clause<'tcx>>,
+    unnormalized_env: ParamEnvClauses<'tcx>,
     cause: ObligationCause<'tcx>,
-) -> ty::ParamEnv<'tcx> {
+) -> impl IntoParamEnv<'tcx> {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
     // during typeck). Instead I have all parameter
@@ -467,7 +458,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut clauses: Vec<_> = util::elaborate(
+    let mut clauses: ParamEnvClauses<'tcx> = util::elaborate(
         tcx,
         unnormalized_env.into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
@@ -497,7 +488,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                         && matches!(alias_const.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
-                        let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
+                        let c = evaluate_const(&infcx, c, &ty::ParamEnv::empty());
                         // We should never wind up with any `infcx` local state when normalizing anon consts
                         // under min const generics.
                         assert!(!c.has_infer() && !c.has_placeholders());
@@ -542,8 +533,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-clauses={:?}", clauses);
 
-    let elaborated_env_clauses = clauses.iter().copied().collect();
-    let elaborated_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
+    let elaborated_env: ParamEnvClauses<'tcx> = clauses.iter().copied().collect();
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -576,8 +566,7 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: clauses=(non-outlives={:?}, outlives={:?})",
         clauses, outlives_clauses
     );
-    let non_outlives_clauses =
-        do_normalize_clauses(tcx, cause.clone(), elaborated_env, elaborated_env_clauses, clauses);
+    let non_outlives_clauses = do_normalize_clauses(tcx, cause.clone(), elaborated_env, clauses);
 
     debug!("normalize_param_env_or_error: non-outlives clauses={:?}", non_outlives_clauses);
 
@@ -587,16 +576,14 @@ pub fn normalize_param_env_or_error<'tcx>(
     let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
     // perf optimization: get the individual clauses of the outlives env into a vec
     // so we don't have to decompress again.
-    let outlives_env_clauses = outlives_env.collect::<Vec<_>>();
-    let outlives_env = ty::ParamEnv::new(tcx, outlives_env_clauses.iter().copied());
-    let outlives_clauses =
-        do_normalize_clauses(tcx, cause, outlives_env, outlives_env_clauses, outlives_clauses);
+    let outlives_env = outlives_env.collect::<ParamEnvClauses<'tcx>>();
+    let outlives_clauses = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses);
     debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
     let mut clauses = non_outlives_clauses;
     clauses.extend(outlives_clauses);
     debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
-    ty::ParamEnv::new(tcx, clauses)
+    clauses
 }
 
 #[derive(Debug)]
@@ -624,10 +611,10 @@ pub enum EvaluateConstErr<E> {
 ///
 /// You should not call this function unless you are implementing normalization itself. Prefer to use
 /// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
-pub fn evaluate_const<'tcx>(
+pub fn evaluate_const<'tcx, P: IntoParamEnv<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    param_env: &P,
 ) -> ty::Const<'tcx> {
     match try_evaluate_const(infcx, ct, param_env, |v| Ok::<_, !>(v.skip_norm_wip())) {
         Ok(ct) => ct,
@@ -647,10 +634,10 @@ pub fn evaluate_const<'tcx>(
 /// You should not call this function unless you are implementing normalization itself. Prefer to use
 /// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
 #[instrument(level = "debug", skip(infcx, normalize_ty), ret)]
-pub fn try_evaluate_const<'tcx, E: Debug>(
+pub fn try_evaluate_const<'tcx, E: Debug, P: IntoParamEnv<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    param_env: &P,
     normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
 ) -> Result<ty::Const<'tcx>, EvaluateConstErr<E>> {
     let tcx = infcx.tcx;
@@ -708,7 +695,7 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                                         alias_const.args,
                                     );
                                     let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
-                                        .typing_env(tcx.erase_and_anonymize_regions(param_env))
+                                        .typing_env(tcx.erase_and_anonymize_regions(param_env.into_paramenv(tcx)))
                                         .with_post_analysis_normalized_invalidating_rigid_aliases(
                                             tcx, args,
                                         );
@@ -724,7 +711,9 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                         }
                     } else {
                         let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
-                            .typing_env(tcx.erase_and_anonymize_regions(param_env))
+                            .typing_env(
+                                tcx.erase_and_anonymize_regions(param_env.into_paramenv(tcx)),
+                            )
                             .with_post_analysis_normalized_invalidating_rigid_aliases(
                                 tcx,
                                 alias_const.args,
