@@ -1,4 +1,4 @@
-error: file!() = remapped/remap-path-prefix.rs
+error: file!() = remapped/remap-path/remap-path-prefix.rs
   --> $DIR/remap-path-prefix.rs:21:1
    |
 LL | compile_error!(concat!("file!() = ", file!()));

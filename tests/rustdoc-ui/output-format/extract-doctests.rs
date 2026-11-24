@@ -2,11 +2,15 @@
 // flag.
 
 //@ compile-flags:-Z unstable-options --output-format=doctest
-//@ normalize-stdout: "tests/rustdoc-ui" -> "$$DIR"
+//@ normalize-stdout: "tests/rustdoc-ui/output-format" -> "$$DIR"
 //@ normalize-stdout: "[A-Z]:[\\/](?:[^\\/]+[\\/])*?\$DIR" -> "$$DIR"
 //@ check-pass
 
-//! ```
+//! ```ignore (checking attributes)
 //! let x = 12;
-//! Ok(())
+//! let y = 14;
+//! ```
+//!
+//! ```edition2018,compile_fail
+//! let
 //! ```
