@@ -5,18 +5,16 @@
 [![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
 [![Rust](https://img.shields.io/badge/rust-1.85.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
 
-This crate is a Rust port of Google's high-performance [SwissTable] hash map,
-adapted to make it a drop-in replacement for Rust's standard `HashMap` and
+This crate provides the implementation of the standard library `HashMap` and
+`HashSet` types, with the ability to experiment without the standard library's
+strict stability guarantees.
+
+It was originally a Rust port of Google's high-performance [SwissTable] hash
+map, adapted to make it a drop-in replacement for Rust's standard `HashMap` and
 `HashSet` types.
 
 The original C++ version of SwissTable can be found [here], and this
 [CppCon talk] gives an overview of how the algorithm works.
-
-Since Rust 1.36, the Rust standard library has adopted this implementation for
-`HashMap`, using its own default hasher (see
-[`std::hash::DefaultHasher`](https://doc.rust-lang.org/std/hash/struct.DefaultHasher.html)).
-However you may still want to use this crate instead since it works in
-environments without `std`, such as embedded systems and kernels.
 
 [SwissTable]: https://abseil.io/blog/20180927-swisstables
 [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
