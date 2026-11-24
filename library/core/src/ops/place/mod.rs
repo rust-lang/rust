@@ -79,15 +79,12 @@
 //! [`ReadPlace`], but `NonNull<T>` will set it to `false`.
 
 mod handle;
-mod wrapper;
 mod locals;
+mod wrapper;
 
-pub use self::{
-    handle::*,
-    wrapper::*,
-    locals::*,
-};
-
+pub use self::handle::*;
+pub use self::locals::*;
+pub use self::wrapper::*;
 use crate::ptr::Pointee;
 
 /// A type that acts as a proxy for a place.
