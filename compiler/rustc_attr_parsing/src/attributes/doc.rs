@@ -829,10 +829,6 @@ impl DocParser {
                     }
                 }
             }
-            Some(sym::disguise_sized_hierarchy) => {
-                gated!(rustdoc_internals);
-                no_args_and_crate_level!(disguise_sized_hierarchy)
-            }
             Some(sym::spotlight) => {
                 let span = path.span();
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownSpotlight { sugg_span: span }, span);

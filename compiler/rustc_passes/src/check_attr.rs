@@ -898,8 +898,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             notable_trait: _,
             search_unbox,
             // already checked in attr_parsing
-            disguise_sized_hierarchy: _,
-            // already checked in attr_parsing
             html_favicon_url: _,
             // already checked in attr_parsing
             html_logo_url: _,

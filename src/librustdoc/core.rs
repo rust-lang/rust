@@ -1,7 +1,6 @@
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
-use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_driver::USING_INTERNAL_FEATURES;
@@ -58,11 +57,6 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
-
-    // FIXME(fmease): Docs.
-    // FIXME(fmease): Use this!
-    #[expect(dead_code)]
-    pub(crate) disguise_sized_hierarchy: bool,
 
     // FIXME: I'm pretty that the only reason we "need" these caches is because we also invoke
     //        `synthesize_auto_trait_and_blanket_impls` on all impls(!) for primitive types
@@ -388,10 +382,6 @@ pub(crate) fn run_global_ctxt(
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
-    let disguise_sized_hierarchy = !tcx.features().sized_hierarchy()
-        || find_attr!(tcx, crate, Doc(d) => d.disguise_sized_hierarchy.is_some())
-            .unwrap_or_default();
-
     let auto_traits =
         tcx.visible_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
 
@@ -403,7 +393,6 @@ pub(crate) fn run_global_ctxt(
         args: Default::default(),
         current_type_aliases: Default::default(),
         impl_trait_bounds: Default::default(),
-        disguise_sized_hierarchy,
         synthetic_auto_trait_impls: Default::default(),
         synthetic_blanket_impls: Default::default(),
         auto_traits,

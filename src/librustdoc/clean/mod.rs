@@ -2865,7 +2865,6 @@ fn add_without_unwanted_attributes<'hir>(
                     masked: _,
                     notable_trait: _,
                     search_unbox: _,
-                    disguise_sized_hierarchy: _,
                     html_favicon_url: _,
                     html_logo_url: _,
                     html_playground_url: _,
