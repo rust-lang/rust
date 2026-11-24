@@ -312,7 +312,12 @@ fn clean_generic_bound<'tcx>(
                         Sizedness::PointeeSized => {}
                     }
                 }
-                // FIXME(sized_hierarchy): Rewrite user-written `?Sized` to `MetaSized` if !disguise?
+                Some(LangItem::Sized)
+                    if !cx.disguise_sized_hierarchy
+                        && let hir::BoundPolarity::Maybe(_) = t.modifiers.polarity =>
+                {
+                    return Some(GenericBound::meta_sized(cx));
+                }
                 _ => {}
             }
 
