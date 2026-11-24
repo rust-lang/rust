@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:11:5
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:12:5
    |
 LL |     <[(); N] as IntoIterator>::Item::Item:,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL +     <<[(); N] as IntoIterator>::Item as Example>::Item:,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:17:12
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:18:12
    |
 LL |     Option<<[(); N] as IntoIterator>::Item::Item>: Sized,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL +     Option<<<[(); N] as IntoIterator>::Item as Example>::Item>: Sized,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:22:8
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:23:8
    |
 LL |     _: <[(); N] as IntoIterator>::Item::Item,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +     _: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:27:5
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:28:5
    |
 LL |     <[(); N] as IntoIterator>::Item::Item;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL +     <<[(); N] as IntoIterator>::Item as Example>::Item;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:31:12
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:32:12
    |
 LL |     field: <[(); N] as IntoIterator>::Item::Item,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL +     field: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:47:14
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:48:14
    |
 LL |     const M: <[(); N] as IntoIterator>::Item::Item,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL +     const M: <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:53:9
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:54:9
    |
 LL |     T = <[(); N] as IntoIterator>::Item::Item,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL +     T = <<[(); N] as IntoIterator>::Item as Example>::Item,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:40:9
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:41:9
    |
 LL |         <[(); N] as IntoIterator>::Item::Item:,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL +         <<[(); N] as IntoIterator>::Item as Example>::Item:,
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/assoc-ty-const-generics-issue-163320.rs:58:12
+  --> $DIR/assoc-ty-const-generics-issue-163320.rs:59:12
    |
 LL |     let _: <[(); N] as IntoIterator>::Item::Item;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

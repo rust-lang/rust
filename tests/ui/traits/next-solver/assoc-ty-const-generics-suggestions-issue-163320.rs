@@ -1,8 +1,9 @@
 // Suggestions should not need trait solving during either item lowering or
 // body type checking. Deep rejection may also admit incompatible impls.
 
-//@ compile-flags: -Znext-solver=globally
-//@ check-fail
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 trait Identity {
     type Out;

@@ -43,9 +43,9 @@ use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind,
-    IncludeSizedImplicitBounds, LitToConstInput, Ty, TyCtxt, TypeSuperFoldable,
-    TypeVisitableExt, Unnormalized, Upcast, const_lit_matches_ty,
+    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, IncludeSizedImplicitBounds,
+    LitToConstInput, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    const_lit_matches_ty,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
@@ -1869,7 +1869,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Vec::new();
         }
 
-        // FIXME: Support non-lifetime binders without suggesting unrelated traits.
+        // FIXME(non_lifetime_binders): Support non-lifetime binders without suggesting unrelated traits.
         if qself_ty.has_non_region_bound_vars() {
             return Vec::new();
         }
@@ -1890,7 +1890,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
-                            if header.polarity == ty::ImplPolarity::Negative {
+                            if header.polarity != ty::ImplPolarity::Positive {
                                 return false;
                             }
 
@@ -1900,6 +1900,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .skip_norm_wip()
                                 .self_ty();
 
+                            // Avoid invoking the trait solver while lowering item definitions.
                             ty::DeepRejectCtxt::relate_rigid_infer(tcx)
                                 .types_may_unify(qself_ty, impl_ty)
                         })

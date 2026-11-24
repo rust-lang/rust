@@ -1,8 +1,9 @@
 // Regression test for issue #163320: ambiguous associated-type paths
 // involving const generics must not ICE during item lowering or type checking.
 
-//@ compile-flags: -Znext-solver=globally
-//@ check-fail
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 #![feature(generic_const_parameter_types)]
 
