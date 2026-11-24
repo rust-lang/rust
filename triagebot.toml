@@ -993,7 +993,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".compiler-processed]
+required_labels = ["T-compiler", "beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
@@ -1024,7 +1036,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".compiler-processed]
+required_labels = ["T-compiler", "stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".compiler]
 required_labels = ["T-compiler"]

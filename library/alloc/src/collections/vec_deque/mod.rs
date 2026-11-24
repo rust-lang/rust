@@ -3033,7 +3033,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let head_len = cap - head.as_index();
 
         // tail <= head < capacity
-        // head cannot be <= capacity, because we know that VecDeque is non-empty, since it is not
+        // head cannot be >= capacity, because we know that VecDeque is non-empty, since it is not
         // contiguous at this point
         let tail = WrappedIndex::from_arbitrary_number(len - head_len);
         let tail_len = tail.as_index();

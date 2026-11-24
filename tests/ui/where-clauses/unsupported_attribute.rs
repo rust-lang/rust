@@ -5,13 +5,14 @@
 #![feature(custom_test_frameworks)]
 #![feature(derive_const)]
 #![feature(where_clause_attrs)]
+#![warn(unused_doc_comments)]
 
 trait Trait {}
 
 fn foo<'a, T>()
 where
-    #[doc = "doc"] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
-    #[doc = "doc"] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
+    #[doc = "doc"] T: Trait, //~ ERROR unused doc comment
+    #[doc = "doc"] 'a: 'static, //~ ERROR unused doc comment
     #[ignore] T: Trait, //~ ERROR attribute cannot be used on
     #[ignore] 'a: 'static, //~ ERROR attribute cannot be used on
     #[should_panic] T: Trait, //~ ERROR attribute cannot be used on

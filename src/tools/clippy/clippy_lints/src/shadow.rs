@@ -114,6 +114,11 @@ pub(crate) struct Shadow {
 
 impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
+        if cx.enclosing_body.is_none() {
+            // This pattern is part of a `Param` of a body-less function, skip it
+            return;
+        }
+
         let PatKind::Binding(_, id, ident, _) = pat.kind else {
             return;
         };

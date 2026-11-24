@@ -1,32 +1,78 @@
-error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:6:1
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:7:3
    |
 LL | #[doc(alias = ":(")]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^
+...
+LL | ():,
    |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
 
-error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:11:1
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:12:3
    |
 LL | #[doc(hidden)]
-   | ^^^^^^^^^^^^^^
+   |   ^^^
+LL |
+LL | ():,
    |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
 
-error: most attributes are not supported in `where` clauses
-  --> $DIR/where-doc.rs:15:1
+error: unused doc comment
+  --> $DIR/where-doc.rs:16:1
    |
 LL | #[doc = ""]
-   | ^^^^^^^^^^^
+   | ^^^^^^^^^^^ rustdoc does not generate documentation for where predicates
+LL |
+LL | ():,
    |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+   = help: use `//` for a plain comment
+
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:20:3
+   |
+LL | #[doc()]
+   |   ^^^
+LL |
+LL | ():,
+   |
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
+
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:24:3
+   |
+LL | #[doc(5)]
+   |   ^^^
+LL |
+LL | ():,
+   |
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
+
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:28:3
+   |
+LL | #[doc]
+   |   ^^^
+LL |
+LL | ():,
+   |
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
+
+error: the `doc` attribute cannot be used on where predicates
+  --> $DIR/where-doc.rs:32:3
+   |
+LL | #[doc = 5]
+   |   ^^^
+LL |
+LL | ():,
+   |
+   = help: the `doc` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, and use statements
 
 error: `#[doc(alias = "...")]` isn't allowed on where predicate
-  --> $DIR/where-doc.rs:6:15
+  --> $DIR/where-doc.rs:7:15
    |
 LL | #[doc(alias = ":(")]
    |               ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 

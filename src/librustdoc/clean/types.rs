@@ -449,7 +449,7 @@ impl Item {
     }
 
     pub(crate) fn is_unstable(&self) -> bool {
-        self.stability.is_some_and(|x| x.is_unstable())
+        crate::clean::utils::stability_is_unstable(self.stability)
     }
 
     pub(crate) fn is_exported_decl_macro(&self) -> bool {

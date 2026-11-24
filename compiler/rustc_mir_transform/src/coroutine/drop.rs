@@ -111,7 +111,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
                 ..
             } => {
                 if let Some(local) = place.as_local()
-                    && local == SELF_ARG
+                    && local == ty::CAPTURE_STRUCT_LOCAL
                 {
                     (target, unwind, source_info, *drop)
                 } else {
@@ -133,7 +133,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         elaborate_drop(
             &mut elaborator,
             *source_info,
-            Place::from(SELF_ARG),
+            Place::from(ty::CAPTURE_STRUCT_LOCAL),
             (),
             *target,
             unwind,
@@ -162,7 +162,7 @@ pub(super) fn insert_clean_drop<'tcx>(
     let dropline = None;
 
     let term = TerminatorKind::Drop {
-        place: Place::from(SELF_ARG),
+        place: Place::from(ty::CAPTURE_STRUCT_LOCAL),
         target: return_block,
         unwind: UnwindAction::Continue,
         replace: false,
@@ -383,7 +383,7 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     let ret_bb = insert_poll_ready_block(tcx, &mut body);
 
     let kind = TerminatorKind::Drop {
-        place: Place::from(SELF_ARG),
+        place: Place::from(ty::CAPTURE_STRUCT_LOCAL),
         target: ret_bb,
         unwind: UnwindAction::Continue,
         replace: false,
