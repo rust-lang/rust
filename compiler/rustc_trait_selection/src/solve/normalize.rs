@@ -240,28 +240,32 @@ where
             thin_vec![E::from_solver_error(at.infcx, NextSolverError::TrueError(obligation))]
         })?;
 
-    let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
-    for pred in obligations {
-        fulfill_cx.register_predicate_obligation(at.infcx, pred);
+    if obligations.is_empty() {
+        Ok((value, vec![]))
+    } else {
+        let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
+        for pred in obligations {
+            fulfill_cx.register_predicate_obligation(at.infcx, pred);
+        }
+
+        let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
+        if let TraitErrors::HasErrors(errors) = errors {
+            return Err(errors);
+        }
+
+        let stalled_coroutine_goals = fulfill_cx
+            .drain_stalled_obligations_for_coroutines(at.infcx)
+            .into_iter()
+            .map(|obl| obl.as_goal())
+            .collect();
+
+        let errors = fulfill_cx.collect_remaining_errors(at.infcx);
+        if let TraitErrors::HasErrors(errors) = errors {
+            return Err(errors);
+        }
+
+        Ok((value, stalled_coroutine_goals))
     }
-
-    let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
-    if let TraitErrors::HasErrors(errors) = errors {
-        return Err(errors);
-    }
-
-    let stalled_coroutine_goals = fulfill_cx
-        .drain_stalled_obligations_for_coroutines(at.infcx)
-        .into_iter()
-        .map(|obl| obl.as_goal())
-        .collect();
-
-    let errors = fulfill_cx.collect_remaining_errors(at.infcx);
-    if let TraitErrors::HasErrors(errors) = errors {
-        return Err(errors);
-    }
-
-    Ok((value, stalled_coroutine_goals))
 }
 
 // Deeply normalize a value and return it
