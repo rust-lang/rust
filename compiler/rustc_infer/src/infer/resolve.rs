@@ -1,5 +1,5 @@
 use rustc_middle::ty::{
-    self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, Const, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::bug;
@@ -18,15 +18,12 @@ use crate::infer::TyOrConstInferVar;
 /// points for correctness.
 pub struct DeepResolverIgnoringRegions<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
-    /// We're able to use a cache here as the folder does
-    /// not have any mutable state.
-    cache: DelayedMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> DeepResolverIgnoringRegions<'a, 'tcx> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        DeepResolverIgnoringRegions { infcx, cache: Default::default() }
+        DeepResolverIgnoringRegions { infcx }
     }
 }
 
@@ -39,13 +36,9 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepResolverIgnoringRegions<'a, 'tcx
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.has_non_region_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-        } else if let Some(&ty) = self.cache.get(&t) {
-            ty
         } else {
             let shallow = self.infcx.shallow_resolve(t);
-            let res = shallow.super_fold_with(self);
-            assert!(self.cache.insert(t, res));
-            res
+            shallow.super_fold_with(self)
         }
     }
 
