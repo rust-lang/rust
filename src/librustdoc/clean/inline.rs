@@ -331,7 +331,7 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
         true
     });
 
-    supertrait_bounds.extend(sizedness.to_bound(cx, clean::Sizedness::MetaSized));
+    supertrait_bounds.extend(sizedness.to_bound_where(cx, clean::Sizedness::MetaSized));
 
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
@@ -355,7 +355,7 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
         true
     });
 
-    bounds.extend(sizedness.to_bound(cx, clean::Sizedness::MetaSized));
+    bounds.extend(sizedness.to_bound_where(cx, clean::Sizedness::MetaSized));
 
     clean::TraitAlias { generics, bounds }
 }

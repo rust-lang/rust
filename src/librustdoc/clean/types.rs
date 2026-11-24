@@ -8,13 +8,12 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast as ast;
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
     AttributeKind, ConstStability, DeprecatedSince, Deprecation, DocAttribute, Stability,
     StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -1108,31 +1107,13 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
-    pub(crate) fn sized(cx: &DocContext<'_>) -> Self {
-        Self::TraitBound(PolyTrait::sizedness(cx, LangItem::Sized), hir::TraitBoundModifiers::NONE)
-    }
-
-    pub(crate) fn meta_sized(cx: &DocContext<'_>) -> Self {
-        Self::TraitBound(
-            PolyTrait::sizedness(cx, LangItem::MetaSized),
-            hir::TraitBoundModifiers::NONE,
-        )
-    }
-
     pub(crate) fn maybe_sized(cx: &DocContext<'_>) -> Self {
         Self::TraitBound(
-            PolyTrait::sizedness(cx, LangItem::Sized),
+            super::Sizedness::Sized.to_poly_trait_ref(cx),
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
             },
-        )
-    }
-
-    pub(crate) fn pointee_sized(cx: &DocContext<'_>) -> Self {
-        Self::TraitBound(
-            PolyTrait::sizedness(cx, LangItem::PointeeSized),
-            hir::TraitBoundModifiers::NONE,
         )
     }
 
@@ -1334,16 +1315,6 @@ pub(crate) struct TraitAlias {
 pub(crate) struct PolyTrait {
     pub(crate) trait_: Path,
     pub(crate) generic_params: Vec<GenericParamDef>,
-}
-
-impl PolyTrait {
-    pub(crate) fn sizedness(cx: &DocContext<'_>, item: LangItem) -> Self {
-        let def_id = cx.tcx.require_lang_item(item, DUMMY_SP);
-        let name = cx.tcx.item_name(def_id);
-        let seg = PathSegment { name, args: GenericArgs::empty_angle_bracketed() };
-        let trait_ = Path { res: Res::Def(DefKind::Trait, def_id), segments: thin_vec![seg] };
-        Self { trait_, generic_params: Vec::new() }
-    }
 }
 
 // Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.

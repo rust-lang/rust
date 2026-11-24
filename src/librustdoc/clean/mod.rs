@@ -37,7 +37,7 @@ use std::mem;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, DocInline, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
-use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
@@ -307,14 +307,14 @@ fn clean_generic_bound<'tcx>(
                 && let Some(lang_item) = lang_item
                 && let Some(sizedness) = Sizedness::from_lang_item(lang_item)
             {
-                return sizedness.to_bound(cx, default_sizedness);
+                return sizedness.to_bound_where(cx, default_sizedness);
             }
 
             if !cx.disguise_sized_hierarchy
                 && let Some(LangItem::Sized) = lang_item
                 && let hir::BoundPolarity::Maybe(_) = t.modifiers.polarity
             {
-                return Some(GenericBound::meta_sized(cx));
+                return Some(Sizedness::MetaSized.to_bound(cx));
             }
 
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), t.modifiers)
@@ -1015,7 +1015,7 @@ fn clean_ty_generics_inner<'tcx>(
             true
         });
 
-        bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
+        bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
 
         // Move trait bounds to the front.
         bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -1023,7 +1023,7 @@ fn clean_ty_generics_inner<'tcx>(
         // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
         // Since all potential trait bounds are at the front we can just check the first bound.
         if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
-            bounds.insert(0, GenericBound::sized(cx));
+            bounds.insert(0, Sizedness::Sized.to_bound(cx));
         }
 
         if let Some(proj) = impl_trait_proj.remove(&idx) {
@@ -1591,7 +1591,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     true
                 });
 
-                bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
+                bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
 
                 let type_ = tcx.defaultness(assoc_item.def_id).has_value().then(|| {
                     let ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
@@ -2492,7 +2492,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    bounds.extend(sizedness.to_bound(cx, Sizedness::Sized));
+    bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
 
     // Move trait bounds to the front.
     bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -2500,7 +2500,7 @@ fn clean_middle_opaque_bounds<'tcx>(
     // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
     // Since all potential trait bounds are at the front we can just check the first bound.
     if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
-        bounds.insert(0, GenericBound::sized(cx));
+        bounds.insert(0, Sizedness::Sized.to_bound(cx));
     }
 
     if let Some(args) = cx.tcx.rendered_precise_capturing_args(impl_trait_def_id) {
@@ -2538,13 +2538,21 @@ impl Sizedness {
         }
     }
 
+    fn to_lang_item(self) -> LangItem {
+        match self {
+            Self::PointeeSized => LangItem::PointeeSized,
+            Self::MetaSized => LangItem::MetaSized,
+            Self::Sized => LangItem::Sized,
+        }
+    }
+
     fn add(&mut self, other: Self) {
         if *self < other {
             *self = other;
         }
     }
 
-    fn to_bound(mut self, cx: &DocContext<'_>, default: Self) -> Option<GenericBound> {
+    fn to_bound_where(mut self, cx: &DocContext<'_>, default: Self) -> Option<GenericBound> {
         if cx.disguise_sized_hierarchy && self == Self::PointeeSized {
             self = Self::MetaSized;
         }
@@ -2553,12 +2561,25 @@ impl Sizedness {
             return None;
         }
 
-        Some(match self {
-            Self::Sized => GenericBound::sized(cx),
-            Self::MetaSized if cx.disguise_sized_hierarchy => GenericBound::maybe_sized(cx),
-            Self::MetaSized => GenericBound::meta_sized(cx),
-            Self::PointeeSized => GenericBound::pointee_sized(cx),
-        })
+        if cx.disguise_sized_hierarchy
+            && let Self::MetaSized = self
+        {
+            return Some(GenericBound::maybe_sized(cx));
+        }
+
+        Some(self.to_bound(cx))
+    }
+
+    fn to_bound(self, cx: &DocContext<'_>) -> GenericBound {
+        GenericBound::TraitBound(self.to_poly_trait_ref(cx), hir::TraitBoundModifiers::NONE)
+    }
+
+    fn to_poly_trait_ref(self, cx: &DocContext<'_>) -> PolyTrait {
+        let def_id = cx.tcx.require_lang_item(self.to_lang_item(), rustc_span::DUMMY_SP);
+        let name = cx.tcx.item_name(def_id);
+        let seg = PathSegment { name, args: GenericArgs::empty_angle_bracketed() };
+        let trait_ = Path { res: Res::Def(DefKind::Trait, def_id), segments: thin_vec![seg] };
+        PolyTrait { trait_, generic_params: Vec::new() }
     }
 }
 
