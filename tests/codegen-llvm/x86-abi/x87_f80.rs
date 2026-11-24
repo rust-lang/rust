@@ -24,6 +24,7 @@ extern crate minicore;
 use minicore::arch::x86::{x87_f80, x87_f80_raw};
 #[cfg(target_arch = "x86_64")]
 use minicore::arch::x86_64::{x87_f80, x87_f80_raw};
+use minicore::ffi::VaList;
 use minicore::simd::f64x2;
 use minicore::{Copy, MaybeUninit, mem};
 
@@ -350,4 +351,46 @@ extern "C" fn transparent_struct(x: TransparentWrapper<x87_f80>) -> TransparentW
 #[unsafe(no_mangle)]
 extern "C" fn transparent_union(x: MaybeUninit<x87_f80>) -> MaybeUninit<x87_f80> {
     x
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn va_arg(ap: &mut VaList) -> x87_f80 {
+    // CHECK-LABEL: va_arg
+    // CHECK-NEXT: start:
+    //
+    // X86-NEXT: %0 = load ptr, ptr %ap, align 4
+    // X86-NEXT: %1 = getelementptr inbounds nuw i8, ptr %0, i32 12
+    // X86-NEXT: store ptr %1, ptr %ap, align 4
+    // X86-NEXT: %2 = load x86_fp80, ptr %0, align 4
+    // X86-NEXT: ret x86_fp80 %2
+    //
+    // X86_64-NEXT: %0 = getelementptr inbounds nuw i8, ptr %ap, i64 8
+    // X86_64-NEXT: %1 = load ptr, ptr %0, align 8
+    // X86_64-NEXT: %2 = getelementptr inbounds nuw i8, ptr %1, i64 15
+    // X86_64-NEXT: %3 = tail call align 16 ptr @llvm.ptrmask.p0.i64(ptr nonnull %2, i64 -16)
+    // X86_64-NEXT: %4 = getelementptr inbounds nuw i8, ptr %3, i64 16
+    // X86_64-NEXT: store ptr %4, ptr %0, align 8
+    // X86_64-NEXT: %5 = load x86_fp80, ptr %3, align 16
+    // X86_64-NEXT: ret x86_fp80 %5
+    //
+    // DARWIN-NEXT: %0 = load ptr, ptr %ap, align 4
+    // DARWIN-NEXT: %1 = getelementptr inbounds nuw i8, ptr %0, i32 16
+    // DARWIN-NEXT: store ptr %1, ptr %ap, align 4
+    // DARWIN-NEXT: %2 = load x86_fp80, ptr %0, align 4
+    // DARWIN-NEXT: ret x86_fp80 %2
+    //
+    // WIN64-NEXT: %0 = load ptr, ptr %ap, align 8
+    // WIN64-NEXT: %1 = getelementptr inbounds nuw i8, ptr %0, i64 8
+    // WIN64-NEXT: store ptr %1, ptr %ap, align 8
+    // WIN64-NEXT: %2 = load ptr, ptr %0, align 8
+    // WIN64-NEXT: %3 = load x86_fp80, ptr %2, align 8
+    // WIN64-NEXT: store x86_fp80 %3, ptr %_0, align 16
+    // WIN64-NEXT: ret void
+    //
+    // WIN32-NEXT: %0 = load ptr, ptr %ap, align 4
+    // WIN32-NEXT: %1 = getelementptr inbounds nuw i8, ptr %0, i32 12
+    // WIN32-NEXT: store ptr %1, ptr %ap, align 4
+    // WIN32-NEXT: %2 = load x86_fp80, ptr %0, align 4
+    // WIN32-NEXT: ret x86_fp80 %2
+    unsafe { ap.next_arg() }
 }
