@@ -1447,6 +1447,89 @@ impl f128 {
         intrinsics::copysign(self, sign)
     }
 
+    /// Calculates `self * 2.powi(exponent)` efficiently and accurately.
+    ///
+    /// This operation is faster than [`powi`] and does not run into floating point precision
+    /// issues, so it can be better to use than `2.0.powi(n)` or `x.exp2()` with integral values.
+    ///
+    /// This function has the following behavior in edge cases:
+    ///
+    /// * `(±0.0).scalbn(n)` returns the zero unchanged
+    /// * `(±∞).scalbn(n)` returns the infinity unchanged
+    /// * `NaN.scalbn(n)` returns a NaN
+    /// * `x.scalbn(0)` returns x
+    ///
+    /// This function always returns the precise result.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_exponent_methods)]
+    /// # #[cfg(target_has_reliable_f128_math)] {
+    ///
+    /// assert_eq!(3.0_f128.scalbn(4), 48_f128); // = 3 * 2.powi(4) = 48
+    /// assert_eq!(3.0_f128.scalbn(-1), 1.5_f128); // = 3 * 2.powi(-1) = 1.5
+    ///
+    /// assert_eq!(0.0_f128.scalbn(4), 0.0_f128);
+    /// assert_eq!(4.0_f128.scalbn(0), 4.0_f128);
+    ///
+    /// assert_eq!(f128::INFINITY.scalbn(4), f128::INFINITY);
+    /// assert_eq!(f128::NEG_INFINITY.scalbn(4), f128::NEG_INFINITY);
+    ///
+    /// assert!(f128::NAN.scalbn(4).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// [`powi`]: ../std/primitive.f128.html#method.powi
+    #[inline]
+    #[doc(alias = "ldexp")]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn scalbn(self, exponent: i32) -> f128 {
+        intrinsics::scalbn(self, exponent)
+    }
+
+    /// Extract the unbiased exponent of the input value, ignoring the sign.
+    ///
+    /// Returns `None` when `self` is NaN, [`i32::MIN`] when `self` is zero,
+    /// and [`i32::MAX`] when `self` is an infinity.
+    ///
+    /// For non-NaN values this will be close to `x.abs().log2() as i32` (typically within one),
+    /// though due to imprecision of `log2` this may not always be the case.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_exponent_methods)]
+    /// # #[cfg(target_has_reliable_f128_math)] {
+    ///
+    /// assert_eq!(8.0_f128.ilogb(), Some(3));
+    /// assert_eq!((-8.0_f128).ilogb(), Some(3));
+    ///
+    /// assert_eq!(15.0_f128.ilogb(), Some(3));
+    /// assert_eq!(16.0_f128.ilogb(), Some(4));
+    ///
+    /// assert_eq!(0.5_f128.ilogb(), Some(-1));
+    ///
+    /// assert_eq!(f128::INFINITY.ilogb(), Some(i32::MAX));
+    /// assert_eq!(0.0_f128.ilogb(), Some(i32::MIN));
+    /// assert_eq!(f128::NAN.ilogb(), None);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    pub const fn ilogb(self) -> Option<i32> {
+        if self.is_nan() {
+            None
+        } else if self == 0.0 {
+            Some(i32::MIN)
+        } else {
+            // SAFETY: the input is not zero or NaN.
+            Some(unsafe { intrinsics::ilogb(self) })
+        }
+    }
+
     /// Float addition that allows optimizations based on algebraic rules.
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
