@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{Span, Symbol};
@@ -65,11 +67,25 @@ pub(crate) struct OffloadManifestReadError {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "option `-o` or `--emit` is used to write binary output type `offload-info` to stdout, but stdout \
+     is a tty"
+)]
+pub(crate) struct BinaryOutputToTty;
+
+#[derive(Diagnostic)]
+#[diag("failed to copy `{$filename}` to stdout: {$err}")]
+pub(crate) struct FailedCopyToStdout {
+    pub filename: PathBuf,
+    pub err: std::io::Error,
+}
+
+#[derive(Diagnostic)]
 #[diag("generic offload kernel `{$def_path}` is not instantiated")]
 #[help(
     "with `-Zoffload=Device` (without a manifest), generic kernels are only discovered via \
     monomorphization; if this kernel is called from host code, pass \
-    `-Zoffload=Device=<manifest>`, using the manifest written by `-Zoffload=HostMetadata=<manifest>`"
+    `-Zoffload=Device=<manifest>`, using the manifest written by `--emit=offload-info`"
 )]
 pub(crate) struct GenericKernelNotInstantiated {
     #[primary_span]

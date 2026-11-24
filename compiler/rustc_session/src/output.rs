@@ -345,6 +345,14 @@ define_output_types! {
         is_text: false,
         compatible_with_cgus_and_single_output: false
     },
+    OffloadInfo => {
+        shorthand: "offload-info",
+        extension: "roffload",
+        description: "Generates a file containing info to be used during offload device compilation",
+        default_filename: "CRATE_NAME.roffload",
+        is_text: false,
+        compatible_with_cgus_and_single_output: true
+    },
     #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
     ThinLinkBitcode => {
         shorthand: "thin-link-bitcode",
@@ -438,6 +446,7 @@ impl OutputTypes {
             | OutputType::LlvmAssembly
             | OutputType::Mir
             | OutputType::Object
+            | OutputType::OffloadInfo // Needs mono collection, but not running the codegen backend
             | OutputType::Exe => true,
             OutputType::Metadata | OutputType::DepInfo => false,
         })
@@ -453,6 +462,7 @@ impl OutputTypes {
             | OutputType::Mir
             | OutputType::Metadata
             | OutputType::Object
+            | OutputType::OffloadInfo
             | OutputType::DepInfo => false,
             OutputType::Exe => true,
         })

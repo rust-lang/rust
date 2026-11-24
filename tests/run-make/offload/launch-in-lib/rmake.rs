@@ -14,6 +14,7 @@ fn main() {
         .arg("-Zunstable-options")
         .arg("-Zoffload=Host")
         .arg("-Csymbol-mangling-version=v0")
+        .emit("offload-info,link")
         .out_dir("host")
         .run();
 
@@ -32,9 +33,11 @@ fn main() {
         .input("main.rs")
         .extern_("launch", "host/liblaunch.rlib")
         .arg("-Zunstable-options")
-        .arg("-Zoffload=HostMetadata=host/main.roffload")
+        .arg("-Zoffload=Host")
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
+        .emit("offload-info")
+        .out_dir("host")
         .run();
 
     rustc()
@@ -46,6 +49,7 @@ fn main() {
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .emit("obj")
+        .out_dir("host")
         .run();
 
     assert!(object_contains_any_symbol_substring(
