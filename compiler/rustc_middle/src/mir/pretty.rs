@@ -574,8 +574,7 @@ impl Debug for VarDebugInfo<'_> {
 
 impl<'tcx> Debug for MirFormat<'_, &VarDebugInfo<'tcx>> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        let value = self.value;
-        let names = self.names;
+        let Self { value, names } = self;
         if let Some(VarDebugInfoFragment { ty, ref projection }) = value.composite {
             pre_fmt_projection(&projection[..], fmt)?;
             write!(fmt, "({}: {})", value.name, ty)?;
@@ -1906,13 +1905,18 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     write_hex_dump(tcx, alloc, w, prefix, std::convert::identity)
 }
 
-fn write_hex_dump<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes, D: Debug>(
+fn write_hex_dump<'tcx, P, E, B, D>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Prov, Extra, Bytes>,
+    alloc: &Allocation<P, E, B>,
     w: &mut dyn std::fmt::Write,
     prefix: &str,
-    pointer: impl Fn(Pointer<Prov>) -> D,
-) -> std::fmt::Result {
+    pointer: impl Fn(Pointer<P>) -> D,
+) -> std::fmt::Result
+where
+    P: Provenance,
+    B: AllocBytes,
+    D: Debug,
+{
     let num_lines = alloc.size().bytes_usize().saturating_sub(BYTES_PER_LINE);
     // Number of chars needed to represent all line numbers.
     let pos_width = hex_number_length(alloc.size().bytes());
