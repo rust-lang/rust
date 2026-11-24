@@ -2,7 +2,6 @@
 
 use rustc_type_ir::{
     TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-    data_structures::DelayedMap,
     inherent::{Const as _, Ty as _},
 };
 
@@ -20,15 +19,12 @@ use super::InferCtxt;
 /// points for correctness.
 pub struct OpportunisticVarResolver<'a, 'db> {
     infcx: &'a InferCtxt<'db>,
-    /// We're able to use a cache here as the folder does
-    /// not have any mutable state.
-    cache: DelayedMap<Ty<'db>, Ty<'db>>,
 }
 
 impl<'a, 'db> OpportunisticVarResolver<'a, 'db> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'db>) -> Self {
-        OpportunisticVarResolver { infcx, cache: Default::default() }
+        OpportunisticVarResolver { infcx }
     }
 }
 
@@ -41,13 +37,9 @@ impl<'a, 'db> TypeFolder<DbInterner<'db>> for OpportunisticVarResolver<'a, 'db> 
     fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
         if !t.has_non_region_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-        } else if let Some(ty) = self.cache.get(&t) {
-            *ty
         } else {
             let shallow = self.infcx.shallow_resolve(t);
-            let res = shallow.super_fold_with(self);
-            assert!(self.cache.insert(t, res));
-            res
+            shallow.super_fold_with(self)
         }
     }
 
