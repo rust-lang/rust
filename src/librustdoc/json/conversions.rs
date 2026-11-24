@@ -1126,6 +1126,7 @@ fn maybe_from_hir_attr(
                 masked,
                 notable_trait,
                 search_unbox,
+                disguise_sized_hierarchy,
                 html_favicon_url,
                 html_logo_url,
                 html_playground_url,
@@ -1209,6 +1210,7 @@ fn maybe_from_hir_attr(
                 }
             }
             toggle_attr(&mut ret, "search_unbox", search_unbox);
+            toggle_attr(&mut ret, "disguise_sized_hierarchy", disguise_sized_hierarchy);
             name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
             name_value_attr(&mut ret, "html_logo_url", html_logo_url);
             name_value_attr(&mut ret, "html_playground_url", html_playground_url);

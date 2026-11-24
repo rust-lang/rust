@@ -503,6 +503,7 @@ pub struct DocAttribute {
     pub search_unbox: Option<Span>,
 
     // valid on crate
+    pub disguise_sized_hierarchy: Option<Span>,
     pub html_favicon_url: Option<(Symbol, Span)>,
     pub html_logo_url: Option<(Symbol, Span)>,
     pub html_playground_url: Option<(Symbol, Span)>,
@@ -567,6 +568,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
             masked,
             notable_trait,
             search_unbox,
+            disguise_sized_hierarchy,
             html_favicon_url,
             html_logo_url,
             html_playground_url,
@@ -596,6 +598,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         rustc_serialize::Encodable::<E>::encode(masked, encoder);
         rustc_serialize::Encodable::<E>::encode(notable_trait, encoder);
         rustc_serialize::Encodable::<E>::encode(search_unbox, encoder);
+        rustc_serialize::Encodable::<E>::encode(disguise_sized_hierarchy, encoder);
         rustc_serialize::Encodable::<E>::encode(html_favicon_url, encoder);
         rustc_serialize::Encodable::<E>::encode(html_logo_url, encoder);
         rustc_serialize::Encodable::<E>::encode(html_playground_url, encoder);

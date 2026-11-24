@@ -862,6 +862,7 @@ symbols! {
         discriminant_kind,
         discriminant_type,
         discriminant_value,
+        disguise_sized_hierarchy,
         disjoint_bitor,
         dispatch_from_dyn,
         div,
