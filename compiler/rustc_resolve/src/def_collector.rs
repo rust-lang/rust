@@ -170,25 +170,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
 
-                // FIXME(jdonszelmann) make one of these in the resolver?
-                // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
-                // Does that prevents errors from happening? maybe
-                let mut parser = AttributeParser::new(
+                let attrs = AttributeParser::parse_limited_all(
                     &self.r.tcx.sess,
-                    self.r.features,
-                    self.r.tcx().registered_attr_tools(()),
-                    ShouldEmit::Nothing,
-                );
-                let attrs = parser.parse_attribute_list(
                     &i.attrs,
-                    i.span,
+                    None,
                     AstTarget::from_ast_item(&i.kind),
-                    std::convert::identity,
-                    |_lint_id, _span, _kind| {
-                        // FIXME(jdonszelmann): emit lints here properly
-                        // NOTE that before new attribute parsing, they didn't happen either
-                        // but it would be nice if we could change that.
-                    },
+                    i.span,
+                    i.id,
+                    Some(self.r.features),
+                    ShouldEmit::Nothing,
+                    Some(self.r.tcx().registered_attr_tools(())),
+                    Some(self.r.tcx().registered_lint_tools(())),
                 );
 
                 let ext = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);

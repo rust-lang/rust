@@ -6,6 +6,8 @@
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
+#![feature(register_tool)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;

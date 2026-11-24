@@ -41,6 +41,7 @@ pub struct EmitAttribute(
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess> {
     pub(crate) attr_tools: Option<&'sess RegisteredTools>,
+    pub(crate) lint_tools: Option<&'sess RegisteredTools>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
     pub(crate) should_emit: ShouldEmit,
@@ -68,6 +69,7 @@ impl<'sess> AttributeParser<'sess> {
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
     ///
     /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
+    #[inline]
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -86,6 +88,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This does the same as `parse_limited`, except that it takes a fixed symbol instead of a
     /// filter.
+    #[inline]
     pub fn parse_limited_sym(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -98,6 +101,7 @@ impl<'sess> AttributeParser<'sess> {
     /// Usually you want `parse_limited`, which emits no errors.
     ///
     /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
+    #[inline]
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -116,6 +120,7 @@ impl<'sess> AttributeParser<'sess> {
             features,
             should_emit,
             None,
+            None,
         );
         assert!(parsed.len() <= 1);
         parsed.pop()
@@ -123,6 +128,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This does the same as `parse_limited_should_emit`, except that it takes a fixed symbol
     /// instead of a filter.
+    #[inline]
     pub fn parse_limited_sym_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -145,9 +151,8 @@ impl<'sess> AttributeParser<'sess> {
     /// This can be used for attributes that would be removed before `rustc_ast_lowering`, such as attributes on macro calls.
     ///
     /// Try to use this as little as possible. Attributes *should* be lowered during
-    /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
-    /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
-    /// Therefore, if `parse_filter` is None, then features *must* be provided.
+    /// `rustc_ast_lowering`.
+    #[inline]
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -158,8 +163,18 @@ impl<'sess> AttributeParser<'sess> {
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
         attr_tools: Option<&'sess RegisteredTools>,
+        lint_tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
-        let mut p = AttributeParser { features, attr_tools, parse_filter, sess, should_emit };
+        if attrs.len() == 0 {
+            return vec![];
+        }
+
+        // Some attributes require access to features to parse.
+        // Therefore, if `parse_filter` is None, then features *must* be provided.
+        assert!(parse_filter.is_some() || features.is_some());
+
+        let mut p =
+            AttributeParser { features, attr_tools, lint_tools, parse_filter, sess, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -173,6 +188,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This method parses a single attribute, using `parse_fn`.
     /// This is useful if you already know what exact attribute this is, and want to parse it.
+    #[inline]
     pub fn parse_single<T>(
         sess: &'sess Session,
         attr: &ast::Attribute,
@@ -219,6 +235,7 @@ impl<'sess> AttributeParser<'sess> {
 
     /// This method is equivalent to `parse_single`, but parses arguments using `parse_fn` using manually created `args`.
     /// This is useful when you want to parse other things than attributes using attribute parsers.
+    #[inline]
     pub fn parse_single_args<T, I>(
         sess: &'sess Session,
         attr_span: Span,
@@ -237,7 +254,14 @@ impl<'sess> AttributeParser<'sess> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser = Self { features, attr_tools: None, parse_filter: None, sess, should_emit };
+        let mut parser = Self {
+            features,
+            attr_tools: None,
+            lint_tools: None,
+            parse_filter: None,
+            sess,
+            should_emit,
+        };
         let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| {
             sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
         };
@@ -280,11 +304,13 @@ impl<'sess> AttributeParser<'sess> {
         sess: &'sess Session,
         features: &'sess Features,
         attr_tools: &'sess RegisteredTools,
+        lint_tools: &'sess RegisteredTools,
         should_emit: ShouldEmit,
     ) -> Self {
         Self {
             features: Some(features),
             attr_tools: Some(attr_tools),
+            lint_tools: Some(lint_tools),
             parse_filter: None,
             sess,
             should_emit,

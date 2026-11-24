@@ -514,26 +514,10 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     LLVMRustSetLastError(ErrorInfo.c_str());
     return LLVMRustResult::Failure;
   }
+  auto BOS = buffer_ostream(OS);
 
   std::unique_ptr<llvm::raw_pwrite_stream> DwoOS = nullptr;
   std::unique_ptr<llvm::raw_pwrite_stream> BDwoOS = nullptr;
-  auto BOS = buffer_ostream(OS);
-
-  if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
-    assert(
-        TpdeOptions.plugin &&
-        "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
-    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
-    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
-      return LLVMRustResult::Success;
-    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
-      std::string error = "Failed to compile module " +
-                          unwrap(M)->getModuleIdentifier() + " with TPDE";
-      LLVMRustSetLastError(error.c_str());
-      return LLVMRustResult::Failure;
-    }
-  }
-
   if (DwoPath) {
     DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
     if (EC) {
@@ -546,6 +530,28 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
     }
     if (DwoOS)
       BDwoOS = std::make_unique<llvm::buffer_ostream>(*DwoOS);
+  }
+
+  if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
+    assert(
+        TpdeOptions.plugin &&
+        "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
+    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+#if LLVM_VERSION_GE(24, 0)
+    if (plugin.PreCodeGenCallback(*unwrap(Target), *unwrap(M), BOS,
+                                  BDwoOS.get(), FileType, !VerifyIR,
+                                  DisableSimplifyLibCalls, /*MSI=*/nullptr,
+                                  vfs::getRealFileSystem())) {
+#else
+    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+#endif
+      return LLVMRustResult::Success;
+    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+      std::string error = "Failed to compile module " +
+                          unwrap(M)->getModuleIdentifier() + " with TPDE";
+      LLVMRustSetLastError(error.c_str());
+      return LLVMRustResult::Failure;
+    }
   }
 
 #if LLVM_VERSION_GE(24, 0)

@@ -3,32 +3,10 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "hurd")))]
-use libc::off_t as off64_t;
-#[cfg(any(target_os = "android", target_os = "linux", target_os = "hurd"))]
-use libc::off64_t;
-
 cfg_select! {
     target_os = "vxworks" => {
         // VxWorks does not have pread/pwrite.
         // See <https://github.com/rust-lang/libc/issues/5328>.
-        pub unsafe fn pread64(
-            _fd: libc::c_int,
-            _buf: *mut libc::c_void,
-            _count: libc::size_t,
-            _offset: off64_t,
-        ) -> libc::ssize_t {
-            -1
-        }
-
-        pub unsafe fn pwrite64(
-            _fd: libc::c_int,
-            _buf: *const libc::c_void,
-            _count: libc::size_t,
-            _offset: off64_t,
-        ) -> libc::ssize_t {
-            -1
-        }
     }
     any(
         all(target_os = "linux", not(target_env = "musl")),
@@ -37,10 +15,10 @@ cfg_select! {
     ) => {
         // Prefer explicit pread64 for 64-bit offset independently of libc
         // #[cfg(gnu_file_offset_bits64)].
-        use libc::{pread64, pwrite64};
+        use libc::{off64_t, pread64, pwrite64};
     }
     _ => {
-        use libc::{pread as pread64, pwrite as pwrite64};
+        use libc::{off_t as off64_t, pread as pread64, pwrite as pwrite64};
     }
 }
 
@@ -179,6 +157,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    #[cfg(not(target_os = "vxworks"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         cvt(unsafe {
             pread64(
@@ -189,6 +168,11 @@ impl FileDesc {
             )
         })
         .map(|n| n as usize)
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn read_at(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+        Err(io::Error::UNSUPPORTED_PLATFORM)
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
@@ -208,6 +192,7 @@ impl FileDesc {
         Ok(())
     }
 
+    #[cfg(not(target_os = "vxworks"))]
     pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
@@ -224,6 +209,11 @@ impl FileDesc {
             cursor.advance(ret as usize);
         }
         Ok(())
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn read_buf_at(&self, _cursor: BorrowedCursor<'_, u8>, _offset: u64) -> io::Result<()> {
+        Err(io::Error::UNSUPPORTED_PLATFORM)
     }
 
     #[cfg(any(
@@ -412,6 +402,7 @@ impl FileDesc {
         )))
     }
 
+    #[cfg(not(target_os = "vxworks"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         unsafe {
             cvt(pwrite64(
@@ -422,6 +413,11 @@ impl FileDesc {
             ))
             .map(|n| n as usize)
         }
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn write_at(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+        Err(io::Error::UNSUPPORTED_PLATFORM)
     }
 
     #[cfg(any(

@@ -34,7 +34,8 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{OptLevel, OutputType, TargetModifier};
+use rustc_session::config::{OptLevel, TargetModifier};
+use rustc_session::output::OutputType;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::{
     HygieneEncodeContext, HygieneRemapper, HygieneRemappingResults, LocalExpnIdRemapper,
@@ -1189,6 +1190,9 @@ fn should_encode_mir(
         DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+            if tcx.is_intrinsic_that_must_be_overridden(def_id) {
+                return (false, false);
+            }
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (reachable_set.is_some_and(|reachable_set| reachable_set.contains(&def_id))
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)

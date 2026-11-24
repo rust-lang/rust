@@ -424,6 +424,7 @@ impl f64 {
         MANTISSA_MASK = 0x000f_ffff_ffff_ffff,
         exponent_bias = 1023,
         assoc_int_consts = #[stable(feature = "assoc_int_consts", since = "1.43.0")],
+        float_bits_const = #[stable(feature = "float_bits_const", since = "CURRENT_RUSTC_VERSION")],
     }
 
     /// Returns `true` if this value is NaN.

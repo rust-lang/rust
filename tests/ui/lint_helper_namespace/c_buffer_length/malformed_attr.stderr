@@ -1,0 +1,14 @@
+error: `#[lint::c_buffer_length]` expects two distinct parameter names
+  --> $DIR/malformed_attr.rs:4:1
+   |
+LL | #[lint::c_buffer_length]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[lint::c_buffer_length]` expects two distinct parameter names
+  --> $DIR/malformed_attr.rs:8:1
+   |
+LL | #[lint::c_buffer_length(buffer, buffer)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

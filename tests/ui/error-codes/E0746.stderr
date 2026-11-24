@@ -1,39 +1,145 @@
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/E0746.rs:8:13
+  --> $DIR/E0746.rs:11:25
    |
-LL | fn foo() -> dyn Trait { Struct }
-   |             ^^^^^^^^^ doesn't have a size known at compile-time
+LL | fn implicit_return() -> dyn Trait {
+   |                         ^^^^^^^^^ doesn't have a size known at compile-time
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL - fn foo() -> dyn Trait { Struct }
-LL + fn foo() -> impl Trait { Struct }
+LL - fn implicit_return() -> dyn Trait {
+LL + fn implicit_return() -> impl Trait {
    |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
-LL | fn foo() -> Box<dyn Trait> { Box::new(Struct) }
-   |             ++++         +   +++++++++      +
+LL ~ fn implicit_return() -> Box<dyn Trait> {
+LL |
+LL ~     Box::new(Struct)
+   |
 
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/E0746.rs:11:13
+  --> $DIR/E0746.rs:16:26
    |
-LL | fn bar() -> dyn Trait {
-   |             ^^^^^^^^^ doesn't have a size known at compile-time
+LL | fn return_in_branch() -> dyn Trait {
+   |                          ^^^^^^^^^ doesn't have a size known at compile-time
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL - fn bar() -> dyn Trait {
-LL + fn bar() -> impl Trait {
+LL - fn return_in_branch() -> dyn Trait {
+LL + fn return_in_branch() -> impl Trait {
    |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
-LL ~ fn bar() -> Box<dyn Trait> {
+LL ~ fn return_in_branch() -> Box<dyn Trait> {
+LL |
 LL |     if true {
 LL ~         return Box::new(0);
 LL |     }
 LL ~     Box::new(42)
    |
 
-error: aborting due to 2 previous errors
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:27:36
+   |
+LL | fn return_in_tail_loop(c: bool) -> dyn Trait {
+   |                                    ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn return_in_tail_loop(c: bool) -> dyn Trait {
+LL + fn return_in_tail_loop(c: bool) -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn return_in_tail_loop(c: bool) -> Box<dyn Trait> {
+LL |
+LL |     loop {
+LL |         if c {
+LL ~             return Box::new(1u32);
+   |
 
-For more information about this error, try `rustc --explain E0746`.
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:36:38
+   |
+LL | fn return_nested_in_leaf(c: bool) -> dyn Trait {
+   |                                      ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn return_nested_in_leaf(c: bool) -> dyn Trait {
+LL + fn return_nested_in_leaf(c: bool) -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn return_nested_in_leaf(c: bool) -> Box<dyn Trait> {
+LL |
+LL |     let identity = |x| x;
+LL ~     Box::new(identity(if c { return Box::new(1u32) } else { 2u32 }))
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:42:29
+   |
+LL | fn labeled_block_break() -> dyn Trait {
+   |                             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn labeled_block_break() -> dyn Trait {
+LL + fn labeled_block_break() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn labeled_block_break() -> Box<dyn Trait> {
+LL |
+LL |     'a: {
+LL ~         break 'a Box::new(1u32);
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:49:26
+   |
+LL | fn loop_break_value() -> dyn Trait {
+   |                          ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn loop_break_value() -> dyn Trait {
+LL + fn loop_break_value() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn loop_break_value() -> Box<dyn Trait> {
+LL |
+LL |     loop {
+LL ~         break Box::new(1u32);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/E0746.rs:45:18
+   |
+LL |         break 'a 1u32;
+   |                  ^^^^ expected `dyn Trait`, found `u32`
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                      found type `u32`
+   = help: `u32` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+
+error[E0308]: mismatched types
+  --> $DIR/E0746.rs:52:15
+   |
+LL | fn loop_break_value() -> dyn Trait {
+   |                          --------- expected `dyn Trait` because of this return type
+LL |
+LL |     loop {
+   |     ---- this loop is expected to be of type `(dyn Trait + 'static)`
+LL |         break 1u32;
+   |               ^^^^ expected `dyn Trait`, found `u32`
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                      found type `u32`
+   = help: `u32` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0746.
+For more information about an error, try `rustc --explain E0308`.

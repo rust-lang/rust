@@ -2448,6 +2448,9 @@ unsafe extern "C" {
         BD: c_uint,
     ) -> Option<&'a DILocation>;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
+    pub(crate) fn LLVMRustGetDISubprogram<'a>(Scope: &'a DIScope) -> &'a DISubprogram;
+
     pub(crate) fn LLVMRustWriteTypeToString<'ll>(Type: Type<'ll>, s: &RustString);
     pub(crate) fn LLVMRustWriteValueToString<'ll>(value_ref: Value<'ll>, s: &RustString);
 

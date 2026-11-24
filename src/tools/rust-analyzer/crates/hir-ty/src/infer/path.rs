@@ -152,7 +152,7 @@ impl<'db> InferenceContext<'db> {
         // Don't use `self.make_ty()` here as we need `orig_ns`.
         let mut vars_ctx = InferenceTyLoweringVarsCtx {
             table: &mut self.table,
-            type_of_type_placeholder: &mut self.result.type_of_type_placeholder,
+            term_of_term_placeholders: &mut self.result.term_of_term_placeholders,
         };
         let mut ctx = TyLoweringContext::new(
             self.db,

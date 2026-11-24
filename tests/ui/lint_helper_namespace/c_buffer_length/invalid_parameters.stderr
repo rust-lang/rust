@@ -1,0 +1,34 @@
+error: invalid parameter `buffer` in `lint::c_buffer_length`
+  --> $DIR/invalid_parameters.rs:4:25
+   |
+LL | #[lint::c_buffer_length(buffer, length)]
+   |                         ^^^^^^
+   |
+   = help: the buffer parameter must have a raw pointer type
+
+error: invalid parameter `length` in `lint::c_buffer_length`
+  --> $DIR/invalid_parameters.rs:8:33
+   |
+LL | #[lint::c_buffer_length(buffer, length)]
+   |                                 ^^^^^^
+   |
+   = help: the length parameter must have an integer type
+
+error: invalid parameter `missing` in `lint::c_buffer_length`
+  --> $DIR/invalid_parameters.rs:12:25
+   |
+LL | #[lint::c_buffer_length(missing, length)]
+   |                         ^^^^^^^
+   |
+   = help: the name must refer to a parameter of this function
+
+error: invalid parameter `missing` in `lint::c_buffer_length`
+  --> $DIR/invalid_parameters.rs:16:33
+   |
+LL | #[lint::c_buffer_length(buffer, missing)]
+   |                                 ^^^^^^^
+   |
+   = help: the name must refer to a parameter of this function
+
+error: aborting due to 4 previous errors
+

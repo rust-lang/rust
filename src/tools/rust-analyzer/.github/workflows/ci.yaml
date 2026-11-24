@@ -31,6 +31,8 @@ jobs:
       typescript: ${{ steps.filter.outputs.typescript }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
         with:
@@ -52,6 +54,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Install rustup-toolchain-install-master
         run: cargo install --locked rustup-toolchain-install-master@1.11.0
@@ -95,6 +98,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Install Rust toolchain
         run: |
@@ -145,6 +149,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         run: |
@@ -173,6 +179,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         run: |
@@ -189,6 +197,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       # Note that clippy output is currently dependent on whether rust-src is installed,
       # https://github.com/rust-lang/rust-clippy/issues/14625
@@ -211,6 +221,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         run: |
@@ -241,19 +253,27 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup target add ${{ matrix.target }}
+          rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       # - name: Cache Dependencies
       #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
-      - run: cargo check --target=${{ matrix.target }} --all-targets -p ide
+      - run: cargo check --target=${TARGET} --all-targets -p ide
         if: ${{ matrix.ide-only }}
-      - run: cargo check --target=${{ matrix.target }} --all-targets
+        env:
+          TARGET: ${{ matrix.target }}
+      - run: cargo check --target=${TARGET} --all-targets
         if: ${{ !matrix.ide-only }}
+        env:
+          TARGET: ${{ matrix.target }}
 
   typescript:
     needs: changes
@@ -269,6 +289,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Nodejs
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -330,6 +352,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: check for typos
         run: typos
@@ -360,9 +383,11 @@ jobs:
       - name: Conclusion
         run: |
           # Print the dependent jobs to see them in the CI log
-          jq -C <<< '${{ toJson(needs) }}'
+          jq -C <<< "${JSON_NEEDS}"
           # Check if all jobs that we depend on (in the needs array) were successful (or have been skipped).
-          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
+          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< "${JSON_NEEDS}"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
 
   cancel-if-matrix-failed:
     needs: rust
@@ -371,13 +396,16 @@ jobs:
     steps:
       - name: Cancel parallel jobs
         run: |
-          if jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'; then
+          if jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< "${JSON_NEEDS}"; then
             exit 0
           fi
           # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#cancel-a-workflow-run
           curl -L \
           -X POST \
           -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Authorization: Bearer ${GITHUB_TOKEN}" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/cancel"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

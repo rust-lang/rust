@@ -1,4 +1,5 @@
 //@ known-bug: #154367
+//@ compile-flags: -Znext-solver
 //@ compile-flags: -Copt-level=0
 #![feature(unsafe_binders)]
 

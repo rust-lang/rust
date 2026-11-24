@@ -74,7 +74,7 @@ where
 
         let mut c = match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
-                Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Bool | Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
                 Primitive::Float(Float::X87F80) => Class::X87,
                 Primitive::Float(_) => Class::Sse,
             },

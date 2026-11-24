@@ -285,7 +285,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
         match self.typeck_results().expr_ty_adjusted(lhs).kind() {
-            ty::Adt(def, _) => {
+            ty::Adt(def, _) | ty::View(def, _, _) => {
                 let index = self.typeck_results().field_index(hir_id);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }

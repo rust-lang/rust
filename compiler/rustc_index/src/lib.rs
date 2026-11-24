@@ -2,6 +2,8 @@
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(all(feature = "nightly", test), feature(test))]
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait))]
+#![cfg_attr(feature = "nightly", feature(register_tool))]
+#![cfg_attr(feature = "nightly", register_tool(lint))]
 // tidy-alphabetical-end
 
 pub mod bit_set;

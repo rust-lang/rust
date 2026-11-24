@@ -44,22 +44,22 @@ use rustc_interface::passes::collect_crate_types;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
-use rustc_lint_defs::{Lint, LintId};
+use rustc_lint_defs::{Lint, LintId, LintName};
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
-    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
+    CG_OPTIONS, Input, OptionDesc, OutFileName, Sysroot, UnstableOptions, Z_OPTIONS,
+    nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
-use rustc_session::output::invalid_output_for_target;
+use rustc_session::output::{ErrorOutputType, OutputType, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, FileName};
-use rustc_structures::{CrateType, LintName};
+use rustc_structures::CrateType;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -323,7 +323,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 return None;
             }
 
-            tcx.ensure_ok().analysis(());
+            rustc_interface::passes::full_analysis(tcx);
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return None;
@@ -336,14 +336,6 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
             }
 
             let metadata = passes::finish_and_emit_metadata(tcx);
-
-            // Don't do code generation if there were any errors. Likewise if
-            // there were any delayed bugs, because codegen will likely cause
-            // more ICEs, obscuring the original problem.
-            if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-                guar.raise_fatal();
-            }
-
             let linker = Linker::codegen_and_build_linker(tcx, codegen_backend, metadata);
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {

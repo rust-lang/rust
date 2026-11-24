@@ -87,6 +87,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
 
+    fn new_view(interner: I, adt_def: I::AdtDef, args: I::GenericArgs, fields: I::Ty) -> Self;
+
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
     fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: Region<I>) -> Self;
@@ -765,5 +767,5 @@ pub trait ScalarInt<I: Interner>: Copy + Debug + Hash + Eq {
 pub trait TypingEnv<I: Interner>: Copy + Clone + Debug + PartialEq + Eq + Hash {
     fn fully_monomorphized() -> Self;
     fn layout_size(self, interner: I, ty: I::Ty) -> Size;
-    fn post_analysis(interner: I, def_id: I::DefId) -> Self;
+    fn post_analysis_no_rigid_aliases(interner: I, def_id: I::DefId) -> Self;
 }

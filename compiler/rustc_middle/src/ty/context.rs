@@ -919,7 +919,8 @@ pub struct GlobalCaches<'tcx> {
 ///   possible.
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
@@ -1621,7 +1622,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
         // Depend on the `analysis` query to ensure compilation if finished.
-        self.ensure_ok().analysis(());
+        self.ensure_ok().required_analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -1642,7 +1643,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn definitions(self) -> &'tcx rustc_hir::definitions::Definitions {
         // Depend on the `analysis` query to ensure compilation if finished.
-        self.ensure_ok().analysis(());
+        self.ensure_ok().required_analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -2598,6 +2599,41 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// with `cfg(debug_assertions)`, assert that the encoded representation of viewed fields is
+    /// valid for a given ADT, and ICEs if not.
+    pub fn debug_assert_encoded_viewed_fields_compatible(
+        self,
+        base_def: AdtDef<'tcx>,
+        base_args: ty::GenericArgs<'tcx>,
+        fields: Ty<'tcx>,
+    ) {
+        if cfg!(debug_assertions) {
+            let base_ty = Ty::new_adt(self, base_def, base_args);
+
+            let ty::Tuple(fields) = fields.kind() else {
+                bug!("incompatible encoded viewed fields type: {fields:?}");
+            };
+
+            for field in *fields {
+                let frt_args = match field.kind() {
+                    ty::Adt(def, args)
+                        if def.flags().contains(ty::AdtFlags::IS_FIELD_REPRESENTING_TYPE) =>
+                    {
+                        args
+                    }
+                    _ => bug!("malformed encoded viewed field type: {field:?}"),
+                };
+
+                let referred_ty = frt_args[0].as_type().expect("first FRT arg is type");
+
+                assert_eq!(
+                    referred_ty, base_ty,
+                    "viewed field ({referred_ty:?}) does not refer to the base type ({base_ty:?})"
+                );
+            }
+        }
+    }
+
     fn emit_bug_args_compatible(
         self,
         def_id: DefId,
@@ -3145,6 +3181,14 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Fn | DefKind::AssocFn => self.intrinsic_raw(def_id),
             _ => None,
         }
+    }
+
+    /// We cannot fetch MIR for such intrinsics, but for compiler simplicity we still treat them
+    /// as having HIR bodies, causing various code to try to load the MIR for them.
+    /// This function is used to guard against loading such MIR and instead using fallback behaviour
+    /// as appropriate at the call sites.
+    pub fn is_intrinsic_that_must_be_overridden(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        self.intrinsic(def_id).is_some_and(|i| i.must_be_overridden)
     }
 
     pub fn next_trait_solver_globally(self) -> bool {

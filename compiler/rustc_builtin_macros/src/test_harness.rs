@@ -315,7 +315,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
         ecx.item(sp, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None, test_ident));
 
     // #[rustc_main]
-    let main_attr = ecx.attr_word(sym::rustc_main, sp);
+    let main_attr = ecx.generated_attr(sp, GeneratedAttr::RustcMain);
     // #[coverage(off)]
     let coverage_attr = ecx.generated_attr(sp, GeneratedAttr::CoverageOff);
     // #[doc(hidden)]

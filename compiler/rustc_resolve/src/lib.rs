@@ -16,8 +16,10 @@
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(option_into_flat_iter)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use std::cell::RefMut;
@@ -738,17 +740,20 @@ struct ModuleData<'ra> {
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
 /// they have the same contents.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 
 /// Same as `Module`, but is guaranteed to be from the current crate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 struct LocalModule<'ra>(Interned<'ra, ModuleData<'ra>>);
 
 /// Same as `Module`, but is guaranteed to be from an external crate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 struct ExternModule<'ra>(Interned<'ra, ModuleData<'ra>>);
 
 impl<'ra> ModuleData<'ra> {
