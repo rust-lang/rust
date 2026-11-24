@@ -371,8 +371,6 @@ generate! {
     i8_legacy_fn_min_value,
     i8_legacy_mod,
     ilog,
-    include_bytes_macro,
-    include_str_macro,
     insert,
     insert_str,
     inspect,
