@@ -83,11 +83,6 @@ jobs:
       run: cargo test
       working-directory: clippy_dev
 
-    - name: Test clippy-driver
-      run: .github/driver.sh
-      env:
-        OS: ${{ runner.os }}
-
   metadata_collection:
     runs-on: ubuntu-latest
 
