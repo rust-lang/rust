@@ -1,0 +1,2 @@
+error: `-C linker-features=-lld` is unstable on the `loongarch64-unknown-linux-musl` target. The `-Z unstable-options` flag must also be passed to use it on this target
+
