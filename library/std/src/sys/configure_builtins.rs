@@ -16,8 +16,7 @@
 ///
 /// To save startup time, the initializer is only run if outline atomic routines from
 /// compiler-builtins may be used. If LSE is known to be available then the calls are never
-/// emitted, and if we build the C intrinsics then it has its own initializer using the symbol
-/// `__aarch64_have_lse_atomics`.
+/// emitted.
 ///
 /// Initialization is done in a global constructor to so we get the same behavior regardless of
 /// whether Rust's `init` is used, or if we are in a `dylib` or `no_main` situation (as opposed
@@ -34,7 +33,6 @@
     target_arch = "aarch64",
     target_feature = "outline-atomics",
     not(target_feature = "lse"),
-    not(feature = "compiler-builtins-c"),
 ))]
 #[used]
 #[cfg_attr(target_vendor = "apple", unsafe(link_section = "__DATA,__mod_init_func,mod_init_funcs"))]
