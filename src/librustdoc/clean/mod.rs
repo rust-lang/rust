@@ -310,7 +310,7 @@ fn clean_generic_bound<'tcx>(
                 return sizedness.to_bound_where(default_sizedness, cx);
             }
 
-            if !cx.disguise_sized_hierarchy
+            if cx.sized_hierarchy
                 && let Some(LangItem::Sized) = lang_item
                 && let hir::BoundPolarity::Maybe(_) = t.modifiers.polarity
             {
@@ -2543,13 +2543,13 @@ impl Sizedness {
     }
 
     fn to_bound_where(mut self, default: Self, cx: &DocContext<'_>) -> Option<GenericBound> {
-        if cx.disguise_sized_hierarchy && self == Self::PointeeSized {
+        if !cx.sized_hierarchy && self == Self::PointeeSized {
             self = Self::MetaSized;
         }
         if self == default {
             return None;
         }
-        if cx.disguise_sized_hierarchy
+        if !cx.sized_hierarchy
             && let Self::MetaSized = self
         {
             return Some(GenericBound::maybe_sized(cx));
