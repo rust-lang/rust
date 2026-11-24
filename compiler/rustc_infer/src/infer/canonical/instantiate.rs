@@ -8,7 +8,7 @@
 
 use rustc_macros::extension;
 use rustc_middle::ty::{
-    self, DelayedMap, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_type_ir::PredicateProxy;
@@ -64,11 +64,7 @@ where
         return value;
     }
 
-    value.fold_with(&mut CanonicalInstantiator {
-        tcx,
-        var_values: var_values.var_values,
-        cache: Default::default(),
-    })
+    value.fold_with(&mut CanonicalInstantiator { tcx, var_values: var_values.var_values })
 }
 
 /// Replaces the bound vars in a canonical binder with var values.
@@ -77,10 +73,6 @@ struct CanonicalInstantiator<'tcx> {
 
     // The values that the bound vars are are being instantiated with.
     var_values: ty::GenericArgs<'tcx>,
-
-    // Because we use `ty::BoundVarIndexKind::Canonical`, we can cache
-    // based only on the entire ty, not worrying about a `DebruijnIndex`
-    cache: DelayedMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
@@ -96,12 +88,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
             _ => {
                 if !t.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
                     t
-                } else if let Some(&t) = self.cache.get(&t) {
-                    t
                 } else {
-                    let res = t.super_fold_with(self);
-                    assert!(self.cache.insert(t, res));
-                    res
+                    t.super_fold_with(self)
                 }
             }
         }
