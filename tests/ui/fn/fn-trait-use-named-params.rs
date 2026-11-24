@@ -6,7 +6,7 @@ fn f2(_: impl Fn(#[inline] x: u8)) {}
 fn f3(_: impl Fn(#[cfg_attr(true, inline)] a1: usize)) {}
 //~^ ERROR the `inline` attribute cannot be used on function params
 fn f4(_: impl Fn(/** */ x: u8)) {}
-//~^ ERROR documentation comments cannot be applied to function parameters
+//~^ ERROR unused doc comment
 
 fn f5(_: impl Fn(#[forbid(non_snake_case)] NON_SNAKE: u8)) {}
 fn f6(_: impl Fn(#[forbid(keyword_idents_2024)] gen: u8)) {}
