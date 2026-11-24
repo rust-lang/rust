@@ -87,10 +87,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::intrinsics::reflection::{type_id, type_id_vtable};
-use crate::intrinsics::{self};
+use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
-use crate::{fmt, hash, ptr};
+use crate::{fmt, hash, intrinsics, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -741,6 +741,9 @@ unsafe impl Sync for TypeId {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl PartialEq for TypeId {
+    // NB: `TypeId: StructuralPartialEq` and like `str`,
+    // the compiler uses this method to compare constants in patterns.
+    // Do not make nontrivial changes to this method without proper consideration of match logic.
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         crate::intrinsics::reflection::type_id_eq(*self, *other)
@@ -872,6 +875,13 @@ impl fmt::Debug for TypeId {
         write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
+
+#[unstable(feature = "type_id_structural_match", issue = "none")]
+#[unstable_feature_bound(type_id_structural_match)]
+impl StructuralPartialEq for TypeId {}
+#[unstable(feature = "type_id_structural_match", issue = "none")]
+#[unstable_feature_bound(type_id_structural_match)]
+impl ConstParamTy_ for TypeId {}
 
 /// Returns the name of a type as a string slice.
 ///

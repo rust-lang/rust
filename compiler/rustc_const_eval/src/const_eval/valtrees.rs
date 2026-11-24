@@ -1,4 +1,5 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
+use rustc_attr_ir::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
@@ -175,6 +176,9 @@ fn const_to_valtree_inner<'tcx>(
                 Err(ValTreeCreationError::NonSupportedType(ty))
             } else if def.variants().is_empty() {
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
+            } else if tcx.is_lang_item(def.did(), LangItem::TypeId) {
+                let ty = ecx.read_type_id(place).report_err()?;
+                Ok(ty::ValTree::from_type_id(tcx, ty))
             } else {
                 let variant = ecx.read_discriminant(place).report_err()?;
                 branches(
@@ -336,7 +340,7 @@ pub fn valtree_to_const_value<'tcx>(
             }
             if layout.backend_repr.is_scalar()
                 && (matches!(cv.ty.kind(), ty::Tuple(_))
-                    || matches!(cv.ty.kind(), ty::Adt(def, _) if def.is_struct()))
+                    || matches!(cv.ty.kind(), ty::Adt(def, _) if def.is_struct() && !tcx.is_lang_item(def.did(), LangItem::TypeId)))
             {
                 // A Scalar tuple/struct; we can avoid creating an allocation.
                 let branches = cv.to_branch();
@@ -431,6 +435,17 @@ fn valtree_into_mplace<'tcx>(
             let imm = valtree_to_ref(ecx, valtree, *inner_ty);
             debug!(?imm);
             ecx.write_immediate(imm, place).unwrap();
+        }
+        ty::Adt(def, _) if ecx.tcx.is_lang_item(def.did(), LangItem::TypeId) => {
+            let ty::ValTreeKind::TypeId(ty, _) = **valtree else {
+                bug!("expected a TypeId valtree");
+            };
+
+            // Need to create a place for this valtree.
+            ecx.write_type_id(ty, place).unwrap();
+
+            debug!("dump of place after writing type id:");
+            dump_place(ecx, place);
         }
         ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
             let branches = valtree.to_branch();

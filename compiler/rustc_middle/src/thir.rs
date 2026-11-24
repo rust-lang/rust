@@ -846,6 +846,7 @@ pub enum PatKind<'tcx> {
     ///   much simpler.
     /// * raw pointers derived from integers, other raw pointers will have already resulted in an
     ///   error.
+    /// * `TypeId`s to unify them across ctfe and runtime.
     Constant {
         value: ty::Value<'tcx>,
     },

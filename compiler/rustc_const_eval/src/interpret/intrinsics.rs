@@ -141,12 +141,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Read a value of type `TypeId`, returning the type it represents.
     pub(crate) fn read_type_id(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Ty<'tcx>> {
         // `TypeId` is a newtype around an array of pointers. All pointers must have the same
         // provenance, and that provenance represents the type.
         let ptr_size = self.pointer_size().bytes_usize();
-        let arr = self.project_field(op, FieldIdx::ZERO)?;
+        let arr = self.project_field(src, FieldIdx::ZERO)?;
 
         let mut ty_and_hash = None;
         let mut elem_iter = self.project_array_fields(&arr)?;

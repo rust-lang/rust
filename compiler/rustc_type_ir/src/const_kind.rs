@@ -229,7 +229,7 @@ pub enum ConstEvalErr<I: Interner> {
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
-#[derive_where(Clone, Copy, Debug, Hash, Eq, PartialEq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -249,6 +249,26 @@ pub enum ValTreeKind<I: Interner> {
     ///
     /// ZST types are represented as an empty slice.
     Branch(I::Consts),
+
+    /// `core::any::TypeId` values.
+    ///
+    /// Stores the actual `I::Ty` so that valtree-to-const can annotate values with the appropriate provenance.
+    ///
+    /// Also stores an inner type which transparently contains some representation of the bits of the `TypeId`.
+    /// Currently, this is just `(u128,)` but this is not to be relied upon.
+    TypeId(I::Ty, I::Consts),
+}
+
+impl<I: Interner> fmt::Debug for ValTreeKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValTreeKind::Leaf(i) => f.debug_tuple("Leaf").field(i).finish(),
+            ValTreeKind::Branch(cts) => f.debug_tuple("Branch").field(cts).finish(),
+            ValTreeKind::TypeId(ty, _) => {
+                f.debug_tuple("TypeId").field(ty).field(&fmt::from_fn(|f| write!(f, "_"))).finish()
+            }
+        }
+    }
 }
 
 impl<I: Interner> ValTreeKind<I> {
@@ -258,7 +278,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn to_leaf(&self) -> I::ScalarInt {
         match self {
             ValTreeKind::Leaf(s) => *s,
-            ValTreeKind::Branch(..) => panic!("expected leaf, got {:?}", self),
+            _ => panic!("expected leaf, got {:?}", self),
         }
     }
 
@@ -268,7 +288,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn to_branch(&self) -> I::Consts {
         match self {
             ValTreeKind::Branch(branch) => *branch,
-            ValTreeKind::Leaf(..) => panic!("expected branch, got {:?}", self),
+            _ => panic!("expected branch, got {:?}", self),
         }
     }
 
@@ -276,7 +296,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn try_to_leaf(&self) -> Option<I::ScalarInt> {
         match self {
             ValTreeKind::Leaf(s) => Some(*s),
-            ValTreeKind::Branch(_) => None,
+            _ => None,
         }
     }
 
@@ -284,7 +304,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn try_to_branch(&self) -> Option<I::Consts> {
         match self {
             ValTreeKind::Branch(branch) => Some(*branch),
-            ValTreeKind::Leaf(_) => None,
+            _ => None,
         }
     }
 }

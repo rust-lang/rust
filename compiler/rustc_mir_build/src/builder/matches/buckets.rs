@@ -321,8 +321,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (
-                TestKind::StringEq { value: test_val, .. },
-                TestableCase::Constant { value: case_val, kind: PatConstKind::String },
+                TestKind::CallPartialEq { value: test_val, .. },
+                TestableCase::Constant {
+                    value: case_val,
+                    kind: PatConstKind::String | PatConstKind::TypeId,
+                },
             )
             | (
                 TestKind::ScalarEq { value: test_val, .. },
@@ -362,7 +365,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 | TestKind::If
                 | TestKind::SliceLen { .. }
                 | TestKind::Range { .. }
-                | TestKind::StringEq { .. }
+                | TestKind::CallPartialEq { .. }
                 | TestKind::ScalarEq { .. }
                 | TestKind::AggregateEq { .. }
                 | TestKind::Deref { .. },

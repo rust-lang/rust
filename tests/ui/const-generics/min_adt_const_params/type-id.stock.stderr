@@ -1,0 +1,26 @@
+error: `TypeId` is forbidden as the type of a const generic parameter
+  --> $DIR/type-id.rs:12:20
+   |
+LL | fn equate<const A: TypeId, const B: TypeId>() -> bool {
+   |                    ^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(min_adt_const_params)]
+   |
+
+error: `TypeId` is forbidden as the type of a const generic parameter
+  --> $DIR/type-id.rs:12:37
+   |
+LL | fn equate<const A: TypeId, const B: TypeId>() -> bool {
+   |                                     ^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(min_adt_const_params)]
+   |
+
+error: aborting due to 2 previous errors
+
