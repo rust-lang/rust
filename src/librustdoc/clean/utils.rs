@@ -701,3 +701,12 @@ pub(crate) fn inherits_doc_hidden(
 pub(crate) fn should_ignore_res(res: Res) -> bool {
     matches!(res, Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..))
 }
+
+/// Returns `true` is the stability is unstable and isn't a `rustc_private` feature.
+#[inline]
+pub(crate) fn stability_is_unstable(stability: Option<rustc_attr_ir::Stability>) -> bool {
+    // The "rustc_private" crates are permanently unstable so it makes no sense
+    // to render "unstable" everywhere, so we filter them out with the `rustc_private`
+    // comparison.
+    stability.is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private)
+}
