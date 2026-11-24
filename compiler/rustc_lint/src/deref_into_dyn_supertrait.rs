@@ -76,6 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             // `target_principal` is a supertrait of `t_principal`
             && let Some(supertrait_principal) = supertraits(tcx, self_principal.with_self_ty(tcx, self_ty))
                 .find(|supertrait| supertrait.def_id() == target_principal.def_id())
+                .map(ty::Unnormalized::skip_norm_wip)
         {
             // erase regions in self type for better diagnostic presentation
             let (self_ty, target_principal, supertrait_principal) =
