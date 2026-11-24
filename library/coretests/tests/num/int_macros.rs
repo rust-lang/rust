@@ -7,8 +7,6 @@ macro_rules! int_module {
 
         const UMAX: $U = $U::MAX;
 
-        use crate::num;
-
         #[test]
         fn test_overflows() {
             assert!(MAX > 0);
@@ -18,7 +16,7 @@ macro_rules! int_module {
 
         #[test]
         fn test_num() {
-            num::test_num(10 as $T, 2 as $T);
+            crate::test_num(10 as $T, 2 as $T);
         }
 
         #[test]

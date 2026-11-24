@@ -8,6 +8,8 @@ use flt2dec::strategy::grisu::{format_exact_opt, format_shortest_opt};
 use flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
 use rand::distr::{Distribution, Uniform};
 
+use crate::common::test_rng;
+
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
@@ -86,7 +88,7 @@ where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
     G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
-    let mut rng = crate::test_rng();
+    let mut rng = test_rng();
     let f16_range = Uniform::new(0x0001u16, 0x7c00).unwrap();
     iterate("f16_random_equivalence_test", k, n, f, g, |_| {
         let x = f16::from_bits(f16_range.sample(&mut rng));
@@ -99,7 +101,7 @@ where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
     G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
-    let mut rng = crate::test_rng();
+    let mut rng = test_rng();
     let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000).unwrap();
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
         let x = f32::from_bits(f32_range.sample(&mut rng));
@@ -112,7 +114,7 @@ where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
     G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
-    let mut rng = crate::test_rng();
+    let mut rng = test_rng();
     let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000).unwrap();
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {
         let x = f64::from_bits(f64_range.sample(&mut rng));

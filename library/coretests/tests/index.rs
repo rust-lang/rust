@@ -1,3 +1,6 @@
+#![feature(slice_index_methods)]
+#![feature(sliceindex_wrappers)]
+
 use core::index::Clamp;
 use core::range;
 use core::slice::SliceIndex;

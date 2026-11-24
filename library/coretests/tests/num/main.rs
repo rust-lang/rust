@@ -1,7 +1,56 @@
+// tidy-alphabetical-start
+#![feature(cfg_overflow_checks)]
+#![feature(cfg_target_has_reliable_f16_f128)]
+#![feature(clamp_magnitude)]
+#![feature(clamp_to)]
+#![feature(complex_numbers)]
+#![feature(const_cmp)]
+#![feature(const_convert)]
+#![feature(const_eval_select)]
+#![feature(const_nonzero_strict_ops)]
+#![feature(const_ops)]
+#![feature(const_trait_impl)]
+#![feature(const_unsigned_bigint_helpers)]
+#![feature(core_intrinsics)]
+#![feature(core_private_bignum)]
+#![feature(core_private_diy_float)]
+#![feature(dec2flt)]
+#![feature(exact_div)]
+#![feature(f16)]
+#![feature(f128)]
+#![feature(float_conversions)]
+#![feature(float_exact_integer_constants)]
+#![feature(float_exponent_methods)]
+#![feature(float_gamma)]
+#![feature(float_minimum_maximum)]
+#![feature(flt2dec)]
+#![feature(get_set_bit)]
+#![feature(int_roundings)]
+#![feature(integer_casts)]
+#![feature(macro_metavar_expr_concat)]
+#![feature(nonzero_strict_ops)]
+#![feature(num_internals)]
+#![feature(numfmt)]
+#![feature(panic_internals)]
+#![feature(rustc_attrs)] // For the expansion of `const_panic`
+#![feature(signed_bigint_helpers)]
+#![feature(std_internals)]
+#![feature(strict_provenance_lints)]
+#![feature(try_from_int_error_kind)]
+#![feature(uint_carryless_mul)]
+#![feature(uint_gather_scatter_bits)]
+// tidy-alphabetical-end
+#![deny(implicit_provenance_casts)]
+#![expect(internal_features)]
+
 use core::fmt::Debug;
 use core::num::{IntErrorKind, ParseIntError, TryFromIntError, can_not_overflow};
 use core::ops::{Add, Div, Mul, Rem, Sub};
 use core::str::FromStr;
+
+#[macro_use]
+#[path = "../common/mod.rs"]
+mod common;
 
 #[macro_use]
 mod int_macros;

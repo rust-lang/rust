@@ -5,26 +5,19 @@ Subject: [PATCH] Disable 128bit atomic operations
 
 Cranelift doesn't support them yet
 ---
- library/core/src/panic/unwind_safe.rs |  6 -----
- library/core/src/sync/atomic.rs       | 38 ---------------------------
- library/core/tests/atomic.rs          |  4 ---
- 4 files changed, 4 insertions(+), 50 deletions(-)
+ coretests/tests/atomic.rs | 5 -----
+ 1 file changed, 5 deletions(-)
 
-diff --git a/coretests/tests/lib.rs b/coretests/tests/lib.rs
-index 1e336bf..35e6f54 100644
---- a/coretests/tests/lib.rs
-+++ b/coretests/tests/lib.rs
-@@ -2,4 +2,3 @@
- // tidy-alphabetical-start
- #![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
--#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
- #![feature(abort_immediate)]
- #![feature(array_ptr_get)]
 diff --git a/coretests/tests/atomic.rs b/coretests/tests/atomic.rs
-index b735957..ea728b6 100644
+index 995f072f859..f3a22c29853 100644
 --- a/coretests/tests/atomic.rs
 +++ b/coretests/tests/atomic.rs
-@@ -185,10 +185,6 @@ fn atomic_alignment() {
+@@ -1,4 +1,3 @@
+-#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+ #![feature(atomic_volatile)]
+
+ use core::sync::atomic::Ordering::SeqCst;
+@@ -301,10 +300,6 @@ fn atomic_alignment() {
      assert_eq!(align_of::<AtomicU64>(), size_of::<AtomicU64>());
      #[cfg(target_has_atomic = "64")]
      assert_eq!(align_of::<AtomicI64>(), size_of::<AtomicI64>());
