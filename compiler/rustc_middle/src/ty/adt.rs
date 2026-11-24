@@ -650,7 +650,7 @@ impl<'tcx> AdtDef<'tcx> {
         let repr_type = self.repr().discr_type();
         match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
-                let typing_env = ty::TypingEnv::post_analysis(tcx, expr_did);
+                let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, expr_did);
                 let ty = repr_type.to_ty(tcx);
                 if let Some(b) = val.try_to_bits_for_ty(tcx, typing_env, ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
