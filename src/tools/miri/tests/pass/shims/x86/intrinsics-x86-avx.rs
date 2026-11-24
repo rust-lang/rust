@@ -467,6 +467,36 @@ unsafe fn test_avx() {
     }
     test_mm256_rsqrt_ps();
 
+    // RCP and RSQRT treat denormal inputs as 0.0 of the same sign, and RCP flushes tiny results
+    // to 0.0 of the same sign. These results are exact, so compare bits to also check the sign.
+    #[target_feature(enable = "avx")]
+    unsafe fn test_mm256_rcp_rsqrt_denormal_and_tiny() {
+        let min_denormal = f32::from_bits(0x0000_0001);
+        let max_denormal = f32::from_bits(0x007f_ffff);
+        // 2^127, whose reciprocal 2^-127 is tiny.
+        let pow2_127 = f32::from_bits(0x7f00_0000);
+        let inf = f32::INFINITY;
+
+        #[rustfmt::skip]
+        let a = _mm256_setr_ps(
+            min_denormal, max_denormal, -min_denormal, -max_denormal,
+            f32::MAX, pow2_127, -f32::MAX, -pow2_127,
+        );
+        let r: [f32; 8] = transmute(_mm256_rcp_ps(a));
+        let e = [inf, inf, -inf, -inf, 0.0, 0.0, -0.0, -0.0];
+        assert_eq!(r.map(f32::to_bits), e.map(f32::to_bits));
+
+        #[rustfmt::skip]
+        let a = _mm256_setr_ps(
+            min_denormal, max_denormal, -min_denormal, -max_denormal,
+            min_denormal, max_denormal, -min_denormal, -max_denormal,
+        );
+        let r: [f32; 8] = transmute(_mm256_rsqrt_ps(a));
+        let e = [inf, inf, -inf, -inf, inf, inf, -inf, -inf];
+        assert_eq!(r.map(f32::to_bits), e.map(f32::to_bits));
+    }
+    test_mm256_rcp_rsqrt_denormal_and_tiny();
+
     #[target_feature(enable = "avx")]
     unsafe fn test_mm256_dp_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
