@@ -95,9 +95,14 @@ struct SharedOpts {
         default_value = "Full,IncrFull,IncrUnchanged,IncrPatched"
     )]
     scenarios: Vec<Scenario>,
+
     /// Select the profiles that should be benchmarked.
     #[clap(long, global = true, value_delimiter = ',', default_value = "Check,Debug,Opt")]
     profiles: Vec<Profile>,
+
+    /// Purge previously computed benchmark results matching the given parameters.
+    #[clap(long, global = true)]
+    purge: bool,
 
     #[clap(long, global = true)]
     database_path: Option<String>,
@@ -251,6 +256,10 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg("--db").arg(&db_path);
             cmd.arg("--id").arg(id);
             cmd.arg(prepare_rustc());
+
+            if opts.purge {
+                cmd.arg("--purge");
+            }
 
             apply_shared_opts(&mut cmd, opts);
             cmd.args(trailing_args);
