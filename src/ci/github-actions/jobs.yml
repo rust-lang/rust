@@ -397,6 +397,11 @@ auto:
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/rust-for-linux.html
     <<: *job-linux-4c
 
+  # Runs Cargo tests with the stable compiler toolchain.
+  - name: test-x86_64-cargo-stable
+    keep_rustup: true
+    <<: *job-linux-4c
+
   - name: test-x86_64-gnu
     <<: *job-linux-4c
 

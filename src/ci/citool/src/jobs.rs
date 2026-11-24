@@ -29,6 +29,9 @@ pub struct Job {
     pub free_disk: Option<bool>,
     /// Documentation link to a resource that could help people debug this CI job.
     pub doc_url: Option<String>,
+    /// Keep rustup installed in the CI environment of this job.
+    /// Normally, rustup is uninstalled at the start of the job.
+    pub keep_rustup: Option<bool>,
     /// Whether the job is executed on AWS CodeBuild.
     pub codebuild: Option<bool>,
     /// Which Python version (if any) is required. On Windows, this is typically required to run
@@ -170,6 +173,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             only_on_channel,
             free_disk,
             doc_url,
+            keep_rustup,
             codebuild,
             required_python_version,
 
@@ -184,6 +188,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             && *free_disk == auto_job.free_disk
             && *doc_url == auto_job.doc_url
             && *codebuild == auto_job.codebuild
+            && *keep_rustup == auto_job.keep_rustup
             && *required_python_version == auto_job.required_python_version
         {
             Ok(())
@@ -359,6 +364,10 @@ fn calculate_jobs(
             let mut env: BTreeMap<String, serde_json::Value> = crate::yaml_map_to_json(base_env);
             env.extend(crate::yaml_map_to_json(&job.env));
             let full_name = format!("{prefix} - {}", job.name);
+
+            if job.keep_rustup.unwrap_or(false) {
+                env.insert("KEEP_RUSTUP_INSTALLED".to_string(), "1".into());
+            }
 
             // When the default `@bors try` job is executed (which is usually done
             // for benchmarking performance, running crater or for downloading the
