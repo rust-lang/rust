@@ -2,7 +2,7 @@ use rustc_span::Symbol;
 
 use super::{
     ShiftOp, packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd,
-    psadbw, pshufb, shift_simd_by_scalar, shift_simd_by_simd,
+    pmulhrsw, psadbw, pshufb, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -186,6 +186,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [src, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 vpdpbusd(this, src, a, b, dest)?;
+            }
+            // Used to implement the _mm512_mulhrs_epi16 function.
+            "pmul.hr.sw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pmulhrsw(this, a, b, dest)?;
             }
             // Used to implement the _mm512_packs_epi16 function
             "packsswb.512" => {
