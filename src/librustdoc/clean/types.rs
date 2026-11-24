@@ -1108,26 +1108,20 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
-    pub(crate) fn sized(cx: &DocContext<'_>) -> GenericBound {
-        Self::TraitBound(
-            PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
-            hir::TraitBoundModifiers::NONE,
-        )
+    pub(crate) fn sized(cx: &DocContext<'_>) -> Self {
+        Self::TraitBound(PolyTrait::sizedness(cx, LangItem::Sized), hir::TraitBoundModifiers::NONE)
     }
 
-    // FIXME(fmease):
-    #[allow(rustc::symbol_intern_string_literal)]
     pub(crate) fn meta_sized(cx: &DocContext<'_>) -> Self {
-        // FIXME(fmease): XXX
         Self::TraitBound(
-            PolyTrait::sizedness(cx, Symbol::intern("MetaSized"), LangItem::MetaSized),
+            PolyTrait::sizedness(cx, LangItem::MetaSized),
             hir::TraitBoundModifiers::NONE,
         )
     }
 
     pub(crate) fn maybe_sized(cx: &DocContext<'_>) -> Self {
         Self::TraitBound(
-            PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
+            PolyTrait::sizedness(cx, LangItem::Sized),
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
@@ -1135,11 +1129,9 @@ impl GenericBound {
         )
     }
 
-    // FIXME(fmease):
-    #[allow(rustc::symbol_intern_string_literal)]
     pub(crate) fn pointee_sized(cx: &DocContext<'_>) -> Self {
         Self::TraitBound(
-            PolyTrait::sizedness(cx, Symbol::intern("PointeeSized"), LangItem::PointeeSized),
+            PolyTrait::sizedness(cx, LangItem::PointeeSized),
             hir::TraitBoundModifiers::NONE,
         )
     }
@@ -1345,8 +1337,9 @@ pub(crate) struct PolyTrait {
 }
 
 impl PolyTrait {
-    pub(crate) fn sizedness(cx: &DocContext<'_>, name: Symbol, item: LangItem) -> Self {
+    pub(crate) fn sizedness(cx: &DocContext<'_>, item: LangItem) -> Self {
         let def_id = cx.tcx.require_lang_item(item, DUMMY_SP);
+        let name = cx.tcx.item_name(def_id);
         let seg = PathSegment { name, args: GenericArgs::empty_angle_bracketed() };
         let trait_ = Path { res: Res::Def(DefKind::Trait, def_id), segments: thin_vec![seg] };
         Self { trait_, generic_params: Vec::new() }
