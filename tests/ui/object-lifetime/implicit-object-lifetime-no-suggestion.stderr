@@ -177,6 +177,11 @@ note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::
   ::: $SRC_DIR/core/src/error.rs:LL:COL
    |
    = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:59:44
+   |
+LL | fn elided_output<T: Error + 'static>(err: &dyn Error) -> Option<&T> {
+   |                                            ^^^^^^^^^
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/implicit-object-lifetime-no-suggestion.rs:64:5
@@ -198,6 +203,11 @@ note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::
   ::: $SRC_DIR/core/src/error.rs:LL:COL
    |
    = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:63:63
+   |
+LL | fn named_input_elided_output<'a, T: Error + 'static>(err: &'a dyn Error) -> Option<&T> {
+   |                                                               ^^^^^^^^^
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/implicit-object-lifetime-no-suggestion.rs:68:5
@@ -219,6 +229,11 @@ note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::
   ::: $SRC_DIR/core/src/error.rs:LL:COL
    |
    = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:67:49
+   |
+LL | fn placeholder_output<T: Error + 'static>(err: &dyn Error) -> Option<&'_ T> {
+   |                                                 ^^^^^^^^^
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/implicit-object-lifetime-no-suggestion.rs:74:5

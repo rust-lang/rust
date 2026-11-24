@@ -1,4 +1,4 @@
-//@ check-fail
+//@ run-rustfix
 
 #![allow(dead_code)]
 
