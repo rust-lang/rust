@@ -199,7 +199,7 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
             sym::breakpoint | sym::resumable_breakpoint => {
                 self.call_intrinsic("llvm.debugtrap", &[], &[])
             }
-            sym::va_arg => {
+            sym::va_arg => 'blk: {
                 let target = &self.cx.tcx.sess.target;
                 let stability = target.supports_c_variadic_definitions();
                 if let CVariadicStatus::Unstable { feature } = stability
@@ -207,6 +207,11 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                 {
                     let msg = "C-variadic function definitions on this target are unstable";
                     feature_err(self.sess(), feature, span, msg).emit();
+                }
+
+                // The backend_repr of x87_f80 is not a scalar, so it needs special-casing.
+                if result_layout.is_x87_f80(self) {
+                    break 'blk emit_va_arg(self, args[0], result_layout);
                 }
 
                 let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
@@ -267,8 +272,8 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                         // Supported on powerpc and powerpc64 targets.
                     }
                     Primitive::Float(Float::X87F80) => {
-                        // FIXME(x87_f80) we should support this.
-                        bug!("the va_arg intrinsic does not currently support `x87_f80`")
+                        // The user-facing x87_f80 type is accepted above.
+                        bug!("the va_arg intrinsic does not support `x87_f80_raw`")
                     }
                 }
 

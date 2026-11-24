@@ -98,6 +98,10 @@ fn get_param_type_alignment<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     layout: TyAndLayout<'tcx>,
 ) -> Align {
+    if layout.is_x87_f80(bx) {
+        return layout.align;
+    }
+
     let BackendRepr::Scalar(scalar) = layout.backend_repr else {
         bug!("unexpected backend repr {:?}", layout.backend_repr);
     };

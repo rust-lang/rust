@@ -470,6 +470,23 @@ cfg_select! {
 }
 
 cfg_select! {
+    any(target_os = "android", target_env = "ohos", target_env = "msvc", target_os = "uefi") => {
+        /* x87_f80 is not used as long double */
+    }
+    target_arch = "x86" => {
+        #[unstable_feature_bound(x87_f80)]
+        #[unstable(feature = "x87_f80", issue = "163982")]
+        unsafe impl VaArgSafe for crate::arch::x86::x87_f80 {}
+    }
+    target_arch = "x86_64" => {
+        #[unstable_feature_bound(x87_f80)]
+        #[unstable(feature = "x87_f80", issue = "163982")]
+        unsafe impl VaArgSafe for crate::arch::x86_64::x87_f80 {}
+    }
+    _ => { /* x87_f80 is not defined */ }
+}
+
+cfg_select! {
     target_arch = "powerpc" => {
         #[unstable_feature_bound(powerpc_ppcf128)]
         #[unstable(feature = "powerpc_ppcf128", issue = "163323")]

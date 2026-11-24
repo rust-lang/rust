@@ -28,6 +28,10 @@
 // ```
 
 extern crate minicore;
+#[cfg(target_arch = "x86")]
+use minicore::arch::x86::x87_f80;
+#[cfg(target_arch = "x86_64")]
+use minicore::arch::x86_64::x87_f80;
 use minicore::ffi::VaList;
 use minicore::*;
 
@@ -105,6 +109,40 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // X86_64-NEXT: mov rax, qword ptr [rax]
     // X86_64-NEXT: movups xmm0, xmmword ptr [rax]
     // X86_64-NEXT: ret
+    ap.next_arg()
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn read_x87_f80(ap: &mut VaList<'_>) -> x87_f80 {
+    // CHECK-LABEL: read_x87_f80:
+    //
+    // X86_64: mov rax, rcx
+    // X86_64-NEXT: mov rcx, qword ptr [rdx]
+    // X86_64-NEXT: lea r8, [rcx + 8]
+    // X86_64-NEXT: mov qword ptr [rdx], r8
+    // X86_64-NEXT: mov rcx, qword ptr [rcx]
+    // X86_64-NEXT: fld tbyte ptr [rcx]
+    // X86_64-NEXT: fstp tbyte ptr [rax]
+    // X86_64-NEXT: ret
+    //
+    // I686_GNU: mov eax, dword ptr [ebp + 8]
+    // I686_GNU-NEXT: mov ecx, dword ptr [eax]
+    // I686_GNU-NEXT: lea edx, [ecx + 12]
+    // I686_GNU-NEXT: mov dword ptr [eax], edx
+    // I686_GNU-NEXT: fld tbyte ptr [ecx]
+    // I686_GNU-NEXT: pop ebp
+    // I686_GNU-NEXT: ret
+    //
+    // I686_MSVC: mov ecx, dword ptr [ebp + 12]
+    // I686_MSVC-NEXT: mov eax, dword ptr [ebp + 8]
+    // I686_MSVC-NEXT: mov edx, dword ptr [ecx]
+    // I686_MSVC-NEXT: lea esi, [edx + 16]
+    // I686_MSVC-NEXT: mov dword ptr [ecx], esi
+    // I686_MSVC-NEXT: fld tbyte ptr [edx]
+    // I686_MSVC-NEXT: fstp tbyte ptr [eax]
+    // I686_MSVC-NEXT: pop esi
+    // I686_MSVC-NEXT: pop ebp
+    // I686_MSVC-NEXT: ret
     ap.next_arg()
 }
 

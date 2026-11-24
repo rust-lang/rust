@@ -16,6 +16,10 @@
 // Check that the assembly that rustc generates matches what clang emits.
 
 extern crate minicore;
+#[cfg(target_arch = "x86")]
+use minicore::arch::x86::x87_f80;
+#[cfg(target_arch = "x86_64")]
+use minicore::arch::x86_64::x87_f80;
 use minicore::ffi::VaList;
 use minicore::*;
 
@@ -235,6 +239,35 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // X86_64_GNUX32-NEXT: mov     rdx, qword ptr [ecx + 8]
     // X86_64_GNUX32-NEXT: ret
 
+    ap.next_arg()
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn read_x87_f80(ap: &mut VaList<'_>) -> x87_f80 {
+    // CHECK-LABEL: read_x87_f80
+
+    // X86_64:      mov rax, qword ptr [rdi + 8]
+    // X86_64-NEXT: add rax, 15
+    // X86_64-NEXT: and rax, -16
+    // X86_64-NEXT: lea rcx, [rax + 16]
+    // X86_64-NEXT: mov qword ptr [rdi + 8], rcx
+    // X86_64-NEXT: fld tbyte ptr [rax]
+    // X86_64-NEXT: ret
+
+    // X86_64_GNUX32:      mov eax, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: add eax, 15
+    // X86_64_GNUX32-NEXT: and eax, -16
+    // X86_64_GNUX32-NEXT: lea ecx, [rax + 16]
+    // X86_64_GNUX32-NEXT: mov dword ptr [edi + 8], ecx
+    // X86_64_GNUX32-NEXT: fld tbyte ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
+
+    // I686:      mov eax, dword ptr [esp + 4]
+    // I686-NEXT: mov ecx, dword ptr [eax]
+    // I686-NEXT: lea edx, [ecx + 12]
+    // I686-NEXT: mov dword ptr [eax], edx
+    // I686-NEXT: fld tbyte ptr [ecx]
+    // I686-NEXT: ret
     ap.next_arg()
 }
 
