@@ -7,7 +7,7 @@ trait Trait {
 
 impl<const N: usize> Trait for [u8; N] {
     const ASSOC: usize = N + 1;
-    //~^ ERROR implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
+    //~^ ERROR the expression of this associated constant cannot be marked as direct
 }
 
 fn main() {}
