@@ -44,7 +44,7 @@ use crate::{
     Adjustment, InferBodyId, InferenceDiagnostic, InferenceResult,
     db::{AnonConstId, HirDatabase},
     display::{DisplayTarget, HirDisplay},
-    next_solver::Ty,
+    next_solver::{TermRefId, Ty},
     setup_tracing,
     test_db::TestDB,
 };
@@ -196,6 +196,7 @@ fn check_impl(
         let mut had_annotations = false;
         let mut mismatches = FxHashMap::default();
         let mut types = FxHashMap::default();
+        let mut consts = FxHashMap::default();
         let mut adjustments = FxHashMap::default();
         for (file_id, annotations) in db.extract_annotations() {
             for (range, expected) in annotations {
@@ -204,6 +205,8 @@ fn check_impl(
                     types.insert(file_range, expected);
                 } else if let Some(ty) = expected.strip_prefix("type: ") {
                     types.insert(file_range, ty.to_owned());
+                } else if let Some(const_) = expected.strip_prefix("const: ") {
+                    consts.insert(file_range, const_.to_owned());
                 } else if expected.starts_with("expected") {
                     mismatches.insert(file_range, expected);
                 } else if let Some(adjs) = expected.strip_prefix("adjustments:") {
@@ -300,21 +303,27 @@ fn check_impl(
                 }
             }
 
-            for (type_ref, ty) in inference_result.placeholder_types() {
-                let node = match type_node(source_map, type_ref, &db) {
-                    Some(value) => value,
-                    None => continue,
+            for (term_ref, term) in inference_result.term_of_term_placeholders() {
+                let node = match term_ref.unpack() {
+                    TermRefId::TypeRefId(type_ref) => type_node(source_map, type_ref, &db),
+                    TermRefId::ConstRef(const_ref) => expr_node(source_map, const_ref.expr, &db),
                 };
+                let Some(node) = node else { continue };
                 let range = node.as_ref().original_file_range_rooted(&db);
-                if let Some(expected) = types.remove(&range) {
+                if let Some(expected) = types.remove(&range).or_else(|| consts.remove(&range)) {
                     let actual = salsa::attach(&db, || {
                         if display_source {
-                            ty.display_source_code(&db, def.module(&db), true).unwrap()
+                            term.display_source_code(&db, def.module(&db), true).unwrap()
                         } else {
-                            ty.display_test(&db, display_target).to_string()
+                            term.display_test(&db, display_target).to_string()
                         }
                     });
                     assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
+                    assert_eq!(
+                        actual, expected,
+                        "placeholder annotation differs at {:#?}",
+                        range.range
+                    );
                 }
             }
         }
@@ -333,6 +342,12 @@ fn check_impl(
             format_to!(buf, "Unchecked type annotations:\n");
             for t in types {
                 format_to!(buf, "{:?}: type {}\n", t.0.range, t.1);
+            }
+        }
+        if !consts.is_empty() {
+            format_to!(buf, "Unchecked const annotations:\n");
+            for c in consts {
+                format_to!(buf, "{:?}: const {}\n", c.0.range, c.1);
             }
         }
         if !adjustments.is_empty() {

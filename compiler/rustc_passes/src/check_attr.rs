@@ -181,6 +181,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &AttributeKind,
     ) {
         match attr {
+            AttributeKind::LintCBufferLength { pointer, length } => {
+                self.check_c_buffer_length(hir_id, target, *pointer, *length)
+            }
             AttributeKind::ProcMacro => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
             }
@@ -256,7 +259,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::LintAsPtr => (),
+            AttributeKind::LintMustMatchExhaustively(..) => (),
             AttributeKind::LintNeverReturnsNullPtr => (),
+            AttributeKind::LintNoImplicitAutorefs => (),
+            AttributeKind::LintPanicsWhenZero => (),
+            AttributeKind::LintPassByValue => (),
             AttributeKind::LintShouldNotBeCalledOnConstItems => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
@@ -355,8 +362,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMacroTransparency(_) => (),
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),
-            AttributeKind::RustcMustMatchExhaustively(..) => (),
-            AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),
             AttributeKind::RustcNoWritable => (),
@@ -366,9 +371,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcObjcClass { .. } => (),
             AttributeKind::RustcObjcSelector { .. } => (),
             AttributeKind::RustcOffloadKernel => (),
-            AttributeKind::RustcPanicsWhenZero => (),
             AttributeKind::RustcParenSugar => (),
-            AttributeKind::RustcPassByValue => (),
             AttributeKind::RustcPassIndirectlyInNonRusticAbis(..) => (),
             AttributeKind::RustcPreserveUbChecks => (),
             AttributeKind::RustcProcMacroDecls => (),
@@ -548,6 +551,38 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {}
+        }
+    }
+
+    /// Checks use of buffer/length parameters in `#[lint::c_buffer_length]`
+    fn check_c_buffer_length(&self, hir_id: HirId, target: Target, pointer: Ident, length: Ident) {
+        if !matches!(target, Target::Fn | Target::ForeignFn) {
+            return;
+        }
+        let def_id = hir_id.owner.def_id;
+        let names = self.tcx.fn_arg_idents(def_id);
+        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        for (ident, is_pointer) in [(pointer, true), (length, false)] {
+            let normalized_ident = ident.normalize_to_macro_rules();
+            let reason = match names.iter().zip(sig.inputs()).find(|(name, _)| {
+                name.is_some_and(|n| n.normalize_to_macro_rules() == normalized_ident)
+            }) {
+                None => "the name must refer to a parameter of this function",
+                Some((_, ty)) => {
+                    if is_pointer && !ty.is_raw_ptr() {
+                        "the buffer parameter must have a raw pointer type"
+                    } else if !is_pointer && !ty.is_integral() {
+                        "the length parameter must have an integer type"
+                    } else {
+                        continue;
+                    }
+                }
+            };
+            self.dcx().emit_err(diagnostics::CBufferLengthParameter {
+                span: ident.span,
+                name: ident.name,
+                reason,
+            });
         }
     }
 
@@ -1339,8 +1374,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for LintCheck { lint_name, lint_span, .. } in lints {
-            if lint_name.is(sym::dead_code_pub_in_binary) {
+        for LintCheck { lint_name_normalized, lint_span, .. } in lints {
+            if lint_name_normalized.is(sym::dead_code_pub_in_binary) {
                 if !self.tcx.crate_types().contains(&CrateType::Executable) {
                     self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
@@ -1354,7 +1389,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if lint_name.is(sym::linker_messages) | lint_name.is(sym::linker_info) {
+            if lint_name_normalized.is(sym::linker_messages)
+                | lint_name_normalized.is(sym::linker_info)
+            {
                 if hir_id == CRATE_HIR_ID
                     && self
                         .tcx

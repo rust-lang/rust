@@ -3,6 +3,8 @@
 #![feature(deref_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
+#![feature(register_tool)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use rustc_middle::ty;

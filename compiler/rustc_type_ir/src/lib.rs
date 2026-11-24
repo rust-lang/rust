@@ -26,7 +26,11 @@
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+#![cfg_attr(feature = "nightly", feature(associated_type_defaults))]
+#![cfg_attr(feature = "nightly", feature(negative_impls))]
+#![cfg_attr(feature = "nightly", feature(register_tool))]
+#![cfg_attr(feature = "nightly", feature(rustc_attrs))]
+#![cfg_attr(feature = "nightly", register_tool(lint))]
 #![deny(rustc::missing_generic_type_visitable_derive)]
 // tidy-alphabetical-end
 
@@ -256,7 +260,11 @@ pub fn debug_bound_var<T: std::fmt::Write>(
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, StableHash))]
-#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_pass_by_value),
+    cfg_attr(not(bootstrap), lint::pass_by_value)
+)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell

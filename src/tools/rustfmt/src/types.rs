@@ -1042,7 +1042,7 @@ impl Rewrite for ast::Ty {
                 Ok(result)
             }
             ast::TyKind::FieldOf(..)
-            | ast::TyKind::GcaMacro(..)
+            | ast::TyKind::Gca(..)
             | ast::TyKind::Pat(..)
             | ast::TyKind::View(..) => {
                 // These don't normally occur in the AST because macros aren't expanded. However,

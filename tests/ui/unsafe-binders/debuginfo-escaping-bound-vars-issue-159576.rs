@@ -1,4 +1,5 @@
 //@ check-pass
+//@ compile-flags: -Znext-solver
 //@ compile-flags: --crate-type=lib -Cdebuginfo=2
 
 #![feature(unsafe_binders)]

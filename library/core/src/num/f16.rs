@@ -170,6 +170,7 @@ impl f16 {
         MANTISSA_MASK = 0x03ff,
         exponent_bias = 15,
         assoc_int_consts = #[unstable(feature = "f16", issue = "116909")],
+        float_bits_const = #[unstable(feature = "f16", issue = "116909")],
         feature = f16,
         has_reliable_cfg = target_has_reliable_f16,
         has_reliable_math_cfg = target_has_reliable_f16_math,

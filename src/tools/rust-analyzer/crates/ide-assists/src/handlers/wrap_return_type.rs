@@ -92,7 +92,9 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
                     };
                     let semantic_ty = ty_constructor
                         .map(|ty_constructor| {
-                            hir::Adt::from(ty_constructor).ty(ctx.db()).instantiate([ty.clone()])
+                            hir::Adt::from(ty_constructor)
+                                .ty(ctx.db())
+                                .instantiate(ctx.db(), [ty.clone()])
                         })
                         .unwrap_or_else(|| ty.clone());
                     (ast_ty, semantic_ty)
@@ -255,8 +257,9 @@ fn wrapper_alias<'db>(
                 make.path_segment_generics(make.name_ref(name.as_str()), generic_arg_list),
             );
 
-            let new_ty =
-                hir::Adt::from(enum_ty).ty(ctx.db()).instantiate([semantic_ret_type.clone()]);
+            let new_ty = hir::Adt::from(enum_ty)
+                .ty(ctx.db())
+                .instantiate(ctx.db(), [semantic_ret_type.clone()]);
 
             Some((make.ty_path(path), new_ty))
         })

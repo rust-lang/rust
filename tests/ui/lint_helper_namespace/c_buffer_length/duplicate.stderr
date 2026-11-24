@@ -1,0 +1,14 @@
+error: duplicate `lint::c_buffer_length` attributes
+  --> $DIR/duplicate.rs:5:1
+   |
+LL | #[lint::c_buffer_length(buffer, length)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/duplicate.rs:4:1
+   |
+LL | #[lint::c_buffer_length(buffer, length)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

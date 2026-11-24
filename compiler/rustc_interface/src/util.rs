@@ -23,9 +23,9 @@ use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use rustc_session::config::DEFAULT_STACK_SIZE;
 use rustc_session::config::{
-    Cfg, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, OutputTypes, Sysroot,
-    host_tuple,
+    Cfg, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, Sysroot, host_tuple,
 };
+use rustc_session::output::OutputTypes;
 use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;

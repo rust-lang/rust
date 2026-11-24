@@ -18,6 +18,10 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
 }
 
 pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
+    /// Creates a scope for a function. If `maybe_definition_llfn` is `None`, it's an inlined
+    /// callee; in that case, the implementation may benefit from caching to avoid duplication
+    /// within debuginfo. See `inlined_function_scopes` for an example in `rustc_codegen_llvm`.
+    //
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_scope_fn(
@@ -52,6 +56,11 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
         file: &SourceFile,
     ) -> Self::DIScope;
 
+    /// Creates a debug variable. Note: a particular parameter of a function can arrive here from
+    /// several different (inlined) calls, and those calls may differ in `scope_metadata` (e.g.
+    /// bare subprogram vs file-adjusted scope), type, or file/line. The backend must handle that.
+    /// See `params_seen` in the `rustc_codegen_llvm` backend for an example.
+    //
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(

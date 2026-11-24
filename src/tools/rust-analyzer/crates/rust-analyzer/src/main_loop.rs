@@ -1034,11 +1034,15 @@ impl GlobalState {
 
                 let mut message = format!("{n_done}/{n_total}");
                 if let Some(dir) = dir {
+                    let common_std = "lib/rustlib/src/rust";
                     message += &format!(
                         ": {}",
                         match dir.strip_prefix(self.config.workspace_root_for(&dir)) {
                             Some(relative_path) => relative_path.as_utf8_path(),
-                            None => dir.as_ref(),
+                            None => match dir.short_relative_by(common_std) {
+                                Some(short) => short.as_ref(),
+                                None => dir.as_ref(),
+                            },
                         }
                     );
                 }

@@ -7,7 +7,9 @@
 #![feature(min_specialization)]
 #![feature(option_into_flat_iter)]
 #![feature(proc_macro_internals)]
+#![feature(register_tool)]
 #![feature(trusted_len)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 pub use rmeta::provide;

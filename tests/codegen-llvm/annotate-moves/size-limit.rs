@@ -98,8 +98,7 @@ pub fn test_101_move() {
 // CHECK-DAG: ![[#SZ100_RETURN_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u8[,;].*}},{{ *[0-9]+}}>"
 
 // Assignment is move
-// CHECK-DAG: ![[#SZ100_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#SZ100_MOVE_SCOPE:]]
-// CHECK-DAG: ![[#SZ100_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u8[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#SZ100_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#SZ100_RETURN_SCOPE]]
 
 // Clone itself is copy, but return is move.
 // CHECK-DAG: ![[#SZ101_COPY_LOC]] = !DILocation({{.*}}scope: ![[#SZ101_COPY_SCOPE:]]
@@ -108,5 +107,4 @@ pub fn test_101_move() {
 // CHECK-DAG: ![[#SZ101_RETURN_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u8[,;].*}},{{ *[0-9]+}}>"
 
 // Assignment is move
-// CHECK-DAG: ![[#SZ101_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#SZ101_MOVE_SCOPE:]]
-// CHECK-DAG: ![[#SZ101_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<{{(array\$<|\[)u8[,;].*}},{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#SZ101_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#SZ101_RETURN_SCOPE]]

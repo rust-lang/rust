@@ -1,7 +1,7 @@
 #![allow(rustc::symbol_intern_string_literal)]
 
+use rustc_lint_defs::LintName;
 use rustc_span::{Symbol, create_default_session_globals_then, sym};
-use rustc_structures::LintName;
 
 use crate::builtin::is_hexagon_register_span;
 

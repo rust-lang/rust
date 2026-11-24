@@ -475,6 +475,7 @@ define_symbols! {
     panic,
     Param,
     parse,
+    partial_eq,
     partial_ord,
     PartialEq,
     PartialOrd,

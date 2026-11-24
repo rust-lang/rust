@@ -11,14 +11,15 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_lint_defs::Level;
 use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
-    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
-    Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
+    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ExternEntry, ExternLocation, Externs,
+    FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
     InstrumentCoverage, InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkSelfContained,
     LinkerPluginLto, LlvmTpde, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload,
-    Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
-    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
-    SymbolManglingVersion, WasiExecModel, build_session_options, rustc_optgroups,
+    Options, OutFileName, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    build_session_options, rustc_optgroups,
 };
+use rustc_session::output::{ErrorOutputType, OutputType, OutputTypes};
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib};
 use rustc_session::{

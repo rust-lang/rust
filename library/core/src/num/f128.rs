@@ -176,6 +176,7 @@ impl f128 {
         MANTISSA_MASK = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff,
         exponent_bias = 16383,
         assoc_int_consts = #[unstable(feature = "f128", issue = "116909")],
+        float_bits_const = #[unstable(feature = "f128", issue = "116909")],
         feature = f128,
         has_reliable_cfg = target_has_reliable_f128,
         has_reliable_math_cfg = target_has_reliable_f128_math,

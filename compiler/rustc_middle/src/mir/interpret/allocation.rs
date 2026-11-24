@@ -282,7 +282,8 @@ impl hash::Hash for Allocation {
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct ConstAllocation<'tcx>(pub Interned<'tcx, Allocation>);
 
 impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
