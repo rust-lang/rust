@@ -7,7 +7,6 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
-use rustc_data_structures::outline;
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::query::{
@@ -21,6 +20,19 @@ use rustc_span::Span;
 #[inline]
 pub fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
+}
+
+#[inline]
+pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+pub fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
 
 /// Signals to waiters that the query is complete.
@@ -177,19 +189,17 @@ pub fn wait_for_query<'tcx, C: QueryCache>(
     match result {
         Ok(()) => {
             let Some((v, index)) = query.cache.lookup(&key) else {
-                outline(|| {
-                    // We didn't find the query result in the query cache. Check if it was
-                    // poisoned due to a panic instead.
-                    let shard = query.state.active.lock_shard_by_hash(key_hash);
-                    match shard.find(key_hash, equivalent_key(key)) {
-                        // The query we waited on panicked. Continue unwinding here.
-                        Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
-                        _ => panic!(
-                            "query '{}' result must be in the cache or the query must be poisoned after a wait",
-                            query.name
-                        ),
-                    }
-                })
+                // We didn't find the query result in the query cache. Check if it was
+                // poisoned due to a panic instead.
+                let shard = query.state.active.lock_shard_by_hash(key_hash);
+                match shard.find(key_hash, equivalent_key(key)) {
+                    // The query we waited on panicked. Continue unwinding here.
+                    Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
+                    _ => panic!(
+                        "query '{}' result must be in the cache or the query must be poisoned after a wait",
+                        query.name
+                    ),
+                }
             };
 
             tcx.prof.query_cache_hit(index.into());
@@ -199,19 +209,6 @@ pub fn wait_for_query<'tcx, C: QueryCache>(
         }
         Err(cycle) => Err(cycle),
     }
-}
-
-#[inline]
-pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-pub fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
 }
 
 #[inline(always)]
@@ -231,11 +228,13 @@ pub fn check_feedable_consistency<'tcx, C: QueryCache>(
         );
     };
 
-    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-        (hash_value_fn(&mut hcx, &existing_value), hash_value_fn(&mut hcx, value))
+    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
+        (hash_value_fn(hcx, &existing_value), hash_value_fn(hcx, value))
     });
-    let formatter = query.format_value;
+
     if old_hash != new_hash {
+        let formatter = query.format_value;
+
         // We have an inconsistency. This can happen if one of the two
         // results is tainted by errors.
         assert!(
