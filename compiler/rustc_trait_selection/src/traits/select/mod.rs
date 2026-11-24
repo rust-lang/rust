@@ -789,10 +789,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 let tcx = self.tcx();
-                assert!(
-                    tcx.features().generic_const_exprs(),
-                    "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
-                );
 
                 {
                     let c1 = tcx.expand_abstract_consts(c1);
