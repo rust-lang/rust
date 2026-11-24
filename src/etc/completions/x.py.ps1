@@ -1089,8 +1089,9 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;perf;eprintln' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1138,8 +1139,9 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;perf;samply' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1187,8 +1189,9 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;perf;cachegrind' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1236,8 +1239,9 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;perf;benchmark' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
