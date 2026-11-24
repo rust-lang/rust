@@ -2298,6 +2298,7 @@ pub(crate) struct BuiltinUnusedDocComment {
     #[subdiagnostic]
     pub sub: BuiltinUnusedDocCommentSub,
     pub target: &'static str,
+    #[primary_span]
     #[label("rustdoc does not generate documentation for {$target}")]
     pub label: Span,
     #[context]

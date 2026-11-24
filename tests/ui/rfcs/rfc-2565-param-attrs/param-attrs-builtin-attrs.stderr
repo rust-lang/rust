@@ -5,262 +5,74 @@ LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:21:7
+  --> $DIR/param-attrs-builtin-attrs.rs:20:7
    |
 LL |     #[test] a: u32,
    |       ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:36:7
+  --> $DIR/param-attrs-builtin-attrs.rs:34:7
    |
 LL |     #[test] a: u32,
    |       ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:56:11
+  --> $DIR/param-attrs-builtin-attrs.rs:53:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:71:11
+  --> $DIR/param-attrs-builtin-attrs.rs:67:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:92:11
+  --> $DIR/param-attrs-builtin-attrs.rs:87:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:111:11
+  --> $DIR/param-attrs-builtin-attrs.rs:105:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:126:11
+  --> $DIR/param-attrs-builtin-attrs.rs:119:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:146:11
+  --> $DIR/param-attrs-builtin-attrs.rs:138:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:163:11
+  --> $DIR/param-attrs-builtin-attrs.rs:154:11
    |
 LL |         #[test] a: u32,
    |           ^^^^ not a non-macro attribute
 
-error: documentation comments cannot be applied to function parameters
+error: unused doc comment
   --> $DIR/param-attrs-builtin-attrs.rs:3:9
    |
 LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
 
-error: documentation comments cannot be applied to function parameters
+error: unused doc comment
   --> $DIR/param-attrs-builtin-attrs.rs:7:9
    |
 LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:11:9
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
    |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:19:5
-   |
-LL |     /// Foo
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:23:5
-   |
-LL |     /// Bar
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:27:5
-   |
-LL |     /// Baz
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:34:5
-   |
-LL |     /// Foo
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:38:5
-   |
-LL |     /// Bar
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:42:5
-   |
-LL |     /// Baz
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:51:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:54:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:58:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:62:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:69:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:73:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:77:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:87:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:90:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:94:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:98:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:106:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:109:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:113:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:117:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:124:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:128:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:132:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:141:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:144:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:148:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:152:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:161:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:165:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:169:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
+   = help: use `//` for a plain comment
 
 error: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:9:11
@@ -273,7 +85,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:13:11
+  --> $DIR/param-attrs-builtin-attrs.rs:12:11
    |
 LL |         /// Bar
 ...
@@ -282,8 +94,24 @@ LL |         #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:18:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:22:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:25:7
+  --> $DIR/param-attrs-builtin-attrs.rs:24:7
    |
 LL |     /// Bar
 LL |
@@ -293,7 +121,7 @@ LL |     #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:29:7
+  --> $DIR/param-attrs-builtin-attrs.rs:27:7
    |
 LL |     /// Bar
 ...
@@ -302,8 +130,24 @@ LL |     #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:32:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:36:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:40:7
+  --> $DIR/param-attrs-builtin-attrs.rs:38:7
    |
 LL |     /// Bar
 LL |
@@ -313,7 +157,7 @@ LL |     #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:44:7
+  --> $DIR/param-attrs-builtin-attrs.rs:41:7
    |
 LL |     /// Bar
 ...
@@ -322,48 +166,70 @@ LL |     #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:48:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+LL |
+LL |         self,
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:51:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:55:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:57:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:60:11
    |
 LL |         /// Baz
-LL |
-LL |         #[must_use]
-   |           ^^^^^^^^
-   |
-   = help: the `must_use` attribute can be applied to data types, functions, and traits
-
-error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:64:11
-   |
-LL |         /// Baz
 ...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
-error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:75:11
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:65:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:69:9
    |
 LL |         /// Baz
-LL |
-LL |         #[must_use]
-   |           ^^^^^^^^
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
    |
-   = help: the `must_use` attribute can be applied to data types, functions, and traits
-
-error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:79:11
-   |
-LL |         /// Baz
-...
-LL |         #[no_mangle] b: i32,
-   |           ^^^^^^^^^
-   |
-   = help: the `no_mangle` attribute can be applied to functions and statics
+   = help: use `//` for a plain comment
 
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:96:11
+  --> $DIR/param-attrs-builtin-attrs.rs:71:11
    |
 LL |         /// Baz
 LL |
@@ -373,7 +239,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:100:11
+  --> $DIR/param-attrs-builtin-attrs.rs:74:11
    |
 LL |         /// Baz
 ...
@@ -382,8 +248,34 @@ LL |         #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:82:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+LL |
+LL |         &self,
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:85:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:89:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:115:11
+  --> $DIR/param-attrs-builtin-attrs.rs:91:11
    |
 LL |         /// Baz
 LL |
@@ -393,7 +285,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:119:11
+  --> $DIR/param-attrs-builtin-attrs.rs:94:11
    |
 LL |         /// Baz
 ...
@@ -402,8 +294,34 @@ LL |         #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:100:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+LL |
+LL |         &self,
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:103:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:107:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:130:11
+  --> $DIR/param-attrs-builtin-attrs.rs:109:11
    |
 LL |         /// Baz
 LL |
@@ -413,7 +331,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:134:11
+  --> $DIR/param-attrs-builtin-attrs.rs:112:11
    |
 LL |         /// Baz
 ...
@@ -422,8 +340,24 @@ LL |         #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:117:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:121:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:150:11
+  --> $DIR/param-attrs-builtin-attrs.rs:123:11
    |
 LL |         /// Baz
 LL |
@@ -433,7 +367,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:154:11
+  --> $DIR/param-attrs-builtin-attrs.rs:126:11
    |
 LL |         /// Baz
 ...
@@ -442,8 +376,70 @@ LL |         #[no_mangle] b: i32,
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:133:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+LL |
+LL |         &self,
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:136:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:140:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
 error: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:167:11
+  --> $DIR/param-attrs-builtin-attrs.rs:142:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:145:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:152:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/param-attrs-builtin-attrs.rs:156:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `//` for a plain comment
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:158:11
    |
 LL |         /// Bar
 LL |
@@ -453,7 +449,7 @@ LL |         #[must_use]
    = help: the `must_use` attribute can be applied to data types, functions, and traits
 
 error: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:171:11
+  --> $DIR/param-attrs-builtin-attrs.rs:161:11
    |
 LL |         /// Bar
 ...
@@ -462,5 +458,5 @@ LL |         #[no_mangle] b: i32
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
 
-error: aborting due to 64 previous errors
+error: aborting due to 54 previous errors
 
