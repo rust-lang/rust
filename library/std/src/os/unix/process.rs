@@ -605,7 +605,7 @@ pub impl(self) trait ChildExt {
     ///
     /// [`Child::kill`]: process::Child::kill
     #[unstable(feature = "unix_kill_process_group", issue = "156537")]
-    fn kill_process_group(&mut self) -> io::Result<()>;
+    fn kill_process_group(&self) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
@@ -622,12 +622,12 @@ impl ChildExt for process::Child {
 
     #[cfg(not(target_os = "espidf"))]
     #[rustdoc_skip_body]
-    fn kill_process_group(&mut self) -> io::Result<()> {
+    fn kill_process_group(&self) -> io::Result<()> {
         self.handle.send_process_group_signal(libc::SIGKILL)
     }
 
     #[cfg(target_os = "espidf")]
-    fn kill_process_group(&mut self) -> io::Result<()> {
+    fn kill_process_group(&self) -> io::Result<()> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "process groups are not supported on espidf",

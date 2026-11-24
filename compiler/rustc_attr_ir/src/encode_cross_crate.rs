@@ -59,6 +59,7 @@ impl AttributeKind {
             LinkSection { .. } => Yes, // Needed for rustdoc
             Linkage(..) => No,
             LintAsPtr => Yes,
+            LintCBufferLength { .. } => Yes,
             LintCheck(..) => No,
             LintMustMatchExhaustively(..) => Yes,
             LintNeverReturnsNullPtr => Yes,
@@ -278,6 +279,7 @@ impl AttributeKind {
                 | crate::Linkage::WeakODR => true,
             },
             LintAsPtr => false,
+            LintCBufferLength { .. } => false,
             LintCheck(_) => false,
             LintMustMatchExhaustively(..) => false,
             LintNeverReturnsNullPtr => false,

@@ -344,10 +344,11 @@ fn file_lock_double() {
     // A file handle may acquire both a shared and exclusive lock.
     check!(f1.lock());
     check!(f1.lock_shared());
-    // The behavior here differs between Windows and Unix: on Windows, f1 holds both locks;
+    // The behavior here differs between Windows/Haiku/Hurd and Unix:
+    // on the former, f1 holds both locks;
     // on Unix, the lock got downgraded so f1 only holds the shared lock.
     assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
-    if cfg!(any(windows, target_os = "haiku")) {
+    if cfg!(any(windows, target_os = "haiku", target_os = "hurd")) {
         assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
     } else {
         check!(f2.try_lock_shared());
@@ -690,6 +691,7 @@ fn set_get_permissions_nofollows_symlink() {
             target_os = "openbsd",
             target_os = "netbsd",
             target_os = "dragonfly",
+            target_os = "hurd",
             target_os = "nto",
             target_os = "qnx"
         ) => {

@@ -424,6 +424,7 @@ impl f32 {
         MANTISSA_MASK = 0x007f_ffff,
         exponent_bias = 127,
         assoc_int_consts = #[stable(feature = "assoc_int_consts", since = "1.43.0")],
+        float_bits_const = #[stable(feature = "float_bits_const", since = "CURRENT_RUSTC_VERSION")],
     }
 
     /// Returns `true` if this value is NaN.
