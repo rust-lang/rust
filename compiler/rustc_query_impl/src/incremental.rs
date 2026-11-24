@@ -36,11 +36,19 @@ fn encode_query_values_inner<'tcx, C, V>(
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
+
+    let mut results = Vec::new();
+
     query.cache.for_each(&mut |key, value, dep_node| {
         if query.will_cache_on_disk_for_key(*key) {
-            encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
+            results.push((dep_node, erase::restore_val::<V>(*value)));
         }
     });
+
+    results.sort_by_key(|(dep_node, _value)| dep_node.as_u32());
+    for (dep_node, value) in results {
+        encoder.encode_query_value(dep_node, &value);
+    }
 }
 
 pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
