@@ -74,7 +74,7 @@ pub extern "C" fn enum_u16(value: ReprU16) -> ReprU16 {
     value
 }
 
-// CHECK: {{(noundef)?}}{{( range\(i32 0, 2\))?}} i32 @enum_i32(i32{{( noundef)?}}{{( range\(i32 0, 2\))?}} %value)
+// CHECK: {{(noundef)?}}{{( signext)?}}{{( range\(i32 0, 2\))?}} i32 @enum_i32(i32{{( noundef)?}}{{( signext)?}}{{( range\(i32 0, 2\))?}} %value)
 #[unsafe(no_mangle)]
 pub extern "C" fn enum_i32(value: ReprI32) -> ReprI32 {
     // CHECK: start:

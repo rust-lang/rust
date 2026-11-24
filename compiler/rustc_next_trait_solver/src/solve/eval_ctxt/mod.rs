@@ -1611,7 +1611,7 @@ where
                     // To prevent this we discard all the generic arguments and evalaute with identity args
                     // and in its own environment instead of the current environment we are normalizing in.
                     let args = GenericArgs::identity_for_item(cx, def_id.into());
-                    let typing_env = TypingEnv::post_analysis(cx, def_id.into());
+                    let typing_env = TypingEnv::post_analysis_no_rigid_aliases(cx, def_id.into());
 
                     Ok((typing_env, args))
                 }

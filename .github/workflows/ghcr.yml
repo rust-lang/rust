@@ -6,7 +6,7 @@
 # Those images are pushed to ghcr.io by this job.
 #
 # While Docker Hub rate limit *shouldn't* be an issue on GitHub Actions,
-# it certainly is for AWS codebuild.
+# it may be for external self-hosted runners (e.g., EC2 runners).
 #
 # Note that authenticating to DockerHub or other registries isn't possible
 # for PR jobs, because forks can't access secrets.

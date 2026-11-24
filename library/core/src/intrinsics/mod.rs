@@ -1222,14 +1222,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
 /// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
-/// This intrinsic does not have a stable counterpart.
-/// # Safety
-///
-/// The safety requirements are consistent with [`copy_nonoverlapping`]
-/// while the read and write behaviors are volatile,
-/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
-///
-/// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
@@ -1239,20 +1232,14 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 /// The volatile parameter is set to `true`, so it will not be optimized out
 /// unless size is equal to zero.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
 /// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
-/// This intrinsic does not have a stable counterpart.
-/// # Safety
-///
-/// The safety requirements are consistent with [`write_bytes`] while the write behavior is volatile,
-/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
-///
-/// [`write_bytes`]: ptr::write_bytes
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
@@ -1260,12 +1247,20 @@ pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 /// Performs a volatile load from the `src` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
+///
+/// # Safety
+///
+/// See [`crate::ptr::read_volatile`] for safety conditions.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_load<T>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
+///
+/// # Safety
+///
+/// See [`crate::ptr::write_volatile`] for safety conditions.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
@@ -1274,6 +1269,10 @@ pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
 /// The pointer is not required to be aligned.
 ///
 /// This intrinsic does not have a stable counterpart.
+///
+/// # Safety
+/// See [`crate::ptr::read_volatile`] for safety conditions,
+/// but note that `src` does not need to be aligned.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
@@ -1282,6 +1281,10 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 /// The pointer is not required to be aligned.
 ///
 /// This intrinsic does not have a stable counterpart.
+///
+/// # Safety
+/// See [`crate::ptr::write_volatile`] for safety conditions,
+/// but note that `dst` does not need to be aligned.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
