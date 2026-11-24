@@ -988,6 +988,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
+    pub debuginfo_type_descs: ty::debuginfo_type_desc::DebuginfoTypeDescCache<'tcx>,
+
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
@@ -1212,6 +1214,7 @@ impl<'tcx> TyCtxt<'tcx> {
             query_system,
             caches: Default::default(),
             data_layout,
+            debuginfo_type_descs: Default::default(),
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
         });

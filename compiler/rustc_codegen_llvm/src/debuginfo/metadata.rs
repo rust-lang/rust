@@ -75,6 +75,7 @@ const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<Option<&'ll DITy
 type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
 
 mod enums;
+mod shared;
 mod type_map;
 
 /// Returns from the enclosing function if the type debuginfo node with the given
@@ -459,7 +460,9 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
 
     debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
+    let shared_result = shared::try_build_type_di_node(cx, t, unique_type_id, span);
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
+        _ if let Some(result) = shared_result => result,
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             build_basic_type_di_node(cx, t)
         }

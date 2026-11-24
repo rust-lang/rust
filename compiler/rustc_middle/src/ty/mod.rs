@@ -126,6 +126,7 @@ pub mod cast;
 pub mod codec;
 // FIXME(#159654): This should get deleted soon
 pub mod consts;
+pub mod debuginfo_type_desc;
 pub mod error;
 pub mod fast_reject;
 pub mod inhabitedness;

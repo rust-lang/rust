@@ -377,14 +377,14 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
 }
 
 #[derive(Copy, Clone)]
-enum DiscrResult {
+pub(super) enum DiscrResult {
     NoDiscriminant,
     Value(u128),
     Range(u128, u128),
 }
 
 impl DiscrResult {
-    fn opt_single_val(&self) -> Option<u128> {
+    pub(super) fn opt_single_val(&self) -> Option<u128> {
         if let Self::Value(d) = *self { Some(d) } else { None }
     }
 }
@@ -394,7 +394,7 @@ impl DiscrResult {
 /// Will return `None` if there is less than two variants (because then the enum won't have)
 /// a tag, and if this is the untagged variant of a niche-layout enum (because then there is no
 /// single discriminant value).
-fn compute_discriminant_value<'ll, 'tcx>(
+pub(super) fn compute_discriminant_value<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     variant_index: VariantIdx,
