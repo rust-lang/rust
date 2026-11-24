@@ -43,6 +43,11 @@ $ rustc -Zself-profile -Zself-profile-events=default,args
   - Adds tracing information about LLVM passes and codegeneration.
   - Disabled by default because this significantly increases the trace file size.
 
+- `resident-set-size`
+  - Adds the resident set size of the compiler process, in bytes, at the start and at the end of each `query-provider` and `generic-activity` event.
+  - Records nothing unless at least one of those two event types is also enabled.
+  - Disabled by default because each sample is a system call, which slows down compilation, and because this significantly increases the trace file size.
+
 ## Event synonyms
 
 - `none`
@@ -71,4 +76,10 @@ Enable the profiler and capture the default events and their arguments:
 
 ```console
 $ rustc -Zself-profile -Zself-profile-events=default,args
+```
+
+Enable the profiler and capture the default events and the resident set size for each query and generic activity:
+
+```console
+$ rustc -Zself-profile -Zself-profile-events=default,resident-set-size
 ```

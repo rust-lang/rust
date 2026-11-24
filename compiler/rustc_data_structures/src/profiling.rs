@@ -85,6 +85,8 @@ use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fmt::Display;
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::FileExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -120,6 +122,12 @@ bitflags::bitflags! {
         /// Store aggregated counts of cache hits per query invocation.
         const QUERY_CACHE_HIT_COUNTS  = 1 << 10;
 
+        /// Sample the resident set size of the process at the start and at the end of
+        /// each generic activity and each query provider invocation. This is a modifier:
+        /// it records nothing unless `GENERIC_ACTIVITIES` or `QUERY_PROVIDERS` is also
+        /// enabled. Note that this is quite expensive, because each sample is a system call.
+        const RESIDENT_SET_SIZE = 1 << 11;
+
         // keep this in sync with the `-Z self-profile-events` help message in rustc_session/src/options.rs
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits() |
                         Self::QUERY_PROVIDERS.bits() |
@@ -152,6 +160,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("llvm", EventFilter::LLVM),
     ("incr-result-hashing", EventFilter::INCR_RESULT_HASHING),
     ("artifact-sizes", EventFilter::ARTIFACT_SIZES),
+    ("resident-set-size", EventFilter::RESIDENT_SET_SIZE),
 ];
 
 /// Something that uniquely identifies a query invocation.
@@ -260,7 +269,7 @@ impl SelfProfilerRef {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let event_label = profiler.get_or_alloc_cached_string(event_label);
             let event_id = EventId::from_label(event_label);
-            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+            TimingGuard::start_with_rss(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -269,7 +278,7 @@ impl SelfProfilerRef {
     #[inline(always)]
     pub fn generic_activity_with_event_id(&self, event_id: EventId) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
-            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+            TimingGuard::start_with_rss(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -293,7 +302,7 @@ impl SelfProfilerRef {
             } else {
                 builder.from_label(event_label)
             };
-            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+            TimingGuard::start_with_rss(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -353,7 +362,7 @@ impl SelfProfilerRef {
             } else {
                 builder.from_label(event_label)
             };
-            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+            TimingGuard::start_with_rss(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -402,7 +411,7 @@ impl SelfProfilerRef {
             } else {
                 builder.from_label(event_label)
             };
-            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+            TimingGuard::start_with_rss(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
 
@@ -411,7 +420,7 @@ impl SelfProfilerRef {
     #[inline(always)]
     pub fn query_provider(&self) -> TimingGuard<'_> {
         self.exec(EventFilter::QUERY_PROVIDERS, |profiler| {
-            TimingGuard::start(profiler, profiler.query_event_kind, EventId::INVALID)
+            TimingGuard::start_with_rss(profiler, profiler.query_event_kind, EventId::INVALID)
         })
     }
 
@@ -588,11 +597,71 @@ impl EventArgRecorder<'_> {
     }
 }
 
+/// Reads the resident set size of the current process from `/proc/self/statm`.
+///
+/// The file is opened one time and kept open, so each sample is a single `pread`
+/// system call into a stack buffer. [`get_resident_set_size`] opens, reads, and
+/// closes the file and allocates on each call. That is too slow for two samples
+/// per query: about 5µs per call, against about 1.5µs for this reader.
+#[cfg(target_os = "linux")]
+struct RssReader {
+    file: fs::File,
+    page_size: u64,
+}
+
+#[cfg(target_os = "linux")]
+impl RssReader {
+    /// Opens `/proc/self/statm`. Logs a warning and returns `None` if the page size
+    /// or the file is not available.
+    fn open() -> Option<Self> {
+        // SAFETY: `sysconf(_SC_PAGESIZE)` has no side effects and is safe to call.
+        let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+
+        if page_size <= 0 {
+            warn!("error getting page size; resident set size metrics will not be collected");
+            return None;
+        }
+
+        match fs::File::open("/proc/self/statm") {
+            Ok(file) => Some(RssReader { file, page_size: page_size as u64 }),
+            Err(e) => {
+                warn!(
+                    "error opening '/proc/self/statm': {e}; \
+                     resident set size metrics will not be collected"
+                );
+                None
+            }
+        }
+    }
+
+    /// Returns the resident set size in bytes, or `None` if the read or the parse
+    /// fails.
+    ///
+    /// Uses [`read_at`](std::os::unix::fs::FileExt::read_at), which does not move the
+    /// file position. No seek is necessary between samples, and threads can share
+    /// the reader without a lock.
+    fn read(&self) -> Option<u64> {
+        const BUF_SIZE: usize = 64;
+        let mut buf = [0u8; BUF_SIZE];
+        let bytes = self.file.read_at(&mut buf, 0).ok()?;
+
+        let contents = std::str::from_utf8(&buf[..bytes]).ok()?;
+        let resident_pages = contents.split_ascii_whitespace().nth(1)?.parse::<u64>().ok()?;
+
+        Some(resident_pages * self.page_size)
+    }
+}
+
 pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
 
     string_cache: RwLock<FxHashMap<String, StringId>>,
+
+    /// The reader for resident set size samples. `None` if the `resident-set-size`
+    /// event is not enabled, or if `/proc/self/statm` could not be opened.
+    #[cfg(target_os = "linux")]
+    rss_reader: Option<RssReader>,
 
     /// Recording individual query cache hits as "instant" measureme events
     /// is incredibly expensive. Instead of doing that, we simply aggregate
@@ -616,6 +685,10 @@ pub struct SelfProfiler {
     artifact_size_event_kind: StringId,
     /// Total cache hits per query invocation
     query_cache_hit_count_event_kind: StringId,
+    /// Resident set size in bytes, sampled before the interval event starts
+    resident_set_size_start_event_kind: StringId,
+    /// Resident set size in bytes, sampled after the interval event ends
+    resident_set_size_end_event_kind: StringId,
 }
 
 impl SelfProfiler {
@@ -646,6 +719,8 @@ impl SelfProfiler {
         let query_cache_hit_event_kind = profiler.alloc_string("QueryCacheHit");
         let artifact_size_event_kind = profiler.alloc_string("ArtifactSize");
         let query_cache_hit_count_event_kind = profiler.alloc_string("QueryCacheHitCount");
+        let resident_set_size_start_event_kind = profiler.alloc_string("ResidentSetSizeStart");
+        let resident_set_size_end_event_kind = profiler.alloc_string("ResidentSetSizeEnd");
 
         let mut event_filter_mask = EventFilter::empty();
 
@@ -680,10 +755,19 @@ impl SelfProfiler {
             event_filter_mask = EventFilter::DEFAULT;
         }
 
+        #[cfg(target_os = "linux")]
+        let rss_reader = if event_filter_mask.contains(EventFilter::RESIDENT_SET_SIZE) {
+            RssReader::open()
+        } else {
+            None
+        };
+
         Ok(SelfProfiler {
             profiler,
             event_filter_mask,
             string_cache: RwLock::new(FxHashMap::default()),
+            #[cfg(target_os = "linux")]
+            rss_reader,
             query_event_kind,
             generic_activity_event_kind,
             incremental_load_result_event_kind,
@@ -692,6 +776,8 @@ impl SelfProfiler {
             query_cache_hit_event_kind,
             artifact_size_event_kind,
             query_cache_hit_count_event_kind,
+            resident_set_size_start_event_kind,
+            resident_set_size_end_event_kind,
             query_hits: Default::default(),
         })
     }
@@ -770,10 +856,82 @@ impl SelfProfiler {
     pub fn event_id_builder(&self) -> EventIdBuilder<'_> {
         EventIdBuilder::new(&self.profiler)
     }
+
+    /// Returns the resident set size of the process in bytes, or `None` if it is
+    /// not available.
+    ///
+    /// This does not check the event filter. The caller must make sure that
+    /// `EventFilter::RESIDENT_SET_SIZE` is enabled.
+    fn resident_set_size(&self) -> Option<u64> {
+        #[cfg(target_os = "linux")]
+        {
+            self.rss_reader.as_ref()?.read()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            get_resident_set_size().map(|rss| rss as u64)
+        }
+    }
 }
 
+/// All state is in one `Option`, so that a guard for a disabled event is a single
+/// `None`. That is the only thing a compilation without the profiler pays for.
 #[must_use]
-pub struct TimingGuard<'a>(Option<measureme::TimingGuard<'a>>);
+pub struct TimingGuard<'a>(Option<TimingGuardInner<'a>>);
+
+struct TimingGuardInner<'a> {
+    guard: measureme::TimingGuard<'a>,
+    /// `Some` if this guard also records the resident set size.
+    rss: Option<RssSample<'a>>,
+}
+
+/// The resident set size at the start of an interval event, and what is necessary
+/// to record it together with the size at the end.
+struct RssSample<'a> {
+    profiler: &'a SelfProfiler,
+    /// The resident set size in bytes, read before the interval event started.
+    start: u64,
+    /// The event id of the interval event. A query does not have its id until it
+    /// finishes, so this is `EventId::INVALID` for a query until then.
+    event_id: EventId,
+    thread_id: u32,
+}
+
+impl RssSample<'_> {
+    /// Reads the resident set size at the end of the interval event and records
+    /// the start and the end value, both with `event_id`.
+    ///
+    /// Call this after the interval event is recorded. The two events then follow
+    /// the interval event of the same thread in the event stream, and the read is
+    /// not in the measured interval.
+    ///
+    /// Records nothing if the read fails or a value does not fit in an integer
+    /// event, so an interval event has both values or none.
+    fn finish(self, event_id: EventId) {
+        let Some(end) = self.profiler.resident_set_size() else { return };
+        if self.start > measureme::MAX_SINGLE_VALUE || end > measureme::MAX_SINGLE_VALUE {
+            return;
+        }
+
+        let raw_profiler = &self.profiler.profiler;
+        raw_profiler.record_integer_event(
+            self.profiler.resident_set_size_start_event_kind,
+            event_id,
+            self.thread_id,
+            self.start,
+        );
+        raw_profiler.record_integer_event(
+            self.profiler.resident_set_size_end_event_kind,
+            event_id,
+            self.thread_id,
+            end,
+        );
+    }
+}
+
+// The size of the inner state, so the `Option` takes its `None` from a niche.
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(TimingGuard<'_>, 72);
 
 impl<'a> TimingGuard<'a> {
     #[inline]
@@ -784,18 +942,49 @@ impl<'a> TimingGuard<'a> {
     ) -> TimingGuard<'a> {
         let thread_id = get_thread_id();
         let raw_profiler = &profiler.profiler;
-        let timing_guard =
-            raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
-        TimingGuard(Some(timing_guard))
+        let guard = raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
+        TimingGuard(Some(TimingGuardInner { guard, rss: None }))
+    }
+
+    /// Like [`TimingGuard::start`]. If `EventFilter::RESIDENT_SET_SIZE` is enabled,
+    /// the guard also records the resident set size at the start and at the end of
+    /// the interval event.
+    #[inline]
+    fn start_with_rss(
+        profiler: &'a SelfProfiler,
+        event_kind: StringId,
+        event_id: EventId,
+    ) -> TimingGuard<'a> {
+        let thread_id = get_thread_id();
+        // Read before the interval event starts, so that the read is not in the
+        // measured interval. If the read fails, the guard records no resident set
+        // size at all.
+        let rss = if profiler.event_filter_mask.contains(EventFilter::RESIDENT_SET_SIZE) {
+            profiler.resident_set_size().map(|start| RssSample {
+                profiler,
+                start,
+                event_id,
+                thread_id,
+            })
+        } else {
+            None
+        };
+        let raw_profiler = &profiler.profiler;
+        let guard = raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
+        TimingGuard(Some(TimingGuardInner { guard, rss }))
     }
 
     #[inline]
-    pub fn finish_with_query_invocation_id(self, query_invocation_id: QueryInvocationId) {
-        if let Some(guard) = self.0 {
+    pub fn finish_with_query_invocation_id(mut self, query_invocation_id: QueryInvocationId) {
+        // `take` leaves `None` behind, so the `Drop` impl has nothing left to record.
+        if let Some(inner) = self.0.take() {
             outline(|| {
                 let event_id = StringId::new_virtual(query_invocation_id.0);
                 let event_id = EventId::from_virtual(event_id);
-                guard.finish_with_override_event_id(event_id);
+                inner.guard.finish_with_override_event_id(event_id);
+                if let Some(rss) = inner.rss {
+                    rss.finish(event_id);
+                }
             });
         }
     }
@@ -809,6 +998,22 @@ impl<'a> TimingGuard<'a> {
     pub fn run<R>(self, f: impl FnOnce() -> R) -> R {
         let _timer = self;
         f()
+    }
+}
+
+impl Drop for TimingGuard<'_> {
+    #[inline]
+    fn drop(&mut self) {
+        if let Some(TimingGuardInner { guard, rss }) = self.0.take() {
+            // This records the interval event.
+            drop(guard);
+            if let Some(rss) = rss {
+                outline(|| {
+                    let event_id = rss.event_id;
+                    rss.finish(event_id);
+                });
+            }
+        }
     }
 }
 
