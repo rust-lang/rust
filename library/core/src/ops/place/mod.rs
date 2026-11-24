@@ -108,6 +108,12 @@ pub trait IndexProxy<Idx> {
     type Element: ?Sized;
 }
 
+pub unsafe trait CreateHandle: PlaceProxy {
+    type Handle;
+
+    unsafe fn create_handle(ptr: *const Self) -> Self::Handle;
+}
+
 /// Read from a place.
 pub unsafe trait ReadPlace: PlaceHandle {
     /// Read from the place.
