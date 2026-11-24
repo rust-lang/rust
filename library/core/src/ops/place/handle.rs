@@ -6,7 +6,7 @@
 //! - Runtime information needed to access the place; usually, a pointer.
 //! - The capabilities of the pointer the handle was derived from.
 
-use super::{PlaceProxy, IndexProxy};
+use super::{IndexProxy, PlaceProxy};
 use crate::field::Subplace;
 
 /// A *handle* to a place.
@@ -62,15 +62,20 @@ impl<T: ?Sized> Clone for LocalHandle<T> {
     }
 }
 
-impl<T:?Sized> LocalHandle<T> {
-pub fn get(self) -> *mut T {self.0}
+impl<T: ?Sized> LocalHandle<T> {
+    pub fn get(self) -> *mut T {
+        self.0
+    }
 }
 
 impl<T: ?Sized> PlaceHandle for LocalHandle<T> {
     type Target = T;
 }
 
-unsafe impl<T> DerefPlace for LocalHandle where T:?Sized + CreateHandle {
+unsafe impl<T> DerefPlace for LocalHandle
+where
+    T: ?Sized + CreateHandle,
+{
     type Derefed = T::Handle;
 
     unsafe fn deref_place(self) -> Self::Derefed {

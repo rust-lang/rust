@@ -81,11 +81,8 @@
 mod handle;
 mod wrapper;
 
-pub use self::{
-    handle::*,
-    wrapper::*,
-};
-
+pub use self::handle::*;
+pub use self::wrapper::*;
 use crate::ptr::Pointee;
 
 /// A type that acts as a proxy for a place.
