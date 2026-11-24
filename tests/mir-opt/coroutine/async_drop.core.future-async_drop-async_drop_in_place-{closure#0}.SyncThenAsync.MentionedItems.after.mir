@@ -61,18 +61,27 @@ yields ()
     let mut _57: &mut AsyncInt;
     let mut _58: &mut SyncThenAsync;
     let mut _59: ();
+    let mut _60: &mut SyncThenAsync;
+    let mut _61: &mut SyncThenAsync;
 
     bb0: {
-        _3 = move (_1.0: &mut SyncThenAsync);
+        StorageLive(_60);
+        StorageLive(_61);
+        _61 = no_retag move (_1.0: &mut SyncThenAsync);
+        _60 = no_retag move _61;
+        StorageDead(_61);
+        _3 = move _60;
         goto -> bb73;
     }
 
     bb1: {
         _0 = const ();
+        StorageDead(_60);
         return;
     }
 
     bb2 (cleanup): {
+        StorageDead(_60);
         resume;
     }
 

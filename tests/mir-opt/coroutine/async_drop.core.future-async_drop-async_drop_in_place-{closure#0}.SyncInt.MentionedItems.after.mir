@@ -5,14 +5,22 @@ yields ()
  {
     let mut _0: ();
     let mut _3: &mut SyncInt;
+    let mut _4: &mut SyncInt;
+    let mut _5: &mut SyncInt;
 
     bb0: {
-        _3 = no_retag copy (_1.0: &mut SyncInt);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = no_retag move (_1.0: &mut SyncInt);
+        _4 = no_retag move _5;
+        StorageDead(_5);
+        _3 = no_retag copy _4;
         drop((*_3)) -> [return: bb1, unwind continue];
     }
 
     bb1: {
         _0 = const ();
+        StorageDead(_4);
         return;
     }
 }

@@ -27,10 +27,10 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     let mut _25: std::future::ResumeTy;
     let mut _26: std::ptr::NonNull<std::task::Context<'_>>;
     scope 1 {
-        debug sync_int => (((*_24) as variant#4).1: SyncInt);
+        debug sync_int => (((*_24) as variant#3).0: SyncInt);
         let _4: AsyncInt;
         scope 2 {
-            debug async_int => (((*_24) as variant#4).2: AsyncInt);
+            debug async_int => (((*_24) as variant#3).1: AsyncInt);
         }
     }
 
@@ -59,7 +59,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
 
     bb4 (cleanup): {
         nop;
-        drop((((*_24) as variant#4).1: SyncInt)) -> [return: bb5, unwind terminate(cleanup)];
+        drop((((*_24) as variant#3).0: SyncInt)) -> [return: bb5, unwind terminate(cleanup)];
     }
 
     bb5 (cleanup): {
@@ -115,7 +115,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb15: {
-        _12 = &mut (((*_24) as variant#4).3: impl std::future::Future<Output = ()>);
+        _12 = &mut (((*_24) as variant#3).2: impl std::future::Future<Output = ()>);
         _9 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _12) -> [return: bb14, unwind: bb8];
     }
 

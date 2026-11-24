@@ -27,10 +27,11 @@ use rustc_abi::{FieldIdx, PackCoroutineLayout, VariantIdx};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec, indexvec};
 use rustc_infer::traits::TraitErrors;
 use rustc_lint_defs::builtin::MUST_NOT_SUSPEND;
 use rustc_middle::mir::*;
@@ -344,11 +345,15 @@ impl StorageConflictVisitor<'_> {
 pub(super) fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
+    upvar_tys: &[Ty<'tcx>],
+    pack: PackCoroutineLayout,
+    local_upvar_map: &IndexSlice<FieldIdx, Local>,
 ) -> (
     IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
     CoroutineLayout<'tcx>,
     IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 ) {
+    let nr_upvars = upvar_tys.len();
     let LivenessInfo {
         saved_locals,
         live_locals_at_suspension_points,
@@ -357,63 +362,87 @@ pub(super) fn compute_layout<'tcx>(
         storage_liveness,
     } = liveness;
 
+    // We need to later establish the map between upvars in UNRESUMED and locals in other states.
+    let local_upvar_map: UnordMap<_, _> =
+        local_upvar_map.iter_enumerated().map(|(field, &local)| (local, field)).collect();
+
     // Gather live local types.
-    let mut tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'_>> = saved_locals
+    let mut locals = IndexVec::<CoroutineSavedLocal, _>::with_capacity(saved_locals.domain_size());
+    let mut tys = IndexVec::<CoroutineSavedLocal, _>::with_capacity(saved_locals.domain_size());
+    let mut saved_local_upvar_map = indexvec![None; nr_upvars];
+    for (saved_local, local) in saved_locals.iter_enumerated() {
+        debug!("coroutine saved local {:?} => {:?}", saved_local, local);
+
+        locals.push(local);
+
+        let decl = &body.local_decls[local];
+
+        // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
+        // the information. This is alright, since `ignore_for_traits` is only relevant when
+        // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+        // default.
+        let ignore_for_traits = match decl.local_info {
+            // Do not include raw pointers created from accessing `static` items, as those could
+            // well be re-created by another access to the same static.
+            ClearCrossCrate::Set(LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
+            // Fake borrows are only read by fake reads, so do not have any reality in
+            // post-analysis MIR.
+            ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
+            _ => false,
+        };
+
+        let decl = CoroutineSavedTy {
+            ty: decl.ty,
+            source_info: decl.source_info,
+            ignore_for_traits,
+            // Will be set later when walking debuginfo.
+            debuginfo_name: None,
+        };
+
+        tys.push(decl);
+
+        if let Some(&field) = local_upvar_map.get(&local) {
+            saved_local_upvar_map.insert(field, saved_local);
+        }
+    }
+    let mut remap = indexvec![None; saved_locals.domain_size()];
+    // These are the "saved locals" going into the UNRESUMED state.
+    let upvar_saved_locals: IndexVec<FieldIdx, CoroutineSavedLocal> = saved_local_upvar_map
         .iter_enumerated()
-        .map(|(saved_local, local)| {
-            debug!("coroutine saved local {:?} => {:?}", saved_local, local);
-
-            let decl = &body.local_decls[local];
-
-            // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
-            // the information. This is alright, since `ignore_for_traits` is only relevant when
-            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
-            // default.
-            let ignore_for_traits = match decl.local_info {
-                // Do not include raw pointers created from accessing `static` items, as those could
-                // well be re-created by another access to the same static.
-                ClearCrossCrate::Set(LocalInfo::StaticRef { is_thread_local, .. }) => {
-                    !is_thread_local
-                }
-                // Fake borrows are only read by fake reads, so do not have any reality in
-                // post-analysis MIR.
-                ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
-                _ => false,
-            };
-
-            CoroutineSavedTy {
-                ty: decl.ty,
-                source_info: decl.source_info,
-                ignore_for_traits,
-                // Will be set later when walking debuginfo.
-                debuginfo_name: None,
+        .zip(upvar_tys)
+        .map(|((idx, &saved_local), &ty)| {
+            if let Some(saved_local) = saved_local {
+                remap[locals[saved_local]] = Some((tys[saved_local].ty, VariantIdx::ZERO, idx));
+                saved_local
+            } else {
+                tys.push(CoroutineSavedTy {
+                    ty,
+                    source_info: SourceInfo::outermost(body.span),
+                    ignore_for_traits: false,
+                    debuginfo_name: None,
+                })
             }
         })
         .collect();
+    debug!(?upvar_saved_locals);
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
     // (RETURNED, POISONED) of the function.
     let body_span = body.source_scopes[OUTERMOST_SOURCE_SCOPE].span;
-    let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = IndexVec::with_capacity(
-        CoroutineArgs::RESERVED_VARIANTS + live_locals_at_suspension_points.len(),
-    );
-    variant_source_info.extend([
+    let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = indexvec![
         SourceInfo::outermost(body_span.shrink_to_lo()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
-    ]);
-
-    // Simple map from new to old indices to avoid repeatedly counting bits.
-    let reverse_local_map: IndexVec<CoroutineSavedLocal, Local> = saved_locals.iter().collect();
+    ];
 
     // Build the coroutine variant field list.
     // Create a map from local indices to coroutine struct indices.
-    let mut variant_fields: IndexVec<VariantIdx, _> = IndexVec::from_elem_n(
-        IndexVec::new(),
-        CoroutineArgs::RESERVED_VARIANTS + live_locals_at_suspension_points.len(),
-    );
-    let mut remap = IndexVec::from_elem_n(None, saved_locals.domain_size());
+    let mut variant_fields: IndexVec<VariantIdx, _> = indexvec![
+        indexvec![];
+        CoroutineArgs::RESERVED_VARIANTS + live_locals_at_suspension_points.len()
+    ];
+    variant_fields[VariantIdx::ZERO] = upvar_saved_locals.clone();
     for (live_locals, &source_info_at_suspension_point, (variant_index, fields)) in izip!(
         &live_locals_at_suspension_points,
         &source_info_at_suspension_points,
@@ -425,7 +454,7 @@ pub(super) fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside coroutines, so it doesn't matter which variant
             // index we access them by.
-            remap[reverse_local_map[saved_local]] = Some((tys[saved_local].ty, variant_index, idx));
+            remap[locals[saved_local]].get_or_insert((tys[saved_local].ty, variant_index, idx));
         }
         variant_source_info.push(source_info_at_suspension_point);
     }
@@ -433,26 +462,30 @@ pub(super) fn compute_layout<'tcx>(
     debug!(?storage_conflicts);
 
     for var in &body.var_debug_info {
-        let VarDebugInfoContents::Place(place) = &var.value else { continue };
-        let Some(local) = place.as_local() else { continue };
-        let Some(&Some((_, variant, field))) = remap.get(local) else {
-            continue;
-        };
-
-        let saved_local: CoroutineSavedLocal = variant_fields[variant][field];
-        tys[saved_local].debuginfo_name.get_or_insert(var.name);
+        debug!(?var);
+        if let VarDebugInfoContents::Place(place) = &var.value
+            && let Some(local) = place.local_or_deref_local()
+            && let Some(&Some((_, variant, field))) = remap.get(local)
+        {
+            let saved_local = variant_fields[variant][field];
+            tys[saved_local].debuginfo_name.get_or_insert(var.name);
+        }
     }
 
+    let mut relocated_upvars = indexvec![None; tys.len()];
+    for (field, &source) in upvar_saved_locals.iter_enumerated() {
+        relocated_upvars[source] = saved_local_upvar_map[field];
+    }
     let layout = CoroutineLayout {
         field_tys: tys,
         variant_fields,
         variant_source_info,
         storage_conflicts,
-        // FIXME(-Zpack-coroutine-layout): Stop ignoring the flag here.
-        pack: PackCoroutineLayout::Classic,
+        relocated_upvars,
+        pack,
     };
     debug!(?remap);
-    debug!(?layout);
+    debug!("layout = {layout:#?}");
     debug!(?storage_liveness);
 
     (remap, layout, storage_liveness)
@@ -484,7 +517,13 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
+    let (_, coroutine_layout, _) = compute_layout(
+        liveness_info,
+        body,
+        &[], // no upvar_tys needed for witnesses
+        PackCoroutineLayout::Classic,
+        IndexSlice::empty(),
+    );
 
     check_suspend_tys(tcx, &coroutine_layout, body);
     check_field_tys_sized(tcx, &coroutine_layout, def_id);

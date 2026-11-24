@@ -5,7 +5,6 @@
 //@ [captures_only] check-pass
 //@ [captures_only] compile-flags: -Z pack-coroutine-layout=captures-only
 //@ [invalid] compile-flags: -Z pack-coroutine-layout=invalid
-//[captures_only]~? WARN `-Z pack-coroutine-layout=captures-only` is not yet implemented and will be ignored
 //[invalid]~? ERROR incorrect value `invalid` for unstable option `pack-coroutine-layout` - either `classic` or `captures-only` was expected
 
 #![crate_type = "lib"]

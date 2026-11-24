@@ -70,17 +70,17 @@
 +     let mut _44: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
 -         debug sync_int => _3;
-+         debug sync_int => (((*_42) as variant#6).1: SyncInt);
++         debug sync_int => (((*_42) as variant#3).0: SyncInt);
 +         coroutine debug async_int => _s2;
           let _4: AsyncInt;
           scope 2 {
 -             debug async_int => _4;
-+             debug async_int => (((*_42) as variant#6).2: AsyncInt);
++             debug async_int => (((*_42) as variant#3).1: AsyncInt);
 +             coroutine debug async_int_again => _s3;
               let _5: AsyncInt;
               scope 3 {
 -                 debug async_int_again => _5;
-+                 debug async_int_again => (((*_42) as variant#4).3: AsyncInt);
++                 debug async_int_again => (((*_42) as variant#3).2: AsyncInt);
               }
           }
       }
@@ -112,7 +112,7 @@
 -         StorageDead(_4);
 -         drop(_3) -> [return: bb3, unwind: bb11];
 +         nop;
-+         drop((((*_42) as variant#6).1: SyncInt)) -> [return: bb3, unwind: bb7];
++         drop((((*_42) as variant#3).0: SyncInt)) -> [return: bb3, unwind: bb7];
       }
   
       bb3: {
@@ -123,7 +123,7 @@
       }
   
       bb4: {
-+         _0 = Poll::<()>::Ready(move (((*_42) as variant#6).0: ()));
++         _0 = Poll::<()>::Ready(move (((*_42) as variant#4).0: ()));
 +         discriminant((*_42)) = 1;
           return;
       }
@@ -133,7 +133,7 @@
 -         goto -> bb6;
 +     bb5 (cleanup): {
 +         nop;
-+         drop((((*_42) as variant#6).2: AsyncInt)) -> [return: bb6, unwind terminate(cleanup)];
++         drop((((*_42) as variant#3).1: AsyncInt)) -> [return: bb6, unwind terminate(cleanup)];
       }
   
 -     bb6: {
@@ -141,7 +141,7 @@
 -         goto -> bb7;
 +     bb6 (cleanup): {
 +         nop;
-+         drop((((*_42) as variant#6).1: SyncInt)) -> [return: bb7, unwind terminate(cleanup)];
++         drop((((*_42) as variant#3).0: SyncInt)) -> [return: bb7, unwind terminate(cleanup)];
       }
   
 -     bb7: {
@@ -237,20 +237,20 @@
       bb19: {
 -         StorageLive(_7);
 -         _7 = yield(const ()) -> [resume: bb17, drop: bb18];
-+         _20 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
++         _20 = &mut (((*_42) as variant#3).3: impl std::future::Future<Output = ()>);
 +         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb18, unwind: bb10];
       }
   
       bb20: {
 -         unreachable;
 +         nop;
-+         (((*_42) as variant#4).4: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_21.0: &mut AsyncInt)) -> [return: bb19, unwind: bb10];
++         (((*_42) as variant#3).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_21.0: &mut AsyncInt)) -> [return: bb19, unwind: bb10];
       }
   
       bb21: {
 -         _9 = discriminant(_8);
 -         switchInt(move _9) -> [0: bb14, 1: bb19, otherwise: bb20];
-+         _22 = &mut (((*_42) as variant#4).3: AsyncInt);
++         _22 = &mut (((*_42) as variant#3).2: AsyncInt);
 +         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb20, unwind: bb5];
       }
   
@@ -325,7 +325,7 @@
       bb31: {
 -         _20 = &mut _6;
 -         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb30, unwind: bb15];
-+         _37 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
++         _37 = &mut (((*_42) as variant#5).2: impl std::future::Future<Output = ()>);
 +         _34 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _37) -> [return: bb30, unwind: bb23];
       }
   
@@ -333,13 +333,13 @@
 -         StorageLive(_6);
 -         _6 = async_drop_in_place::<AsyncInt>(copy (_21.0: &mut AsyncInt)) -> [return: bb31, unwind: bb15];
 +         nop;
-+         (((*_42) as variant#6).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_38.0: &mut AsyncInt)) -> [return: bb31, unwind: bb23];
++         (((*_42) as variant#5).2: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(copy (_38.0: &mut AsyncInt)) -> [return: bb31, unwind: bb23];
       }
   
       bb33: {
 -         _22 = &mut _5;
 -         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb32, unwind: bb9];
-+         _39 = &mut (((*_42) as variant#6).2: AsyncInt);
++         _39 = &mut (((*_42) as variant#3).1: AsyncInt);
 +         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb32, unwind: bb6];
       }
   
@@ -461,12 +461,12 @@
 -         _39 = &mut _4;
 -         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb52, unwind: bb10];
 +         nop;
-+         (((*_42) as variant#6).1: SyncInt) = SyncInt(const 0_i32);
++         (((*_42) as variant#3).0: SyncInt) = SyncInt(const 0_i32);
 +         nop;
-+         (((*_42) as variant#6).2: AsyncInt) = AsyncInt(const 0_i32);
++         (((*_42) as variant#3).1: AsyncInt) = AsyncInt(const 0_i32);
 +         nop;
-+         (((*_42) as variant#4).3: AsyncInt) = AsyncInt(const 0_i32);
-+         (((*_42) as variant#6).0: ()) = const ();
++         (((*_42) as variant#3).2: AsyncInt) = AsyncInt(const 0_i32);
++         (((*_42) as variant#4).0: ()) = const ();
 +         goto -> bb21;
       }
   }

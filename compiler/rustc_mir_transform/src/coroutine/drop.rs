@@ -133,7 +133,8 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         elaborate_drop(
             &mut elaborator,
             *source_info,
-            Place::from(SELF_ARG),
+            Place::from(SELF_ARG)
+                .project_deeper(&[ProjectionElem::Downcast(None, VARIANT_UNRESUMED)], tcx),
             (),
             *target,
             unwind,
