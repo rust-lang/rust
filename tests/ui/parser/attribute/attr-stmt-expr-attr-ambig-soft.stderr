@@ -1,0 +1,38 @@
+warning: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig-soft.rs:5:5
+   |
+LL |     #[attr] x = y;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #154045 <https://github.com/rust-lang/rust/issues/154045>
+
+warning: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig-soft.rs:7:9
+   |
+LL |     x = #[attr] y = z;
+   |         ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #154045 <https://github.com/rust-lang/rust/issues/154045>
+
+warning: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig-soft.rs:9:5
+   |
+LL |     #[attr] val as Type;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #154045 <https://github.com/rust-lang/rust/issues/154045>
+
+warning: 3 warnings emitted
+
