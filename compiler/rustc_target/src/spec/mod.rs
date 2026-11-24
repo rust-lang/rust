@@ -47,8 +47,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use rustc_abi::{
-    Align, CVariadicStatus, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout,
-    TargetDataLayoutError,
+    Align, CCharTy, CVariadicStatus, CanonAbi, Endian, ExternAbi, Float, Integer, Size,
+    TargetDataLayout, TargetDataLayoutError,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
@@ -2199,6 +2199,8 @@ pub struct TargetOptions {
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: u16,
+    ///
+    pub c_types: CTypes,
     /// OS name to use for conditional compilation (`target_os`). Defaults to [`Os::None`].
     /// [`Os::None`] implies a bare metal target without `std` library.
     /// A couple of targets having `std` also use [`Os::Unknown`] as their `os` value,
@@ -2623,6 +2625,33 @@ pub struct TargetOptions {
     small_data_threshold_support: SmallDataThresholdSupport,
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub struct CTypes {
+    pub c_char: CCharTy,
+    pub c_short: Integer,
+    pub c_int: Integer,
+    pub c_long: Integer,
+    pub c_longlong: Integer,
+
+    pub c_float: Float,
+    pub c_double: Float,
+}
+
+impl Default for CTypes {
+    fn default() -> Self {
+        Self {
+            c_char: CCharTy::U8,
+            c_short: Integer::I16,
+            c_int: Integer::I32,
+            c_long: Integer::I32,
+            c_longlong: Integer::I64,
+
+            c_float: Float::F32,
+            c_double: Float::F64,
+        }
+    }
+}
+
 /// Add arguments for the given flavor and also for its "twin" flavors
 /// that have a compatible command line interface.
 fn add_link_args_iter(
@@ -2735,6 +2764,7 @@ impl Default for TargetOptions {
         TargetOptions {
             endian: Endian::Little,
             c_int_width: 32,
+            c_types: CTypes::default(),
             os: Os::None,
             env: Env::Unspecified,
             cfg_abi: CfgAbi::Unspecified,
