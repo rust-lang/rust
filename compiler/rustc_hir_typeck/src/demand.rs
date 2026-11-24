@@ -402,17 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
                     let Some(input_arg) = method.sig.inputs().get(idx + 1) else {
-                        if method.sig.splatted().is_some() {
-                            // FIXME(splat): when the arg is splatted, adjust its index, to handle the type mismatch properly
-                            return None;
-                        } else {
-                            span_bug!(
-                                self.tcx.def_span(method.def_id),
-                                "arg index {} out of bounds for method with {} inputs",
-                                idx + 1,
-                                method.sig.inputs().len(),
-                            );
-                        }
+                        return None;
                     };
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
@@ -505,8 +495,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Find what argument caused our rcvr to become incompatible
                 // with the expected ty.
+                let Some(inputs) = method.sig.inputs().get(1..) else {
+                    continue;
+                };
                 for (idx, (expected_arg_ty, arg_expr)) in
-                    std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
+                    std::iter::zip(inputs, args).enumerate()
                 {
                     let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else {
                         continue;
@@ -544,8 +537,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .typeck_results
                                 .borrow()
                                 .type_dependent_def_id(parent_expr.hir_id)
+                        && let Some(&ideal_arg_ty) = ideal_method.sig.inputs().get(idx + 1)
                         && let ideal_arg_ty =
-                            self.deeply_resolve_ignoring_regions(ideal_method.sig.inputs()[idx + 1])
+                            self.deeply_resolve_ignoring_regions(ideal_arg_ty)
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(
