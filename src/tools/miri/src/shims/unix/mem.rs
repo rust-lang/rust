@@ -15,6 +15,7 @@
 //! report UB.
 
 use rustc_abi::Size;
+use rustc_ast::Mutability;
 use rustc_target::spec::Os;
 
 use crate::*;
@@ -105,6 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             MiriMemoryKind::Mmap.into(),
             // mmap guarantees new mappings are zero-init.
             AllocInit::Zero,
+            Mutability::Mut,
         )?;
 
         interp_ok(Scalar::from_pointer(ptr, ecx))

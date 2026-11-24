@@ -417,6 +417,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         size: Size,
         align: Align,
         init: AllocInit,
+        mutability: Mutability,
         params: <Bytes as AllocBytes>::AllocParams,
         fail: impl FnOnce() -> R,
     ) -> Result<Self, R> {
@@ -439,7 +440,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
                 },
             ),
             align,
-            mutability: Mutability::Mut,
+            mutability,
             extra: (),
         })
     }
@@ -450,9 +451,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         size: Size,
         align: Align,
         init: AllocInit,
+        mutability: Mutability,
         params: <Bytes as AllocBytes>::AllocParams,
     ) -> InterpResult<'tcx, Self> {
-        Self::new_inner(size, align, init, params, || {
+        Self::new_inner(size, align, init, mutability, params, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
             InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
@@ -468,9 +470,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         size: Size,
         align: Align,
         init: AllocInit,
+        mutability: Mutability,
         params: <Bytes as AllocBytes>::AllocParams,
     ) -> Self {
-        match Self::new_inner(size, align, init, params, || {
+        match Self::new_inner(size, align, init, mutability, params, || {
             // `size` may actually be bigger than isize::MAX since it is a *target* size.
             // Clamp it to isize::MAX to still give a somewhat reasonable error message.
             alloc::handle_alloc_error(

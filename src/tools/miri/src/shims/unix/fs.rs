@@ -9,6 +9,7 @@ use std::time::SystemTime;
 
 use rand::RngExt;
 use rustc_abi::Size;
+use rustc_ast::Mutability;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
@@ -1655,6 +1656,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dirent_layout.align,
                     MiriMemoryKind::Runtime.into(),
                     AllocInit::Uninit,
+                    Mutability::Mut,
                 )?;
                 let entry = this.ptr_to_mplace(entry.into(), dirent_layout);
 

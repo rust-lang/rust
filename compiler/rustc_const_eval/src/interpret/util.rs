@@ -1,3 +1,4 @@
+use rustc_ast::Mutability;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -88,7 +89,7 @@ pub(crate) fn create_static_alloc<'tcx>(
     assert_eq!(size, layout.size);
     assert!(align >= layout.align);
 
-    let alloc = Allocation::try_new(size, align, AllocInit::Uninit, ())?;
+    let alloc = Allocation::try_new(size, align, AllocInit::Uninit, Mutability::Mut, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));

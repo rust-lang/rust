@@ -3,6 +3,7 @@ use std::path::{self, Path, PathBuf};
 use std::{io, iter, str};
 
 use rustc_abi::{Align, Size};
+use rustc_ast::Mutability;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -465,6 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::WinHeap.into(),
                     init,
+                    Mutability::Mut
                 )?;
                 ecx.write_pointer(ptr, dest)?;
             }

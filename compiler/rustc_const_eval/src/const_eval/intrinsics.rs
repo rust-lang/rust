@@ -1,4 +1,5 @@
 use rustc_abi::{Align, Size};
+use rustc_ast::Mutability;
 use rustc_middle::ty::layout::{HasTypingEnv, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo};
 use rustc_middle::{mir, throw_machine_stop};
@@ -47,6 +48,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
                     AllocInit::Uninit,
+                    Mutability::Mut,
                 )?;
                 self.write_pointer(ptr, dest)?;
             }
