@@ -58,15 +58,7 @@ pub mod arm;
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 pub mod aarch64;
 
-// Note that we enable the module on "mangled-names" because that is the default feature
-// in the builtins-test tests. So this is a way of enabling the module during testing.
-#[cfg(all(
-    target_arch = "aarch64",
-    any(
-        target_feature = "outline-atomics",
-        feature = "unstable-public-internals"
-    )
-))]
+#[cfg(target_arch = "aarch64")]
 pub mod aarch64_outline_atomics;
 
 #[cfg(target_arch = "avr")]
