@@ -189,11 +189,16 @@ where
 
         // Fast path: when the feature is disabled,
         // assume all types implement `Move`.
+        // ADTs use their crate's features, and structural types their components'.
         //
         // This will trivially make the addition of
         // `Move` backward compatible with trait bounds
-        if !cx.features().move_trait()
-            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+        if cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+            && match goal.predicate.self_ty().kind() {
+                ty::Adt(def, _) => !cx.features_for(def.def_id().into()).move_trait(),
+                ty::Tuple(_) | ty::Array(..) | ty::Slice(_) | ty::Pat(..) => false,
+                _ => !cx.features().move_trait(),
+            }
         {
             return ecx
                 .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)

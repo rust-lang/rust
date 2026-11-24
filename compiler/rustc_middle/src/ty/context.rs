@@ -164,6 +164,10 @@ impl<'tcx> rustc_type_ir::inherent::ItemFeatures<TyCtxt<'tcx>> for ItemFeatures<
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
     }
+
+    fn move_trait(self) -> bool {
+        self.enabled(sym::move_trait)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {

@@ -612,6 +612,8 @@ pub trait ItemFeatures<I: Interner>: Copy {
     fn gca_const_items(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
+
+    fn move_trait(self) -> bool;
 }
 
 #[rust_analyzer::prefer_underscore_import]
