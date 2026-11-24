@@ -513,7 +513,7 @@ impl ExitStatusExt for process::ExitStatusError {
     }
 }
 
-#[unstable(feature = "unix_send_signal", issue = "141975")]
+#[stable(feature = "unix_kill_process_group", since = "CURRENT_RUSTC_VERSION")]
 pub impl(self) trait ChildExt {
     /// Sends a signal to a child process.
     ///
@@ -541,14 +541,18 @@ pub impl(self) trait ChildExt {
     ///     Ok(())
     /// }
     /// ```
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
     fn send_signal(&self, signal: i32) -> io::Result<()>;
 
     /// Sends a signal to a child process's process group.
     ///
+    /// The child process must have been created as a process group leader.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the signal is invalid or if the
-    /// child process does not have a process group. The integer values
+    /// child process was not created as a process group leader. An error may be
+    /// returned if the child process has been awaited. The integer values
     /// associated with signals are implementation-specific, so it's encouraged
     /// to use a crate that provides posix bindings.
     ///
@@ -579,18 +583,23 @@ pub impl(self) trait ChildExt {
     /// Forces the child process's process group to exit.
     ///
     /// This is analogous to [`Child::kill`] but applies to every process in
-    /// the child process's process group.
+    /// the child process's process group. The child process must have been
+    /// created as a process group leader,
     ///
     /// Use [`CommandExt::process_group`] to assign a child process to an
     /// existing process group, or to make it the leader of a new process group.
     /// By default spawned processes are in the parent's process group.
     ///
+    /// # Errors
+    ///
+    /// This function will return an error if the child process was not created
+    /// as a process group leader. An error may be returned if the child
+    /// process has been awaited.
+    ///
     /// # Examples
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
-    /// #![feature(unix_kill_process_group)]
-    ///
     /// use std::{os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -604,11 +613,11 @@ pub impl(self) trait ChildExt {
     /// ```
     ///
     /// [`Child::kill`]: process::Child::kill
-    #[unstable(feature = "unix_kill_process_group", issue = "156537")]
+    #[stable(feature = "unix_kill_process_group", since = "CURRENT_RUSTC_VERSION")]
     fn kill_process_group(&self) -> io::Result<()>;
 }
 
-#[unstable(feature = "unix_send_signal", issue = "141975")]
+#[stable(feature = "unix_kill_process_group", since = "CURRENT_RUSTC_VERSION")]
 impl ChildExt for process::Child {
     #[rustdoc_skip_body]
     fn send_signal(&self, signal: i32) -> io::Result<()> {
