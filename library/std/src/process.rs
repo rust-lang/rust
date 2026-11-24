@@ -2700,8 +2700,20 @@ pub fn id() -> u32 {
     label = "`main` can only return types that implement `{this}`"
 ))]
 pub trait Termination {
-    /// Is called to get the representation of the value as status code.
-    /// This status code is returned to the operating system.
+    /// Converts `self` to an [`ExitCode`] which can be interpreted by the operating system. In the
+    /// [case of `Result`](#impl-Termination-for-Result<T,+E>), this includes "reporting" any
+    /// errors to the user, ie. writing the debug-formatted `Err` case to stderr.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::process::{ExitCode, Termination};
+    ///
+    /// let result: Result<(), &'static str> = Err("uh oh!");
+    ///
+    /// // Will also print 'Error: "uh oh!"' (including double quotes) to stderr
+    /// assert_eq!(ExitCode::FAILURE, result.report());
+    /// ```
     #[stable(feature = "termination_trait_lib", since = "1.61.0")]
     fn report(self) -> ExitCode;
 }
