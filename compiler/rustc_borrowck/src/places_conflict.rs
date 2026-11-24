@@ -544,6 +544,11 @@ fn place_projection_conflict<'tcx>(
             unimplemented!()
         }
 
+        (ProjectionElem::View(_), ProjectionElem::View(_)) => {
+            debug!("place_element_conflict: DISJOINT-OR-EQ-VIEW-VIEW");
+            Overlap::Disjoint
+        }
+
         // FIXME(scrabsha):
         (ProjectionElem::View(_), _) => unimplemented!(),
     }
