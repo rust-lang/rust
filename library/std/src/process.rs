@@ -2701,8 +2701,8 @@ pub fn id() -> u32 {
 ))]
 pub trait Termination {
     /// Converts `self` to an [`ExitCode`] which can be interpreted by the operating system. In the
-    /// [case of `Result`](#impl-Termination-for-Result<T,+E>), this includes "reporting" any
-    /// errors to the user, ie. writing the debug-formatted `Err` case to stderr.
+    /// case of `Result`, this includes "reporting" any errors to the user, ie. writing the
+    /// debug-formatted `Err` case to stderr.
     ///
     /// # Examples
     ///
