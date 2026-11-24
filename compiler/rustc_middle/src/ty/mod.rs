@@ -1130,8 +1130,8 @@ impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> 
             .size
     }
 
-    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
-        Self::post_analysis(tcx, def_id)
+    fn post_analysis_no_rigid_aliases(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis_no_rigid_aliases(tcx, def_id)
     }
 }
 
@@ -1192,8 +1192,27 @@ impl<'tcx> TypingEnv<'tcx> {
         }
     }
 
-    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+    /// Use this when you don't have types/consts from an earlier typing env.
+    /// See [`Self::with_post_analysis_normalized_invalidating_rigid_aliases`].
+    pub fn post_analysis_no_rigid_aliases(
+        tcx: TyCtxt<'tcx>,
+        def_id: impl IntoQueryKey<DefId>,
+    ) -> TypingEnv<'tcx> {
         TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
+    }
+
+    /// Use this when you have types/consts from an earlier typing env.
+    /// See [`Self::with_post_analysis_normalized_invalidating_rigid_aliases`].
+    pub fn post_analysis_invalidating_rigid_aliases<T>(
+        tcx: TyCtxt<'tcx>,
+        def_id: impl IntoQueryKey<DefId>,
+        value: T,
+    ) -> PseudoCanonicalInput<'tcx, Unnormalized<'tcx, T>>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let typing_env = TypingEnv::post_analysis_no_rigid_aliases(tcx, def_id);
+        typing_env.as_query_input(ty::set_aliases_to_non_rigid(tcx, value))
     }
 
     pub fn codegen(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {

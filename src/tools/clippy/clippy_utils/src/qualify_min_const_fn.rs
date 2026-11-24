@@ -182,7 +182,7 @@ fn check_rvalue<'tcx>(
             };
             let unsized_ty = cx
                 .tcx
-                .struct_tail_for_codegen(pointee_ty, ty::TypingEnv::post_analysis(cx.tcx, def_id));
+                .struct_tail_for_codegen(pointee_ty, ty::TypingEnv::post_analysis_no_rigid_aliases(cx.tcx, def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(cx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
