@@ -54,7 +54,6 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
-use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{
@@ -543,14 +542,11 @@ pub struct BoundVarReplacer<I: Interner, D> {
     /// the ones we have visited.
     current_index: ty::DebruijnIndex,
     delegate: D,
-    // Types can appear at different binder depths, so include the depth
-    // in the cache key.
-    cache: DelayedMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
 }
 
 impl<I: Interner, D: BoundVarReplacerDelegate<I>> BoundVarReplacer<I, D> {
     pub fn new(cx: I, delegate: D) -> Self {
-        Self { cx, current_index: ty::INNERMOST, delegate, cache: Default::default() }
+        Self { cx, current_index: ty::INNERMOST, delegate }
     }
 }
 
@@ -578,12 +574,8 @@ impl<I: Interner, D: BoundVarReplacerDelegate<I>> TypeFolder<I> for BoundVarRepl
             _ => {
                 if !t.has_vars_bound_at_or_above(self.current_index) {
                     t
-                } else if let Some(&t) = self.cache.get(&(self.current_index, t)) {
-                    t
                 } else {
-                    let res = t.super_fold_with(self);
-                    assert!(self.cache.insert((self.current_index, t), res));
-                    res
+                    t.super_fold_with(self)
                 }
             }
         }
