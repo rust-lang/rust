@@ -14,7 +14,7 @@ use rustc_attr_ir::{
     StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -38,8 +38,7 @@ pub(crate) use self::Type::{
     RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
 };
 use crate::clean::cfg::Cfg;
-use crate::clean::clean_middle_path;
-use crate::clean::inline::{self, print_inlined_const};
+use crate::clean::inline::print_inlined_const;
 use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
@@ -1110,12 +1109,25 @@ pub(crate) enum GenericBound {
 
 impl GenericBound {
     pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
+        Self::TraitBound(
+            PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
+            hir::TraitBoundModifiers::NONE,
+        )
     }
 
-    pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(
-            cx,
+    // FIXME(fmease):
+    #[allow(rustc::symbol_intern_string_literal)]
+    pub(crate) fn meta_sized(cx: &mut DocContext<'_>) -> Self {
+        // FIXME(fmease): XXX
+        Self::TraitBound(
+            PolyTrait::sizedness(cx, Symbol::intern("MetaSized"), LangItem::MetaSized),
+            hir::TraitBoundModifiers::NONE,
+        )
+    }
+
+    pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> Self {
+        Self::TraitBound(
+            PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
@@ -1123,12 +1135,13 @@ impl GenericBound {
         )
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
-        let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-        let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
-        inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifiers)
+    // FIXME(fmease):
+    #[allow(rustc::symbol_intern_string_literal)]
+    pub(crate) fn pointee_sized(cx: &mut DocContext<'_>) -> Self {
+        Self::TraitBound(
+            PolyTrait::sizedness(cx, Symbol::intern("PointeeSized"), LangItem::PointeeSized),
+            hir::TraitBoundModifiers::NONE,
+        )
     }
 
     pub(crate) fn is_trait_bound(&self) -> bool {
@@ -1346,6 +1359,15 @@ pub(crate) struct TraitAlias {
 pub(crate) struct PolyTrait {
     pub(crate) trait_: Path,
     pub(crate) generic_params: Vec<GenericParamDef>,
+}
+
+impl PolyTrait {
+    pub(crate) fn sizedness(cx: &mut DocContext<'_>, name: Symbol, item: LangItem) -> Self {
+        let def_id = cx.tcx.require_lang_item(item, DUMMY_SP);
+        let seg = PathSegment { name, args: GenericArgs::empty_angle_bracketed() };
+        let trait_ = Path { res: Res::Def(DefKind::Trait, def_id), segments: thin_vec![seg] };
+        Self { trait_, generic_params: Vec::new() }
+    }
 }
 
 // Also used in `write_shared.rs` when generating the JS `impl` file for aliased types.

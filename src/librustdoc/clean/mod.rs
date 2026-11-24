@@ -319,6 +319,7 @@ fn clean_generic_bound<'tcx>(
                         DefaultSizedness::Sized => Some(GenericBound::maybe_sized(cx)),
                     };
                 }
+                // FIXME(sized_hierarchy): Rewrite user-written `?Sized` to `MetaSized` if !disguise?
                 _ => {}
             }
 
@@ -2440,7 +2441,7 @@ fn clean_middle_opaque_bounds<'tcx>(
     impl_trait_def_id: DefId,
     args: ty::GenericArgs<'tcx>,
 ) -> Type {
-    let mut has_sized = false;
+    let mut sizedness = Sizedness::PointeeSized;
 
     let bounds: Vec<_> = cx
         .tcx
@@ -2461,16 +2462,10 @@ fn clean_middle_opaque_bounds<'tcx>(
                 _ => return None,
             };
 
-            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-            // is shown and none of the new sizedness traits leak into documentation.
-            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
-                return None;
-            }
-
-            if let Some(sized) = cx.tcx.lang_items().sized_trait()
-                && trait_ref.def_id() == sized
+            if let Some(item) = cx.tcx.as_lang_item(trait_ref.def_id())
+                && let Some(sz) = Sizedness::from_lang_item(item)
             {
-                has_sized = true;
+                sizedness.add(sz);
                 return None;
             }
 
@@ -2499,8 +2494,16 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    if !has_sized {
-        bounds.push(GenericBound::maybe_sized(cx));
+    if cx.disguise_sized_hierarchy {
+        if sizedness != Sizedness::Sized {
+            bounds.push(GenericBound::maybe_sized(cx));
+        }
+    } else {
+        match sizedness {
+            Sizedness::PointeeSized => bounds.push(GenericBound::pointee_sized(cx)),
+            Sizedness::MetaSized => bounds.push(GenericBound::meta_sized(cx)),
+            Sizedness::Sized => {}
+        }
     }
 
     // Move trait bounds to the front.
@@ -2528,6 +2531,29 @@ fn clean_middle_opaque_bounds<'tcx>(
     }
 
     ImplTrait(bounds)
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum Sizedness {
+    PointeeSized,
+    MetaSized,
+    Sized,
+}
+
+impl Sizedness {
+    fn from_lang_item(item: LangItem) -> Option<Self> {
+        match item {
+            LangItem::Sized => Some(Self::Sized),
+            LangItem::MetaSized => Some(Self::MetaSized),
+            _ => None,
+        }
+    }
+
+    fn add(&mut self, other: Self) {
+        if *self < other {
+            *self = other;
+        }
+    }
 }
 
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {

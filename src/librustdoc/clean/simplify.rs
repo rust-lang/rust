@@ -11,7 +11,6 @@
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!
 
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -19,7 +18,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{TyCtxt, Unnormalized};
 
 use crate::clean;
-use crate::clean::{GenericArgs as PP, WherePredicate as WP};
+use crate::clean::{GenericArgs as PP, Sizedness, WherePredicate as WP};
 use crate::core::DocContext;
 
 pub(crate) fn where_clauses(tcx: TyCtxt<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
@@ -128,13 +127,6 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
 /// For example, assuming `T` is a type parameter of the owner of `generics`,
 /// `T: Sized` gets dropped and `T: MetaSized` gets rewritten to `T: ?Sized`.
 pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum Sizedness {
-        PointeeSized,
-        MetaSized,
-        Sized,
-    }
-
     let mut type_params: FxIndexMap<_, _> = generics
         .params
         .iter()
@@ -159,19 +151,15 @@ pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Ge
         // This transformation is only valid on type parameters defined on the closest item.
         // If the parameter was defined by the parent item we know that the sizedness bound
         // *has* to be user-written in which case we have to preserve it as is.
-        let Some(param_sizedness) = type_params.get_mut(param) else { return true };
-
-        let sizedness = match cx.tcx.as_lang_item(trait_ref.trait_.def_id()) {
-            Some(LangItem::Sized) => Sizedness::Sized,
-            Some(LangItem::MetaSized) => Sizedness::MetaSized,
-            _ => return true,
-        };
-
-        if sizedness > *param_sizedness {
-            *param_sizedness = sizedness;
+        if let Some(sizedness) = type_params.get_mut(param)
+            && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
+            && let Some(sz) = Sizedness::from_lang_item(item)
+        {
+            sizedness.add(sz);
+            false
+        } else {
+            true
         }
-
-        false
     });
 
     for (param, sizedness) in type_params {
