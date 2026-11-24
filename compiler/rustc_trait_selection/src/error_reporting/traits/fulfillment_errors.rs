@@ -2782,9 +2782,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut all_tuples_impl_the_same_trait = true;
                 let mut last_tuple_trait_ref = None;
 
-                fn have_same_trait_path(a: &TraitRef<'_>, b: &TraitRef<'_>) -> bool {
-                    a.print_only_trait_path().to_string() == b.print_only_trait_path().to_string()
-                }
+                // Ensure that the following `ty::TraitRef` are pretty printing equivalent.
+                // We cannot simply use `a == b` because we want to exclude the SelfTy.
+                // We could compare their corresponding `def_id` and their corresponding `args[1..]`,
+                // However In cases like this one:
+                //   impl<T1, U> MyTrait<U> for (T1,) where T1: MyTrait<U> {}
+                //   impl<T1, T2, U> MyTrait<U> for (T1, T2) where T1: MyTrait<U> {}
+                //
+                // The `U` parameter can be either at position 1 or 2 or `n`. So we get two `ty::TraitRef`
+                // with the same `def_id` and with their corresponding `args[1..]` containing
+                // `GenericArgKind::Type(Ty::ParamTy)`. Because of this `U` parameter has not always the
+                // same position, indexes are different, so the corresponding `ParamTy` are different and
+                // for this reason, we cannot compare  `a.args[1..]` with `b.args[1..]` directly.
+                let are_same_trait_ref = |a: &TraitRef<'tcx>, b: &TraitRef<'tcx>| {
+                    a.def_id == b.def_id
+                        && a.args.as_slice()[1..].iter().zip(b.args.as_slice()[1..].iter()).all(
+                            |(a, b)| match (a.kind(), b.kind()) {
+                                (GenericArgKind::Type(t1), GenericArgKind::Type(t2))
+                                    if let (ty::Param(p1), ty::Param(p2)) =
+                                        (t1.kind(), t2.kind()) =>
+                                {
+                                    p1.name == p2.name
+                                }
+                                _ => a == b,
+                            },
+                        )
+                };
                 // `candidates` can contain only tuples or a variety of other types that include tuples.
                 // Find and locates tuples in `candidates` and computes some metrics: checks if they
                 // are continuous by arity, if so compute the min and the max arity of these tuples and
@@ -2806,7 +2829,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         tuple_min_arity = tys.len();
                                     }
                                     if all_tuples_impl_the_same_trait
-                                        && have_same_trait_path(
+                                        && are_same_trait_ref(
                                             last_tuple_trait_ref.map_or(c, |e: &TraitRef<'_>| e),
                                             c,
                                         )
