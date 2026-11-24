@@ -9,39 +9,14 @@ pub(crate) fn setup(_sess: &Session) {}
 
 #[cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))]
 mod for_unix {
-    use std::ffi::c_int;
-    use std::io;
-
-    use libc::id_t;
-
-    fn get_priority(which: c_int, who: id_t) -> io::Result<c_int> {
-        // Genius design: `getpriority` can return -1 on success if the nice value is literally -1.
-        // Per `getpriority`'s docs, clear `errno` beforehand and check it afterward regardless of
-        // return value.
-        errno::set_errno(errno::Errno(0));
-        // SAFETY: empty safety contract
-        let nice = unsafe { libc::getpriority(which as _, who) };
-        let new_errno = errno::errno().0;
-        if new_errno == 0 { Ok(nice) } else { Err(io::Error::from_raw_os_error(new_errno)) }
-    }
-    fn set_priority(which: c_int, who: id_t, prio: c_int) -> io::Result<()> {
-        // SAFETY: empty safety contract
-        if unsafe { libc::setpriority(which as _, who, prio) != -1 } {
-            Ok(())
-        } else {
-            Err(io::Error::last_os_error())
-        }
-    }
+    use rustix::process::{getpriority_process, setpriority_process};
 
     pub(crate) fn setup(sess: &super::Session) {
-        const TARGET_NICE: c_int = 10;
-        // The processes that spawn the build are all descendants of the
-        // current thread.
-        let (which, who) = (libc::PRIO_PROCESS as _, 0);
-        // Unwrap both of those to alert users to ridiculous Seccomp-BPF setups messing up their
-        // performance.
-        if sess.config.low_priority && get_priority(which, who).unwrap() < TARGET_NICE {
-            set_priority(which, who, TARGET_NICE).unwrap();
+        const TARGET_NICE: libc::c_int = 10;
+        // The processes that spawn the build are all descendants of the current thread. Unwrap both
+        // of those to alert users to ridiculous Seccomp-BPF setups messing up their performance.
+        if sess.config.low_priority && getpriority_process(None).unwrap() < TARGET_NICE {
+            setpriority_process(None, TARGET_NICE).unwrap();
         }
     }
 }
