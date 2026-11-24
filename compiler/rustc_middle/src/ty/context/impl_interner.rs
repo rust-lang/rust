@@ -572,6 +572,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         );
         TyCtxt::for_each_relevant_impl(self, trait_ref.def_id, self_ty, f)
     }
+
+    fn for_each_candidate_impl<R: VisitorResult>(
+        self,
+        trait_ref: ty::TraitRef<'tcx>,
+        f: impl FnMut(DefId) -> R,
+    ) -> R {
+        let self_ty = trait_ref.args.type_at(0);
+        debug_assert!(
+            !matches!(self_ty.kind(), ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_, _)),
+            "we should not have them as self ty in the next solver"
+        );
+        TyCtxt::for_each_candidate_impl(self, trait_ref.def_id, self_ty, f)
+    }
+
     fn for_each_blanket_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,

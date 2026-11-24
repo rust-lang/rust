@@ -1,9 +1,9 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_macros::extension;
 pub use rustc_middle::traits::specialization_graph::*;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::bug;
 use tracing::{debug, instrument};
 
@@ -72,13 +72,14 @@ impl<'tcx> Children {
 
     /// Attempt to insert an impl into this set of children, while comparing for
     /// specialization relationships.
-    #[instrument(level = "debug", skip(self, tcx), ret)]
+    #[instrument(level = "debug", skip(self, tcx, exact_match_self_tys_map), ret)]
     fn insert(
         &mut self,
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
+        exact_match_self_tys_map: &DefIdMap<Ty<'tcx>>,
     ) -> Result<Inserted<'tcx>, OverlapError<'tcx>> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
@@ -87,6 +88,8 @@ impl<'tcx> Children {
             Some(st) => PotentialSiblings::Filtered(filtered_children(self, st)),
             None => PotentialSiblings::Unfiltered(iter_children(self)),
         };
+
+        let exact_match_self_ty = exact_match_self_tys_map.get(&impl_def_id).copied();
 
         for possible_sibling in possible_siblings {
             debug!(?possible_sibling);
@@ -135,6 +138,15 @@ impl<'tcx> Children {
                     Ok((false, false))
                 }
             };
+
+            // Attempt a fast exact-match rejection of the pair using the pre-built exact-match
+            // map.
+            if let Some(ty1) = exact_match_self_ty
+                && let Some(ty2) = exact_match_self_tys_map.get(&possible_sibling).copied()
+                && ty1 != ty2
+            {
+                continue;
+            }
 
             let last_lint_mut = &mut last_lint;
             let (le, ge) = traits::overlapping_trait_impls(
@@ -238,6 +250,7 @@ impl<'tcx> Graph {
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         overlap_mode: OverlapMode,
+        exact_match_self_tys_map: &DefIdMap<Ty<'tcx>>,
     ) -> Result<Option<FutureCompatOverlapError<'tcx>>, OverlapError<'tcx>> {
         assert!(impl_def_id.is_local());
 
@@ -278,6 +291,7 @@ impl<'tcx> Graph {
                 impl_def_id,
                 simplified,
                 overlap_mode,
+                exact_match_self_tys_map,
             )?;
 
             match insert_result {
