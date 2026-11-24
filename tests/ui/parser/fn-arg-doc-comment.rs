@@ -1,11 +1,11 @@
 pub fn f( //~ NOTE function defined here
     /// Comment
-    //~^ ERROR documentation comments cannot be applied to function parameters
-    //~| NOTE doc comments are not allowed here
+    //~^ ERROR unused doc comment
+    //~| NOTE rustdoc does not generate documentation for function params
     id: u8,
     /// Other
-    //~^ ERROR documentation comments cannot be applied to function parameters
-    //~| NOTE doc comments are not allowed here
+    //~^ ERROR unused doc comment
+    //~| NOTE rustdoc does not generate documentation for function params
     a: u8,
 ) {}
 

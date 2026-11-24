@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::{AttrStyle, Safety};
 use rustc_attr_ir::target::{MethodKind, Target};
-use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
+use rustc_attr_ir::{AttrItem, Attribute};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
@@ -375,9 +375,6 @@ impl<'sess> AttributeParser<'sess> {
             .into_iter()
             .filter_map(|attr| {
                 match attr {
-                    Attribute::Parsed(AttributeKind::DocComment { span, .. }) => Some(*span),
-                    // FIXME: We shouldn't need to special-case `doc`!
-                    Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
                     Attribute::Tool { item: attr, .. } | Attribute::DeriveHelper(attr) => {
