@@ -252,7 +252,6 @@ impl<'a> TraitDef<'a> {
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
         );
 
-        let fields: Box<dyn Iterator<Item = &ast::FieldDef>>;
         let methods;
         let (ident, generics) = match &item.kind {
             ast::ItemKind::Union(..) if !self.supports_unions => {
@@ -261,7 +260,6 @@ impl<'a> TraitDef<'a> {
             }
             ast::ItemKind::Struct(ident, generics, struct_def)
             | ast::ItemKind::Union(ident, generics, struct_def) => {
-                fields = Box::new(struct_def.fields().iter());
                 methods = self
                     .methods
                     .into_iter()
@@ -285,8 +283,6 @@ impl<'a> TraitDef<'a> {
                 if is_packed {
                     return;
                 }
-                fields =
-                    Box::new(enum_def.variants.iter().flat_map(|variant| variant.data.fields()));
                 methods = self
                     .methods
                     .into_iter()
@@ -388,7 +384,7 @@ impl<'a> TraitDef<'a> {
         }));
 
         if !ty_param_names.is_empty() {
-            for field in fields {
+            for field in cx.fields_iter(item) {
                 let field_ty_params = find_type_parameters(&field.ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {

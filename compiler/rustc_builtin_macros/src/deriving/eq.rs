@@ -49,38 +49,25 @@ fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> BlockOrExpr {
     // FIXME: this could be extended to also skip `T::AssocType` as that also gets an impl bound.
     let mut seen_type_names =
         FxHashSet::from_iter(item.opt_generics().unwrap().params.iter().map(|p| p.ident.name));
-    let mut process_variant = |variant: &ast::VariantData| {
-        for field in variant.fields() {
-            // This basic redundancy checking only prevents duplication of
-            // assertions like `AssertParamIsEq<Foo>` where the type is a
-            // simple name. That's enough to get a lot of cases, though.
-            if let Some(name) = field.ty.kind.is_simple_path()
-                && !seen_type_names.insert(name)
-            {
-                // Already produced an assertion for this type.
-            } else {
-                // let _: AssertParamIsEq<FieldTy>;
-                super::assert_ty_bounds(
-                    cx,
-                    &mut stmts,
-                    field.ty.clone(),
-                    field.span,
-                    &[sym::cmp, sym::AssertParamIsEq],
-                );
-            }
+    for field in cx.fields_iter(item) {
+        // This basic redundancy checking only prevents duplication of
+        // assertions like `AssertParamIsEq<Foo>` where the type is a
+        // simple name. That's enough to get a lot of cases, though.
+        if let Some(name) = field.ty.kind.is_simple_path()
+            && !seen_type_names.insert(name)
+        {
+            // Already produced an assertion for this type.
+        } else {
+            // let _: AssertParamIsEq<FieldTy>;
+            super::assert_ty_bounds(
+                cx,
+                &mut stmts,
+                field.ty.clone(),
+                field.span,
+                &[sym::cmp, sym::AssertParamIsEq],
+            );
         }
-    };
-
-    match &item.kind {
-        ast::ItemKind::Struct(.., vdata) | ast::ItemKind::Union(.., vdata) => {
-            process_variant(vdata);
-        }
-        ast::ItemKind::Enum(.., enum_def) => {
-            for variant in &enum_def.variants {
-                process_variant(&variant.data);
-            }
-        }
-        _ => unreachable!(),
     }
+
     BlockOrExpr::new_stmts(stmts)
 }

@@ -834,4 +834,19 @@ impl<'a> ExtCtxt<'a> {
             style: ast::AttrStyle::Outer,
         }
     }
+
+    pub fn fields_iter<'b>(
+        &'b self,
+        item: &'b ast::Item,
+    ) -> Box<dyn Iterator<Item = &'b ast::FieldDef> + '_> {
+        match &item.kind {
+            ast::ItemKind::Struct(.., vdata) | ast::ItemKind::Union(.., vdata) => {
+                Box::new(vdata.fields().iter())
+            }
+            ast::ItemKind::Enum(.., def) => {
+                Box::new(def.variants.iter().flat_map(|v| v.data.fields()))
+            }
+            _ => unreachable!(),
+        }
+    }
 }
