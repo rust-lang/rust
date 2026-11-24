@@ -376,7 +376,8 @@ pub mod net {
     pub fn make_tcp_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
         let (sockfd, addr_with_port) = make_local_ipv6(libc::SOCK_STREAM)?;
 
-        unsafe { errno_result(libc::listen(sockfd, 16))? };
+        let res = unsafe { errno_result(libc::listen(sockfd, 16))? };
+        assert_eq!(res, 0);
 
         Ok((sockfd, addr_with_port))
     }
@@ -393,25 +394,27 @@ pub mod net {
 
     /// Connect the socket to the specified IPv4 address.
     pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) -> io::Result<()> {
-        unsafe {
+        let res = unsafe {
             errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in).cast(),
                 size_of::<libc::sockaddr_in>() as libc::socklen_t,
-            ))?;
-        }
+            ))?
+        };
+        assert_eq!(res, 0);
         Ok(())
     }
 
     /// Connect the socket to the specified IPv6 address.
     pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) -> io::Result<()> {
-        unsafe {
+        let res = unsafe {
             errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in6).cast(),
                 size_of::<libc::sockaddr_in6>() as libc::socklen_t,
-            ))?;
-        }
+            ))?
+        };
+        assert_eq!(res, 0);
         Ok(())
     }
 
@@ -428,7 +431,7 @@ pub mod net {
     ) -> io::Result<()> {
         let option_len = size_of::<T>() as libc::socklen_t;
 
-        errno_result(unsafe {
+        let res = errno_result(unsafe {
             libc::setsockopt(
                 sockfd,
                 level,
@@ -437,6 +440,7 @@ pub mod net {
                 option_len,
             )
         })?;
+        assert_eq!(res, 0);
         Ok(())
     }
 
@@ -454,7 +458,7 @@ pub mod net {
         let mut option_len = size_of::<T>() as libc::socklen_t;
         let provided_len = option_len;
 
-        errno_result(unsafe {
+        let res = errno_result(unsafe {
             libc::getsockopt(
                 sockfd,
                 level,
@@ -463,6 +467,7 @@ pub mod net {
                 &mut option_len,
             )
         })?;
+        assert_eq!(res, 0);
         // Ensure that there was no truncation.
         assert!(option_len == provided_len);
 

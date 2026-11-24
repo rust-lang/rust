@@ -55,6 +55,9 @@ fn main() {
     test_getsockname_ipv4_unbound();
     test_getsockname_ipv6();
     test_getsockname_ipv6_unbound();
+
+    test_ipv6_unicast_hops();
+    test_ipv6_multicast_hops();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -419,4 +422,62 @@ fn test_getsockname_ipv6_unbound() {
     assert_eq!(addr.sin6_flowinfo, sock_addr.sin6_flowinfo);
     assert_eq!(addr.sin6_scope_id, sock_addr.sin6_scope_id);
     assert_eq!(addr.sin6_addr.s6_addr, sock_addr.sin6_addr.s6_addr);
+}
+
+/// Test setting and getting the IPV6_UNICAST_HOPS socket option.
+fn test_ipv6_unicast_hops() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+    net::setsockopt(sockfd, libc::IPPROTO_IPV6, libc::IPV6_UNICAST_HOPS, 32 as libc::c_int)
+        .unwrap();
+    let unicast_hops =
+        net::getsockopt::<libc::c_int>(sockfd, libc::IPPROTO_IPV6, libc::IPV6_UNICAST_HOPS)
+            .unwrap();
+    assert_eq!(unicast_hops, 32);
+}
+
+/// Test setting and getting the IPV6_MULTICAST_HOPS socket option.
+fn test_ipv6_multicast_hops() {
+    let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, SOCKET_TYPE, 0)).unwrap() };
+    let result =
+        net::setsockopt(sockfd, libc::IPPROTO_IPV6, libc::IPV6_MULTICAST_HOPS, 32 as libc::c_int);
+    if cfg!(udp) {
+        result.unwrap();
+    } else {
+        // TCP does not have IPV6_MULTICAST_HOPS.
+        let e = result.unwrap_err();
+        // Setting the IPV6_MULTICAST_HOPS socket option fails for TCP sockets
+        // since TCP doesn't support multicast.
+        if cfg!(miri) {
+            // Miri always returns ENOPROTOOPT in this case.
+            assert_eq!(e.raw_os_error().unwrap(), libc::ENOPROTOOPT);
+        } else {
+            // Linux returns ENOPROTOOPT while FreeBSD returns EOPNOTSUPP.
+            // We thus allow both errors on native hosts.
+            assert!(matches!(e.raw_os_error().unwrap(), libc::ENOPROTOOPT | libc::EOPNOTSUPP));
+        }
+    }
+
+    let result =
+        net::getsockopt::<libc::c_int>(sockfd, libc::IPPROTO_IPV6, libc::IPV6_MULTICAST_HOPS);
+    if cfg!(udp) {
+        assert_eq!(result.unwrap(), 32);
+    } else {
+        // TCP does not have IPV6_MULTICAST_HOPS.
+        if cfg!(all(target_os = "linux", not(miri))) {
+            // Native Linux successfully returns a default value here?!?
+            assert_eq!(result.unwrap(), 1);
+        } else {
+            let e = result.unwrap_err();
+            // Setting the IPV6_MULTICAST_HOPS socket option fails for TCP sockets
+            // since TCP doesn't support multicast.
+            if cfg!(miri) {
+                // Miri always returns ENOPROTOOPT in this case.
+                assert_eq!(e.raw_os_error().unwrap(), libc::ENOPROTOOPT);
+            } else {
+                // POSIX says to return ENOPROTOOPT while FreeBSD returns EOPNOTSUPP.
+                // We thus allow both errors on native hosts.
+                assert!(matches!(e.raw_os_error().unwrap(), libc::ENOPROTOOPT | libc::EOPNOTSUPP));
+            }
+        }
+    }
 }
