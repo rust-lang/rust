@@ -5,7 +5,7 @@
 use gccjit::{
     BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
 };
-use rustc_abi::{CanonAbi, Endian, ExternAbi, Float};
+use rustc_abi::{CanonAbi, Endian, Float};
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::Ty;
@@ -426,7 +426,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             conv: CanonAbi::C,
             can_unwind: false,
         };
-        fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false });
+        fn_abi.adjust_for_foreign_abi(self.cx);
 
         let ret_indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
