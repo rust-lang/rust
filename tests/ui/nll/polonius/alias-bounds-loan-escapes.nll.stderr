@@ -1,0 +1,59 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/alias-bounds-loan-escapes.rs:29:22
+   |
+LL |         let mut y = make::<'static, 'static>(&0);
+   |                     ---------------------------- assignment requires that `x` is borrowed for `'static`
+...
+LL |             let x = 42u8;
+   |                 - binding `x` declared here
+LL |             y = make(&x);
+   |                      ^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `x` dropped here while still borrowed
+
+error[E0597]: `*x` does not live long enough
+  --> $DIR/alias-bounds-loan-escapes.rs:55:22
+   |
+LL |         let mut y = make::<'static, 'static, 'static, '_>(&0, &z);
+   |                     --------------------------------------------- assignment requires that `*x` is borrowed for `'static`
+LL |         {
+LL |             let x = Box::new(42u8);
+   |                 - binding `x` declared here
+LL |             y = make(&*x, &z);
+   |                      ^^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `*x` dropped here while still borrowed
+
+error[E0597]: `d` does not live long enough
+  --> $DIR/alias-bounds-loan-escapes.rs:80:30
+   |
+LL |         let mut value = make::<'static, 'static, 'static, 'static>(&0, &0);
+   |                         -------------------------------------------------- assignment requires that `d` is borrowed for `'static`
+LL |         {
+LL |             let d = 42u8;
+   |                 - binding `d` declared here
+LL |             value = make(&0, &d);
+   |                              ^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `d` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/alias-bounds-loan-escapes.rs:107:39
+   |
+LL |         let mut y = <T as Tr<'static, 'static>>::mk(&0);
+   |                     ----------------------------------- assignment requires that `x` is borrowed for `'static`
+LL |         {
+LL |             let x = 42u8;
+   |                 - binding `x` declared here
+LL |             y = <T as Tr<'_, '_>>::mk(&x);
+   |                                       ^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `x` dropped here while still borrowed
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
