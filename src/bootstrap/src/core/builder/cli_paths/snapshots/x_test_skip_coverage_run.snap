@@ -228,4 +228,4 @@ expression: test --skip=coverage-run
     - Suite(tests/run-make-cargo)
 [Test] test::IntrinsicTest
     targets: [x86_64-unknown-linux-gnu]
-    - Set({intrinsic-test})
+    - Set({stdarch-intrinsic-test})

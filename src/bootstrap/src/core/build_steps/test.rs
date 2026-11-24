@@ -1071,12 +1071,17 @@ pub struct IntrinsicTest {
     host: TargetSelection,
 }
 
+impl IntrinsicTest {
+    const ALIAS: &'static str = "stdarch-intrinsic-test";
+}
+
 impl CommandLineStep for IntrinsicTest {
     type Output = ();
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("intrinsic-test")
+        // Not using a path since we don't want this to be part of `./x test library`.
+        run.alias(Self::ALIAS)
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1087,12 +1092,12 @@ impl CommandLineStep for IntrinsicTest {
         let target = run.target;
         let builder = run.builder;
 
-        let is_explicit =
-            builder.config.paths.iter().any(|p| p.to_string_lossy() == "intrinsic-test");
+        let is_explicit = builder.config.paths.iter().any(|p| p.to_string_lossy() == Self::ALIAS);
 
         if target.contains("x86_64-unknown-linux") && builder.config.sde.is_none() && is_explicit {
             panic!(
-                "SDE is required to run intrinsic-test. Please configure `build.sde` in config.toml."
+                "SDE is required to run {}. Please configure `build.sde` in config.toml.",
+                Self::ALIAS
             );
         }
 
