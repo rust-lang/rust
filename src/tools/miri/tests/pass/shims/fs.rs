@@ -876,12 +876,17 @@ fn test_directory_handle() {
     dir.create_dir("subdir").unwrap();
     let subdir = dir.open_dir("subdir").unwrap();
 
-    // Delete subdir.
-    // Close the handles first, Windows hosts may refuse to remove things that are still open.
+    // Close the file before going on. Windows hosts may refuse to rename a file that is still open.
     drop(file);
-    drop(subdir);
-    dir.remove_file("file.txt").unwrap();
+    // Move the file between directory handles and check that its contents survive at the new path.
+    dir.rename("file.txt", &subdir, "renamed.txt").unwrap();
     assert!(!filename.exists());
+    let renamed = dirname.join("subdir").join("renamed.txt");
+    assert_eq!(fs::read(&renamed).unwrap(), b"hello");
+    subdir.remove_file("renamed.txt").unwrap();
+    assert!(!renamed.exists());
+
+    drop(subdir);
     dir.remove_dir("subdir").unwrap();
     assert!(!dirname.join("subdir").exists());
 }

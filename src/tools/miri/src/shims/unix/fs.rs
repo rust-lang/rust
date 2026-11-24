@@ -1434,30 +1434,60 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn rename(
         &mut self,
+        oldfd: Option<&OpTy<'tcx>>,
         oldpath_op: &OpTy<'tcx>,
+        newfd: Option<&OpTy<'tcx>>,
         newpath_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
 
-        let oldpath_ptr = this.read_pointer(oldpath_op)?;
-        let newpath_ptr = this.read_pointer(newpath_op)?;
+        let oldpath_ptr = ecx.read_pointer(oldpath_op)?;
+        let newpath_ptr = ecx.read_pointer(newpath_op)?;
 
-        if this.ptr_is_null(oldpath_ptr)? || this.ptr_is_null(newpath_ptr)? {
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        if ecx.ptr_is_null(oldpath_ptr)? || ecx.ptr_is_null(newpath_ptr)? {
+            return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
         }
 
-        let oldpath = this.read_path_from_c_str(oldpath_ptr)?;
-        let newpath = this.read_path_from_c_str(newpath_ptr)?;
+        let oldpath = ecx.read_path_from_c_str(oldpath_ptr)?;
+        let newpath = ecx.read_path_from_c_str(newpath_ptr)?;
+
+        if oldpath.as_os_str().is_empty() || newpath.as_os_str().is_empty() {
+            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
+        }
 
         // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`rename`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            let name = if oldfd.is_some() || newfd.is_some() { "`renameat`" } else { "`rename`" };
+            ecx.reject_in_isolation(name, reject_with)?;
+            return ecx.set_errno_and_return_neg1(ErrorKind::PermissionDenied, dest);
         }
 
-        let result = fs::rename(oldpath, newpath).map(|_| 0);
+        let resolve_dir = |fd: Option<&OpTy<'tcx>>, path: &Path| -> InterpResult<'tcx, _> {
+            let Some(fd) = fd else {
+                return interp_ok(Ok(None));
+            };
+            let fd = ecx.read_scalar(fd)?.to_i32()?;
+            if path.is_absolute() || fd == ecx.eval_libc_i32("AT_FDCWD") {
+                return interp_ok(Ok(None));
+            }
+            let Some(fd) = ecx.machine.fds.get(fd) else {
+                return interp_ok(Err(LibcError("EBADF")));
+            };
+            interp_ok(fd.downcast::<DirHandle>().map(Some).ok_or(LibcError("ENOTDIR")))
+        };
+        let old_dir = resolve_dir(oldfd, &oldpath)?;
+        let new_dir = resolve_dir(newfd, &newpath)?;
 
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+        let result = match (old_dir, new_dir) {
+            (Ok(None), Ok(None)) => fs::rename(&oldpath, &newpath),
+            (Ok(Some(old)), Ok(Some(new))) => old.dir.rename(&oldpath, &new.dir, &newpath),
+            (Err(err), _) | (_, Err(err)) => return ecx.set_errno_and_return_neg1(err, dest),
+            (Ok(_), Ok(_)) =>
+                throw_unsup_format!("`renameat` with only one path relative to a directory fd"),
+        };
+        let result = ecx.try_unwrap_io_result(result.map(|()| 0i32))?;
+        ecx.write_int(result, dest)
     }
 
     fn mkdir(

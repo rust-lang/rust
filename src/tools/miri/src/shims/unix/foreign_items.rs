@@ -456,8 +456,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.rename(oldpath, newpath)?;
-                ecx.write_scalar(result, dest)?;
+                ecx.rename(None, oldpath, None, newpath, dest)?;
+            }
+            "renameat" => {
+                let [oldfd, oldpath, newfd, newpath] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                ecx.rename(Some(oldfd), oldpath, Some(newfd), newpath, dest)?;
             }
             "mkdir" => {
                 let [path, mode] = &ecx.check_shim_sig(
