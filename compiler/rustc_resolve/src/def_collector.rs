@@ -249,7 +249,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // For async functions, we need to create their inner defs inside of a
                 // closure to match their desugared representation. Besides that,
                 // we must mirror everything that `visit::walk_fn` below does.
-                let FnDecl { inputs, output } = &**decl;
+                let FnDecl { inputs, output } = &decl;
                 for param in inputs {
                     self.visit_param(param);
                 }

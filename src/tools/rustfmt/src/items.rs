@@ -320,7 +320,7 @@ impl<'a> FnSig<'a> {
             constness: method_sig.header.constness,
             defaultness,
             ext: method_sig.header.ext,
-            decl: &*method_sig.decl,
+            decl: &method_sig.decl,
             generics,
             visibility,
         }
