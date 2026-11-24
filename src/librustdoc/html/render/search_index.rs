@@ -1354,7 +1354,10 @@ pub(crate) fn build_index(
                         }
                     }
                 }
-                for i in (index + 1)..serialized_index.entry_data.len() {
+                for i in 0..serialized_index.entry_data.len() {
+                    if i == index {
+                        continue;
+                    }
                     // if this crate has been built before, replace its stuff with new
                     if let Some(EntryData { krate, .. }) = serialized_index.entry_data[i]
                         && krate == index

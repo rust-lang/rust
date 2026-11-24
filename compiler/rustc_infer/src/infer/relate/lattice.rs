@@ -99,8 +99,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             ty::Invariant => {
                 self.obligations.extend(
                     self.infcx
-                        .at(&self.trace.cause, self.param_env)
-                        .eq_trace(DefineOpaqueTypes::Yes, self.trace.clone(), a, b)?
+                        .eq_trace_raw(
+                            &self.trace.cause,
+                            self.param_env,
+                            DefineOpaqueTypes::Yes,
+                            self.trace.clone(),
+                            a,
+                            b,
+                        )?
                         .into_obligations(),
                 );
                 Ok(a)
