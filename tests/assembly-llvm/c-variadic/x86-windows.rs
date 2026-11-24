@@ -111,6 +111,6 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // X86_64: read_ptr = read_i64
-    // X86: _read_ptr = _read_i32
+    // I686: _read_ptr = _read_i32
     ap.next_arg()
 }
