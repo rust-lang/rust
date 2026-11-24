@@ -142,7 +142,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // right now, we limit this to just gca_const_items.
         //
         // See: https://github.com/rust-lang/project-const-generics/issues/105
-        let const_value = if self.tcx.features().gca_const_items()
+        let const_value = if self.tcx.features_for(alias_const.kind.def_id()).gca_const_items()
             || alias_const.kind.is_direct_const(self.tcx)
         {
             let Ok(normalize) = self
