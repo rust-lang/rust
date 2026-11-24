@@ -66,11 +66,11 @@ fn t3() {
     assert_eq!(srcfbp1.sf.name, filename(&sm, "blork.rs"));
     assert_eq!(srcfbp1.pos, BytePos(23));
 
-    let srcfbp1 = sm.lookup_byte_offset(BytePos(24));
+    let srcfbp1 = sm.lookup_byte_offset(BytePos(SOURCE_FILE_ALIGN));
     assert_eq!(srcfbp1.sf.name, filename(&sm, "empty.rs"));
     assert_eq!(srcfbp1.pos, BytePos(0));
 
-    let srcfbp2 = sm.lookup_byte_offset(BytePos(25));
+    let srcfbp2 = sm.lookup_byte_offset(BytePos(SOURCE_FILE_ALIGN * 2));
     assert_eq!(srcfbp2.sf.name, filename(&sm, "blork2.rs"));
     assert_eq!(srcfbp2.pos, BytePos(0));
 }
@@ -83,7 +83,7 @@ fn t4() {
     let cp1 = sm.bytepos_to_file_charpos(BytePos(22));
     assert_eq!(cp1, CharPos(22));
 
-    let cp2 = sm.bytepos_to_file_charpos(BytePos(25));
+    let cp2 = sm.bytepos_to_file_charpos(BytePos(SOURCE_FILE_ALIGN));
     assert_eq!(cp2, CharPos(0));
 }
 
@@ -97,7 +97,7 @@ fn t5() {
     assert_eq!(loc1.line, 2);
     assert_eq!(loc1.col, CharPos(10));
 
-    let loc2 = sm.lookup_char_pos(BytePos(25));
+    let loc2 = sm.lookup_char_pos(BytePos(SOURCE_FILE_ALIGN * 2));
     assert_eq!(loc2.file.name, filename(&sm, "blork2.rs"));
     assert_eq!(loc2.line, 1);
     assert_eq!(loc2.col, CharPos(0));
@@ -122,10 +122,10 @@ fn t6() {
     let cp2 = sm.bytepos_to_file_charpos(BytePos(6));
     assert_eq!(cp2, CharPos(4));
 
-    let cp3 = sm.bytepos_to_file_charpos(BytePos(56));
+    let cp3 = sm.bytepos_to_file_charpos(BytePos(SOURCE_FILE_ALIGN + 16));
     assert_eq!(cp3, CharPos(12));
 
-    let cp4 = sm.bytepos_to_file_charpos(BytePos(61));
+    let cp4 = sm.bytepos_to_file_charpos(BytePos(SOURCE_FILE_ALIGN + 21));
     assert_eq!(cp4, CharPos(15));
 }
 
