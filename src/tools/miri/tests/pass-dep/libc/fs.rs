@@ -34,6 +34,7 @@ fn main() {
     test_fcntl_getfd();
     test_canonicalize_too_long();
     test_rename();
+    test_renameat();
     test_mkdir();
     test_rmdir();
     test_unlink();
@@ -770,17 +771,14 @@ fn test_canonicalize_too_long() {
 }
 
 fn test_rename() {
-    let path1 = utils::prepare("miri_test_libc_fs_source.txt");
+    let path1 = utils::prepare_with_content("miri_test_libc_fs_source.txt", b"");
     let path2 = utils::prepare("miri_test_libc_fs_rename_destination.txt");
-
-    let file = File::create(&path1).unwrap();
-    drop(file);
 
     let c_path1 = utils::into_c_string(&path1);
     let c_path2 = utils::into_c_string(&path2);
 
     // Renaming should succeed
-    unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
+    errno_check(unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) });
     // Check that old file path isn't present
     assert_eq!(path1.metadata().unwrap_err().raw_os_error().unwrap(), libc::ENOENT);
     // Check that the file has moved successfully
@@ -792,6 +790,84 @@ fn test_rename() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 
     fs::remove_file(&path2).unwrap();
+}
+
+fn test_renameat() {
+    let temp = utils::prepare("miri_test_renameat");
+    fs::create_dir(&temp).unwrap();
+    let source = temp.join("source");
+    let dest = temp.join("dest");
+    fs::create_dir(&source).unwrap();
+    fs::create_dir(&dest).unwrap();
+    fs::write(source.join("file"), b"source").unwrap();
+    fs::write(dest.join("file"), b"destination").unwrap();
+
+    let open_dir = |path: &Path| {
+        let path = utils::into_c_string(path);
+        errno_result(unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY) })
+            .unwrap()
+    };
+    let source_fd = open_dir(&source);
+    let dest_fd = open_dir(&dest);
+    let file = File::open(source.join("file")).unwrap();
+
+    let renameat = |oldfd, old: &CStr, newfd, new: &CStr| unsafe {
+        libc::renameat(oldfd, old.as_ptr(), newfd, new.as_ptr())
+    };
+    let check_errno = |ret, errno| {
+        assert_eq!(errno_result(ret).unwrap_err().raw_os_error(), Some(errno));
+    };
+
+    // A relative path requires a valid fd on either side.
+    check_errno(renameat(-1, c"file", dest_fd, c"file"), libc::EBADF);
+    check_errno(renameat(source_fd, c"file", -1, c"file"), libc::EBADF);
+
+    // A regular file fd cannot serve as the base for a relative path.
+    check_errno(renameat(file.as_raw_fd(), c"file", dest_fd, c"file"), libc::ENOTDIR);
+    check_errno(renameat(source_fd, c"file", file.as_raw_fd(), c"file"), libc::ENOTDIR);
+
+    // An empty source path is invalid even with a valid directory fd.
+    check_errno(renameat(source_fd, c"", dest_fd, c"file"), libc::ENOENT);
+    drop(file);
+
+    // A regular file cannot replace a directory. Both paths stay intact.
+    let dest_dir = dest.join("directory");
+    fs::create_dir(&dest_dir).unwrap();
+    let err = errno_result(renameat(source_fd, c"file", dest_fd, c"directory")).unwrap_err();
+    let errno = err.raw_os_error().unwrap();
+    // On Windows hosts, Miri reports this as EPERM.
+    assert!(matches!(errno, libc::EISDIR | libc::EPERM), "unexpected errno: {errno}");
+    assert!(dest_dir.is_dir());
+    assert_eq!(fs::read(source.join("file")).unwrap(), b"source");
+    fs::remove_dir(dest_dir).unwrap();
+
+    // After moving the source directory, use its original fd to rename the file
+    // over an existing destination file.
+    let moved = temp.join("moved");
+    fs::rename(&source, &moved).unwrap();
+    errno_check(renameat(source_fd, c"file", dest_fd, c"file"));
+    assert!(!moved.join("file").exists());
+    assert_eq!(fs::read(dest.join("file")).unwrap(), b"source");
+
+    // Absolute paths ignore the supplied fds, even when they are invalid.
+    let oldpath = utils::into_c_string(dest.join("file"));
+    let newpath = utils::into_c_string(moved.join("file"));
+    errno_check(renameat(-1, &oldpath, -1, &newpath));
+    assert_eq!(fs::read(moved.join("file")).unwrap(), b"source");
+
+    // AT_FDCWD resolves paths relative to the current directory.
+    let cwd = env::current_dir().unwrap();
+    env::set_current_dir(&temp).unwrap();
+    errno_check(renameat(libc::AT_FDCWD, c"moved/file", libc::AT_FDCWD, c"dest/file"));
+    env::set_current_dir(cwd).unwrap();
+    assert_eq!(fs::read(dest.join("file")).unwrap(), b"source");
+
+    errno_check(unsafe { libc::close(source_fd) });
+    errno_check(unsafe { libc::close(dest_fd) });
+    fs::remove_file(dest.join("file")).unwrap();
+    fs::remove_dir(moved).unwrap();
+    fs::remove_dir(dest).unwrap();
+    fs::remove_dir(temp).unwrap();
 }
 
 fn test_mkdir() {
