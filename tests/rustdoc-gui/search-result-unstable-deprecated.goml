@@ -2,8 +2,32 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 call-function: ("perform-search", {"query": "replaced_function"})
-assert-text: ('.search-results [href="../test_docs/fn.replaced_function.html"]
-  > span.result-name > span.emoji[title="this item is deprecated', '👎')
+assert-text: (
+    '.search-results [href="../test_docs/fn.replaced_function.html"] .emoji[title="this item is deprecated"]',
+    '👎',
+)
 call-function: ("perform-search", {"query": "NewFoo"})
-assert-text: ('.search-results [href="../staged_api/struct.NewFoo.html"]
-  > span.result-name > span.emoji[title="this item is unstable', '🔬')
+assert-text: (
+    '.search-results [href="../staged_api/struct.NewFoo.html"] .emoji[title="this item is unstable"]',
+    '🔬',
+)
+
+// Now we check that the emojis are aligned with the other names.
+call-function: ("perform-search", {"query": "deprecated"})
+// First we check that the search doesn't only have emojis
+store-count: (".search-results a .result-name .emoji", nb_emojis)
+store-count: (".search-results a .result-name", nb_results)
+assert: |nb_emojis| < |nb_results| && |nb_emojis| > 2
+
+define-function: ("check_results_x_position", [], block {
+    store-position: (".search-results a .result-name > .path", {"x": path_position})
+    // Finally we check that emojis X position is always the same as the ".path".
+    assert-position: (".search-results a .result-name .emoji", {"x": |path_position|}, ALL)
+    assert-position: (".search-results a .result-name .path", {"x": |path_position|}, ALL)
+})
+
+set-window-size: (1200, 800)
+call-function: ("check_results_x_position", {})
+// We reduce the width to check the alignment doesn't break.
+set-window-size: (800, 800)
+call-function: ("check_results_x_position", {})
