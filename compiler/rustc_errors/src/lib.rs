@@ -32,8 +32,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic, StringPart,
-    Subdiag, Subdiagnostic, is_long_ty_path_suppressed, suppressed_long_ty_path,
+    Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
+    SUPPRESSED_LONG_TY_PATH, StringPart, Subdiag, Subdiagnostic, is_long_ty_path_suppressed,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,

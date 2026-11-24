@@ -204,9 +204,7 @@ pub struct DiagInner {
 }
 
 /// Marker stored in `long_ty_path` for diagnostics that are never shown. Real paths are never empty.
-pub fn suppressed_long_ty_path() -> PathBuf {
-    PathBuf::new()
-}
+pub const SUPPRESSED_LONG_TY_PATH: PathBuf = PathBuf::new();
 
 pub fn is_long_ty_path_suppressed(path: &Option<PathBuf>) -> bool {
     path.as_ref().is_some_and(|p| p.as_os_str().is_empty())
@@ -231,7 +229,7 @@ impl DiagInner {
             is_lint: None,
             // Expected lints are never shown, so they must not write long type files.
             long_ty_path: matches!(level, Level::Warning(Some(EmissionOverride::Expected { .. })))
-                .then(suppressed_long_ty_path),
+                .then_some(SUPPRESSED_LONG_TY_PATH),
             emitted_at: DiagLocation::caller(),
         }
     }
