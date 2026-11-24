@@ -164,7 +164,7 @@ pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Ge
     });
 
     for (param, sizedness) in type_params {
-        let Some(bound) = sizedness.to_bound_where(cx, Sizedness::Sized) else { continue };
+        let Some(bound) = sizedness.to_bound_where(Sizedness::Sized, cx) else { continue };
         generics.where_predicates.push(WP::BoundPredicate {
             ty: clean::Type::Generic(param),
             bounds: vec![bound],

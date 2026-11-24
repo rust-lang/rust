@@ -314,48 +314,16 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
         .collect();
 
     let generics = clean_ty_generics(cx, did);
-    let (generics, mut supertrait_bounds) = separate_self_bounds(generics);
+    let (generics, mut bounds) = separate_self_bounds(generics);
+    clean::clean_middle_sizedness_bounds_where(cx, &mut bounds, clean::Sizedness::MetaSized);
 
-    let mut sizedness = clean::Sizedness::PointeeSized;
-
-    supertrait_bounds.retain(|bound| {
-        // FIXME(fmease): [perf?] dont act on cleanAST, act on middle::ty
-
-        if let clean::GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
-            && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
-            && let Some(sz) = clean::Sizedness::from_lang_item(item)
-        {
-            sizedness.add(sz);
-            return false;
-        }
-        true
-    });
-
-    supertrait_bounds.extend(sizedness.to_bound_where(cx, clean::Sizedness::MetaSized));
-
-    clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
+    clean::Trait { def_id: did, generics, items: trait_items, bounds }
 }
 
 fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     let generics = clean_ty_generics(cx, did);
     let (generics, mut bounds) = separate_self_bounds(generics);
-
-    let mut sizedness = clean::Sizedness::PointeeSized;
-
-    bounds.retain(|bound| {
-        // FIXME(fmease): [perf?] dont act on cleanAST, act on middle::ty
-
-        if let clean::GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
-            && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
-            && let Some(sz) = clean::Sizedness::from_lang_item(item)
-        {
-            sizedness.add(sz);
-            return false;
-        }
-        true
-    });
-
-    bounds.extend(sizedness.to_bound_where(cx, clean::Sizedness::MetaSized));
+    clean::clean_middle_sizedness_bounds_where(cx, &mut bounds, clean::Sizedness::MetaSized);
 
     clean::TraitAlias { generics, bounds }
 }

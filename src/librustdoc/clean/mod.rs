@@ -303,11 +303,11 @@ fn clean_generic_bound<'tcx>(
                 return None;
             }
 
-            if let hir::TraitBoundModifiers::NONE = t.modifiers
-                && let Some(lang_item) = lang_item
+            if let Some(lang_item) = lang_item
+                && let hir::TraitBoundModifiers::NONE = t.modifiers
                 && let Some(sizedness) = Sizedness::from_lang_item(lang_item)
             {
-                return sizedness.to_bound_where(cx, default_sizedness);
+                return sizedness.to_bound_where(default_sizedness, cx);
             }
 
             if !cx.disguise_sized_hierarchy
@@ -1001,21 +1001,7 @@ fn clean_ty_generics_inner<'tcx>(
         .collect::<Vec<_>>();
 
     for (idx, mut bounds) in impl_trait {
-        let mut sizedness = Sizedness::PointeeSized;
-
-        // FIXME(fmease): [perf?] Don't do this here on the clean AST but on the middle::ty!!
-        bounds.retain(|bound| {
-            if let GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
-                && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
-                && let Some(sz) = Sizedness::from_lang_item(item)
-            {
-                sizedness.add(sz);
-                return false;
-            }
-            true
-        });
-
-        bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
+        clean_middle_sizedness_bounds_where(cx, &mut bounds, Sizedness::Sized);
 
         // Move trait bounds to the front.
         bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -1575,23 +1561,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     _ => true,
                 });
 
-                let mut sizedness = Sizedness::PointeeSized;
-
-                bounds.retain(|bound| {
-                    // FIXME(fmease): [perf?] Don't do this here on the clean AST but on the middle::ty!!
-
-                    if let GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) =
-                        bound
-                        && let Some(item) = cx.tcx.as_lang_item(trait_ref.trait_.def_id())
-                        && let Some(sz) = Sizedness::from_lang_item(item)
-                    {
-                        sizedness.add(sz);
-                        return false;
-                    }
-                    true
-                });
-
-                bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
+                clean_middle_sizedness_bounds_where(cx, &mut bounds, Sizedness::Sized);
 
                 let type_ = tcx.defaultness(assoc_item.def_id).has_value().then(|| {
                     let ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
@@ -1616,6 +1586,20 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
     });
 
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, tcx)
+}
+
+// FIXME(fmease): Possible perf improvement: Don't do the sizedness stuff on the cleaned AST but
+//                directly on the middle::ty IR.
+fn clean_middle_sizedness_bounds_where(
+    cx: &DocContext<'_>,
+    bounds: &mut Vec<GenericBound>,
+    default_sizedness: Sizedness,
+) {
+    let mut sizedness = Sizedness::PointeeSized;
+    bounds.retain(|bound| {
+        Sizedness::from_bound(bound, cx).inspect(|&sz| sizedness.add(sz)).is_none()
+    });
+    bounds.extend(sizedness.to_bound_where(default_sizedness, cx));
 }
 
 fn first_non_private_clean_path<'tcx>(
@@ -2492,7 +2476,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    bounds.extend(sizedness.to_bound_where(cx, Sizedness::Sized));
+    bounds.extend(sizedness.to_bound_where(Sizedness::Sized, cx));
 
     // Move trait bounds to the front.
     bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -2529,6 +2513,12 @@ pub(super) enum Sizedness {
 }
 
 impl Sizedness {
+    fn from_bound(bound: &GenericBound, cx: &DocContext<'_>) -> Option<Self> {
+        let GenericBound::TraitBound(trait_ref, modifiers) = bound else { return None };
+        let hir::TraitBoundModifiers::NONE = *modifiers else { return None };
+        cx.tcx.as_lang_item(trait_ref.trait_.def_id()).and_then(Self::from_lang_item)
+    }
+
     fn from_lang_item(item: LangItem) -> Option<Self> {
         match item {
             LangItem::Sized => Some(Self::Sized),
@@ -2552,21 +2542,18 @@ impl Sizedness {
         }
     }
 
-    fn to_bound_where(mut self, cx: &DocContext<'_>, default: Self) -> Option<GenericBound> {
+    fn to_bound_where(mut self, default: Self, cx: &DocContext<'_>) -> Option<GenericBound> {
         if cx.disguise_sized_hierarchy && self == Self::PointeeSized {
             self = Self::MetaSized;
         }
-
         if self == default {
             return None;
         }
-
         if cx.disguise_sized_hierarchy
             && let Self::MetaSized = self
         {
             return Some(GenericBound::maybe_sized(cx));
         }
-
         Some(self.to_bound(cx))
     }
 
