@@ -33,5 +33,5 @@ extern "C" {
 }
 
 trait T {
-    fn trait_fn(u32, _: u32, a: u32);
+    fn trait_fn(_: u32, _: u32, a: u32);
 }

@@ -482,15 +482,13 @@ pub fn provide(providers: &mut Providers) {
         } else if let Node::ForeignItem(&ForeignItem {
             kind: ForeignItemKind::Fn(_, params, _),
             ..
-        }) = node
-        {
-            tcx.arena.alloc_from_iter(tcx.param_idents(params))
-        } else if let Node::TraitItem(&TraitItem {
-            kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
+        })
+        | Node::TraitItem(&TraitItem {
+            kind: TraitItemKind::Fn(_, TraitFn::Required(params)),
             ..
         }) = node
         {
-            idents
+            tcx.arena.alloc_from_iter(tcx.param_idents(params))
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),
