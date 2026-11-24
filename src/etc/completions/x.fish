@@ -916,8 +916,9 @@ complete -c x -n "__fish_x_using_subcommand perf; and not __fish_seen_subcommand
 complete -c x -n "__fish_x_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "cachegrind" -d 'Run `profile_local cachegrind`. This executes the compiler on the given benchmarks under `Cachegrind`'
 complete -c x -n "__fish_x_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "benchmark" -d 'Run compile benchmarks with a locally built compiler'
 complete -c x -n "__fish_x_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "compare" -d 'Compare the results of two previously executed benchmark runs'
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l exact-match -d 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l include -d 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l exclude -d 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l database-path -r
@@ -943,6 +944,7 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l purge -d 'Purge previously computed benchmark results matching the given parameters'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s q -l quiet -d 'use quiet output'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s i -l incremental -d 'use incremental compilation'
@@ -957,8 +959,9 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l exact-match -d 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l include -d 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l exclude -d 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l database-path -r
@@ -984,6 +987,7 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l purge -d 'Purge previously computed benchmark results matching the given parameters'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -s q -l quiet -d 'use quiet output'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -s i -l incremental -d 'use incremental compilation'
@@ -998,8 +1002,9 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from samply" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l exact-match -d 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l include -d 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l exclude -d 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l database-path -r
@@ -1025,6 +1030,7 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l purge -d 'Purge previously computed benchmark results matching the given parameters'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s q -l quiet -d 'use quiet output'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s i -l incremental -d 'use incremental compilation'
@@ -1039,8 +1045,9 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
-complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l exact-match -d 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l include -d 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed' -r
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l exclude -d 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l database-path -r
@@ -1066,6 +1073,7 @@ complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_fro
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l purge -d 'Purge previously computed benchmark results matching the given parameters'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s q -l quiet -d 'use quiet output'
 complete -c x -n "__fish_x_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s i -l incremental -d 'use incremental compilation'
