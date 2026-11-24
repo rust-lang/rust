@@ -2494,17 +2494,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    if cx.disguise_sized_hierarchy {
-        if sizedness != Sizedness::Sized {
-            bounds.push(GenericBound::maybe_sized(cx));
-        }
-    } else {
-        match sizedness {
-            Sizedness::PointeeSized => bounds.push(GenericBound::pointee_sized(cx)),
-            Sizedness::MetaSized => bounds.push(GenericBound::meta_sized(cx)),
-            Sizedness::Sized => {}
-        }
-    }
+    bounds.extend(sizedness.to_bound(cx));
 
     // Move trait bounds to the front.
     bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -2553,6 +2543,17 @@ impl Sizedness {
         if *self < other {
             *self = other;
         }
+    }
+
+    fn to_bound(self, cx: &DocContext<'_>) -> Option<GenericBound> {
+        Some(match self {
+            Self::PointeeSized | Self::MetaSized if cx.disguise_sized_hierarchy => {
+                GenericBound::maybe_sized(cx)
+            }
+            Self::PointeeSized => GenericBound::pointee_sized(cx),
+            Self::MetaSized => GenericBound::meta_sized(cx),
+            Self::Sized => return None,
+        })
     }
 }
 

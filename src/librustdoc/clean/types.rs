@@ -1108,7 +1108,7 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
-    pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
+    pub(crate) fn sized(cx: &DocContext<'_>) -> GenericBound {
         Self::TraitBound(
             PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
             hir::TraitBoundModifiers::NONE,
@@ -1117,7 +1117,7 @@ impl GenericBound {
 
     // FIXME(fmease):
     #[allow(rustc::symbol_intern_string_literal)]
-    pub(crate) fn meta_sized(cx: &mut DocContext<'_>) -> Self {
+    pub(crate) fn meta_sized(cx: &DocContext<'_>) -> Self {
         // FIXME(fmease): XXX
         Self::TraitBound(
             PolyTrait::sizedness(cx, Symbol::intern("MetaSized"), LangItem::MetaSized),
@@ -1125,7 +1125,7 @@ impl GenericBound {
         )
     }
 
-    pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> Self {
+    pub(crate) fn maybe_sized(cx: &DocContext<'_>) -> Self {
         Self::TraitBound(
             PolyTrait::sizedness(cx, sym::Sized, LangItem::Sized),
             hir::TraitBoundModifiers {
@@ -1137,7 +1137,7 @@ impl GenericBound {
 
     // FIXME(fmease):
     #[allow(rustc::symbol_intern_string_literal)]
-    pub(crate) fn pointee_sized(cx: &mut DocContext<'_>) -> Self {
+    pub(crate) fn pointee_sized(cx: &DocContext<'_>) -> Self {
         Self::TraitBound(
             PolyTrait::sizedness(cx, Symbol::intern("PointeeSized"), LangItem::PointeeSized),
             hir::TraitBoundModifiers::NONE,
@@ -1362,7 +1362,7 @@ pub(crate) struct PolyTrait {
 }
 
 impl PolyTrait {
-    pub(crate) fn sizedness(cx: &mut DocContext<'_>, name: Symbol, item: LangItem) -> Self {
+    pub(crate) fn sizedness(cx: &DocContext<'_>, name: Symbol, item: LangItem) -> Self {
         let def_id = cx.tcx.require_lang_item(item, DUMMY_SP);
         let seg = PathSegment { name, args: GenericArgs::empty_angle_bracketed() };
         let trait_ = Path { res: Res::Def(DefKind::Trait, def_id), segments: thin_vec![seg] };

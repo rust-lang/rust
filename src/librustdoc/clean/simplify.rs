@@ -127,6 +127,7 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
 /// For example, assuming `T` is a type parameter of the owner of `generics`,
 /// `T: Sized` gets dropped and `T: MetaSized` gets rewritten to `T: ?Sized`.
 pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
+    // FIXME(fmease): [perf?] Don't build a map, build a Vec<Sizedness> & zip later w/o interm coll.
     let mut type_params: FxIndexMap<_, _> = generics
         .params
         .iter()
@@ -163,17 +164,10 @@ pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Ge
     });
 
     for (param, sizedness) in type_params {
+        let Some(bound) = sizedness.to_bound(cx) else { continue };
         generics.where_predicates.push(WP::BoundPredicate {
             ty: clean::Type::Generic(param),
-            bounds: vec![match sizedness {
-                // FIXME(sized-hierarchy, #157247): Actually render `MetaSized` as `MetaSized` and
-                // `PointeeSized` as `PointeeSized` instead of `?Sized` if the crate enables
-                // `sized_hierarchy` and doesn't set `#![doc(dont_leak…)]`.
-                Sizedness::MetaSized | Sizedness::PointeeSized => {
-                    clean::GenericBound::maybe_sized(cx)
-                }
-                Sizedness::Sized => continue,
-            }],
+            bounds: vec![bound],
             bound_params: Vec::new(),
         });
     }
