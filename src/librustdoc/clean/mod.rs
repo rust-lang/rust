@@ -291,34 +291,30 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
         hir::GenericBound::Trait(t) => {
             let trait_def_id = t.trait_ref.trait_def_id().unwrap();
+            let lang_item = cx.tcx.as_lang_item(trait_def_id);
 
-            match cx.tcx.as_lang_item(trait_def_id) {
-                Some(LangItem::Destruct)
-                    if let hir::BoundConstness::Maybe(_) = t.modifiers.constness =>
-                {
-                    // NOTE(const_trait_impl): For now, we hide anything CTI-related until its
-                    // design is set in stone! This not only includes constness modifiers but also
-                    // `[const] Destruct` bounds in their entirety (rendering it as `Destruct` would
-                    // not make sense as that bound would trivially hold).
-                    return None;
-                }
-                Some(LangItem::MetaSized | LangItem::PointeeSized)
-                    if cx.disguise_sized_hierarchy
-                        && let hir::TraitBoundModifiers::NONE = t.modifiers =>
-                {
-                    match default_sizedness {
-                        Sizedness::Sized => return Some(GenericBound::maybe_sized(cx)),
-                        Sizedness::MetaSized => return None,
-                        Sizedness::PointeeSized => {}
-                    }
-                }
-                Some(LangItem::Sized)
-                    if !cx.disguise_sized_hierarchy
-                        && let hir::BoundPolarity::Maybe(_) = t.modifiers.polarity =>
-                {
-                    return Some(GenericBound::meta_sized(cx));
-                }
-                _ => {}
+            if let Some(LangItem::Destruct) = lang_item
+                && let hir::BoundConstness::Maybe(_) = t.modifiers.constness
+            {
+                // NOTE(const_trait_impl): For now, we hide anything CTI-related until its
+                // design is set in stone! This not only includes constness modifiers but also
+                // `[const] Destruct` bounds in their entirety (rendering it as `Destruct` would
+                // not make sense as that bound would trivially hold).
+                return None;
+            }
+
+            if let hir::TraitBoundModifiers::NONE = t.modifiers
+                && let Some(lang_item) = lang_item
+                && let Some(sizedness) = Sizedness::from_lang_item(lang_item)
+            {
+                return sizedness.to_bound(cx, default_sizedness);
+            }
+
+            if !cx.disguise_sized_hierarchy
+                && let Some(LangItem::Sized) = lang_item
+                && let hir::BoundPolarity::Maybe(_) = t.modifiers.polarity
+            {
+                return Some(GenericBound::meta_sized(cx));
             }
 
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), t.modifiers)
@@ -2537,6 +2533,7 @@ impl Sizedness {
         match item {
             LangItem::Sized => Some(Self::Sized),
             LangItem::MetaSized => Some(Self::MetaSized),
+            LangItem::PointeeSized => Some(Self::PointeeSized),
             _ => None,
         }
     }
