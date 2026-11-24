@@ -500,6 +500,8 @@ async function loadSearchJS(doc_folder, resource_suffix) {
                         path: entry.item.modulePath,
                         exactPath: entry.item.exactModulePath,
                         ty: entry.item.ty,
+                        unstable: entry.item.unstable,
+                        deprecated: entry.item.deprecated,
                     }, entry);
                     for (const key in entry) {
                         if (!Object.prototype.hasOwnProperty.call(entry, key)) {
