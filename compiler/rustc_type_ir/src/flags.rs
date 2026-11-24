@@ -1,4 +1,5 @@
 use crate::inherent::*;
+use crate::predicates::Clause;
 use crate::visit::Flags;
 use crate::{self as ty, Const, Interner, Region};
 
@@ -234,7 +235,7 @@ impl<I: Interner> FlagComputation<I> {
         result
     }
 
-    pub fn for_clauses(clauses: &[I::Clause]) -> FlagComputation<I> {
+    pub fn for_clauses(clauses: &[Clause<I>]) -> FlagComputation<I> {
         let mut result = FlagComputation::new();
         for c in clauses {
             result.add_flags(c.flags());

@@ -9,7 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::predicates::Predicate;
+use rustc_type_ir::predicates::{Clause, Predicate};
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
     AliasBoundKind, MaybeInfo, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
@@ -66,7 +66,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         parent_source: CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
         requirements: impl IntoIterator<Item = (GoalSource, Goal<I, Predicate<I>>)>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
@@ -86,7 +86,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         // We inline much of `probe_and_match_goal_against_assumption` and
         // `TraitPredicate::match_assumption` here, as we never encounter
@@ -225,7 +225,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::fast_reject_assumption(ecx, goal, assumption)?;
@@ -239,7 +239,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution>;
 
     fn non_fast_rejected_caller_bounds(

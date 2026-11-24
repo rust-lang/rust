@@ -4,7 +4,6 @@
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
@@ -29,7 +28,7 @@ where
             cx.clauses_of(free_alias.expect_free_def_id().into())
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause.as_predicate())),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         let actual = match free_alias.kind {

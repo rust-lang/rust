@@ -12,7 +12,7 @@ use rustc_type_ir::region_constraint::{
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, Const, InferCtxtLike, Interner, Region, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex, Upcast as _,
+    TypeVisitableExt, TypeVisitor, UniverseIndex,
 };
 use tracing::{debug, instrument};
 
@@ -101,10 +101,7 @@ where
         //
         // `Assumptions::new` elaborates, restricts the clauses to `u` and picks out the
         // outlives ones for us, so we just hand over everything the requirements gave us.
-        let cx = self.cx();
-        let clauses = reqs
-            .into_iter()
-            .filter_map(|goal| goal.predicate.as_clause().map(|clause| clause.kind().upcast(cx)));
+        let clauses = reqs.into_iter().filter_map(|goal| goal.predicate.as_clause());
 
         Some(Assumptions::new(
             &**self.delegate,

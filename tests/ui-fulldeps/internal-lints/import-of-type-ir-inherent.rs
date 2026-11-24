@@ -9,7 +9,7 @@ use rustc_type_ir::inherent::*;
 //~^ ERROR do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
 use rustc_type_ir::inherent;
 //~^ ERROR do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
-use rustc_type_ir::inherent::Clause;
+use rustc_type_ir::inherent::Safety;
 //~^ ERROR do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
 
 fn main() {}

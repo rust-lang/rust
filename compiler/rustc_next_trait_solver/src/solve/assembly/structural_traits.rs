@@ -986,9 +986,7 @@ where
     Ok(folder
         .nested
         .into_iter()
-        .chain(
-            requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause.as_predicate())),
-        )
+        .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
         .collect())
 }
 

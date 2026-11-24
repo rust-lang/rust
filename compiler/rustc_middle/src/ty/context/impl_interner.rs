@@ -25,8 +25,8 @@ use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::ty::{
-    self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Region,
-    RegionKind, RequiredDepth, Ty, TyCtxt,
+    self, BoundRegion, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Region, RegionKind,
+    RequiredDepth, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -134,7 +134,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type ParamEnv = ty::ParamEnv<'tcx>;
 
-    type Clause = Clause<'tcx>;
     type Clauses = ty::Clauses<'tcx>;
 
     fn intern_predicate(

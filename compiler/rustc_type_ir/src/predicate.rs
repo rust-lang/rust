@@ -10,6 +10,7 @@ use rustc_type_ir_macros::{
 
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
+use crate::predicates::Clause;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, Alias, Binder, ClauseKind, Interner, Region};
@@ -180,7 +181,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
         self.skip_binder().def_id
     }
 
-    pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
+    pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> Clause<I> {
         self.map_bound(|trait_ref| {
             ty::ClauseKind::HostEffect(HostEffectClause { trait_ref, constness })
         })
@@ -351,7 +352,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
     /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
     /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
     /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
-    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> I::Clause {
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> Clause<I> {
         match self.skip_binder() {
             ExistentialPredicate::Trait(tr) => self.rebind(tr).with_self_ty(cx, self_ty).upcast(cx),
             ExistentialPredicate::Projection(p) => {
@@ -927,7 +928,7 @@ impl<I: Interner> fmt::Debug for CompressedTraitClause<I> {
 impl<I: Interner> CompressedTraitClause<I> {
     /// Returns `Some` if the passed clause is eligible to be represented as a `CommonClause`.
     /// Only a few clauses are, but those clauses are exceedingly common.
-    pub fn from_clause(cx: I, clause: I::Clause) -> Option<Self> {
+    pub fn from_clause(cx: I, clause: Clause<I>) -> Option<Self> {
         let kind = clause.kind();
         let kind = kind.no_bound_vars()?;
         match kind {

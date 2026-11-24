@@ -5,7 +5,7 @@ use smallvec::smallvec;
 use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::outlives::{Component, push_outlives_components};
-use crate::predicates::Predicate;
+use crate::predicates::{Clause, Predicate};
 use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -31,13 +31,13 @@ pub trait Elaboratable<I: Interner> {
     fn predicate(&self) -> Predicate<I>;
 
     // Makes a new `Self` but with a different clause that comes from elaboration.
-    fn child(&self, clause: I::Clause) -> Self;
+    fn child(&self, clause: Clause<I>) -> Self;
 
     // Makes a new `Self` but with a different clause and a different cause
     // code (if `Self` has one, such as [`PredicateObligation`]).
     fn child_with_derived_cause(
         &self,
-        clause: I::Clause,
+        clause: Clause<I>,
         span: I::Span,
         parent_trait_pred: ty::Binder<I, ty::TraitClause<I>>,
         index: usize,
@@ -49,13 +49,13 @@ impl<I: Interner> Elaboratable<I> for Predicate<I> {
         *self
     }
 
-    fn child(&self, clause: I::Clause) -> Self {
+    fn child(&self, clause: Clause<I>) -> Self {
         clause.as_predicate()
     }
 
     fn child_with_derived_cause(
         &self,
-        clause: I::Clause,
+        clause: Clause<I>,
         _span: I::Span,
         _parent_trait_pred: ty::Binder<I, ty::TraitClause<I>>,
         _index: usize,
@@ -64,14 +64,34 @@ impl<I: Interner> Elaboratable<I> for Predicate<I> {
     }
 }
 
+impl<I: Interner> Elaboratable<I> for Clause<I> {
+    fn predicate(&self) -> Predicate<I> {
+        self.as_predicate()
+    }
+
+    fn child(&self, clause: Clause<I>) -> Self {
+        clause
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        clause: Clause<I>,
+        _span: I::Span,
+        _parent_trait_pred: ty::Binder<I, ty::TraitClause<I>>,
+        _index: usize,
+    ) -> Self {
+        clause
+    }
+}
+
 pub struct ClauseWithSupertraitSpan<I: Interner> {
-    pub clause: I::Clause,
+    pub clause: Clause<I>,
     // Span of the supertrait predicate that lead to this clause.
     pub supertrait_span: I::Span,
 }
 
 impl<I: Interner> ClauseWithSupertraitSpan<I> {
-    pub fn new(clause: I::Clause, span: I::Span) -> Self {
+    pub fn new(clause: Clause<I>, span: I::Span) -> Self {
         ClauseWithSupertraitSpan { clause, supertrait_span: span }
     }
 }
@@ -81,13 +101,13 @@ impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
         self.clause.as_predicate()
     }
 
-    fn child(&self, clause: <I as Interner>::Clause) -> Self {
+    fn child(&self, clause: Clause<I>) -> Self {
         ClauseWithSupertraitSpan { clause, supertrait_span: self.supertrait_span }
     }
 
     fn child_with_derived_cause(
         &self,
-        clause: <I as Interner>::Clause,
+        clause: Clause<I>,
         supertrait_span: <I as Interner>::Span,
         _parent_trait_pred: crate::Binder<I, crate::TraitClause<I>>,
         _index: usize,
@@ -144,7 +164,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 }
 
                 let map_to_child_clause =
-                    |(index, (clause, span)): (usize, (I::Clause, I::Span))| {
+                    |(index, (clause, span)): (usize, (Clause<I>, I::Span))| {
                         elaboratable.child_with_derived_cause(
                             clause.instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
                             span,
@@ -341,11 +361,11 @@ pub fn supertrait_def_ids<I: Interner>(
 pub fn supertraits<I: Interner>(
     cx: I,
     trait_ref: ty::Binder<I, ty::TraitRef<I>>,
-) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
+) -> FilterToTraits<I, Elaborator<I, Clause<I>>> {
     elaborate(cx, [trait_ref.upcast(cx)]).filter_only_self().filter_to_traits()
 }
 
-impl<I: Interner> Elaborator<I, I::Clause> {
+impl<I: Interner> Elaborator<I, Clause<I>> {
     fn filter_to_traits(self) -> FilterToTraits<I, Self> {
         FilterToTraits { _cx: PhantomData, base_iterator: self }
     }
@@ -353,12 +373,12 @@ impl<I: Interner> Elaborator<I, I::Clause> {
 
 /// A filter around an iterator of predicates that makes it yield up
 /// just trait references.
-pub struct FilterToTraits<I: Interner, It: Iterator<Item = I::Clause>> {
+pub struct FilterToTraits<I: Interner, It: Iterator<Item = Clause<I>>> {
     _cx: PhantomData<I>,
     base_iterator: It,
 }
 
-impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I, It> {
+impl<I: Interner, It: Iterator<Item = Clause<I>>> Iterator for FilterToTraits<I, It> {
     type Item = Unnormalized<I, ty::Binder<I, ty::TraitRef<I>>>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -4,6 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::predicates::Clause;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData,
     IsIdentity, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
@@ -93,7 +94,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause.as_predicate()));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // We currently elaborate all supertrait outlives obligations from impls.
@@ -104,7 +105,7 @@ where
                 cx.impl_super_outlives(impl_def_id)
                     .iter_instantiated(cx, impl_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred.as_predicate())),
+                    .map(|pred| goal.with(cx, pred)),
             )?;
 
             then(ecx)
@@ -142,7 +143,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution> {
         if let Some(trait_clause) = assumption.as_trait_clause()
             && trait_clause.polarity() == goal.predicate.polarity
@@ -261,7 +262,7 @@ where
                 .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|c| goal.with(cx, c.as_predicate()));
+                .map(|c| goal.with(cx, c));
             // While you could think of trait aliases to have a single builtin impl
             // which uses its implied trait bounds as where-clauses, using
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
@@ -1077,7 +1078,7 @@ where
             // (i.e. the principal, all of the associated types match, and any auto traits)
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
-                b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty).as_predicate())),
+                b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty))),
             )?;
 
             // The type must be `Sized` to be unsized.

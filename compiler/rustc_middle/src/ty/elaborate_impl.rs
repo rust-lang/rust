@@ -3,26 +3,6 @@ use rustc_type_ir::elaborate::Elaboratable;
 
 use crate::ty::{self, TyCtxt};
 
-impl<'tcx> Elaboratable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
-    fn predicate(&self) -> ty::Predicate<'tcx> {
-        self.as_predicate()
-    }
-
-    fn child(&self, clause: ty::Clause<'tcx>) -> Self {
-        clause
-    }
-
-    fn child_with_derived_cause(
-        &self,
-        clause: ty::Clause<'tcx>,
-        _span: Span,
-        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
-        _index: usize,
-    ) -> Self {
-        clause
-    }
-}
-
 impl<'tcx> Elaboratable<TyCtxt<'tcx>> for (ty::Predicate<'tcx>, Span) {
     fn predicate(&self) -> ty::Predicate<'tcx> {
         self.0

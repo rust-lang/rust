@@ -33,24 +33,9 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 pub type PolyProjectionClause<'tcx> = ty::Binder<'tcx, ProjectionClause<'tcx>>;
 
-/// An interned statement the trait solver can prove.
 pub type Predicate<'tcx> = ir::predicates::Predicate<TyCtxt<'tcx>>;
-
-/// An interned predicate that can be assumed by the solver.
 pub type Clause<'tcx> = ir::predicates::Clause<TyCtxt<'tcx>>;
 
-impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
-    fn as_predicate(self) -> Predicate<'tcx> {
-        self.as_predicate()
-    }
-
-    fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
-        self.instantiate_supertrait(tcx, trait_ref)
-    }
-}
-
-// Preserve rustc's existing diagnostic formatting while the concrete
-// predicate wrappers are being migrated into rustc_type_ir.
 impl<'tcx> ir::ir_print::PredicateDiagFormatter for TyCtxt<'tcx> {
     fn predicate_diag_string(
         predicate: ir::predicates::Predicate<Self>,

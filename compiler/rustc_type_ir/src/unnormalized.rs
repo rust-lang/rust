@@ -6,7 +6,7 @@ use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeVisitable_Generic};
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
-use crate::inherent::*;
+use crate::predicates::Clause;
 use crate::upcast::Upcast;
 use crate::{
     Binder, BoundConstness, ClauseKind, ClausePolarity, HostEffectClause, Interner, TraitClause,
@@ -25,7 +25,7 @@ use crate::{
 /// and `Unnormalized::skip_norm_wip` as needed.
 ///
 /// The interner type parameter exists to constraint generic for certain impl,
-/// e.g., `Unnormalized<I, I::Clause>`.
+/// e.g., `Unnormalized<I, Clause<I>>`.
 ///
 /// [here]: https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/Eager.20normalization.2C.20ahoy.21/with/582996293
 #[derive_where(Clone, Copy, PartialOrd, PartialEq, Eq, Hash, Debug; T)]
@@ -113,7 +113,7 @@ impl<I: Interner, T> Unnormalized<I, Binder<I, T>> {
     }
 }
 
-impl<I: Interner> Unnormalized<I, I::Clause> {
+impl<I: Interner> Unnormalized<I, Clause<I>> {
     pub fn as_trait_clause(self) -> Option<Unnormalized<I, Binder<I, TraitClause<I>>>> {
         self.value.as_trait_clause().map(|v| Unnormalized::new(v))
     }
@@ -151,7 +151,7 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
         self,
         cx: I,
         constness: BoundConstness,
-    ) -> Unnormalized<I, I::Clause> {
+    ) -> Unnormalized<I, Clause<I>> {
         let inner = self
             .value
             .map_bound(|trait_ref| {

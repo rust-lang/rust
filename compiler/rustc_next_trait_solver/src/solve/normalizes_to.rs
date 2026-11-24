@@ -3,6 +3,7 @@ use std::debug_assert_matches;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::predicates::Clause;
 use rustc_type_ir::solve::{
     FetchEligibleAssocItemResponse, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
     RerunNonErased, RerunReason, RerunResultExt,
@@ -195,7 +196,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {
             ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
@@ -242,7 +243,7 @@ where
             cx.own_clauses_of(goal.predicate.alias.expect_projection_def_id().into())
                 .iter_instantiated(cx, goal.predicate.alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause.as_predicate())),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         then(ecx)
@@ -255,7 +256,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -297,7 +298,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause.as_predicate()));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // Bail if the nested goals don't hold here. This is to avoid unnecessarily
@@ -315,7 +316,7 @@ where
                 cx.own_clauses_of(alias_def_id.into())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|clause| goal.with(cx, clause.as_predicate())),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
@@ -1144,7 +1145,7 @@ where
                 cx.clauses_of(target_container_def_id)
                     .iter_instantiated(cx, target_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|clause| goal.with(cx, clause.as_predicate())),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
             goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
         })

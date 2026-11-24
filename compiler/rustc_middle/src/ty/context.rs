@@ -47,6 +47,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
+use rustc_type_ir::predicates::Predicate as IrPredicate;
 use rustc_type_ir::{
     CollectAndApply, IncludeSizedImplicitBounds, PlaceholderType, TypeFlags, WithCachedTypeInfo,
     elaborate, search_graph,
@@ -237,7 +238,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     /// Interns a predicate. (Use `mk_predicate` instead, where possible.)
     #[inline(never)]
     fn intern_predicate(&self, kind: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
-        rustc_type_ir::predicates::Predicate(Interned::new_unchecked(
+        IrPredicate(Interned::new_unchecked(
             self.predicate
                 .intern(kind, |kind| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);

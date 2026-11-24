@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::predicates::Clause;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{
     AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
@@ -52,7 +53,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause()
             && host_clause.def_id() == goal.predicate.def_id()
@@ -136,8 +137,7 @@ where
                                     cx,
                                     trait_ref
                                         .to_host_effect_clause(cx, goal.predicate.constness)
-                                        .skip_norm_wip()
-                                        .as_predicate(),
+                                        .skip_norm_wip(),
                                 )
                             },
                         ),
@@ -178,7 +178,7 @@ where
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause.as_predicate()));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
@@ -190,8 +190,7 @@ where
                         cx,
                         bound_trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip()
-                            .as_predicate(),
+                            .skip_norm_wip(),
                     )
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions)?;
@@ -228,7 +227,7 @@ where
                 .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|c| goal.with(cx, c.as_predicate()));
+                .map(|c| goal.with(cx, c));
 
             let const_conditions = cx
                 .const_conditions(goal.predicate.def_id().into())
@@ -238,8 +237,7 @@ where
                         cx,
                         bound_trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip()
-                            .as_predicate(),
+                            .skip_norm_wip(),
                     )
                 });
             // While you could think of trait aliases to have a single builtin impl
@@ -331,8 +329,7 @@ where
                         cx,
                         trait_ref
                             .to_host_effect_clause(cx, goal.predicate.constness)
-                            .skip_norm_wip()
-                            .as_predicate(),
+                            .skip_norm_wip(),
                     ),
                 )
             })
@@ -441,8 +438,7 @@ where
                     goal.with(
                         cx,
                         ty::Binder::dummy(trait_ref)
-                            .to_host_effect_clause(cx, goal.predicate.constness)
-                            .as_predicate(),
+                            .to_host_effect_clause(cx, goal.predicate.constness),
                     )
                 }),
             )?;
