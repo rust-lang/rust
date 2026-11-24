@@ -291,9 +291,10 @@ pub(crate) fn unsize_ptr_ref<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let dst_layout = bx.cx().layout_of(dst_ty);
 
             let mut result = None;
-            for i in 0..src.layout.fields.count() {
+            for i in 0..src_layout.fields.count() {
                 let src_f = src.project_field(bx, i);
                 if src_f.layout.is_1zst() {
+                    // We are looking for the one non-1-ZST field; this is not it.
                     continue;
                 }
 
