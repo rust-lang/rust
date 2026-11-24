@@ -175,11 +175,14 @@ pub unsafe trait Subplace {
 
     type Target;
 
-    const OFFSET: usize;
+    fn offset(self) -> usize;
 }
 
 unsafe impl<F: Field> Subplace for F {
     type Source = F::Base;
     type Target = F::Type;
-    const OFFSET: usize = F::OFFSET;
+
+    fn offset(self) -> usize {
+        F::OFFSET
+    }
 }

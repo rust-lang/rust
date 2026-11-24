@@ -52,33 +52,3 @@ where
 
     unsafe fn project_place(self, subplace: S) -> Self::Projected;
 }
-
-pub struct LocalHandle<T: ?Sized>(*mut T);
-
-impl<T: ?Sized> Copy for LocalHandle<T> {}
-impl<T: ?Sized> Clone for LocalHandle<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T: ?Sized> LocalHandle<T> {
-    pub fn get(self) -> *mut T {
-        self.0
-    }
-}
-
-impl<T: ?Sized> PlaceHandle for LocalHandle<T> {
-    type Target = T;
-}
-
-unsafe impl<T> DerefPlace for LocalHandle
-where
-    T: ?Sized + CreateHandle,
-{
-    type Derefed = T::Handle;
-
-    unsafe fn deref_place(self) -> Self::Derefed {
-        unsafe { T::create_handle(self.get()) }
-    }
-}

@@ -80,9 +80,14 @@
 
 mod handle;
 mod wrapper;
+mod locals;
 
-pub use self::handle::*;
-pub use self::wrapper::*;
+pub use self::{
+    handle::*,
+    wrapper::*,
+    locals::*,
+};
+
 use crate::ptr::Pointee;
 
 /// A type that acts as a proxy for a place.
@@ -136,7 +141,11 @@ pub unsafe trait WritePlace: PlaceHandle {
 }
 
 /// Borrow a place as `Output`.
-pub unsafe trait BorrowPlace<Output>: PlaceHandle {
+pub unsafe trait BorrowPlace<'a, Output>: PlaceHandle
+where
+    Output: 'a,
+    Self::Target: 'a,
+{
     /// Borrow the place as `Output`.
     unsafe fn borrow_place(self) -> Output;
 }
