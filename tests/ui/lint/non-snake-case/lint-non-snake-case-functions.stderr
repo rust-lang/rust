@@ -28,35 +28,59 @@ error: method `render_HTML` should have a snake case name
 LL |     fn render_HTML() {}
    |        ^^^^^^^^^^^ help: convert the identifier to snake case: `render_html`
 
+error: variable `NOT_SNAKE` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:20:14
+   |
+LL |     fn param(NOT_SNAKE: usize) {}
+   |              ^^^^^^^^^ help: convert the identifier to snake case: `not_snake`
+
 error: trait method `ABC` should have a snake case name
-  --> $DIR/lint-non-snake-case-functions.rs:22:8
+  --> $DIR/lint-non-snake-case-functions.rs:25:8
    |
 LL |     fn ABC();
    |        ^^^ help: convert the identifier to snake case: `abc`
 
 error: trait method `a_b_C` should have a snake case name
-  --> $DIR/lint-non-snake-case-functions.rs:25:8
+  --> $DIR/lint-non-snake-case-functions.rs:28:8
    |
 LL |     fn a_b_C(&self) {}
    |        ^^^^^ help: convert the identifier to snake case (notice the capitalization): `a_b_c`
 
 error: trait method `something__else` should have a snake case name
-  --> $DIR/lint-non-snake-case-functions.rs:28:8
+  --> $DIR/lint-non-snake-case-functions.rs:31:8
    |
 LL |     fn something__else(&mut self);
    |        ^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `something_else`
 
+error: variable `NOT_SNAKE` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:34:15
+   |
+LL |     fn param1(NOT_SNAKE: usize);
+   |               ^^^^^^^^^ help: convert the identifier to snake case: `not_snake`
+
+error: variable `NOT_SNAKE` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:37:15
+   |
+LL |     fn param2(NOT_SNAKE: usize) {}
+   |               ^^^^^^^^^ help: convert the identifier to snake case: `not_snake`
+
+error: variable `NOT_SNAKE` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:46:15
+   |
+LL |     fn param1(NOT_SNAKE: usize) {}
+   |               ^^^^^^^^^ help: convert the identifier to snake case: `not_snake`
+
 error: function `Cookie` should have a snake case name
-  --> $DIR/lint-non-snake-case-functions.rs:38:4
+  --> $DIR/lint-non-snake-case-functions.rs:50:4
    |
 LL | fn Cookie() {}
    |    ^^^^^^ help: convert the identifier to snake case (notice the capitalization): `cookie`
 
 error: function `bi_S_Cuit` should have a snake case name
-  --> $DIR/lint-non-snake-case-functions.rs:41:8
+  --> $DIR/lint-non-snake-case-functions.rs:53:8
    |
 LL | pub fn bi_S_Cuit() {}
    |        ^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `bi_s_cuit`
 
-error: aborting due to 9 previous errors
+error: aborting due to 13 previous errors
 
