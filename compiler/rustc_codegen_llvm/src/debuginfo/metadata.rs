@@ -154,20 +154,24 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         cx.size_and_align_of(Ty::new_mut_ptr(cx.tcx, pointee_type))
     );
 
-    let pointee_type_di_node = match pointee_type.kind() {
-        // `&[T]` will look like `{ data_ptr: *const T, length: usize }`
-        ty::Slice(element_type) => spanned_type_di_node(cx, *element_type, span),
-        // `&str` will look like `{ data_ptr: *const u8, length: usize }`
-        ty::Str => type_di_node(cx, cx.tcx.types.u8),
+    let pointee_type_di_node = Some(pointee_type)
+        // LLVM defines `void*` using NULL (so `None`) for the pointee type arg, see:
+        // https://github.com/llvm/llvm-project/blob/llvmorg-23.1.6/llvm/docs/LangRef.md?plain=1#L6819
+        .filter(|pt_ty| !pt_ty.is_c_void(cx.tcx))
+        .map(|pt_ty| match pt_ty.kind() {
+            // `&[T]` will look like `{ data_ptr: *const T, length: usize }`
+            ty::Slice(element_type) => spanned_type_di_node(cx, *element_type, span),
+            // `&str` will look like `{ data_ptr: *const u8, length: usize }`
+            ty::Str => type_di_node(cx, cx.tcx.types.u8),
 
-        // `&dyn K` will look like `{ pointer: _, vtable: _}`
-        // any Adt `Foo` containing an unsized type (eg `&[_]` or `&dyn _`)
-        //   will look like `{ data_ptr: *const Foo, length: usize }`
-        // and thin pointers `&Foo` will just look like `*const Foo`.
-        //
-        // in all those cases, we just use the pointee_type
-        _ => spanned_type_di_node(cx, pointee_type, span),
-    };
+            // `&dyn K` will look like `{ pointer: _, vtable: _}`
+            // any Adt `Foo` containing an unsized type (eg `&[_]` or `&dyn _`)
+            //   will look like `{ data_ptr: *const Foo, length: usize }`
+            // and thin pointers `&Foo` will just look like `*const Foo`.
+            //
+            // in all those cases, we just use the pointee_type
+            _ => spanned_type_di_node(cx, pointee_type, span),
+        });
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
@@ -329,7 +333,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align()),
         _ => unreachable!(),
     };
-    let di_node = create_pointer_type(cx, fn_di_node, size, align, &name);
+    let di_node = create_pointer_type(cx, Some(fn_di_node), size, align, &name);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -351,7 +355,7 @@ pub(super) fn create_subroutine_type<'ll>(
 
 fn create_pointer_type<'ll>(
     cx: &CodegenCx<'ll, '_>,
-    pointee_ty: &'ll llvm::Metadata,
+    pointee_ty: Option<&'ll llvm::Metadata>,
     size: Size,
     align: Align,
     name: &str,

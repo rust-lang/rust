@@ -1878,7 +1878,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
         Builder: &DIBuilder<'ll>,
-        PointeeTy: &'ll Metadata,
+        PointeeTy: Option<&'ll Metadata>,
         SizeInBits: u64,
         AlignInBits: u32,
         AddressSpace: c_uint, // (optional DWARF address space; default is 0)
