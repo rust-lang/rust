@@ -153,6 +153,15 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
     }
 }
 
+impl<T, A: Allocator> IntoIter<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.list.allocator()
+    }
+}
+
 impl<T> Node<T> {
     fn new(element: T) -> Self {
         Node { next: None, prev: None, element }
