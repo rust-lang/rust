@@ -194,14 +194,6 @@ pub(crate) struct SplatNotAllowedOnAbiCall {
 }
 
 #[derive(Diagnostic)]
-#[diag("documentation comments cannot be applied to function parameters")]
-pub(crate) struct FnParamDocComment {
-    #[primary_span]
-    #[label("doc comments are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
 pub(crate) struct EiiImplAttributeNotSupported<'a> {
     #[primary_span]
