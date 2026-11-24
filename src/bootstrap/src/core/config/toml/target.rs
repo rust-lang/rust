@@ -130,20 +130,15 @@ impl<'de> Deserialize<'de> for DefaultLinuxLinkerOverride {
 
 /// Set of linker overrides for selected Linux targets.
 #[cfg(not(test))]
-pub fn default_linux_linker_overrides(
-    channel: &str,
-) -> HashMap<String, DefaultLinuxLinkerOverride> {
-    let mut overrides = HashMap::from([(
-        "x86_64-unknown-linux-gnu".to_string(),
-        DefaultLinuxLinkerOverride::SelfContainedLldCc,
-    )]);
-    if channel == "nightly" || channel == "dev" {
-        overrides.insert(
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
+    [
+        ("x86_64-unknown-linux-gnu".to_string(), DefaultLinuxLinkerOverride::SelfContainedLldCc),
+        (
             "loongarch64-unknown-linux-gnu".to_string(),
             DefaultLinuxLinkerOverride::SelfContainedLldCc,
-        );
-    }
-    overrides
+        ),
+    ]
+    .into()
 }
 
 #[cfg(test)]
@@ -152,9 +147,7 @@ thread_local! {
 }
 
 #[cfg(test)]
-pub fn default_linux_linker_overrides(
-    _channel: &str,
-) -> HashMap<String, DefaultLinuxLinkerOverride> {
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
     TEST_LINUX_LINKER_OVERRIDES.with(|cell| cell.borrow().clone()).unwrap_or_default()
 }
 

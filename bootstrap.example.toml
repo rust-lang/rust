@@ -1238,4 +1238,5 @@
 # Currently, the following targets automatically opt into the self-contained LLD linker, unless you
 # pass `off`:
 # - x86_64-unknown-linux-gnu
+# - loongarch64-unknown-linux-gnu
 #default-linker-linux-override = "off" (for most targets)
