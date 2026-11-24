@@ -523,3 +523,38 @@ impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
         }
     }
 }
+
+/// Write is implemented for `Cow<'_, str>` by lazily cloning the data (as
+/// necessary) and appending to the owned string.
+///
+/// If the data is borrowed, it will remain borrowed so long as no data is
+/// written into the object.
+///
+/// # Examples
+///
+/// ```
+/// # use core::fmt::Write;
+/// # use alloc::borrow::Cow;
+/// let mut data = Cow::Borrowed("foo");
+/// write!(&mut data, "").unwrap();
+/// assert!(matches!(data, Cow::Borrowed("foo")));
+///
+/// write!(&mut data, "bar").unwrap();
+/// assert!(matches!(data, Cow::Owned(_)));
+/// assert_eq!(data, "foobar");
+/// ```
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "cow_write", since = "1.101.0")]
+impl<'a> core::fmt::Write for Cow<'a, str> {
+    #[inline]
+    fn write_str(&mut self, val: &str) -> core::fmt::Result {
+        if val.is_empty() {
+            return Ok(());
+        }
+        match self {
+            Cow::Borrowed(head) => *self = Cow::Owned([head, val].concat()),
+            Cow::Owned(owned) => owned.push_str(val),
+        }
+        Ok(())
+    }
+}

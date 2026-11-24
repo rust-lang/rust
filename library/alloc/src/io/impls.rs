@@ -447,6 +447,93 @@ impl<A: Allocator> Write for Vec<u8, A> {
     }
 }
 
+/// Write is implemented for `Cow<'_, [u8]>` by lazily cloning the data (as
+/// necessary) and appending to the owned vector.
+///
+/// If the data is borrowed, it will remain borrowed so long as no data is
+/// written into the object.
+///
+/// # Examples
+///
+/// ```
+/// # use alloc::borrow::Cow;
+/// # use std::io::Write;
+/// let mut data = Cow::Borrowed(&[0, 1][..]);
+/// data.write_all(b"").unwrap();
+/// assert!(matches!(data, Cow::Borrowed([0, 1])));
+///
+/// data.write_all(&[2, 3]).unwrap();
+/// assert!(matches!(data, Cow::Owned(_)));
+/// assert_eq!(data, &[0, 1, 2, 3][..]);
+/// ```
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "cow_write", since = "1.101.0")]
+impl<'a> Write for crate::borrow::Cow<'a, [u8]> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        <Self as Write>::write_all(self, buf).map(|()| buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let len = bufs.iter().map(|b| b.len()).sum();
+        if let Some(out) = cow_vec_to_mut(self, len)? {
+            for buf in bufs {
+                out.extend_from_slice(buf);
+            }
+        }
+        Ok(len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        if let Some(out) = cow_vec_to_mut(self, buf.len())? {
+            out.extend_from_slice(buf);
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        <Self as Write>::write_vectored(self, bufs).map(|_| ())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Acquires a mutable reference to the owned form of the data held by `cow`
+/// making sure that it has at least `extra` bytes of spare capacity; except,
+/// does nothing and returns `None` if `extra` is zero.
+#[cfg(not(no_global_oom_handling))]
+fn cow_vec_to_mut<'a, 'b: 'a>(
+    cow: &'a mut crate::borrow::Cow<'b, [u8]>,
+    extra: usize,
+) -> io::Result<Option<&'a mut Vec<u8>>> {
+    if extra == 0 {
+        return Ok(None);
+    }
+    Ok(Some(match cow {
+        crate::borrow::Cow::Borrowed(borrowed) => {
+            let mut new = Vec::with_capacity(borrowed.len() + extra);
+            new.extend_from_slice(borrowed);
+            *cow = crate::borrow::Cow::Owned(new);
+            cow.to_mut()
+        }
+        crate::borrow::Cow::Owned(owned) => {
+            owned.reserve(extra);
+            owned
+        }
+    }))
+}
+
 /// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
