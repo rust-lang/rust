@@ -79,6 +79,8 @@ note: similarly named function `f` defined here
    |
 LL |     fn f() {
    |     ^^^^^^
+   = note: 'std::f128::consts::E' is unstable, add `#![feature(f128)]` to the crate attributes to enable
+   = note: 'std::f16::consts::E' is unstable, add `#![feature(f16)]` to the crate attributes to enable
 help: you might have meant to use the following enum variant
    |
 LL -     let _: E = m::E;
@@ -128,6 +130,8 @@ LL | |         },
 LL | |         Unit,
 LL | |     }
    | |_____^
+   = note: 'std::f128::consts::E' is unstable, add `#![feature(f128)]` to the crate attributes to enable
+   = note: 'std::f16::consts::E' is unstable, add `#![feature(f16)]` to the crate attributes to enable
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;

@@ -4326,7 +4326,6 @@ fn show_candidates(
                         accessible_path_strings.into_iter().map(|a| a.0),
                         Applicability::MaybeIncorrect,
                     );
-                    show_notes(err, &accessible_path_strings);
                     return true;
                 }
                 DiagMode::Import { .. } => ("", ""),
