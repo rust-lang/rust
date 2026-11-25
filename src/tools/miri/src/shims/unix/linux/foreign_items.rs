@@ -168,8 +168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, *_, i32, u32, *libc::statx) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
-                ecx.write_scalar(result, dest)?;
+                ecx.linux_statx(dirfd, pathname, flags, mask, statxbuf, dest)?;
             }
             "fstat64" => {
                 let [fd, buf] = &ecx.check_shim_sig(

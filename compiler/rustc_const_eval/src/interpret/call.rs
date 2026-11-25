@@ -293,16 +293,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // We also unfold repr(transparent) wrappers as part of that.
                         let normalized_field_ty =
                             |field: &FieldDef, args| -> InterpResult<'tcx, _> {
-                                let ty = self.tcx.normalize_erasing_regions(
-                                    self.typing_env,
-                                    field.ty(*self.tcx, args),
-                                );
-                                interp_ok(
-                                    self.unfold_transparent(self.layout_of(ty)?, |adt| {
-                                        adt.is_struct()
-                                    })?
-                                    .ty,
-                                )
+                                // `layout_of` performs normalization, so we're not really skipping.
+                                let field =
+                                    self.layout_of(field.ty(*self.tcx, args).skip_norm_wip())?;
+                                // `unfold_transparent` returns a normalized type
+                                interp_ok(self.unfold_transparent(field, |adt| adt.is_struct())?.ty)
                             };
                         let caller_ty = normalized_field_ty(caller_field, *caller_args)?;
                         let callee_ty = normalized_field_ty(callee_field, *callee_args)?;

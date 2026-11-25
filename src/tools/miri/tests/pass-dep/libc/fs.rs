@@ -211,6 +211,19 @@ fn test_statx() {
     let c_path = utils::into_c_string(&path);
     let meta = fs::metadata(&path).unwrap();
 
+    let statx_syscall = |dirfd: libc::c_int,
+                         pathname: *const libc::c_char,
+                         flags: libc::c_int,
+                         mask: libc::c_uint,
+                         statxbuf: *mut libc::statx|
+     -> libc::c_int {
+        unsafe {
+            libc::syscall(libc::SYS_statx, dirfd, pathname, flags, mask, statxbuf)
+                .try_into()
+                .unwrap()
+        }
+    };
+
     // Relative to working directory.
     unsafe {
         let old_cwd = env::current_dir().unwrap();
@@ -234,7 +247,7 @@ fn test_statx() {
     // Setting AT_EMPTY_PATH is fine even if the path is not actually empty.
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
+        errno_check(statx_syscall(
             libc::AT_FDCWD,
             c_path.as_ptr(),
             libc::AT_EMPTY_PATH,
@@ -262,6 +275,29 @@ fn test_statx() {
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
+    // Test some error conditions.
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        let err = errno_result(libc::statx(
+            libc::AT_FDCWD,
+            c"doesnotexist".as_ptr(),
+            0,
+            libc::STATX_BASIC_STATS,
+            stx.as_mut_ptr(),
+        ))
+        .unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+        let err = errno_result(statx_syscall(
+            999, // bad dirfd
+            c"doesnotexist".as_ptr(),
+            0,
+            libc::STATX_BASIC_STATS,
+            stx.as_mut_ptr(),
+        ))
+        .unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+    }
+
     // Symlink following.
     if utils::have_symlink_permission() {
         let symlinkpath = utils::prepare("miri_test_libc_statx.link");
@@ -285,7 +321,7 @@ fn test_statx() {
                 999, // dirfd
                 c_symlinkpath.as_ptr(),
                 libc::AT_SYMLINK_NOFOLLOW,
-                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+                libc::STATX_BASIC_STATS,
                 stx.as_mut_ptr(),
             ));
             let stx = stx.assume_init();
@@ -307,11 +343,11 @@ fn test_statx() {
     .unwrap();
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        errno_check(libc::statx(
+        errno_check(statx_syscall(
             dirfd,
             c"miri_test_libc_statx.txt".as_ptr(),
             libc::AT_EMPTY_PATH,
-            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            libc::STATX_BASIC_STATS,
             stx.as_mut_ptr(),
         ));
 
