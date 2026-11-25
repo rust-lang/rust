@@ -29,6 +29,12 @@
 //@ revisions: target_spec_json
 //@[target_spec_json] compile-flags: --print=target-spec-json
 
+//@ revisions: using_json_format_with_stable
+//@[using_json_format_with_stable] compile-flags: --print=code-models:json
+
+//@ revisions: using_json_format_with_unstable
+//@[using_json_format_with_unstable] compile-flags: --print=crate-root-lint-levels:json
+
 // =======================
 // Stable print requests
 // =======================
@@ -110,3 +116,5 @@ fn main() {}
 //[check_cfg]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `check-cfg` print option
 //[supported_crate_types]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `supported-crate-types` print option
 //[target_spec_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `target-spec-json` print option
+//[using_json_format_with_unstable]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `crate-root-lint-levels` print option
+//[using_json_format_with_stable]~? ERROR using output format specifiers requires `-Z unstable-options` to be present
