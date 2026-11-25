@@ -263,7 +263,7 @@ where
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait
     /// errors but still want to emit errors for other trait goals. We have some special
@@ -480,6 +480,93 @@ pub(super) struct FailedCandidateInfo {
     pub param_env_head_usages: CandidateHeadUsages,
 }
 
+pub(super) enum CandidateAssemblyMode {
+    Trait,
+    Other,
+}
+
+pub(super) enum TraitCandidatePreference {
+    Coherence,
+    TrivialBuiltin,
+    AliasBound,
+    ParamEnv,
+    Other,
+}
+
+pub(super) fn preferred_trait_candidates<I: Interner>(
+    cx: I,
+    is_coherence: bool,
+    trait_def_id: I::TraitId,
+    candidates: &[Candidate<I>],
+) -> TraitCandidatePreference {
+    use TraitCandidatePreference::*;
+
+    if is_coherence {
+        return Coherence;
+    }
+
+    // Prefer trivial builtin candidates to prevent where-bounds from
+    // accidentally extending the lifetime of a variable (#53123).
+    if candidates
+        .iter()
+        .any(|c| matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)))
+    {
+        return TrivialBuiltin;
+    }
+
+    // For marker traits, prefer non-nested alias bounds over where-bounds.
+    if candidates
+        .iter()
+        .any(|c| matches!(c.source, CandidateSource::AliasBound(AliasBoundKind::SelfBounds)))
+        && matches!(
+            rustc_type_ir::solve::CandidatePreferenceMode::compute(cx, trait_def_id),
+            rustc_type_ir::solve::CandidatePreferenceMode::Marker
+        )
+    {
+        return AliasBound;
+    }
+
+    // A non-global where-bound shadows impls and alias bounds.
+    if candidates
+        .iter()
+        .any(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)))
+    {
+        return ParamEnv;
+    }
+
+    if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound(_))) {
+        return AliasBound;
+    }
+
+    Other
+}
+
+struct Candidates<I: Interner> {
+    retained: Vec<Candidate<I>>,
+    discard_impls: bool,
+}
+
+impl<I: Interner> Candidates<I> {
+    fn push_impl<D: SolverDelegate<Interner = I>>(
+        &mut self,
+        ecx: &mut EvalCtxt<'_, D>,
+        outcome: Result<Candidate<I>, CandidateHeadUsages>,
+    ) {
+        // If a non-global where-bound shadows impl candidates, neither
+        // successful nor failed impls affect the selected response.
+        // Otherwise, failed impls may still affect subsequent cycle iterations.
+        if self.discard_impls {
+            let usages = match outcome {
+                Ok(candidate) => candidate.head_usages,
+                Err(usages) => usages,
+            };
+            ecx.ignore_candidate_head_usages(usages);
+        } else if let Ok(candidate) = outcome {
+            self.retained.push(candidate);
+        }
+    }
+}
+
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -492,14 +579,15 @@ where
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
+        assembly_mode: CandidateAssemblyMode,
     ) -> Result<(Vec<Candidate<I>>, FailedCandidateInfo), RerunNonErased> {
-        let mut candidates = vec![];
+        let mut candidates = Candidates { retained: vec![], discard_impls: false };
         let mut failed_candidate_info =
             FailedCandidateInfo { param_env_head_usages: CandidateHeadUsages::default() };
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            return Ok((candidates, failed_candidate_info));
+            return Ok((candidates.retained, failed_candidate_info));
         };
 
         let goal: Goal<I, G> = goal
@@ -507,8 +595,12 @@ where
 
         if normalized_self_ty.is_ty_var() {
             debug!("self type has been normalized to infer");
-            self.try_assemble_bounds_via_registered_opaques(goal, assemble_from, &mut candidates)?;
-            return Ok((candidates, failed_candidate_info));
+            self.try_assemble_bounds_via_registered_opaques(
+                goal,
+                assemble_from,
+                &mut candidates.retained,
+            )?;
+            return Ok((candidates.retained, failed_candidate_info));
         }
 
         // Vars that show up in the rest of the goal substs may have been constrained by
@@ -518,16 +610,20 @@ where
         if self.typing_mode().is_coherence()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
-            candidates.push(candidate);
-            return Ok((candidates, failed_candidate_info));
+            candidates.retained.push(candidate);
+            return Ok((candidates.retained, failed_candidate_info));
         }
 
-        self.assemble_alias_bound_candidates(goal, &mut candidates)?;
-        self.assemble_param_env_candidates(goal, &mut candidates, &mut failed_candidate_info)?;
+        self.assemble_alias_bound_candidates(goal, &mut candidates.retained)?;
+        self.assemble_param_env_candidates(
+            goal,
+            &mut candidates.retained,
+            &mut failed_candidate_info,
+        )?;
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
-                self.assemble_builtin_impl_candidates(goal, &mut candidates)?;
+                self.assemble_builtin_impl_candidates(goal, &mut candidates.retained)?;
                 // For performance we only assemble impls if there are no candidates
                 // which would shadow them. This is necessary to avoid hangs in rayon,
                 // see trait-system-refactor-initiative#109 for more details.
@@ -547,17 +643,31 @@ where
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
-                    | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound(_)
-                        ) && has_no_inference_or_external_constraints(c.result)
-                    }),
+                    | TypingMode::ErasedNotCoherence(MayBeErased) => {
+                        !candidates.retained.iter().any(|c| {
+                            matches!(
+                                c.source,
+                                CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
+                                    | CandidateSource::AliasBound(_)
+                            ) && has_no_inference_or_external_constraints(c.result)
+                        })
+                    }
                 };
                 if assemble_impls {
+                    candidates.discard_impls =
+                        matches!(assembly_mode, CandidateAssemblyMode::Trait)
+                            && matches!(
+                                preferred_trait_candidates(
+                                    self.cx(),
+                                    self.typing_mode().is_coherence(),
+                                    goal.predicate.trait_def_id(self.cx()),
+                                    &candidates.retained,
+                                ),
+                                TraitCandidatePreference::ParamEnv
+                            );
+
                     self.assemble_impl_candidates(goal, &mut candidates)?;
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                    self.assemble_object_bound_candidates(goal, &mut candidates.retained);
                 }
             }
             AssembleCandidatesFrom::EnvAndBounds => {
@@ -565,14 +675,17 @@ where
                 // However, it matches the behavior of the old solver. See
                 // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
                 if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
-                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    && !candidates
+                        .retained
+                        .iter()
+                        .any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 {
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                    self.assemble_object_bound_candidates(goal, &mut candidates.retained);
                 }
             }
         }
 
-        Ok((candidates, failed_candidate_info))
+        Ok((candidates.retained, failed_candidate_info))
     }
 
     pub(super) fn forced_ambiguity(
@@ -597,7 +710,7 @@ where
     fn assemble_impl_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut Candidates<I>,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let goal_trait_ref = goal.predicate.trait_ref(cx);
@@ -616,14 +729,11 @@ where
                 return Ok(());
             }
 
-            match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
-            .map_err_to_rerun()?
-            {
-                Ok(candidate) => candidates.push(candidate),
-                Err(NoSolution) => {}
-            }
+            let candidate =
+                G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })?;
+            candidates.push_impl(self, candidate);
 
             Ok(())
         })
@@ -1281,11 +1391,9 @@ where
                         // another input of the trait goal.
                         Err(NoSolution.into())
                     }
-                })
-                .map_err_to_rerun()?
-                {
+                })? {
                     Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => {}
+                    Err(_head_usages) => {}
                 }
 
                 Ok(())
@@ -1370,8 +1478,11 @@ where
                 // Even when a trait bound has been proven using a where-bound, we
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let (mut candidates, _) = self
-                    .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds)?;
+                let (mut candidates, _) = self.assemble_and_evaluate_candidates(
+                    goal,
+                    AssembleCandidatesFrom::EnvAndBounds,
+                    CandidateAssemblyMode::Other,
+                )?;
                 debug!(?candidates);
 
                 // If the trait goal has been proven by using the environment, we want to treat
@@ -1399,8 +1510,11 @@ where
                 }
             }
             TraitGoalProvenVia::Misc => {
-                let (mut candidates, _) =
-                    self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
+                let (mut candidates, _) = self.assemble_and_evaluate_candidates(
+                    goal,
+                    AssembleCandidatesFrom::All,
+                    CandidateAssemblyMode::Other,
+                )?;
 
                 // Prefer "orphaned" param-env normalization predicates, which are used
                 // (for example, and ideally only) when proving item bounds for an impl.
