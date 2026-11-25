@@ -40,26 +40,16 @@ fn main() {
     test_file_set_len();
     test_file_sync();
     test_rename();
-    // Only these targets lower `File::set_times` to the `futimens` shim (macOS/Windows differ).
+    // Only these targets lower `set_times` to `futimens`/`utimensat` (macOS/Windows differ).
     if cfg!(any(
         target_os = "linux",
+        target_os = "android",
         target_os = "freebsd",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "android",
         not(miri)
     )) {
         test_file_set_times();
-    }
-    // In Miri, only these targets lower `fs::set_times` to the `utimensat` shim. Natively, it
-    // works everywhere.
-    if cfg!(any(
-        target_os = "linux",
-        target_os = "freebsd",
-        target_os = "solaris",
-        target_os = "illumos",
-        not(miri)
-    )) {
         test_set_times();
         test_set_times_nofollow();
     }

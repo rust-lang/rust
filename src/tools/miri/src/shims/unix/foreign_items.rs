@@ -30,9 +30,9 @@ pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
-        // `futimens` is set up as a weak symbol in `init_extern_statics` (on Android), so we
-        // allow it here too (it exists on all our Unix targets).
-        "futimens" => true,
+        // These are set up as a weak symbol in `init_extern_statics` (on Android), so we
+        // allow them here too (they exist on all our Unix targets).
+        "futimens" | "utimensat" => true,
         // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
         // where std uses them via `weak!` since bionic only gained them in API level 24), so
         // we allow them here too. They do not exist on Solaris.
