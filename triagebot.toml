@@ -1808,6 +1808,39 @@ code; adding it needs t-lang approval.
 """
 cc = ["@rust-lang/wg-const-eval"]
 
+[mentions."#[stable"]
+type = "content"
+trigger_files = ["library"]
+message = """
+This PR appears to modify API stability.
+
+If this is a stabilization PR, you should modify `src/bootstrap/stdlib-semver-check-stamp` to let CI know that API stability has changed. Otherwise, the PR will fail when it's rolled up.
+
+If you did not intend to affect API stability, you've probably done something wrong.
+"""
+
+[mentions."#![stable"]
+type = "content"
+trigger_files = ["library"]
+message = """
+This PR appears to modify API stability.
+
+If this is a stabilization PR, you should modify `src/bootstrap/stdlib-semver-check-stamp` to let CI know that API stability has changed. Otherwise, the PR will fail when it's rolled up.
+
+If you did not intend to affect API stability, you've probably done something wrong.
+"""
+
+[mentions."#[rustc_const_stable"]
+type = "content"
+trigger_files = ["library"]
+message = """
+This PR appears to modify API const-stability.
+
+If this is a stabilization PR, you should modify `src/bootstrap/stdlib-semver-check-stamp` to let CI know that API stability has changed. Otherwise, the PR will fail when it's rolled up.
+
+If you did not intend to affect API const-stability, you've probably done something wrong.
+"""
+
 # ------------------------------------------------------------------------------
 # PR assignments
 # ------------------------------------------------------------------------------
