@@ -248,7 +248,7 @@ where
             fulfill_cx.register_predicate_obligation(at.infcx, pred);
         }
 
-        let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
+        let errors = fulfill_cx.try_evaluate_obligations(at.infcx, &|_| false);
         if let TraitErrors::HasErrors(errors) = errors {
             return Err(errors);
         }

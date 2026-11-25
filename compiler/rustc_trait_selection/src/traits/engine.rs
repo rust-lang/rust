@@ -87,10 +87,14 @@ where
         }
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+    fn try_evaluate_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        skip: &dyn Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> TraitErrors<E> {
         match self {
-            FulfillmentEngine::Old(engine) => engine.try_evaluate_obligations(infcx),
-            FulfillmentEngine::Next(engine) => engine.try_evaluate_obligations(infcx),
+            FulfillmentEngine::Old(engine) => engine.try_evaluate_obligations(infcx, skip),
+            FulfillmentEngine::Next(engine) => engine.try_evaluate_obligations(infcx, skip),
         }
     }
 
@@ -308,7 +312,7 @@ where
     /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
     pub fn try_evaluate_obligations(&self) -> TraitErrors<E> {
-        self.engine.borrow_mut().try_evaluate_obligations(self.infcx)
+        self.engine.borrow_mut().try_evaluate_obligations(self.infcx, &|_| false)
     }
 
     /// Evaluate all pending obligations, return error if they can't be evaluated.

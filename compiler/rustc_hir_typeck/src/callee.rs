@@ -88,6 +88,11 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Whether the callee is a free function or a constructor.
+    pub(crate) fn callee_is_free_fn_or_ctor(&self, def_id: DefId) -> bool {
+        matches!(self.tcx.def_kind(def_id), def::DefKind::Fn | def::DefKind::Ctor(..))
+    }
+
     #[tracing::instrument(skip(self))]
     pub(crate) fn check_expr_call(
         &self,
@@ -175,6 +180,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.confirm_overloaded_call(call_expr, arg_exprs, expected, method_callee)
             }
         };
+
+        // The arguments are checked, so the callee's where-clauses may
+        // constrain inference from now on.
+        self.callees_being_checked.borrow_mut().remove(&callee_expr.hir_id);
 
         // we must check that return type of called functions is WF:
         self.register_wf_obligation(

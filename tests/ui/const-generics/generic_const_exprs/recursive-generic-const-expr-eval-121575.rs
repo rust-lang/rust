@@ -1,6 +1,9 @@
-//@ known-bug: #121575
+//@ check-pass
 // ignore-tidy-file-linelength
 #![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+
+// Used to ICE when evaluating generic const exprs in a recursive program.
 
 use std::array;
 

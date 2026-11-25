@@ -1,30 +1,62 @@
-error[E0308]: mismatched types
-  --> $DIR/formal-and-expected-differ.rs:22:29
+error[E0271]: type mismatch resolving `<i32 as Foo>::T == u32`
+  --> $DIR/formal-and-expected-differ.rs:22:26
    |
 LL |     let _: U<_, u32> = U(1, S(3u32));
-   |                        -    ^^^^^^^ expected `S<f32>`, found `S<u32>`
+   |                        - ^ type mismatch resolving `<i32 as Foo>::T == u32`
    |                        |
-   |                        arguments to this struct are incorrect
+   |                        required by a bound introduced by this call
    |
-   = note: expected struct `S<f32>`
-              found struct `S<u32>`
-note: tuple struct defined here
-  --> $DIR/formal-and-expected-differ.rs:9:12
+note: expected this to be `u32`
+  --> $DIR/formal-and-expected-differ.rs:6:14
+   |
+LL |     type T = f32;
+   |              ^^^
+note: required by a bound in `U`
+  --> $DIR/formal-and-expected-differ.rs:11:13
    |
 LL | pub struct U<T1, T2>(T1, S<T2>)
-   |            ^
+LL | where
+LL |     T1: Foo<T = T2>;
+   |             ^^^^^^ required by this bound in `U`
 
-error[E0308]: mismatched types
+error[E0271]: type mismatch resolving `<i32 as Foo>::T == u32`
   --> $DIR/formal-and-expected-differ.rs:22:24
    |
 LL |     let _: U<_, u32> = U(1, S(3u32));
-   |            ---------   ^^^^^^^^^^^^^ expected `U<_, u32>`, found `U<i32, f32>`
-   |            |
-   |            expected due to this
+   |                        ^^^^^^^^^^^^^ type mismatch resolving `<i32 as Foo>::T == u32`
    |
-   = note: expected struct `U<_, u32>`
-              found struct `U<i32, f32>`
+note: expected this to be `u32`
+  --> $DIR/formal-and-expected-differ.rs:6:14
+   |
+LL |     type T = f32;
+   |              ^^^
+note: required by a bound in `U`
+  --> $DIR/formal-and-expected-differ.rs:11:13
+   |
+LL | pub struct U<T1, T2>(T1, S<T2>)
+LL | where
+LL |     T1: Foo<T = T2>;
+   |             ^^^^^^ required by this bound in `U`
 
-error: aborting due to 2 previous errors
+error[E0271]: type mismatch resolving `<i32 as Foo>::T == u32`
+  --> $DIR/formal-and-expected-differ.rs:22:12
+   |
+LL |     let _: U<_, u32> = U(1, S(3u32));
+   |            ^^^^^^^^^ type mismatch resolving `<i32 as Foo>::T == u32`
+   |
+note: expected this to be `u32`
+  --> $DIR/formal-and-expected-differ.rs:6:14
+   |
+LL |     type T = f32;
+   |              ^^^
+note: required by a bound in `U`
+  --> $DIR/formal-and-expected-differ.rs:11:13
+   |
+LL | pub struct U<T1, T2>(T1, S<T2>)
+LL | where
+LL |     T1: Foo<T = T2>;
+   |             ^^^^^^ required by this bound in `U`
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

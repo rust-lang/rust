@@ -43,7 +43,7 @@ LL | impl<T> ParticularService for T
 LL | where
 LL |     T: Service<Req, Response = Res>,
    |                     -------------- unsatisfied trait bound introduced here
-note: required for `ALayer<_>` to implement `ParticularServiceLayer<_>`
+note: required for `ALayer<()>` to implement `ParticularServiceLayer<()>`
   --> $DIR/track-obligations.rs:40:12
    |
 LL | impl<T, C> ParticularServiceLayer<C> for T

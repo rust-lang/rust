@@ -430,6 +430,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
+                // Closures need the callee's where-clauses to deduce their
+                // signature, so allow them again for this pass.
+                if let hir::ExprKind::Call(callee, _) = call_expr.kind {
+                    self.callees_being_checked.borrow_mut().remove(&callee.hir_id);
+                }
                 self.select_obligations_where_possible(|_| {})
             }
 

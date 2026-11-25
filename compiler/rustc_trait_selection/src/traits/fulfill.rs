@@ -105,14 +105,18 @@ where
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> TraitErrors<E> {
+    fn select<'a>(
+        &mut self,
+        selcx: SelectionContext<'a, 'tcx>,
+        skip: &'a dyn Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> TraitErrors<E> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
         let infcx = selcx.infcx;
 
         // Process pending obligations.
         let outcome: Outcome<_, _> =
-            self.predicates.process_obligations(&mut FulfillProcessor { selcx });
+            self.predicates.process_obligations(&mut FulfillProcessor { selcx, skip });
 
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
@@ -162,9 +166,13 @@ where
         )
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+    fn try_evaluate_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        skip: &dyn Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> TraitErrors<E> {
         let selcx = SelectionContext::new(infcx);
-        self.select(selcx)
+        self.select(selcx, skip)
     }
 
     fn drain_stalled_obligations_for_coroutines(
@@ -280,6 +288,7 @@ where
 
 struct FulfillProcessor<'a, 'tcx> {
     selcx: SelectionContext<'a, 'tcx>,
+    skip: &'a dyn Fn(&PredicateObligation<'tcx>) -> bool,
 }
 
 fn mk_pending<'tcx>(
@@ -329,6 +338,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
     /// compile-time benchmarks are very sensitive to even small changes.
     #[inline(always)]
     fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
+        if (self.skip)(&pending_obligation.obligation) {
+            return false;
+        }
+
         if self.selcx.infcx.disable_trait_solver_fast_paths() {
             return true;
         }

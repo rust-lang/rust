@@ -11,7 +11,5 @@ fn needs_a<const N: usize>(_: [u8; N]) where (): A<N> {}
 
 pub fn main() {
     needs_a([]);
-    //~^ ERROR the constant `true` is not of type `usize`
-    //~| ERROR mismatched types
-    // FIXME(const_generics): we should hide this error as we've already errored above
+    //~^ ERROR the trait bound `(): A<0>` is not satisfied
 }
