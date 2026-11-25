@@ -808,6 +808,7 @@ pub fn identity(ts: TokenStream) -> TokenStream {
 > force-host` and `//@ no-prefer-dynamic` headers in the proc-macro.
 
 ### Auxiliary lint
+<!-- date-check Nov 2026 -->
 
 By using an `aux-lint` directive in a `ui-fulldeps` test,
 you can build a 'lint library' file which will be loaded into rustc's lints when running your test.
