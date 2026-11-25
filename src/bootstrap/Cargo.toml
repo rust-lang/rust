@@ -90,7 +90,7 @@ features = [
 
 # src/utils/job.rs
 [target.'cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))'.dependencies]
-errno = "0.3.14"
+rustix = { version = "1.1.4", default-features = false, features = ["std", "process"] }
 
 [dev-dependencies]
 expect-test = "1"
