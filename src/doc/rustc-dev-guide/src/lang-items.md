@@ -55,7 +55,7 @@ You can either:
 - Proceed with limited functionality, by just omitting whatever you were going to do with the
   `DefId`.
 
-[`tcx.lang_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.lang_items
+[`tcx.lang_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.lang_items
 
 ## List of all language items
 
