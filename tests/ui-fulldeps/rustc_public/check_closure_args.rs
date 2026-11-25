@@ -41,8 +41,8 @@ fn test_closure_args() -> ControlFlow<()> {
     ControlFlow::Continue(())
 }
 fn check_closure_args(args: ClosureArgs) {
-    let parts = args.split();  
-  
+    let parts = args.split();
+
     // split(): last 3 args are the synthetics, rest are parent args.
     assert!(
         parts.parent_args.len() + 3 == args.args.0.len(),
