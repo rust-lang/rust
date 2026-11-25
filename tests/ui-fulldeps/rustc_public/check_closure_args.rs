@@ -1,5 +1,5 @@
 //@ run-pass
-//! Tests rustc_public API for getting args of a closure type also with additional information 
+//! Tests rustc_public API for getting args of a closure type and with additional information
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
@@ -16,8 +16,6 @@ extern crate rustc_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
-
-// use rustc_public::mir::{Body, ConstOperand, Operand, TerminatorKind};
 use rustc_public::ty::{ClosureArgs, RigidTy, TyKind};
 use rustc_public::crate_def::DefId;
 
