@@ -91,4 +91,15 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl<'c> where 'c: 'static {
+        exists<'a> in U {
+            forall<'b> is U {
+                'a = 'b,
+            },
+            'c: 'a,
+        },
+    }
+}
+
 fn main() {}

@@ -4256,6 +4256,7 @@ pub struct TestBinderRegionEquality {
 pub struct TestBinderForall {
     pub span: Span,
     pub node_id: NodeId,
+    pub is_universe: Option<Ident>,
     pub generics: Generics,
     pub body: TestBinderBody,
     pub assert_on_exit: Option<ThinVec<TestBinderConstraint>>,
@@ -4265,6 +4266,7 @@ pub struct TestBinderForall {
 pub struct TestBinderExists {
     pub span: Span,
     pub node_id: NodeId,
+    pub in_universe: Option<Ident>,
     pub params: ThinVec<GenericParam>,
     pub body: TestBinderBody,
 }

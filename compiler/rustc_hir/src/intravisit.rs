@@ -1608,20 +1608,6 @@ pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    forall: &'v TestBinderForall<'v>,
-) -> V::Result {
-    let TestBinderForall { span: _, hir_id, generics, body, assert_on_exit } = forall;
-    try_visit!(visitor.visit_id(*hir_id));
-    try_visit!(visitor.visit_generics(generics));
-    try_visit!(visitor.visit_test_binder_body(body));
-    if let Some(assert_on_exit) = &assert_on_exit {
-        try_visit!(visitor.visit_test_binder_constraint(assert_on_exit));
-    }
-    V::Result::output()
-}
-
 pub fn walk_test_binder_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     item: &'v TestBinderItem<'v>,
@@ -1647,12 +1633,32 @@ pub fn walk_test_binder_item<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
+pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    forall: &'v TestBinderForall<'v>,
+) -> V::Result {
+    let TestBinderForall { span: _, hir_id, is_universe, generics, body, assert_on_exit } = forall;
+    try_visit!(visitor.visit_id(*hir_id));
+    if let Some(is_universe) = is_universe {
+        try_visit!(visitor.visit_ident(*is_universe));
+    }
+    try_visit!(visitor.visit_generics(generics));
+    try_visit!(visitor.visit_test_binder_body(body));
+    if let Some(assert_on_exit) = &assert_on_exit {
+        try_visit!(visitor.visit_test_binder_constraint(assert_on_exit));
+    }
+    V::Result::output()
+}
+
 pub fn walk_test_binder_exists<'v, V: Visitor<'v>>(
     visitor: &mut V,
     exists: &'v TestBinderExists<'v>,
 ) -> V::Result {
-    let TestBinderExists { span: _, hir_id, params, body } = exists;
+    let TestBinderExists { span: _, hir_id, in_universe, params, body } = exists;
     try_visit!(visitor.visit_id(*hir_id));
+    if let Some(in_universe) = in_universe {
+        try_visit!(visitor.visit_ident(*in_universe));
+    }
     walk_list!(visitor, visit_generic_param, *params);
     try_visit!(visitor.visit_test_binder_body(body));
     V::Result::output()

@@ -2680,10 +2680,76 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn check_test_binder_exists(&self, exists: TestBinderExists<'tcx>) {
-        let body = self.infcx.instantiate_binder_with_fresh_vars(
+        struct UniverseFinder {
+            searching_for: rustc_span::Ident,
+            universe_counter: ty::UniverseIndex,
+            current_universe: ty::UniverseIndex,
+            results: Vec<(ty::UniverseIndex, Span)>,
+        }
+        impl UniverseFinder {
+            fn visit_body(&mut self, body: &TestBinderBody<'_>) {
+                for item in &body.items {
+                    match item {
+                        TestBinderItem::Forall(item) => self.visit_forall(item),
+                        TestBinderItem::Exists(item) => {
+                            self.visit_body(item.binder.as_ref().skip_binder())
+                        }
+                        TestBinderItem::RegionEquality(..) => (),
+                        TestBinderItem::Constraint(..) => (),
+                        TestBinderItem::Predicate { .. } => (),
+                    }
+                }
+            }
+            fn visit_forall(&mut self, forall: &TestBinderForall<'_>) {
+                self.universe_counter = self.universe_counter.next_universe();
+                let old = std::mem::replace(&mut self.current_universe, self.universe_counter);
+                if let Some(is_universe) = forall.is_universe
+                    && self.searching_for == is_universe
+                {
+                    self.results.push((self.universe_counter, is_universe.span))
+                }
+                self.visit_body(&forall.binder.as_ref().skip_binder().value);
+                self.current_universe = old;
+            }
+        }
+
+        let universe = if let Some(universe) = exists.in_universe {
+            let mut finder = UniverseFinder {
+                searching_for: universe,
+                universe_counter: self.infcx.universe(),
+                current_universe: self.infcx.universe(),
+                results: vec![],
+            };
+            finder.visit_body(exists.binder.as_ref().skip_binder());
+            match finder.results.as_slice() {
+                [] => {
+                    self.tcx()
+                        .dcx()
+                        .span_err(universe.span, "could not find forall with named universe");
+                    self.infcx.universe()
+                }
+                &[(single, _)] => single,
+                _ => {
+                    let mut err = self
+                        .tcx()
+                        .dcx()
+                        .struct_span_err(universe.span, "multiple foralls with named universe");
+                    for &(_, sp) in &finder.results {
+                        err.span_note(sp, "one is here");
+                    }
+                    err.emit();
+                    finder.results[0].0
+                }
+            }
+        } else {
+            self.infcx.universe()
+        };
+
+        let body = self.infcx.instantiate_binder_with_fresh_vars_in_universe(
             exists.span,
             BoundRegionConversionTime::HigherRankedType,
             exists.binder,
+            universe,
         );
         self.check_test_binder_body(body);
     }
@@ -2879,6 +2945,7 @@ pub(crate) enum TestBinderItem<'tcx> {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderForall<'tcx> {
     pub span: Span,
+    pub is_universe: Option<rustc_span::Ident>,
     pub binder: ty::Binder<'tcx, WithWhereClauses<'tcx, TestBinderBody<'tcx>>>,
     pub assert_on_exit: Option<SolverRegionConstraint<'tcx>>,
 }
@@ -2886,6 +2953,7 @@ pub(crate) struct TestBinderForall<'tcx> {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderExists<'tcx> {
     pub span: Span,
+    pub in_universe: Option<rustc_span::Ident>,
     pub binder: ty::Binder<'tcx, TestBinderBody<'tcx>>,
 }
 

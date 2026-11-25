@@ -384,7 +384,12 @@ impl<'tcx> ItemCtxt<'tcx> {
         let assert_on_exit = forall
             .assert_on_exit
             .map(|assert_on_exit| self.lower_test_binder_constraint(assert_on_exit));
-        TestBinderForall { span: forall.span, binder, assert_on_exit }
+        TestBinderForall {
+            span: forall.span,
+            is_universe: forall.is_universe,
+            binder,
+            assert_on_exit,
+        }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -395,7 +400,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         let bound_vars = self.tcx.late_bound_vars(exists.hir_id);
         let body = self.lower_test_binder_body(exists.body);
         let binder = ty::Binder::bind_with_vars(body, bound_vars);
-        TestBinderExists { span: exists.span, binder }
+        TestBinderExists { span: exists.span, in_universe: exists.in_universe, binder }
     }
 
     fn lower_test_binder_assumptions(

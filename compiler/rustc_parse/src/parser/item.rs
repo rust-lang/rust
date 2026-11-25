@@ -2772,10 +2772,9 @@ impl<'a> Parser<'a> {
         self.bump();
 
         let mut generics = self.parse_generics()?;
+        let is_universe = if self.eat_keyword(exp!(Is)) { Some(self.parse_ident()?) } else { None };
         generics.where_clause = self.parse_where_clause()?;
-
         let body = self.parse_test_binder_body()?;
-
         let assert_on_exit = if let Some((i, IdentKind::Normal)) = self.token.ident()
             && i.name == sym::expect
         {
@@ -2790,15 +2789,23 @@ impl<'a> Parser<'a> {
             None
         };
 
-        Ok(TestBinderForall { span, node_id: DUMMY_NODE_ID, generics, body, assert_on_exit })
+        Ok(TestBinderForall {
+            span,
+            node_id: DUMMY_NODE_ID,
+            is_universe,
+            generics,
+            body,
+            assert_on_exit,
+        })
     }
 
     pub fn parse_test_binder_exists(&mut self) -> PResult<'a, TestBinderExists> {
         let span = self.token.span;
         self.bump();
         let params = self.parse_generics()?.params;
+        let in_universe = if self.eat_keyword(exp!(In)) { Some(self.parse_ident()?) } else { None };
         let body = self.parse_test_binder_body()?;
-        Ok(TestBinderExists { span, node_id: DUMMY_NODE_ID, params, body })
+        Ok(TestBinderExists { span, node_id: DUMMY_NODE_ID, in_universe, params, body })
     }
 
     pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {

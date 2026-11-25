@@ -2066,6 +2066,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::TestBinderForall {
             span: self.lower_span(forall.span),
             hir_id: self.lower_node_id(forall.node_id),
+            is_universe: forall.is_universe.map(|u| self.lower_ident(u)),
             generics,
             body: self.arena.alloc(body),
             assert_on_exit,
@@ -2085,11 +2086,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
             |this| this.lower_test_binder_body(&exists.body),
         );
-        let params = generics.params;
         hir::TestBinderExists {
             span: self.lower_span(exists.span),
             hir_id: self.lower_node_id(exists.node_id),
-            params,
+            in_universe: exists.in_universe.map(|u| self.lower_ident(u)),
+            params: generics.params,
             body: self.arena.alloc(body),
         }
     }

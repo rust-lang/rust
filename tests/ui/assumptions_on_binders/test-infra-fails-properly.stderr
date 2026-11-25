@@ -135,6 +135,48 @@ error: unable to satisfy constraints involving placeholders due to unknown impli
 LL |         forall<'a> where 'a: 'static {
    |         ^^^^^^
 
-error: aborting due to 16 previous errors
+error: could not find forall with named universe
+  --> $DIR/test-infra-fails-properly.rs:121:23
+   |
+LL |         exists<'a> in U {
+   |                       ^
 
-For more information about this error, try `rustc --explain E0658`.
+error: multiple foralls with named universe
+  --> $DIR/test-infra-fails-properly.rs:124:23
+   |
+LL |         exists<'a> in U {
+   |                       ^
+   |
+note: one is here
+  --> $DIR/test-infra-fails-properly.rs:126:27
+   |
+LL |             forall<'b> is U {},
+   |                           ^
+note: one is here
+  --> $DIR/test-infra-fails-properly.rs:127:27
+   |
+LL |             forall<'c> is U {},
+   |                           ^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/test-infra-fails-properly.rs:136:17
+   |
+LL |                 'a = 'b,
+   |                 ^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'c` as defined here
+  --> $DIR/test-infra-fails-properly.rs:133:10
+   |
+LL |     impl<'c> {
+   |          ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/test-infra-fails-properly.rs:148:17
+   |
+LL |                 'a = 'b,
+   |                 ^^^^^^^
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0478, E0658.
+For more information about an error, try `rustc --explain E0478`.

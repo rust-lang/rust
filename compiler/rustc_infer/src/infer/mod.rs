@@ -1535,6 +1535,19 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        self.instantiate_binder_with_fresh_vars_in_universe(span, lbrct, value, self.universe())
+    }
+
+    pub fn instantiate_binder_with_fresh_vars_in_universe<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Binder<'tcx, T>,
+        universe: ty::UniverseIndex,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         if let Some(_) = value.as_ref().no_bound_vars() {
             return value.skip_binder();
         }
@@ -1544,11 +1557,16 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for bound_var_kind in bound_vars {
             let arg: ty::GenericArg<'_> = match bound_var_kind {
-                ty::BoundVariableKind::Ty(_) => self.next_ty_var(span).into(),
-                ty::BoundVariableKind::Region(br) => {
-                    self.next_region_var(RegionVariableOrigin::BoundRegion(span, br, lbrct)).into()
+                ty::BoundVariableKind::Ty(_) => self.next_ty_var_in_universe(span, universe).into(),
+                ty::BoundVariableKind::Region(br) => self
+                    .next_region_var_in_universe(
+                        RegionVariableOrigin::BoundRegion(span, br, lbrct),
+                        universe,
+                    )
+                    .into(),
+                ty::BoundVariableKind::Const => {
+                    self.next_const_var_in_universe(span, universe).into()
                 }
-                ty::BoundVariableKind::Const => self.next_const_var(span).into(),
             };
             args.push(arg);
         }

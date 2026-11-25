@@ -4638,6 +4638,7 @@ pub enum TestBinderItem<'hir> {
 pub struct TestBinderForall<'hir> {
     pub span: Span,
     pub hir_id: HirId,
+    pub is_universe: Option<Ident>,
     pub generics: &'hir Generics<'hir>,
     pub body: &'hir TestBinderBody<'hir>,
     pub assert_on_exit: Option<&'hir TestBinderConstraint<'hir>>,
@@ -4647,6 +4648,7 @@ pub struct TestBinderForall<'hir> {
 pub struct TestBinderExists<'hir> {
     pub span: Span,
     pub hir_id: HirId,
+    pub in_universe: Option<Ident>,
     pub params: &'hir [GenericParam<'hir>],
     pub body: &'hir TestBinderBody<'hir>,
 }

@@ -116,4 +116,41 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl {
+        exists<'a> in U {
+            //~^ ERROR could not find forall with named universe
+        },
+        exists<'a> in U {
+            //~^ ERROR multiple foralls with named universe
+            forall<'b> is U {},
+            forall<'c> is U {},
+        },
+    }
+}
+
+core::test_binder_constraints! {
+    impl<'c> {
+        exists<'a> in U {
+            forall<'b> is U {
+                'a = 'b,
+                //~^ ERROR lifetime bound not satisfied
+            },
+            'c: 'a,
+        },
+    }
+}
+
+core::test_binder_constraints! {
+    impl<'c> where 'c: 'static {
+        exists<'a> {
+            forall<'b> {
+                'a = 'b,
+                //~^ ERROR lifetime bound not satisfied
+            },
+            'c: 'a,
+        },
+    }
+}
+
 fn main() {}
