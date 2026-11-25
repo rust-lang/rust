@@ -19,9 +19,9 @@ use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_attr_ir::{AttrArgs, AttrItem, Attribute, AttributeKind, PrintAttribute};
 use rustc_hir as hir;
 use rustc_hir::{
-    BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, Param,
-    PatKind, PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
+    BindingMode, BodyId, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg,
+    GenericBound, GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node,
+    Param, PatKind, PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
@@ -73,6 +73,7 @@ pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     attrs: &'a dyn Fn(HirId) -> &'a [Attribute],
+    body_params: &'a dyn Fn(BodyId) -> &'a [Param<'a>],
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -282,12 +283,14 @@ pub fn print_crate<'a>(
     filename: FileName,
     input: String,
     attrs: &'a dyn Fn(HirId) -> &'a [Attribute],
+    body_params: &'a dyn Fn(BodyId) -> &'a [Param<'a>],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
         s: pp::Printer::new(),
         comments: Some(Comments::new(sm, filename, input)),
         attrs,
+        body_params,
         ann,
     };
 
@@ -310,7 +313,13 @@ fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
+    let mut printer = State {
+        s: pp::Printer::new(),
+        comments: None,
+        attrs: &|_| &[],
+        body_params: &|_| &[],
+        ann,
+    };
     f(&mut printer);
     printer.s.eof()
 }
@@ -521,15 +530,7 @@ impl<'a> State<'a> {
         match item.kind {
             hir::ForeignItemKind::Fn(sig, params, generics) => {
                 let (cb, ib) = self.head("");
-                self.print_fn(
-                    sig.header,
-                    Some(item.ident.name),
-                    generics,
-                    sig.decl,
-                    &[],
-                    params,
-                    None,
-                );
+                self.print_fn(sig.header, Some(item.ident.name), generics, sig.decl, &[], params);
                 self.end(ib);
                 self.word(";");
                 self.end(cb)
@@ -667,8 +668,7 @@ impl<'a> State<'a> {
                     generics,
                     sig.decl,
                     &[],
-                    &[],
-                    Some(body),
+                    (self.body_params)(body),
                 );
                 self.word(" ");
                 self.end(ib);
@@ -991,9 +991,8 @@ impl<'a> State<'a> {
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
         params: &[Param<'_>],
-        body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.header, Some(ident.name), generics, m.decl, &[], params, body_id);
+        self.print_fn(m.header, Some(ident.name), generics, m.decl, &[], params);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -1006,12 +1005,12 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(params)) => {
-                self.print_method_sig(ti.ident, sig, ti.generics, params, None);
+                self.print_method_sig(ti.ident, sig, ti.generics, params);
                 self.word(";");
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let (cb, ib) = self.head("");
-                self.print_method_sig(ti.ident, sig, ti.generics, &[], Some(body));
+                self.print_method_sig(ti.ident, sig, ti.generics, (self.body_params)(body));
                 self.nbsp();
                 self.end(ib);
                 self.end(cb);
@@ -1036,7 +1035,7 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let (cb, ib) = self.head("");
-                self.print_method_sig(ii.ident, sig, ii.generics, &[], Some(body));
+                self.print_method_sig(ii.ident, sig, ii.generics, (self.body_params)(body));
                 self.nbsp();
                 self.end(ib);
                 self.end(cb);
@@ -2289,10 +2288,9 @@ impl<'a> State<'a> {
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
         decl: &hir::FnDecl<'_>,
-        // Will take from one of these three for the param names
+        // Will take from one of two for the param names
         arg_idents: &[Option<Ident>],
         params: &[hir::Param<'_>],
-        body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header);
 
@@ -2303,8 +2301,8 @@ impl<'a> State<'a> {
         self.print_generic_params(generics.params);
 
         self.popen();
-        // Make sure we aren't supplied *both* `arg_idents` and `body_id`.
-        assert!(arg_idents.is_empty() || body_id.is_none());
+        // Make sure we aren't supplied *both* `arg_idents` and `params`.
+        assert!(arg_idents.is_empty() || params.is_empty());
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
             if Some(i) == decl.splatted().map(usize::from) {
@@ -2321,10 +2319,6 @@ impl<'a> State<'a> {
                     }
                 } else if let Some(param) = params.get(i) {
                     s.print_param(param);
-                    s.word(":");
-                    s.space();
-                } else if let Some(body_id) = body_id {
-                    s.ann.nested(s, Nested::BodyParamPat(body_id, i));
                     s.word(":");
                     s.space();
                 }
@@ -2634,7 +2628,6 @@ impl<'a> State<'a> {
             decl,
             arg_idents,
             &[],
-            None,
         );
         self.end(ib);
     }

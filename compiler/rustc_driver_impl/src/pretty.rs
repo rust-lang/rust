@@ -274,13 +274,13 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let tcx = ex.tcx();
             let f = |annotation: &dyn pprust_hir::PpAnn| {
                 let sm = sess.source_map();
-                let attrs = |id| tcx.hir_attrs(id);
                 pprust_hir::print_crate(
                     sm,
                     tcx.hir_root_module(),
                     src_name,
                     src,
-                    &attrs,
+                    &|id| tcx.hir_attrs(id),
+                    &|id| tcx.hir_body(id).params,
                     annotation,
                 )
             };
