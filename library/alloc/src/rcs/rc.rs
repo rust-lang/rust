@@ -2007,6 +2007,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
@@ -2029,6 +2031,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// following code is valid:
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let rc = Rc::new(5);
@@ -2045,7 +2049,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[stable(feature = "arc_is_unique", since = "1.101.0")]
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
