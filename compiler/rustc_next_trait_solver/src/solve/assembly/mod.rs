@@ -6,6 +6,7 @@ use std::cell::Cell;
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
@@ -601,6 +602,20 @@ where
         let cx = self.cx();
         let goal_trait_ref = goal.predicate.trait_ref(cx);
         cx.for_each_relevant_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
+            let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
+            if !DeepRejectCtxt::relate_rigid_infer(cx)
+                .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
+            {
+                return Ok(());
+            }
+
+            // For every `default impl`, there's always a non-default `impl` that will *also*
+            // apply. There's no reason to register a candidate for this impl, since it is
+            // *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                return Ok(());
+            }
+
             match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -1028,7 +1043,7 @@ where
                     self,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object(idx)),
                     goal,
-                    assumption.upcast(cx),
+                    assumption.skip_norm_wip().upcast(cx),
                 ));
             }
         }
@@ -1234,16 +1249,36 @@ where
             let goal_trait_ref = goal.predicate.trait_ref(cx);
 
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
+                let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
+                if !DeepRejectCtxt::relate_rigid_infer(cx)
+                    .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
+                {
+                    return Ok(());
+                }
+
+                // For every `default impl`, there's always a non-default `impl` that will *also*
+                // apply. There's no reason to register a candidate for this impl, since it is
+                // *not* proof that the trait goal holds.
+                if cx.impl_is_default(impl_def_id) {
+                    return Ok(());
+                }
+
                 match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
-                    if ecx.shallow_resolve(self_ty).is_ty_var() {
-                        // We force the certainty of impl candidates to be `Maybe`.
+                    if goal_trait_ref
+                        .args
+                        .iter()
+                        .all(|arg| ecx.deeply_resolve_ignoring_regions(arg) == arg)
+                    {
+                        // Blanket impls may guide inference for not-yet-defined opaques,
+                        // but matching the impl must not constrain the trait arguments.
+                        //
+                        // FIXME(trait-system-refactor-initiative#229): This is brittle:
+                        // added goals, including those for normalizing the impl header,
+                        // are evaluated only after this check and may constrain the args.
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     } else {
-                        // We don't want to use impls if they constrain the opaque.
-                        //
-                        // FIXME(trait-system-refactor-initiative#229): This isn't
-                        // perfect yet as it still allows us to incorrectly constrain
-                        // other inference variables.
+                        // We don't want to use impls if they constrain the opaque or
+                        // another input of the trait goal.
                         Err(NoSolution.into())
                     }
                 })

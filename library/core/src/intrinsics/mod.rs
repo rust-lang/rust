@@ -1510,6 +1510,54 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::fmaf128(a, b, c) }
 }
 
+intrinsic_dispatch_on_type! {
+    /// Calculates `x * 2.0^exp` efficiently.
+    ///
+    /// The public versions of this intrinsic are available on the float primitives via the
+    /// `scalbn` method. For example, [`f32::scalbn`](../../std/primitive.f32.html#method.scalbn).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn scalbn<T: bounds::FloatPrimitive>(x: T, exp: i32) -> T;
+
+    f16 => { libm::scalbnf16(x, exp) }
+    f32 => { libm::scalbnf(x, exp) }
+    f64 => { libm::scalbn(x, exp) }
+    f128 => { libm::scalbnf128(x, exp) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Extracts the unbiased exponent of the input value, ignoring the sign.
+    ///
+    /// When the input is an infinity, the result is [`i32::MAX`].
+    /// The intrinsic may not be called on a zero or NaN.
+    ///
+    /// The public versions of this intrinsic are available on the float primitives via the
+    /// `ilogb` method. For example, [`f32::ilogb`](../../std/primitive.f32.html#method.ilogb).
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined when the input is zero or NaN.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    // libm requirements ensure the correct result for infinities.
+    // libm implementations differ on zero and NaN, but the intrinsic may not be called for such
+    // inputs anyway.
+    #[rustc_do_not_const_check]
+    pub const unsafe fn ilogb<T: bounds::FloatPrimitive>(x: T) -> i32;
+
+    f16 => { libm::ilogbf16(x) }
+    f32 => { libm::ilogbf(x) }
+    f64 => { libm::ilogb(x) }
+    f128 => { libm::ilogbf128(x) }
+}
+
 /// Returns `a * b + c`, non-deterministically executing either a fused multiply-add or two
 /// operations with rounding of the intermediate result.
 ///

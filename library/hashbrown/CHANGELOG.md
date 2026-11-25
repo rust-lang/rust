@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2](https://github.com/rust-lang/hashbrown/compare/v0.17.1...v0.17.2) - 2026-11-22
+
+### Changed
+
+- We now use `std::hash::RandomState` instead of `std::collections::hash_map::RandomState` (#747)
+
+### Fixed
+
+- Allocator no longer leaked when dropping an empty table (#751)
+- `ProbeSeq::move_next` now always uses wrapping arithmetic to avoid overflow (#736)
+- More impls/methods not dependent on default hasher/allocator (#732)
+
+### Other
+
+- Internal `bucket_mask_to_capacity` now has a debug assertion to indicate capacity cannot be `usize::MAX` (#745)
+- Internal `cfg_if!` implementation replaced with a `cfg_select!` shim (#740)
+- Internal `invalid_mut` shim replaced with `ptr::without_provenance_mut` (#739)
+- Various fixes: `clippy::elidable_lifetime_names` (#742), `clippy::manual_assert_eq`/`clippy::manual_assert` (#729), prelude imports (#743), `core` imports (#731)
+- SIMD implementations are now tested in miri (#755)
+- hashbrown now uses trusted publishing (#753)
+- hashbrown is now a JOSH subtree of `rust-lang/rust` (#754)
+
 ## [0.17.1](https://github.com/rust-lang/hashbrown/compare/v0.17.0...v0.17.1) - 2026-04-20
 
 ### Added

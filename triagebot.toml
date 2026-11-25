@@ -923,9 +923,21 @@ decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s beta-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+[notify-zulip."beta-nominated".rustdoc-removed]
+required_labels = ["T-rustdoc"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "beta-nominated: #{number}"
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".rustdoc-processed]
+required_labels = ["T-rustdoc", "beta-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "beta-nominated: #{number}"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
@@ -955,9 +967,21 @@ decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s stable-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+[notify-zulip."stable-nominated".rustdoc-removed]
+required_labels = ["T-rustdoc"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "stable-nominated: #{number}"
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".rustdoc-processed]
+required_labels = ["T-rustdoc", "stable-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "stable-nominated: #{number}"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
@@ -993,7 +1017,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".compiler-processed]
+required_labels = ["T-compiler", "beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
@@ -1024,7 +1060,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".compiler-processed]
+required_labels = ["T-compiler", "stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".compiler]
 required_labels = ["T-compiler"]
@@ -1051,7 +1099,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".libs-removed]
+required_labels = ["T-libs"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".libs-processed]
+required_labels = ["T-libs", "beta-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".libs]
 required_labels = ["T-libs"]
@@ -1076,7 +1136,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".libs-removed]
+required_labels = ["T-libs"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".libs-processed]
+required_labels = ["T-libs", "stable-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".libs]
 required_labels = ["T-libs"]
@@ -1103,7 +1175,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".bootstrap-removed]
+required_labels = ["T-bootstrap"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".bootstrap-processed]
+required_labels = ["T-bootstrap", "beta-accepted"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".bootstrap]
 required_labels = ["T-bootstrap"]
@@ -1128,7 +1212,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".bootstrap-removed]
+required_labels = ["T-bootstrap"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".bootstrap-processed]
+required_labels = ["T-bootstrap", "stable-accepted"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".bootstrap]
 required_labels = ["T-bootstrap"]
@@ -1156,7 +1252,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".rustfmt-removed]
+required_labels = ["T-rustfmt"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: beta-nominated"
 message_on_remove = "PR rust#{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".rustfmt-processed]
+required_labels = ["T-rustfmt", "beta-accepted"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".rustfmt]
 required_labels = ["T-rustfmt"]
@@ -1182,7 +1290,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".rustfmt-removed]
+required_labels = ["T-rustfmt"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: stable-nominated"
 message_on_remove = "PR rust#{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".rustfmt-processed]
+required_labels = ["T-rustfmt", "stable-accepted"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".rustfmt]
 required_labels = ["T-rustfmt"]

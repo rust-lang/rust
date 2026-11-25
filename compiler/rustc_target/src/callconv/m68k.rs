@@ -1,6 +1,6 @@
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{CanonAbi, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, ComputeCallConv};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() {
@@ -29,18 +29,21 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct M64KCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for M64KCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
+    fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(ret);
+    }
+
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify_arg(cx, arg);
     }
 }

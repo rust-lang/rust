@@ -1,3 +1,13 @@
+Version 1.100.1 (2026-11-27)
+==========================
+
+<a id="1.100.1"></a>
+
+- [library: fix regression where some types were not inferred as having `Iterator` impls](https://github.com/rust-lang/rust/issues/166229)
+  - This backports a change to the unstable `const` version of `Iterator`, which
+    unintentionally caused existing code to not be seen as implementing `Iterator`
+    when a valid implementation was present.
+
 Version 1.100.0 (2026-11-12)
 ==========================
 

@@ -1101,7 +1101,7 @@ pub(crate) struct ConstItemInteriorMutationsDiag<'tcx> {
     pub method_name: Ident,
     pub const_name: Ident,
     pub const_ty: Ty<'tcx>,
-    #[label("`{$const_name}` is a interior mutable `const` item of type `{$const_ty}`")]
+    #[label("`{$const_name}` is an interior mutable `const` item of type `{$const_ty}`")]
     pub receiver_span: Span,
     #[subdiagnostic]
     pub sugg_static: Option<ConstItemInteriorMutationsSuggestionStatic>,

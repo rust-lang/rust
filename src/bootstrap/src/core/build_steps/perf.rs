@@ -71,12 +71,19 @@ impl PerfCommand {
 
 #[derive(Debug, Clone, clap::Parser)]
 struct SharedOpts {
-    /// Select the benchmarks that you want to run (separated by commas).
+    /// Only benchmarks that exactly match the given name(s) will be executed.
+    /// You can pass multiple names separated by commas.
+    #[clap(long, global = true, value_delimiter = ',')]
+    exact_match: Vec<String>,
+
+    /// Only benchmarks starting with the given prefix(es) will be executed.
+    /// You can pass multiple prefixes separated by commas.
     /// If unspecified, all benchmarks will be executed.
     #[clap(long, global = true, value_delimiter = ',')]
     include: Vec<String>,
 
-    /// Select the benchmarks matching a prefix in this comma-separated list that you don't want to run.
+    /// Benchmarks starting with the given prefix(es) will NOT be executed.
+    /// You can pass multiple prefixes separated by commas.
     #[clap(long, global = true, value_delimiter = ',')]
     exclude: Vec<String>,
 
@@ -88,9 +95,14 @@ struct SharedOpts {
         default_value = "Full,IncrFull,IncrUnchanged,IncrPatched"
     )]
     scenarios: Vec<Scenario>,
+
     /// Select the profiles that should be benchmarked.
     #[clap(long, global = true, value_delimiter = ',', default_value = "Check,Debug,Opt")]
     profiles: Vec<Profile>,
+
+    /// Purge previously computed benchmark results matching the given parameters.
+    #[clap(long, global = true)]
+    purge: bool,
 
     #[clap(long, global = true)]
     database_path: Option<String>,
@@ -245,6 +257,10 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg("--id").arg(id);
             cmd.arg(prepare_rustc());
 
+            if opts.purge {
+                cmd.arg("--purge");
+            }
+
             apply_shared_opts(&mut cmd, opts);
             cmd.args(trailing_args);
             cmd.run(builder);
@@ -261,6 +277,9 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
 }
 
 fn apply_shared_opts(cmd: &mut BootstrapCommand, opts: &SharedOpts) {
+    if !opts.exact_match.is_empty() {
+        cmd.arg("--exact-match").arg(opts.exact_match.join(","));
+    }
     if !opts.include.is_empty() {
         cmd.arg("--include").arg(opts.include.join(","));
     }

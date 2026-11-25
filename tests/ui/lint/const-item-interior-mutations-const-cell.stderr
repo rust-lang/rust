@@ -4,7 +4,7 @@ warning: mutation of an interior mutable `const` item with call to `force`
 LL |     let _ = LazyCell::force(&A);
    |             ^^^^^^^^^^^^^^^^^-^
    |                              |
-   |                              `A` is a interior mutable `const` item of type `LazyCell<i32>`
+   |                              `A` is an interior mutable `const` item of type `LazyCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -22,7 +22,7 @@ warning: mutation of an interior mutable `const` item with call to `set`
 LL |     let _ = A.set(10);
    |             -^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |             `A` is an interior mutable `const` item of type `OnceCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -39,7 +39,7 @@ warning: mutation of an interior mutable `const` item with call to `try_insert`
 LL |     let _ = A.try_insert(20);
    |             -^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |             `A` is an interior mutable `const` item of type `OnceCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -56,7 +56,7 @@ warning: mutation of an interior mutable `const` item with call to `get_or_init`
 LL |     let _ = A.get_or_init(|| 30);
    |             -^^^^^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |             `A` is an interior mutable `const` item of type `OnceCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -73,7 +73,7 @@ warning: mutation of an interior mutable `const` item with call to `get_or_try_i
 LL |     let _ = A.get_or_try_init(|| Ok::<_, ()>(40));
    |             -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |             `A` is an interior mutable `const` item of type `OnceCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -90,7 +90,7 @@ warning: mutation of an interior mutable `const` item with call to `set`
 LL |     let _ = A.set(1);
    |             -^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |             `A` is an interior mutable `const` item of type `Cell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -107,7 +107,7 @@ warning: mutation of an interior mutable `const` item with call to `swap`
 LL |     let _ = A.swap(&A);
    |             -^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |             `A` is an interior mutable `const` item of type `Cell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -124,7 +124,7 @@ warning: mutation of an interior mutable `const` item with call to `replace`
 LL |     let _ = A.replace(2);
    |             -^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |             `A` is an interior mutable `const` item of type `Cell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -141,7 +141,7 @@ warning: mutation of an interior mutable `const` item with call to `get`
 LL |     let _ = A.get();
    |             -^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |             `A` is an interior mutable `const` item of type `Cell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -158,7 +158,7 @@ warning: mutation of an interior mutable `const` item with call to `update`
 LL |     let _ = A.update(|x| x + 1);
    |             -^^^^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |             `A` is an interior mutable `const` item of type `Cell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -175,7 +175,7 @@ warning: mutation of an interior mutable `const` item with call to `replace`
 LL |     let _ = A.replace(1);
    |             -^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -192,7 +192,7 @@ warning: mutation of an interior mutable `const` item with call to `replace_with
 LL |     let _ = A.replace_with(|x| *x + 2);
    |             -^^^^^^^^^^^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -209,7 +209,7 @@ warning: mutation of an interior mutable `const` item with call to `swap`
 LL |     let _ = A.swap(&A);
    |             -^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -226,7 +226,7 @@ warning: mutation of an interior mutable `const` item with call to `borrow`
 LL |     let _ = A.borrow();
    |             -^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -243,7 +243,7 @@ warning: mutation of an interior mutable `const` item with call to `try_borrow`
 LL |     let _ = A.try_borrow();
    |             -^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -260,7 +260,7 @@ warning: mutation of an interior mutable `const` item with call to `borrow_mut`
 LL |     let _ = A.borrow_mut();
    |             -^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -277,7 +277,7 @@ warning: mutation of an interior mutable `const` item with call to `try_borrow_m
 LL |     let _ = A.try_borrow_mut();
    |             -^^^^^^^^^^^^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |             `A` is an interior mutable `const` item of type `RefCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -294,7 +294,7 @@ warning: mutation of an interior mutable `const` item with call to `replace`
 LL |     let _ = unsafe { A.replace(1) };
    |                      -^^^^^^^^^^^
    |                      |
-   |                      `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |                      `A` is an interior mutable `const` item of type `UnsafeCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -311,7 +311,7 @@ warning: mutation of an interior mutable `const` item with call to `get`
 LL |     let _ = A.get();
    |             -^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |             `A` is an interior mutable `const` item of type `UnsafeCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -328,7 +328,7 @@ warning: mutation of an interior mutable `const` item with call to `as_ref_unche
 LL |         let _ = A.as_ref_unchecked();
    |                 -^^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |                 `A` is an interior mutable `const` item of type `UnsafeCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -345,7 +345,7 @@ warning: mutation of an interior mutable `const` item with call to `as_mut_unche
 LL |         let _ = A.as_mut_unchecked();
    |                 -^^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |                 `A` is an interior mutable `const` item of type `UnsafeCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -362,7 +362,7 @@ warning: mutation of an interior mutable `const` item with call to `get`
 LL |     let _ = A.get();
    |             -^^^^^^
    |             |
-   |             `A` is a interior mutable `const` item of type `SyncUnsafeCell<i32>`
+   |             `A` is an interior mutable `const` item of type `SyncUnsafeCell<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
