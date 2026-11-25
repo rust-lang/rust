@@ -24,6 +24,7 @@ fn main() {
     test_clocks();
     test_posix_gettimeofday();
     test_localtime_r_gmt();
+    test_localtime_r_dst();
     test_localtime_r_pst();
     test_localtime_r_epoch();
     #[cfg(any(
@@ -123,6 +124,7 @@ fn test_localtime_r_gmt() {
     let custom_time_ptr = &TIME_SINCE_EPOCH;
     let mut tm = create_empty_tm();
     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
 
     assert_eq!(tm.tm_sec, 56);
     assert_eq!(tm.tm_min, 43);
@@ -132,9 +134,8 @@ fn test_localtime_r_gmt() {
     assert_eq!(tm.tm_year, 124);
     assert_eq!(tm.tm_wday, 0);
     assert_eq!(tm.tm_yday, 97);
-    if cfg!(miri) {
-        assert_eq!(tm.tm_isdst, -1);
-    }
+    assert_eq!(tm.tm_isdst, 0);
+
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
@@ -143,16 +144,66 @@ fn test_localtime_r_gmt() {
     ))]
     {
         assert_eq!(tm.tm_gmtoff, 0);
-        unsafe {
-            assert_eq!(
-                std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(),
-                if cfg!(miri) { "+00" } else { "GMT" }
-            );
-        }
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "GMT") };
+    }
+}
+
+/// DST test
+fn test_localtime_r_dst() {
+    set_tz("Europe/London");
+
+    const TIME_SINCE_EPOCH: libc::time_t = 1712475836; // 2024-04-21 07:43:56 GMT
+    let custom_time_ptr = &TIME_SINCE_EPOCH;
+    let mut tm = create_empty_tm();
+    let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
+
+    assert_eq!(tm.tm_sec, 56);
+    assert_eq!(tm.tm_min, 43);
+    assert_eq!(tm.tm_hour, 8);
+    assert_eq!(tm.tm_mday, 7);
+    assert_eq!(tm.tm_mon, 3);
+    assert_eq!(tm.tm_year, 124);
+    assert_eq!(tm.tm_wday, 0);
+    assert_eq!(tm.tm_yday, 97);
+    assert_eq!(tm.tm_isdst, 1);
+
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "android"
+    ))]
+    {
+        assert_eq!(tm.tm_gmtoff, 3600);
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "BST") };
     }
 
-    // The returned value is the pointer passed in.
-    assert!(ptr::eq(res, &mut tm));
+    // If we go a bit earlier in the same timezone, we're out of DST!
+    let custom_time_ptr = &(TIME_SINCE_EPOCH - 31 * 24 * 3600);
+    let mut tm = create_empty_tm();
+    let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
+
+    assert_eq!(tm.tm_sec, 56);
+    assert_eq!(tm.tm_min, 43);
+    assert_eq!(tm.tm_hour, 7);
+    assert_eq!(tm.tm_mday, 7);
+    assert_eq!(tm.tm_mon, 2);
+    assert_eq!(tm.tm_year, 124);
+    assert_eq!(tm.tm_wday, (5 * 7 - 31) % 7);
+    assert_eq!(tm.tm_yday, 97 - 31);
+    assert_eq!(tm.tm_isdst, 0);
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "android"
+    ))]
+    {
+        assert_eq!(tm.tm_gmtoff, 0);
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "GMT") };
+    }
 }
 
 /// PST timezone test (testing different timezone handling).
@@ -173,9 +224,7 @@ fn test_localtime_r_pst() {
     assert_eq!(tm.tm_year, 124);
     assert_eq!(tm.tm_wday, 0);
     assert_eq!(tm.tm_yday, 97);
-    if cfg!(miri) {
-        assert_eq!(tm.tm_isdst, -1); // DST information unavailable
-    }
+    assert_eq!(tm.tm_isdst, 1);
 
     #[cfg(any(
         target_os = "linux",
@@ -185,12 +234,7 @@ fn test_localtime_r_pst() {
     ))]
     {
         assert_eq!(tm.tm_gmtoff, -7 * 3600); // -7 hours in seconds
-        unsafe {
-            assert_eq!(
-                std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(),
-                if cfg!(miri) { "-07" } else { "PDT" }
-            );
-        }
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "PDT") };
     }
 
     assert!(ptr::eq(res, &mut tm));
@@ -205,6 +249,7 @@ fn test_localtime_r_epoch() {
     let mut tm = create_empty_tm();
 
     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
 
     assert_eq!(tm.tm_sec, 0);
     assert_eq!(tm.tm_min, 0);
@@ -214,9 +259,7 @@ fn test_localtime_r_epoch() {
     assert_eq!(tm.tm_year, 70);
     assert_eq!(tm.tm_wday, 4); // Thursday
     assert_eq!(tm.tm_yday, 0);
-    if cfg!(miri) {
-        assert_eq!(tm.tm_isdst, -1);
-    }
+    assert_eq!(tm.tm_isdst, 0);
 
     #[cfg(any(
         target_os = "linux",
@@ -226,15 +269,8 @@ fn test_localtime_r_epoch() {
     ))]
     {
         assert_eq!(tm.tm_gmtoff, 0);
-        unsafe {
-            assert_eq!(
-                std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(),
-                if cfg!(miri) { "+00" } else { "GMT" }
-            );
-        }
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "GMT") };
     }
-
-    assert!(ptr::eq(res, &mut tm));
 }
 
 /// Future date test (testing large values).
@@ -249,6 +285,7 @@ fn test_localtime_r_future_64b() {
     let mut tm = create_empty_tm();
 
     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
 
     assert_eq!(tm.tm_sec, 0);
     assert_eq!(tm.tm_min, 0);
@@ -258,9 +295,7 @@ fn test_localtime_r_future_64b() {
     assert_eq!(tm.tm_year, 150); // 2050 - 1900
     assert_eq!(tm.tm_wday, 6); // Saturday
     assert_eq!(tm.tm_yday, 0);
-    if cfg!(miri) {
-        assert_eq!(tm.tm_isdst, -1);
-    }
+    assert_eq!(tm.tm_isdst, 0);
 
     #[cfg(any(
         target_os = "linux",
@@ -270,15 +305,8 @@ fn test_localtime_r_future_64b() {
     ))]
     {
         assert_eq!(tm.tm_gmtoff, 0);
-        unsafe {
-            assert_eq!(
-                std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(),
-                if cfg!(miri) { "+00" } else { "GMT" }
-            );
-        }
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "GMT") };
     }
-
-    assert!(ptr::eq(res, &mut tm));
 }
 
 /// Future date test (testing large values for 32b target).
@@ -293,6 +321,7 @@ fn test_localtime_r_future_32b() {
     let mut tm = create_empty_tm();
 
     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
 
     // Verify 2030-01-01 00:00:00
     assert_eq!(tm.tm_sec, 0);
@@ -303,9 +332,7 @@ fn test_localtime_r_future_32b() {
     assert_eq!(tm.tm_year, 130); // 2030 - 1900
     assert_eq!(tm.tm_wday, 2); // Tuesday
     assert_eq!(tm.tm_yday, 0);
-    if cfg!(miri) {
-        assert_eq!(tm.tm_isdst, -1);
-    }
+    assert_eq!(tm.tm_isdst, 0);
 
     #[cfg(any(
         target_os = "linux",
@@ -315,15 +342,8 @@ fn test_localtime_r_future_32b() {
     ))]
     {
         assert_eq!(tm.tm_gmtoff, 0);
-        unsafe {
-            assert_eq!(
-                std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(),
-                if cfg!(miri) { "+00" } else { "GMT" }
-            );
-        }
+        unsafe { assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "GMT") };
     }
-
-    assert!(ptr::eq(res, &mut tm));
 }
 
 /// Tests the behavior of `localtime_r` with multiple calls to ensure deduplication of `tm_zone` pointers.
