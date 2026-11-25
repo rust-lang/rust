@@ -1,0 +1,13 @@
+: Direct
+::m: Direct
+::m::Direct: Direct
+::m::Direct::{constructor#0}: Direct
+::private::Reexported: Reexported
+::private::Reexported::{constructor#0}: Reexported
+::private::Reachable: Reachable
+::private::Reachable::{constructor#0}: Reachable
+::private::ThroughImplTrait: ReachableThroughImplTrait
+::private::ThroughImplTrait::{constructor#0}: ReachableThroughImplTrait
+::{use#1}: Direct
+::reachable: Direct
+::opaque: Direct

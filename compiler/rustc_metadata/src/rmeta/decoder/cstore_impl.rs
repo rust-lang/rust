@@ -279,6 +279,7 @@ provide! { tcx, def_id, other, cdata,
     asyncness => { table_direct }
     fn_arg_idents => { table }
     coroutine_kind => { table_direct }
+    effective_visibility_level => { table_direct }
     coroutine_for_closure => { table }
     coroutine_by_move_body_def_id => { table }
     eval_static_initializer => {

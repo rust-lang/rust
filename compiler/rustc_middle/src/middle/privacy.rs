@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind, UseTree};
 use rustc_macros::StableHash;
-use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::span_bug;
 
 use crate::ty::{TyCtxt, Visibility};
@@ -287,5 +287,13 @@ impl StableHash for EffectiveVisibilities {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
         map.stable_hash(hcx, hasher);
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Whether the item is public at the given effective visibility level.
+    /// Unlike [`EffectiveVisibilities::is_public_at_level`], this works on foreign items.
+    pub fn is_public_at_level(self, def_id: DefId, level: Level) -> bool {
+        self.effective_visibility_level(def_id).is_some_and(|l| l >= level)
     }
 }
