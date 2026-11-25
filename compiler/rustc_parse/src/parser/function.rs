@@ -143,8 +143,6 @@ impl<'a> Parser<'a> {
             }
         };
 
-        let decl = Box::new(decl);
-
         // Store the end of function parameters to give better diagnostics
         // inside `parse_fn_body()`.
         let fn_params_end = self.prev_token.span.shrink_to_hi();

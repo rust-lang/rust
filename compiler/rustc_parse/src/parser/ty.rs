@@ -984,7 +984,6 @@ impl<'a> Parser<'a> {
             allow_const_params: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
-        let decl = Box::new(decl);
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(Box::new(FnPtrTy {

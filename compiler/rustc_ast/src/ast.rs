@@ -1654,7 +1654,7 @@ pub struct Closure {
     pub constness: Const,
     pub coroutine_marker: Option<CoroutineMarker>,
     pub movability: Movability,
-    pub fn_decl: Box<FnDecl>,
+    pub fn_decl: FnDecl,
     pub body: Box<Expr>,
     /// The span of the declaration block: 'move |...| -> ...'
     pub fn_decl_span: Span,
@@ -2318,7 +2318,7 @@ impl LitKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FnSig {
     pub header: FnHeader,
-    pub decl: Box<FnDecl>,
+    pub decl: FnDecl,
     pub span: Span,
 }
 
@@ -2459,7 +2459,7 @@ pub struct FnPtrTy {
     pub safety: Safety,
     pub ext: Extern,
     pub generic_params: ThinVec<GenericParam>,
-    pub decl: Box<FnDecl>,
+    pub decl: FnDecl,
     /// Span of the `[unsafe] [extern] fn(...) -> ...` part, i.e. everything
     /// after the generic params (if there are any, e.g. `for<'a>`).
     pub decl_span: Span,
@@ -4645,10 +4645,10 @@ mod size_asserts {
     static_assert_size!(Expr, 64);
     static_assert_size!(ExprKind, 32);
     static_assert_size!(FieldDef, 80);
-    static_assert_size!(Fn, 192);
+    static_assert_size!(Fn, 208);
     static_assert_size!(FnDecl, 24);
     static_assert_size!(FnHeader, 76);
-    static_assert_size!(FnSig, 96);
+    static_assert_size!(FnSig, 112);
     static_assert_size!(ForeignItem, 72);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

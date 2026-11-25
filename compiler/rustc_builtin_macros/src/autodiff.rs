@@ -531,10 +531,7 @@ mod llvm_enzyme {
                 safety: p_sig.header.safety,
                 ext: p_sig.header.ext,
                 generic_params: ThinVec::new(),
-                decl: Box::new(ast::FnDecl {
-                    inputs: fn_ptr_params,
-                    output: p_sig.decl.output.clone(),
-                }),
+                decl: ast::FnDecl { inputs: fn_ptr_params, output: p_sig.decl.output.clone() },
                 decl_span: span,
             })),
         );
