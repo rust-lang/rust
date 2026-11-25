@@ -4,8 +4,7 @@ $vcvars_ver=14.44
 if ($env:CI_JOB_NAME -Match 'x86_64') {
     $host_arch="x64"
 } elseif ($env:CI_JOB_NAME -Match 'i686') {
-    # Fixme: get cross-compile working
-    exit 0
+    $host_arch="x64"
 } elseif ($env:CI_JOB_NAME -Match 'aarch64') {
     $host_arch="arm64"
 } else {
