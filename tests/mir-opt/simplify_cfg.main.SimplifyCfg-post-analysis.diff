@@ -5,7 +5,6 @@
       let mut _0: ();
       let mut _1: ();
       let mut _2: bool;
-      let mut _3: !;
   
       bb0: {
           goto -> bb1;

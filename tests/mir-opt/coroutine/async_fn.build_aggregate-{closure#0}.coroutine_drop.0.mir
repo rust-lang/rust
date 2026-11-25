@@ -24,30 +24,28 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     let mut _21: &mut std::task::Context<'_>;
     let mut _22: std::future::ResumeTy;
     let mut _23: isize;
-    let mut _25: !;
-    let mut _26: std::future::ResumeTy;
-    let mut _27: ();
-    let mut _28: u32;
+    let mut _25: std::future::ResumeTy;
+    let mut _26: ();
+    let mut _27: u32;
+    let mut _28: {async fn body of add()};
     let mut _29: {async fn body of add()};
-    let mut _30: {async fn body of add()};
+    let mut _30: u32;
     let mut _31: u32;
-    let mut _32: u32;
-    let _34: ();
-    let mut _35: std::task::Poll<u32>;
-    let mut _36: std::pin::Pin<&mut {async fn body of add()}>;
+    let _33: ();
+    let mut _34: std::task::Poll<u32>;
+    let mut _35: std::pin::Pin<&mut {async fn body of add()}>;
+    let mut _36: &mut {async fn body of add()};
     let mut _37: &mut {async fn body of add()};
-    let mut _38: &mut {async fn body of add()};
+    let mut _38: &mut std::task::Context<'_>;
     let mut _39: &mut std::task::Context<'_>;
-    let mut _40: &mut std::task::Context<'_>;
-    let mut _41: std::future::ResumeTy;
-    let mut _42: isize;
-    let mut _44: !;
-    let mut _45: std::future::ResumeTy;
-    let mut _46: ();
+    let mut _40: std::future::ResumeTy;
+    let mut _41: isize;
+    let mut _43: std::future::ResumeTy;
+    let mut _44: ();
+    let mut _45: u32;
+    let mut _46: u32;
     let mut _47: u32;
     let mut _48: u32;
-    let mut _49: u32;
-    let mut _50: u32;
     scope 1 {
         debug a => _3;
         let _4: u32;
@@ -61,7 +59,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
                     debug d => (((*_1) as variant#3).1: u32);
                     let _7: (u32, u32);
                     let mut _13: {async fn body of add()};
-                    let mut _33: {async fn body of add()};
+                    let mut _32: {async fn body of add()};
                     scope 5 {
                         debug x => _7;
                     }
@@ -74,9 +72,9 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
                     }
                     scope 8 {
                         debug __awaitee => (((*_1) as variant#4).1: {async fn body of add()});
-                        let _43: u32;
+                        let _42: u32;
                         scope 9 {
-                            debug result => _43;
+                            debug result => _42;
                         }
                     }
                 }
@@ -85,32 +83,32 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     }
 
     bb0: {
-        _50 = discriminant((*_1));
+        _48 = discriminant((*_1));
         _0 = const ();
-        switchInt(move _50) -> [0: bb16, 3: bb17, 4: bb18, otherwise: bb19];
+        switchInt(move _48) -> [0: bb16, 3: bb17, 4: bb18, otherwise: bb19];
     }
 
     bb1: {
-        StorageDead(_46);
-        StorageDead(_45);
+        StorageDead(_44);
+        StorageDead(_43);
         drop((((*_1) as variant#4).1: {async fn body of add()})) -> [return: bb2, unwind: bb10];
     }
 
     bb2: {
         nop;
-        StorageDead(_28);
+        StorageDead(_27);
         nop;
         goto -> bb3;
     }
 
     bb3: {
-        StorageDead(_29);
+        StorageDead(_28);
         goto -> bb6;
     }
 
     bb4: {
-        StorageDead(_27);
         StorageDead(_26);
+        StorageDead(_25);
         drop((((*_1) as variant#3).2: {async fn body of add()})) -> [return: bb5, unwind: bb12];
     }
 
@@ -144,13 +142,13 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
 
     bb10 (cleanup): {
         nop;
-        StorageDead(_28);
+        StorageDead(_27);
         nop;
         goto -> bb11;
     }
 
     bb11 (cleanup): {
-        StorageDead(_29);
+        StorageDead(_28);
         goto -> bb13;
     }
 
@@ -187,8 +185,8 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         StorageLive(_4);
         StorageLive(_7);
         StorageLive(_9);
+        StorageLive(_25);
         StorageLive(_26);
-        StorageLive(_27);
         goto -> bb4;
     }
 
@@ -197,10 +195,10 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         StorageLive(_4);
         StorageLive(_7);
         StorageLive(_9);
+        StorageLive(_27);
         StorageLive(_28);
-        StorageLive(_29);
-        StorageLive(_45);
-        StorageLive(_46);
+        StorageLive(_43);
+        StorageLive(_44);
         goto -> bb1;
     }
 

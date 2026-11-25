@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "\b10000(08|16|32)\b" -> "100$$PTR"
+//@ normalize-stderr-test: "\b10000(08|12|16|24|32)\b" -> "100$$PTR"
 //@ normalize-stderr-test: "\b2500(060|120)\b" -> "250$$PTR"
 #![warn(clippy::large_unopt_stack_frames)]
 
@@ -41,8 +41,10 @@ fn large_fn_arg(x: ArrayDefault<1_000_000>) {
 }
 
 fn has_large_closure() {
-    let f = || black_box(&[0u8; 1_000_000]);
-    //~^ large_unopt_stack_frames
+    let f = || {
+        //~^ large_unopt_stack_frames
+        black_box(&mut [0u8; 1_000_000]);
+    };
 
     f();
 }

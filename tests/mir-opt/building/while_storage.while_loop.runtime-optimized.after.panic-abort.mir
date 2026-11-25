@@ -8,10 +8,7 @@ fn while_loop(_1: bool) -> () {
     let mut _4: bool;
     let mut _5: bool;
     let mut _6: ();
-    let mut _7: !;
-    let mut _8: !;
-    let _9: ();
-    let mut _10: !;
+    let _7: ();
 
     bb0: {
         goto -> bb1;
@@ -30,9 +27,9 @@ fn while_loop(_1: bool) -> () {
 
     bb3: {
         StorageDead(_2);
-        StorageLive(_9);
+        StorageLive(_7);
         _0 = const ();
-        StorageDead(_9);
+        StorageDead(_7);
         goto -> bb8;
     }
 

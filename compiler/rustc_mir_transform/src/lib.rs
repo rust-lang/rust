@@ -198,7 +198,8 @@ declare_passes! {
             BeforeConstProp,
             AfterGVN,
             Final
-        };
+        },
+        RemoveUnreferencedLocals;
     mod simplify_branches : SimplifyConstCondition {
         AfterInstSimplify,
         AfterConstProp,
@@ -491,7 +492,12 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[
+            &promote_pass,
+            &simplify::SimplifyCfg::PromoteConsts,
+            &simplify::RemoveUnreferencedLocals,
+            &coverage::InstrumentCoverage,
+        ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 

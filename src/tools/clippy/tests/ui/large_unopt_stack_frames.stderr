@@ -31,10 +31,13 @@ LL | fn large_fn_arg(x: ArrayDefault<1_000_000>) {
 error: this function may allocate 100$PTR bytes on the stack
   --> tests/ui/large_unopt_stack_frames.rs:44:13
    |
-LL |     let f = || black_box(&[0u8; 1_000_000]);
-   |             ^^^^^^^^^^^^^^----------------^
-   |                           |
-   |                           this is the largest part, at 1000000 bytes for type `[u8; 1000000]`
+LL |       let f = || {
+   |  _____________^
+LL | |
+LL | |         black_box(&mut [0u8; 1_000_000]);
+   | |                        ---------------- this is the largest part, at 1000000 bytes for type `[u8; 1000000]`
+LL | |     };
+   | |_____^
    |
    = note: 100$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
 
