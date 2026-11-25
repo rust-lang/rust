@@ -72,17 +72,7 @@ const F128_SNAN: f128 =
 
 fn main() {
     // Natively we only run if f16 and f128 are reliable as we are using them all over this file.
-    // Except on x86-64 Linux where it seems to work anyway.
-    if !cfg!(any(
-        miri,
-        all(target_arch = "x86_64", target_os = "linux"),
-        // exclude aarch64 to work around <https://github.com/rust-lang/rust/issues/164972>
-        all(
-            target_has_reliable_f16_math,
-            target_has_reliable_f128_math,
-            not(target_arch = "aarch64"),
-        ),
-    )) {
+    if cfg!(not(any(miri, all(target_has_reliable_f16_math, target_has_reliable_f128_math)))) {
         eprintln!("skipping due to lack of f16/f128 support");
         return;
     }
