@@ -1245,7 +1245,6 @@ where
             term: I::Term,
             universe_of_term: ty::UniverseIndex,
             delegate: &'a D,
-            cache: HashSet<I::Ty>,
         }
 
         impl<D: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, D, I> {
@@ -1263,10 +1262,6 @@ where
         {
             type Result = ControlFlow<()>;
             fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-                if self.cache.contains(&t) {
-                    return ControlFlow::Continue(());
-                }
-
                 match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
                         if let ty::TermKind::Ty(term) = self.term.kind()
@@ -1286,7 +1281,6 @@ where
                     }
                 }
 
-                assert!(self.cache.insert(t));
                 ControlFlow::Continue(())
             }
 
@@ -1335,7 +1329,6 @@ where
             delegate: self.delegate,
             universe_of_term,
             term: goal.predicate.term,
-            cache: Default::default(),
         };
         goal.predicate.alias.visit_with(&mut visitor).is_continue()
             && goal.param_env.visit_with(&mut visitor).is_continue()
