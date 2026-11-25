@@ -709,12 +709,14 @@ fn test_unlinkat() {
             assert!(path.join("dirlink").symlink_metadata().is_err());
             assert!(path.join("dir").exists());
         }
+        assert_eq!(unlinkat(dirfd, c"dir", libc::AT_REMOVEDIR).unwrap(), 0);
     }
 
     // A relative path needs a dirfd that is an open directory.
     assert_eq!(errno(unlinkat(999, c"file.txt", 0)), libc::EBADF);
     let file = File::create(path.join("file.txt")).unwrap();
     assert_eq!(errno(unlinkat(file.as_raw_fd(), c"file.txt", 0)), libc::ENOTDIR);
+    assert_eq!(unlinkat(dirfd, c"file.txt", 0).unwrap(), 0);
 
     errno_check(unsafe { libc::close(dirfd) });
 }

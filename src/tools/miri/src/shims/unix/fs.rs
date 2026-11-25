@@ -14,6 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
+use crate::helpers::OptionExt;
 use crate::shims::files::{
     BIG_ACCESS, DirHandle, DynFileDescriptionRef, EvalContextExt as _, FdNum, FileHandle,
     open_file_or_dir,
@@ -21,7 +22,7 @@ use crate::shims::files::{
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
-use crate::shims::{FdId, FileDescription};
+use crate::shims::{FdId, FileDescription, FileDescriptionRef};
 use crate::*;
 
 /// An open directory stream (`DIR`), tracked by DirTable.
@@ -525,6 +526,33 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
     }
+
+    fn get_dir(
+        &self,
+        dirfd: Option<FdNum>,
+        path: &Path,
+    ) -> Result<Option<FileDescriptionRef<DirHandle>>, IoError> {
+        let ecx = self.eval_context_ref();
+        if path.is_empty() {
+            Err(LibcError("ENOENT"))
+        } else if path.is_absolute()
+            || dirfd.is_none_or(|dirfd| dirfd == ecx.eval_libc_i32("AT_FDCWD"))
+        {
+            // It would be nice to make everything uniform and simply return `fs::Dir::open(".")`
+            // here. But on Windows that would behave very different than methods on `fs`, e.g.
+            // `..` would not work, so we cannot do that.
+            Ok(None)
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = ecx.machine.fds.get(dirfd.unwrap()) else {
+                return Err(LibcError("EBADF"));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return Err(LibcError("ENOTDIR"));
+            };
+            Ok(Some(dir))
+        }
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -544,10 +572,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
         let open_name = if dirfd.is_some() { "openat" } else { "open" };
 
-        let dirfd = match dirfd {
-            Some(dirfd) => Some(ecx.read_scalar(dirfd)?.to_i32()?),
-            None => None,
-        };
+        let dirfd = dirfd.try_map(|dirfd| ecx.read_scalar(dirfd)?.to_i32())?;
         let path_raw = ecx.read_pointer(path_raw)?;
         let flag = ecx.read_scalar(flag)?.to_i32()?;
 
@@ -756,28 +781,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let dirfd = match dirfd {
-            Some(dirfd) => {
-                if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
-                    None
-                } else {
-                    // relative to dirfd, which must be a directory handle
-                    let Some(fd) = ecx.machine.fds.get(dirfd) else {
-                        return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-                    };
-                    let Some(dir) = fd.downcast::<DirHandle>() else {
-                        return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-                    };
-                    Some(dir)
-                }
-            }
-            None => None,
+        let dir = match ecx.get_dir(dirfd, &path) {
+            Ok(dir) => dir,
+            Err(err) => return ecx.set_errno_and_return_neg1_i32(err),
         };
-
-        // Empty path should consistently error.
-        if path.is_empty() {
-            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
-        }
         // Windows does not support "." relative to a `Dir` handle, but the empty path works.
         // (https://github.com/rust-lang/rust/issues/163032)
         let path = if cfg!(windows) && dirfd.is_some() && path.to_str() == Some(".") {
@@ -788,7 +795,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Let's see what we get when we open this!
         let f_or_d = open_file_or_dir(
-            dirfd.as_ref().map(|d| &d.dir),
+            dir.as_ref().map(|d| &d.dir),
             path,
             options.custom_flags(custom_flags),
         );
@@ -910,17 +917,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags for `unlinkat`: {flags:#x}")
         };
 
-        let dir = if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
-            None
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = ecx.machine.fds.get(dirfd) else {
-                return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-            };
-            let Some(dir) = fd.downcast::<DirHandle>() else {
-                return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-            };
-            Some(dir)
+        let dir = match ecx.get_dir(Some(dirfd), &path) {
+            Ok(dir) => dir,
+            Err(err) => return ecx.set_errno_and_return_neg1_i32(err),
         };
         let result = if remove_dir {
             host_remove_dir(dir.as_deref(), &path)
@@ -1334,21 +1333,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let operation_name = if dirfd_op.is_some() { "`fchmodat`" } else { "`chmod`" };
-        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
 
-        let dirfd = if let Some(dirfd_op) = dirfd_op {
-            this.read_scalar(dirfd_op)?.to_i32()?
-        } else {
-            at_fdcwd
-        };
+        let dirfd = dirfd_op.try_map(|dirfd_op| this.read_scalar(dirfd_op)?.to_i32())?;
         let path_ptr = this.read_pointer(path_op)?;
         let mode = this.read_int::<u32>(mode_op)?;
         let flags =
             if let Some(flags_op) = flags_op { this.read_scalar(flags_op)?.to_i32()? } else { 0 };
 
-        // Validate arguments.
-        if dirfd != at_fdcwd {
-            throw_unsup_format!("`fchmodat` with `dirfd` not equal to `AT_FDCWD` is not supported");
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation(operation_name, reject_with)?;
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        // Get path and directory.
+        if this.ptr_is_null(path_ptr)? {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let path = this.read_path_from_c_str(path_ptr)?;
+        let dir = match this.get_dir(dirfd, &path) {
+            Ok(dir) => dir,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        if dir.is_some() {
+            throw_unsup_format!("{operation_name} with a directory handle is not supported");
         }
 
         // Parse flags.
@@ -1360,20 +1368,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Complain about unknown flags.
         if flags != 0 {
             throw_unsup_format!("unsupported flags for `fchmodat`: {flags:#x}")
-        }
-
-        if this.ptr_is_null(path_ptr)? {
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
-        }
-        let path = this.read_path_from_c_str(path_ptr)?;
-        if path.is_empty() {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
-        }
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation(operation_name, reject_with)?;
-            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         // Perform actual permission update.
@@ -1442,7 +1436,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
+        let oldfd = oldfd.try_map(|oldfd| ecx.read_scalar(oldfd)?.to_i32())?;
         let oldpath_ptr = ecx.read_pointer(oldpath_op)?;
+        let newfd = newfd.try_map(|newfd| ecx.read_scalar(newfd)?.to_i32())?;
         let newpath_ptr = ecx.read_pointer(newpath_op)?;
 
         if ecx.ptr_is_null(oldpath_ptr)? || ecx.ptr_is_null(newpath_ptr)? {
@@ -1452,10 +1448,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let oldpath = ecx.read_path_from_c_str(oldpath_ptr)?;
         let newpath = ecx.read_path_from_c_str(newpath_ptr)?;
 
-        if oldpath.as_os_str().is_empty() || newpath.as_os_str().is_empty() {
-            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
-        }
-
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
             let name = if oldfd.is_some() || newfd.is_some() { "`renameat`" } else { "`rename`" };
@@ -1463,28 +1455,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1(ErrorKind::PermissionDenied, dest);
         }
 
-        let resolve_dir = |fd: Option<&OpTy<'tcx>>, path: &Path| -> InterpResult<'tcx, _> {
-            let Some(fd) = fd else {
-                return interp_ok(Ok(None));
-            };
-            let fd = ecx.read_scalar(fd)?.to_i32()?;
-            if path.is_absolute() || fd == ecx.eval_libc_i32("AT_FDCWD") {
-                return interp_ok(Ok(None));
-            }
-            let Some(fd) = ecx.machine.fds.get(fd) else {
-                return interp_ok(Err(LibcError("EBADF")));
-            };
-            interp_ok(fd.downcast::<DirHandle>().map(Some).ok_or(LibcError("ENOTDIR")))
-        };
-        let old_dir = resolve_dir(oldfd, &oldpath)?;
-        let new_dir = resolve_dir(newfd, &newpath)?;
+        let old_dir = ecx.get_dir(oldfd, &oldpath);
+        let new_dir = ecx.get_dir(newfd, &newpath);
 
         let result = match (old_dir, new_dir) {
             (Ok(None), Ok(None)) => fs::rename(&oldpath, &newpath),
             (Ok(Some(old)), Ok(Some(new))) => old.dir.rename(&oldpath, &new.dir, &newpath),
-            (Err(err), _) | (_, Err(err)) => return ecx.set_errno_and_return_neg1(err, dest),
             (Ok(_), Ok(_)) =>
                 throw_unsup_format!("`renameat` with only one path relative to a directory fd"),
+            (Err(err), _) | (_, Err(err)) => return ecx.set_errno_and_return_neg1(err, dest),
         };
         let result = ecx.try_unwrap_io_result(result.map(|()| 0i32))?;
         ecx.write_int(result, dest)
@@ -1500,10 +1479,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
         let mkdir_name = if dirfd_op.is_some() { "mkdirat" } else { "mkdir" };
 
-        let dirfd = match dirfd_op {
-            Some(dirfd_op) => Some(ecx.read_scalar(dirfd_op)?.to_i32()?),
-            None => None,
-        };
+        let dirfd = dirfd_op.try_map(|dirfd_op| ecx.read_scalar(dirfd_op)?.to_i32())?;
         let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
         let mode = ecx.read_int::<u32>(mode_op)?;
 
@@ -1513,22 +1489,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1(LibcError("EACCES"), dest);
         }
 
-        let dir = match dirfd {
-            Some(dirfd) => {
-                if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
-                    None
-                } else {
-                    // relative to dirfd, which must be a directory handle
-                    let Some(fd) = ecx.machine.fds.get(dirfd) else {
-                        return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
-                    };
-                    let Some(dir) = fd.downcast::<DirHandle>() else {
-                        return ecx.set_errno_and_return_neg1(LibcError("ENOTDIR"), dest);
-                    };
-                    Some(dir)
-                }
-            }
-            None => None,
+        let dir = match ecx.get_dir(dirfd, &path) {
+            Ok(dir) => dir,
+            Err(err) => return ecx.set_errno_and_return_neg1(err, dest),
         };
 
         let result = match dir {
@@ -1541,7 +1504,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         (only 0o777 is supported)"
                     );
                 }
-                dir.dir.create_dir(&path)
+                dir.dir.create_dir(path)
             }
             None => {
                 #[cfg_attr(not(unix), allow(unused_mut))]
@@ -2051,21 +2014,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let times = this.deref_pointer(times_op)?;
         let flags = this.read_scalar(flags_op)?.to_i32()?;
 
-        if this.ptr_is_null(path_ptr)? {
-            // With `AT_FDCWD` this is a bad address on all systems. With any other `dirfd`, Linux
-            // operates on `dirfd` itself (like `futimens`) while macOS still fails.
-            if dirfd != this.eval_libc_i32("AT_FDCWD") {
-                throw_unsup_format!(
-                    "`utimensat` with a NULL path is only supported for `AT_FDCWD`"
-                );
-            }
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
-        }
-        let path = this.read_path_from_c_str(path_ptr)?.into_owned();
-
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`utimensat`", reject_with)?;
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        if this.ptr_is_null(path_ptr)? {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let path = this.read_path_from_c_str(path_ptr)?.into_owned();
+        let dir = match this.get_dir(Some(dirfd), &path) {
+            Ok(dir) => dir,
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+        };
+        if dir.is_some() {
+            throw_unsup_format!("`utimensat` with a directory handle is not supported");
         }
 
         let mut flags = flags;
@@ -2076,10 +2039,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if flags != 0 {
             throw_unsup_format!("unsupported flags for `utimensat`: {flags:#x}")
-        }
-
-        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")) {
-            throw_unsup_format!("`utimensat` with a path relative to a `dirfd` is not supported");
         }
 
         let Some((access, modified)) = this.parse_utimens_times(&times)? else {
@@ -2577,38 +2536,38 @@ impl FileMetadata {
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
         // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
         // represented by dirfd, whether it's a directory or otherwise.
-        if path.is_empty() {
-            // no path: invalid by default, load metadata about dirfd with flag
-            if !empty_path_flag {
-                return interp_ok(Err(LibcError("ENOENT")));
-            }
-            FileMetadata::from_fd_num(ecx, dirfd)
-        } else if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
-            // Either absolute path (dirfd is ignored) or relative to working directory.
-            FileMetadata::from_host(
-                ecx,
-                if symlink_nofollow_flag { path.symlink_metadata() } else { path.metadata() },
-            )
-        } else {
-            // relative to dirfd, which must be a directory handle
-            let Some(fd) = ecx.machine.fds.get(dirfd) else {
-                return interp_ok(Err(LibcError("EBADF")));
-            };
-            let Some(dir) = fd.downcast::<DirHandle>() else {
-                return interp_ok(Err(LibcError("ENOTDIR")));
-            };
-
-            // Windows does not support "." relative to a `Dir` handle, but the empty path works.
-            // (https://github.com/rust-lang/rust/issues/163032)
-            let path =
-                if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
-            let metadata = if symlink_nofollow_flag {
-                dir.dir.symlink_metadata(path)
-            } else {
-                dir.dir.metadata(path)
-            };
-            FileMetadata::from_host(ecx, metadata)
+        if empty_path_flag && path.is_empty() {
+            return FileMetadata::from_fd_num(ecx, dirfd);
         }
+
+        let dir = match ecx.get_dir(Some(dirfd), path) {
+            Ok(dir) => dir,
+            Err(err) => return interp_ok(Err(err)),
+        };
+        // Windows does not support "." relative to a `Dir` handle, but the empty path works.
+        // (https://github.com/rust-lang/rust/issues/163032)
+        let path = if cfg!(windows) && dir.is_some() && path.to_str() == Some(".") {
+            Path::new("")
+        } else {
+            path
+        };
+
+        let metadata = match dir {
+            None =>
+                if symlink_nofollow_flag {
+                    path.symlink_metadata()
+                } else {
+                    path.metadata()
+                },
+            Some(dir) =>
+                if symlink_nofollow_flag {
+                    dir.dir.symlink_metadata(path)
+                } else {
+                    dir.dir.metadata(path)
+                },
+        };
+
+        FileMetadata::from_host(ecx, metadata)
     }
 
     fn from_fd_num<'tcx>(
