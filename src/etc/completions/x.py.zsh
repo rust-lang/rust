@@ -1119,8 +1119,9 @@ _arguments "${_arguments_options[@]}" : \
         case $line[3] in
             (eprintln)
 _arguments "${_arguments_options[@]}" : \
-'*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
-'*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
+'*--exact-match=[Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas]:EXACT_MATCH:_default' \
+'*--include=[Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
+'*--exclude=[Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--database-path=[]:DATABASE_PATH:_default' \
@@ -1147,6 +1148,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--purge[Purge previously computed benchmark results matching the given parameters]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1170,8 +1172,9 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (samply)
 _arguments "${_arguments_options[@]}" : \
-'*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
-'*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
+'*--exact-match=[Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas]:EXACT_MATCH:_default' \
+'*--include=[Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
+'*--exclude=[Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--database-path=[]:DATABASE_PATH:_default' \
@@ -1198,6 +1201,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--purge[Purge previously computed benchmark results matching the given parameters]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1221,8 +1225,9 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (cachegrind)
 _arguments "${_arguments_options[@]}" : \
-'*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
-'*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
+'*--exact-match=[Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas]:EXACT_MATCH:_default' \
+'*--include=[Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
+'*--exclude=[Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--database-path=[]:DATABASE_PATH:_default' \
@@ -1249,6 +1254,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--purge[Purge previously computed benchmark results matching the given parameters]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1272,8 +1278,9 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (benchmark)
 _arguments "${_arguments_options[@]}" : \
-'*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
-'*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
+'*--exact-match=[Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas]:EXACT_MATCH:_default' \
+'*--include=[Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
+'*--exclude=[Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--database-path=[]:DATABASE_PATH:_default' \
@@ -1300,6 +1307,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--purge[Purge previously computed benchmark results matching the given parameters]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \

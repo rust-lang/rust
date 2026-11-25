@@ -1,5 +1,5 @@
-//! Check that `cfg!(target_feature = "...")` correctly detects available CPU features,
-//! specifically `sse2` on x86/x86_64 platforms, and correctly reports absent features.
+//! Check that `cfg!(target_feature = "...")` correctly detects available CPU features from the base
+//! target, specifically `sse2` on x86/x86_64 platforms, and correctly reports absent features.
 
 //@ run-pass
 //@ ignore-i586 (no SSE2)

@@ -4,7 +4,7 @@ warning: mutation of an interior mutable `const` item with call to `set`
 LL |     let _a = A.set(1);
    |              -^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |              `A` is an interior mutable `const` item of type `std::sync::Mutex<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -22,7 +22,7 @@ warning: mutation of an interior mutable `const` item with call to `replace`
 LL |     let _a = A.replace(2);
    |              -^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |              `A` is an interior mutable `const` item of type `std::sync::Mutex<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -39,7 +39,7 @@ warning: mutation of an interior mutable `const` item with call to `lock`
 LL |     drop(A.lock());
    |          -^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::Mutex<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -56,7 +56,7 @@ warning: mutation of an interior mutable `const` item with call to `try_lock`
 LL |     drop(A.try_lock());
    |          -^^^^^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::Mutex<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -73,7 +73,7 @@ warning: mutation of an interior mutable `const` item with call to `clear_poison
 LL |     let _a = A.clear_poison();
    |              -^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |              `A` is an interior mutable `const` item of type `std::sync::Mutex<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -90,7 +90,7 @@ warning: mutation of an interior mutable `const` item with call to `call_once`
 LL |     let _a = A.call_once(|| {});
    |              -^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |              `A` is an interior mutable `const` item of type `std::sync::Once`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -107,7 +107,7 @@ warning: mutation of an interior mutable `const` item with call to `call_once_fo
 LL |     let _a = A.call_once_force(|_| {});
    |              -^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |              `A` is an interior mutable `const` item of type `std::sync::Once`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -124,7 +124,7 @@ warning: mutation of an interior mutable `const` item with call to `wait`
 LL |     let _a = A.wait();
    |              -^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |              `A` is an interior mutable `const` item of type `std::sync::Once`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -141,7 +141,7 @@ warning: mutation of an interior mutable `const` item with call to `wait_force`
 LL |     let _a = A.wait_force();
    |              -^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |              `A` is an interior mutable `const` item of type `std::sync::Once`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -158,7 +158,7 @@ warning: mutation of an interior mutable `const` item with call to `set`
 LL |     let _a = A.set(1);
    |              -^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |              `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -175,7 +175,7 @@ warning: mutation of an interior mutable `const` item with call to `replace`
 LL |     let _a = A.replace(2);
    |              -^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |              `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -192,7 +192,7 @@ warning: mutation of an interior mutable `const` item with call to `read`
 LL |     drop(A.read());
    |          -^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -209,7 +209,7 @@ warning: mutation of an interior mutable `const` item with call to `try_read`
 LL |     drop(A.try_read());
    |          -^^^^^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -226,7 +226,7 @@ warning: mutation of an interior mutable `const` item with call to `write`
 LL |     drop(A.write());
    |          -^^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -243,7 +243,7 @@ warning: mutation of an interior mutable `const` item with call to `try_write`
 LL |     drop(A.try_write());
    |          -^^^^^^^^^^^^
    |          |
-   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |          `A` is an interior mutable `const` item of type `std::sync::RwLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -260,7 +260,7 @@ warning: mutation of an interior mutable `const` item with call to `force`
 LL |     let _a = LazyLock::force(&A);
    |              ^^^^^^^^^^^^^^^^^-^
    |                               |
-   |                               `A` is a interior mutable `const` item of type `LazyLock<i32>`
+   |                               `A` is an interior mutable `const` item of type `LazyLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -277,7 +277,7 @@ warning: mutation of an interior mutable `const` item with call to `get`
 LL |     let _a = LazyLock::get(&A);
    |              ^^^^^^^^^^^^^^^-^
    |                             |
-   |                             `A` is a interior mutable `const` item of type `LazyLock<i32>`
+   |                             `A` is an interior mutable `const` item of type `LazyLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -294,7 +294,7 @@ warning: mutation of an interior mutable `const` item with call to `get`
 LL |     let _a = A.get();
    |              -^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -311,7 +311,7 @@ warning: mutation of an interior mutable `const` item with call to `wait`
 LL |     let _a = A.wait();
    |              -^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -328,7 +328,7 @@ warning: mutation of an interior mutable `const` item with call to `set`
 LL |     let _a = A.set(10);
    |              -^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -345,7 +345,7 @@ warning: mutation of an interior mutable `const` item with call to `try_insert`
 LL |     let _a = A.try_insert(20);
    |              -^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -362,7 +362,7 @@ warning: mutation of an interior mutable `const` item with call to `get_or_init`
 LL |     let _a = A.get_or_init(|| 30);
    |              -^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -379,7 +379,7 @@ warning: mutation of an interior mutable `const` item with call to `get_or_try_i
 LL |     let _a = A.get_or_try_init(|| Ok::<_, ()>(40));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |              `A` is an interior mutable `const` item of type `OnceLock<i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -396,7 +396,7 @@ warning: mutation of an interior mutable `const` item with call to `wait`
 LL |     let _a = A.wait(guard);
    |              -^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -413,7 +413,7 @@ warning: mutation of an interior mutable `const` item with call to `wait_while`
 LL |     let _a = A.wait_while(guard, |x| *x == 0);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -430,7 +430,7 @@ warning: mutation of an interior mutable `const` item with call to `wait_timeout
 LL |     let _a = A.wait_timeout_ms(guard, 10);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -447,7 +447,7 @@ warning: mutation of an interior mutable `const` item with call to `wait_timeout
 LL |     let _a = A.wait_timeout(guard, Duration::from_millis(10));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -464,7 +464,7 @@ warning: mutation of an interior mutable `const` item with call to `wait_timeout
 LL |     let _a = A.wait_timeout_while(guard, Duration::from_millis(10), |x| *x == 0);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -481,7 +481,7 @@ warning: mutation of an interior mutable `const` item with call to `notify_one`
 LL |     let _a = A.notify_one();
    |              -^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -498,7 +498,7 @@ warning: mutation of an interior mutable `const` item with call to `notify_all`
 LL |     let _a = A.notify_all();
    |              -^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |              `A` is an interior mutable `const` item of type `std::sync::Condvar`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified

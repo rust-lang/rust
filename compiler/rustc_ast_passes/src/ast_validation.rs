@@ -398,7 +398,6 @@ impl<'a> AstValidator<'a> {
         self.check_decl_num_args(fn_decl);
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
         self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
-        self.check_decl_attrs(&fn_decl.inputs);
         self.check_decl_self_param(&fn_decl.inputs, self_semantic);
         self.check_decl_const_param(&fn_decl.inputs);
     }
@@ -513,16 +512,6 @@ impl<'a> AstValidator<'a> {
                     });
                 }
                 SplatSemantic::Yes => {}
-            }
-        }
-    }
-
-    fn check_decl_attrs(&self, fn_inputs: &[Param]) {
-        for param in fn_inputs {
-            for attr in &param.attrs {
-                if attr.is_doc_comment() {
-                    self.dcx().emit_err(diagnostics::FnParamDocComment { span: attr.span });
-                }
             }
         }
     }
@@ -2213,7 +2202,6 @@ impl Visitor<'_> for AstValidator<'_> {
     fn visit_path_segment(&mut self, seg: &PathSegment) -> Self::Result {
         if let Some(Parenthesized(args)) = &seg.args {
             self.check_decl_self_param(&args.inputs, SelfSemantic::No);
-            self.check_decl_attrs(&args.inputs);
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });

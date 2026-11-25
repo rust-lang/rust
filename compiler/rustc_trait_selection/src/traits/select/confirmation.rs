@@ -186,8 +186,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         obligations.extend(
             self.infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
+                .eq_raw(
+                    &obligation.cause,
+                    obligation.param_env,
+                    DefineOpaqueTypes::No,
+                    placeholder_trait_predicate,
+                    candidate,
+                )
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
@@ -447,27 +452,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = PredicateObligations::new();
 
         let mut supertraits = util::supertraits(tcx, ty::Binder::dummy(object_trait_ref));
-        let unnormalized_upcast_trait_ref =
-            supertraits.nth(index).expect("supertraits iterator no longer has as many elements");
-
-        let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
-            obligation.cause.span,
-            BoundRegionConversionTime::HigherRankedType,
-            unnormalized_upcast_trait_ref,
-        );
+        let unnormalized_upcast_trait_ref = supertraits
+            .nth(index)
+            .expect("supertraits iterator no longer has as many elements")
+            .map(|trait_ref| {
+                self.infcx.instantiate_binder_with_fresh_vars(
+                    obligation.cause.span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    trait_ref,
+                )
+            });
         let upcast_trait_ref = normalize_with_depth_to(
             self,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            ty::Unnormalized::new_wip(upcast_trait_ref),
+            unnormalized_upcast_trait_ref,
             &mut nested,
         );
 
         nested.extend(
             self.infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(DefineOpaqueTypes::No, trait_predicate.trait_ref, upcast_trait_ref)
+                .eq_raw(
+                    &obligation.cause,
+                    obligation.param_env,
+                    DefineOpaqueTypes::No,
+                    trait_predicate.trait_ref,
+                    upcast_trait_ref,
+                )
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
@@ -918,8 +930,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx
-            .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, found_trait_ref)
+            .eq_raw(
+                &obligation.cause,
+                obligation.param_env,
+                DefineOpaqueTypes::Yes,
+                obligation_trait_ref,
+                found_trait_ref,
+            )
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);
                 obligations
@@ -955,7 +972,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =
-            ty::Unnormalized::new_wip(util::supertraits(tcx, source_principal).nth(idx).unwrap());
+            util::supertraits(tcx, source_principal).nth(idx).unwrap();
 
         let nested = self
             .match_upcast_principal(
@@ -1097,8 +1114,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ty::Array(a, _), &ty::Slice(b)) => {
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, b, a)
+                    .eq_raw(&obligation.cause, obligation.param_env, DefineOpaqueTypes::Yes, b, a)
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1145,8 +1161,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let new_struct = Ty::new_adt(tcx, def, args);
                 let InferOk { obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, target, new_struct)
+                    .eq_raw(
+                        &obligation.cause,
+                        obligation.param_env,
+                        DefineOpaqueTypes::Yes,
+                        target,
+                        new_struct,
+                    )
                     .map_err(|_| SelectionError::Unimplemented)?;
                 nested.extend(obligations);
 

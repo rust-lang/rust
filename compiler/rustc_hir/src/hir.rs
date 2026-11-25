@@ -3074,7 +3074,7 @@ impl<'hir> TraitItem<'hir> {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
-    Required(&'hir [Option<Ident>]),
+    Required(&'hir [Param<'hir>]),
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),

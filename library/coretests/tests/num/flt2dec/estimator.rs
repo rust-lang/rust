@@ -1,7 +1,5 @@
 use core::num::imp::flt2dec::estimator::*;
 
-use crate::num::ldexp_f64;
-
 #[test]
 fn test_estimate_scaling_factor() {
     macro_rules! assert_almost_eq {
@@ -58,7 +56,7 @@ fn test_estimate_scaling_factor() {
     let step = if cfg!(miri) { 37 } else { 1 };
 
     for i in (-1074..972).step_by(step) {
-        let expected = ldexp_f64(1.0, i).log10().ceil();
+        let expected = 1.0f64.scalbn(i).log10().ceil();
         assert_almost_eq!(estimate_scaling_factor(1, i as i16), expected as i16);
     }
 }

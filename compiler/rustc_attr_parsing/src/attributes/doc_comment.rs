@@ -11,7 +11,6 @@ use rustc_span::Span;
 
 use crate::attributes::prelude::{Allow, Error};
 use crate::diagnostics::{BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub};
-use crate::target_checking::Policy::AllowSilent;
 use crate::target_checking::{AllowedResult, AllowedTargets};
 use crate::{AttributeParser, EmitAttribute, ShouldEmit};
 
@@ -47,14 +46,22 @@ pub(crate) fn target_check_doc_comment(
         if attr.span.ctxt() == target_span.ctxt() { target_span.shrink_to_lo() } else { attr.span };
 
     let attr_span = attr.span;
-    emit_lint(
-        LintId::of(UNUSED_DOC_COMMENTS),
-        attr_span.into(),
-        EmitAttribute(Box::new(move |dcx, level, _| {
-            BuiltinUnusedDocComment { sub, target: target.plural_name(), label: attr_span, context }
-                .into_diag(dcx, level)
-        })),
-    );
+
+    let diag =
+        BuiltinUnusedDocComment { sub, target: target.plural_name(), label: attr_span, context };
+    match res {
+        AllowedResult::Allowed => unreachable!("checked above"),
+        AllowedResult::Warn => {
+            emit_lint(
+                LintId::of(UNUSED_DOC_COMMENTS),
+                attr_span.into(),
+                EmitAttribute(Box::new(move |dcx, level, _| diag.into_diag(dcx, level))),
+            );
+        }
+        AllowedResult::Error => {
+            parser.dcx().emit_err(diag);
+        }
+    }
 }
 
 /// This set of targets is used both for the `doc` attribute and doc comments.
@@ -91,7 +98,7 @@ pub(crate) const DOC_TARGETS: AllowedTargets<'static> = {
         Allow(Target::ExternCrate),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Impl { of_trait: true }),
-        AllowSilent(Target::WherePredicate), // Error, checked elsewhere
+        Error(Target::WherePredicate),
         Error(Target::Param),
     ])
 };

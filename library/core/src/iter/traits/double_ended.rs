@@ -185,22 +185,14 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", issue = "77404")]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
-    where
-        Self::Item: [const] Destruct,
-    {
+    #[rustc_non_const_trait_method]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         /// Helper trait to specialize `advance_back_by` via `try_rfold` for `Sized` iterators.
-
-        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-        const trait SpecAdvanceBackBy {
+        trait SpecAdvanceBackBy {
             fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
         }
 
-        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-        const impl<I: [const] DoubleEndedIterator + ?Sized> SpecAdvanceBackBy for I
-        where
-            I::Item: [const] Destruct,
-        {
+        impl<I: DoubleEndedIterator + ?Sized> SpecAdvanceBackBy for I {
             default fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 for i in 0..n {
                     if self.next_back().is_none() {
@@ -212,17 +204,13 @@ pub const trait DoubleEndedIterator: [const] Iterator {
             }
         }
 
-        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-        const impl<I: [const] DoubleEndedIterator> SpecAdvanceBackBy for I
-        where
-            I::Item: [const] Destruct,
-        {
+        impl<I: DoubleEndedIterator> SpecAdvanceBackBy for I {
             fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 let Some(n) = NonZero::new(n) else {
                     return Ok(());
                 };
 
-                let res = self.try_rfold(n, const |n, _| NonZero::new(n.get() - 1));
+                let res = self.try_rfold(n, |n, _| NonZero::new(n.get() - 1));
 
                 match res {
                     None => Ok(()),
@@ -277,10 +265,8 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item>
-    where
-        Self::Item: [const] Destruct,
-    {
+    #[rustc_non_const_trait_method]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.advance_back_by(n).ok()?;
         self.next_back()
     }
