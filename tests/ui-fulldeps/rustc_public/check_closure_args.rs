@@ -78,12 +78,6 @@ fn check_closure_args(args: ClosureArgs) {
         "tupled_upvars_ty mismatch or expected a Tuple, got: {:?}",
         args.tupled_upvars_ty().kind()
     );
-
-    // // upvar_tys(): must equal the tuple's fields.
-    // assert!(
-    //     args.upvar_tys() == upvars,
-    //     "upvar_tys should match the fields of tupled_upvars_ty"
-    // );
 }
 
 
