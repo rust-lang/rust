@@ -17,7 +17,7 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
+    AdtDef, AdtKind, AssocItem, Binder, ClosureArgs, ClosureKind, CoroutineArgsExt, EarlyBinder,
     ExistentialTraitRef, FnSig, GenericArgs, Instance, InstanceKind, Intrinsic, IntrinsicDef, List,
     PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
     ValTree, VariantDef, VtblEntry,
@@ -109,6 +109,10 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         } else {
             None
         }
+    }
+
+    pub fn is_closure_like(&self, def_id: DefId) -> bool {
+        matches!(self.tcx.def_kind(def_id), DefKind::Closure)
     }
 
     fn filter_static_def(&self, def_id: DefId) -> Option<DefId> {
@@ -419,6 +423,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
             Intrinsic::Backend { llvm } => llvm,
         }
         .to_string()
+    }
+
+    /// Interpret the generic args as the args of a closure type and return it.
+    pub fn as_closure(&self, args_ref: GenericArgs<'tcx>) -> ClosureArgs<TyCtxt<'tcx>> {
+        args_ref.as_closure()
     }
 
     /// Retrieve the closure signature for the given generic arguments.

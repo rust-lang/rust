@@ -17,11 +17,11 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureDef, ClosureKind, Constness,
-    CoroutineDef, Discr, FieldDef, FloatTy, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
-    ForeignModuleDef, GenericArgs, GenericClauses, Generics, ImplDef, ImplTrait, IntrinsicDef,
-    LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst,
-    TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
+    AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureArgs, ClosureDef, ClosureKind,
+    Constness, CoroutineDef, Discr, FieldDef, FloatTy, FnDef, ForeignDef, ForeignItemKind,
+    ForeignModule, ForeignModuleDef, GenericArgs, GenericClauses, Generics, ImplDef, ImplTrait,
+    IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty,
+    TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
 };
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
@@ -440,6 +440,21 @@ impl<'tcx> CompilerInterface<'tcx> {
         self.with_cx(|tables, cx| {
             let def_id = def.0.internal(tables, cx.tcx);
             cx.intrinsic_name(def_id)
+        })
+    }
+
+    /// Retrieve the closure signature for the given generic arguments.
+    pub(crate) fn as_closure(&self, args: &GenericArgs) -> ClosureArgs {
+        self.with_cx(|tables, cx| {
+            let args_ref = args.internal(tables, cx.tcx);
+            cx.as_closure(args_ref).stable(tables, cx)
+        })
+    }
+
+    pub(crate) fn is_closure_like(&self, def_id: DefId) -> bool {
+        self.with_cx(|tables, cx| {
+            let def_id = def_id.internal(tables, cx.tcx);
+            cx.is_closure_like(def_id)
         })
     }
 

@@ -38,6 +38,10 @@ impl DefId {
     pub fn span(&self) -> Span {
         with(|cx| cx.span_of_a_def(*self))
     }
+
+    pub fn is_closure_like(&self) -> bool {
+        with(|cx| cx.is_closure_like(*self))
+    }
 }
 
 /// A trait for retrieving information about a particular definition.
