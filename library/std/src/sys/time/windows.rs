@@ -24,7 +24,18 @@ pub fn now() -> Instant {
 
     // "QPC does not go backward.", so the frequency cannot be negative.
     let freq = freq.cast_unsigned();
-    let nanos = Nanoseconds::new((NANOS_PER_SEC.strict_mul(subsec_counts) / freq) as u32).unwrap();
+    // Microsoft guarantees that QPC does not roll over for at least a 100 years
+    // after system boot. Thus, the frequency must be less than
+    //
+    //     64
+    //    2                      1
+    // ───────── = 5849424173.55 ─
+    // 100 years                 s
+    //
+    // Since `subsec_counts` is the remainder of the division by the frequency,
+    // it similarly must be lower than 5849424174. Multiplying that by a billion
+    // yields a 63-bit number, and hence we can safely use 64-bit arithmetic here.
+    let nanos = Nanoseconds::new(((NANOS_PER_SEC * subsec_counts) / freq) as u32).unwrap();
 
     Instant { secs, nanos }
 }

@@ -814,7 +814,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
     // so we need to convert the second/nanosecond-based `Instant` to those.
     let Ok(secs) = u64::try_from(deadline.secs) else {
         // The epoch of `Instant` is the system boot time. Since the deadline
-        // is that, it has already passed, so we can return immediately.
+        // is before that, it has already passed, so we can return immediately.
         return;
     };
 

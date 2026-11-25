@@ -205,7 +205,7 @@ mod instant_internal {
                     return Err(());
                 }
 
-                let core_freq_mhz = cpuid.ecx;
+                let core_freq_hz = cpuid.ecx;
                 let core_freq_tsc_mul = cpuid.ebx;
                 let core_freq_tsc_div = cpuid.eax;
 
@@ -216,7 +216,7 @@ mod instant_internal {
 
                 Ok(Slope {
                     multiplier: core_freq_tsc_div,
-                    divisor: core_freq_mhz.widening_mul(core_freq_tsc_mul),
+                    divisor: core_freq_hz.widening_mul(core_freq_tsc_mul),
                 })
             })
             .ok()?;
