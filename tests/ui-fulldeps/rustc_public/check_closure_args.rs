@@ -1,6 +1,5 @@
 //@ run-pass
-//! Tests stable mir API for retrieving the body of a closure.
-
+//! Tests rustc_public API for getting args of a closure type also with additional information 
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
