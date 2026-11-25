@@ -1,8 +1,8 @@
-//! Reporting a mismatched higher-ranked projection bound on a method argument
-//! used to ICE with "cannot relate bound region" in the new solver.
-//!
-//! Regression test for <https://github.com/rust-lang/rust/issues/151312>.
 //@ compile-flags: -Znext-solver
+//! Regression test for <https://github.com/rust-lang/rust/issues/151312>.
+//! Reporting a mismatched higher-ranked projection bound on a method argument
+//! used to ICE with "cannot relate bound region" in the new solver. Fixed by
+//! <https://github.com/rust-lang/rust/pull/158536>.
 
 pub struct Foo;
 
