@@ -807,10 +807,11 @@ impl Step for StdLink {
             let sysroot = builder.out.join(compiler.host.triple).join("stage0-sysroot");
 
             if builder.local_rebuild {
-                // On local rebuilds this path might be a symlink to the project root,
-                // which can be read-only (e.g., on CI). So remove it before copying
+                // On local rebuilds these paths might be symlinks to the project root,
+                // which can be read-only (e.g., on CI). So remove them before copying
                 // the stage0 lib.
                 let _ = fs::remove_dir_all(sysroot.join("lib/rustlib/src/rust"));
+                let _ = fs::remove_dir_all(sysroot.join("lib/rustlib/rustc-src/rust"));
             }
 
             builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
@@ -2043,10 +2044,15 @@ impl Step for Sysroot {
         }
 
         // Symlink the source root into the same location inside the sysroot,
-        // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
-        // so that any tools relying on `rust-src` also work for local builds,
-        // and also for translating the virtual `/rustc/$hash` back to the real
-        // directory (for running tests with `rust.remap-debuginfo = true`).
+        // where `rust-src` and `rustc-src` components would go (`$sysroot/lib/rustlib/src/rust`
+        // and `$sysroot/lib/rustlib/rustc-src/rust`), so that any tools relying on them also
+        // work for local builds, and also for translating the virtual `/rustc/$hash` back to
+        // the real directory (for running tests with `rust.remap-debuginfo = true`).
+        //
+        // Skip stage 0: `StdLink` recursively copies the stage 0 toolchain's `lib` directory
+        // into `stage0-sysroot/lib`, so symlinking `builder.src` here would cause `cp_link_r`
+        // to follow the symlink and overwrite the source tree if the stage 0 toolchain includes
+        // `rust-src` or `rustc-src` (`rustc-dev`).
         if compiler.stage != 0 {
             let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
             t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
@@ -2068,23 +2074,23 @@ impl Step for Sysroot {
                 }
                 helpers::exit_process(1);
             }
-        }
 
-        // rustc-src component is already part of CI rustc's sysroot
-        if !builder.download_rustc() {
-            let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
-            t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
-            let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
-            if let Err(e) =
-                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
-            {
-                eprintln!(
-                    "ERROR: creating symbolic link `{}` to `{}` failed with {}",
-                    sysroot_lib_rustlib_rustcsrc_rust.display(),
-                    builder.src.display(),
-                    e,
-                );
-                helpers::exit_process(1);
+            // rustc-src component is already part of CI rustc's sysroot
+            if !builder.download_rustc() {
+                let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+                t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+                let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+                if let Err(e) =
+                    symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+                {
+                    eprintln!(
+                        "ERROR: creating symbolic link `{}` to `{}` failed with {}",
+                        sysroot_lib_rustlib_rustcsrc_rust.display(),
+                        builder.src.display(),
+                        e,
+                    );
+                    helpers::exit_process(1);
+                }
             }
         }
 
