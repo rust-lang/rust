@@ -95,6 +95,36 @@ fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: QueryCycle<'tcx>
     guar.raise_fatal()
 }
 
+pub(crate) fn cannot_unwind<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _def_id: DefId,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    err.cancel();
+    false
+}
+
+pub(crate) fn cannot_unwind_shim<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _shim: ty::ShimKind<'tcx>,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    err.cancel();
+    false
+}
+
+pub(crate) fn cannot_unwind_instance<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _instance: ty::Instance<'tcx>,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    err.cancel();
+    false
+}
+
 pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,

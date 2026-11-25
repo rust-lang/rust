@@ -2801,6 +2801,27 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Whether this function's MIR body is proven never to unwind. `false` means "no proof was
+    /// found", not that it unwinds.
+    query cannot_unwind(def_id: DefId) -> bool {
+        desc { "checking whether the body of `{}` never unwinds", tcx.def_path_str(def_id) }
+        separate_provide_extern
+        handle_cycle_error
+    }
+
+    /// The same question as `cannot_unwind`, for a body the compiler writes itself.
+    query cannot_unwind_shim(shim: ty::ShimKind<'tcx>) -> bool {
+        desc { "checking whether shim `{:?}` never unwinds", shim }
+        handle_cycle_error
+    }
+
+    /// The same question as `cannot_unwind`, for one monomorphization rather than a declaration:
+    /// only here are the types behind a generic parameter or a generic type's drop concrete.
+    query cannot_unwind_instance(instance: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether instance `{}` never unwinds", instance }
+        handle_cycle_error
+    }
+
     /// Perform monomorphization-time checking on this item.
     /// This is used for lints/errors that can only be checked once the instance is fully
     /// monomorphized.
