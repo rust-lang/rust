@@ -1,5 +1,12 @@
+error: internal compiler error: compiler/rustc_mir_transform/src/validate.rs:LL:CC: broken MIR in Item(DefId(0:36 ~ metadata_after_monomorphization[5cbc]::main)) (after phase change to runtime-optimized) at bb10[0]:
+                                WrapUnsafeBinder does not produce a ty::UnsafeBinder
+  --> $DIR/metadata-after-monomorphization.rs:67:22
+   |
+LL |     let r = unsafe { &unwrap_binder!(*p) };
+   |                      ^^^^^^^^^^^^^^^^^^^
 
-thread 'rustc' ($TID) panicked at compiler/rustc_codegen_llvm/src/debuginfo/utils.rs:LL:CC:
-wide_pointer_kind() - Encountered unexpected `pointee_tail_ty`: Binder { value: std::mem::ManuallyDrop<[&'^0 u8]>, bound_vars: [Region(BrAnon)] }
-error: the compiler unexpectedly panicked. This is a bug
+
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
+Box<dyn Any>
+error: aborting due to 1 previous error
 

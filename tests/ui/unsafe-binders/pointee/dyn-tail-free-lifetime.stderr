@@ -17,7 +17,7 @@ error[E0271]: type mismatch resolving `<unsafe<> ManuallyDrop<dyn Tr<'x>> as Poi
   --> $DIR/dyn-tail-free-lifetime.rs:21:19
    |
 LL |     metadata_is::<unsafe<'a> MD<dyn Tr<'x> + 'x>, DynMetadata<dyn Tr<'x> + 'x>>();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `DynMetadata<dyn Tr<'_>>`, found `DynMetadata<unsafe<> ManuallyDrop<_>>`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `DynMetadata<dyn Tr<'_>>`, found `DynMetadata<ManuallyDrop<dyn Tr<'x>>>`
    |
    = note: expected struct `DynMetadata<(dyn Tr<'x> + 'x)>`
               found struct `DynMetadata<unsafe<> ManuallyDrop<(dyn Tr<'x> + 'x)>>`

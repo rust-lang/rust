@@ -549,9 +549,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             ty::Foreign(..) => {
                 // Unsized, but not wide.
             }
-            &ty::UnsafeBinder(inner) => {
-                self.check_wide_ptr_meta(meta, inner.skip_binder())?;
-            }
             _ => bug!("Unexpected unsized type tail: {:?}", tail),
         }
 

@@ -16,8 +16,8 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::{bug, span_bug, sym};
 use rustc_structures::Limit;
-use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::{FnMutDelegate, PredicateProxy};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -27,7 +27,7 @@ use crate::mir;
 use crate::query::Providers;
 use crate::traits::ObligationCause;
 use crate::ty::intrinsic::Intrinsic;
-use crate::ty::layout::{FloatExt, IntegerExt};
+use crate::ty::layout::{FloatExt, HasTyCtxt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgs, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
@@ -219,12 +219,30 @@ impl<'tcx> TyCtxt<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
         self.assert_fully_normalized(typing_env, ty);
-        self.struct_tail_raw(
-            ty,
-            &ObligationCause::dummy(),
-            |ty| self.normalize_erasing_regions(typing_env, ty),
-            || {},
-        )
+        let mut tail = ty;
+        loop {
+            tail = self.struct_tail_raw(
+                tail,
+                &ObligationCause::dummy(),
+                |ty| self.normalize_erasing_regions(typing_env, ty),
+                || {},
+            );
+            if let ty::UnsafeBinder(inner) = *tail.kind() {
+                let delegate = FnMutDelegate {
+                    regions: &mut |_br: ty::BoundRegion<'tcx>| self.tcx().lifetimes.re_erased,
+                    types: &mut |_bound_ty: ty::BoundTy<'tcx>| {
+                        unreachable!("we only replace regions in nll_relate, not types")
+                    },
+                    consts: &mut |_bound_const: ty::BoundConst<'tcx>| {
+                        unreachable!("we only replace regions in nll_relate, not consts")
+                    },
+                };
+
+                tail = self.tcx().replace_bound_vars_uncached(*inner, delegate);
+                continue;
+            }
+            return tail;
+        }
     }
 
     /// Returns true if a type has metadata.
