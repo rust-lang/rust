@@ -104,9 +104,19 @@ impl<'tcx> EquivalenceClasses {
                 for statement in bb_d.statements.iter() {
                     std::mem::discriminant(&statement.kind).hash(&mut hasher);
                     statement.source_info.hash(&mut hasher);
-                    match statement.kind {
+                    match &statement.kind {
                         StatementKind::StorageLive(local) => local.hash(&mut hasher),
                         StatementKind::StorageDead(local) => local.hash(&mut hasher),
+                        // in derives for large enums, we get a potentially large amount of blocks
+                        // that are _x = <...>; goto -> ...
+                        // These are distinguished by the following. Otherwise they would be
+                        // distinguished in the exact check later which is expensive
+                        StatementKind::Assign(assign) => {
+                            let (_place, rvalue) = &**assign;
+                            if let Rvalue::Use(Operand::Constant(c), _) = rvalue {
+                                c.const_.hash(&mut hasher);
+                            }
+                        }
                         _ => (),
                     }
                 }
