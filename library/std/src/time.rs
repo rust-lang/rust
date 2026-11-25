@@ -390,11 +390,11 @@ impl Instant {
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
         match ops::diff((self.secs, self.nanos), (earlier.secs, earlier.nanos)) {
+            Ok(dur) => Some(dur),
             // On Windows there is a threshold below which we consider two timestamps
             // equivalent due to measurement error. For more details and documentation
             // consult the documentation of `epsilon`.
-            Ok(dur) | Err(dur) if dur <= time::epsilon() => Some(Duration::ZERO),
-            Ok(dur) => Some(dur),
+            Err(dur) if dur <= time::epsilon() => Some(Duration::ZERO),
             Err(_) => None,
         }
     }
