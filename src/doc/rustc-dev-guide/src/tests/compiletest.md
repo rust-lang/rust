@@ -809,7 +809,8 @@ pub fn identity(ts: TokenStream) -> TokenStream {
 
 ### Auxiliary lint
 
-By using an `aux-lint` directive in a `ui-fulldeps` test, you can build a 'lint library' file which will be loaded into rustc's lints when running your test.
+By using an `aux-lint` directive in a `ui-fulldeps` test,
+you can build a 'lint library' file which will be loaded into rustc's lints when running your test.
 
 ```rs
 // tests/ui-fulldeps/lint_test.rs
