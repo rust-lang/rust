@@ -10,7 +10,8 @@ use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{debug, instrument};
 
-use crate::Const;
+use crate::region_constraint::LeafRegionConstraint::AliasTyOutlivesViaEnv;
+use crate::{BoundTyKind, Const};
 
 // Workaround for TransitiveRelation being in rustc_data_structures which isn't accessible on stable
 #[cfg(not(feature = "nightly"))]
@@ -432,6 +433,21 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
         And(i
             .into_iter()
             .filter(|(leaf, _)| {
+                match leaf {
+                    AliasTyOutlivesViaEnv(binder) => {
+                        binder.bound_vars().iter().for_each(|kind| {
+                            let has_name = matches!(
+                                kind,
+                                BoundVariableKind::Region(
+                                    BoundRegionKind::Named(_)
+                                        | BoundRegionKind::NamedForPrinting(_)
+                                ) | BoundVariableKind::Ty(BoundTyKind::Param(_))
+                            );
+                            debug_assert!(!has_name);
+                        });
+                    }
+                    _ => {}
+                }
                 // Outlives is reflexive so a `'a: 'a` leaf is always true and carries no
                 // information. Dropping it here keeps the rest of the code from having to special
                 // case it, and is what lets an OR with a reflexive candidate be recognized as true.
@@ -1230,9 +1246,13 @@ impl<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> TypeFolder<I>
         match r.kind() {
             RegionKind::RePlaceholder(p) if p.universe == self.universe => {
                 let existing_var_count = self.existing_var_count();
+
+                // i just want to make NamedForPrinting and Named become Anon, ClosureEnv has some semantic information
+                let is_closure = matches!(p.bound.kind, BoundRegionKind::ClosureEnv);
+
                 let mapped_var = self.regions.entry(r).or_insert(BoundRegion {
                     var: BoundVar::from_usize(existing_var_count),
-                    kind: p.bound.kind,
+                    kind: if is_closure { p.bound.kind } else { BoundRegionKind::Anon },
                 });
                 Region::new_bound(cx, self.current_index, *mapped_var)
             }
