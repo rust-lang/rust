@@ -1,6 +1,5 @@
 org = "rust-lang"
 repo = "rustc-dev-guide"
 path = "src/doc/rustc-dev-guide"
-
-[push-pr]
-suffix = "r? @ghost"
+push-pr.suffix = "r? @ghost"
+pull-pr.suffix = "r? @ghost"
