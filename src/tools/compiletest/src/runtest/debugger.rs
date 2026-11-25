@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::directives::{LineNumber, line_directive};
+use crate::directives::{LineNumber, Location, line_directive};
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -32,6 +32,7 @@ impl DebuggerCommands {
         let mut check_lines = vec![];
         let reader = BufReader::new(File::open(file.as_std_path()).unwrap());
         for (line_number, line) in LineNumber::enumerate().zip(reader.lines()) {
+            let location = Location { file_path: file, line_number };
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
 
             // Breakpoints appear on lines with actual code, typically at the end of the line.
@@ -40,7 +41,7 @@ impl DebuggerCommands {
                 continue;
             }
 
-            let Some(directive) = line_directive(file, line_number, &line) else { continue };
+            let Some(directive) = line_directive(location, &line) else { continue };
             let Ok(directive) = directive.map_err(|e| e.raise_fatal());
 
             if !directive.applies_to_test_revision(test_revision) {

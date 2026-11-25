@@ -1,18 +1,15 @@
 use std::fmt;
 
-use camino::Utf8Path;
-
-use crate::directives::LineNumber;
+use crate::directives::Location;
 use crate::{error, help};
 
 /// If the given line begins with the appropriate comment prefix for a directive,
 /// returns a struct containing various parts of the directive.
 pub(crate) fn line_directive<'a>(
-    file_path: &'a Utf8Path,
-    line_number: LineNumber,
+    location: Location<'a>,
     line: &'a str,
 ) -> Option<Result<DirectiveLine<'a>, Error<'a>>> {
-    let error = |kind| Some(Err(Error { kind, file_path, line_number }));
+    let error = |kind| Some(Err(Error { kind, location }));
 
     let comment = line.trim_start().strip_prefix("//")?;
     let trimmed_comment = comment.trim_start();
@@ -55,7 +52,7 @@ pub(crate) fn line_directive<'a>(
     // The directive name ends at the first occurrence of colon, space, or end-of-string.
     let name = raw_directive.split([':', ' ']).next().expect("split is never empty");
 
-    Some(Ok(DirectiveLine { file_path, line_number, revision, raw_directive, name }))
+    Some(Ok(DirectiveLine { location, revision, raw_directive, name }))
 }
 
 /// The (partly) broken-down contents of a line containing a test directive,
@@ -75,12 +72,11 @@ pub(crate) fn line_directive<'a>(
 /// ```
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct DirectiveLine<'a> {
-    /// Path of the file containing this line.
+    /// The location of this directive line.
     ///
     /// Mostly used for diagnostics, but some directives (e.g. `//@ pp-exact`)
     /// also use it to compute a value based on the filename.
-    pub(crate) file_path: &'a Utf8Path,
-    pub(crate) line_number: LineNumber,
+    pub(crate) location: Location<'a>,
 
     /// Some test directives start with a revision name in square brackets
     /// (e.g. `[foo]`), and only apply to that revision of the test.
@@ -141,8 +137,7 @@ impl<'ln> DirectiveLine<'ln> {
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct Error<'a> {
     pub(crate) kind: ErrorKind<'a>,
-    pub(crate) file_path: &'a Utf8Path,
-    pub(crate) line_number: LineNumber,
+    pub(crate) location: Location<'a>,
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -156,11 +151,9 @@ pub(crate) enum ErrorKind<'a> {
 impl Error<'_> {
     // FIXME: Just report the error, poison the context and keep going.
     pub(crate) fn raise_fatal(self) -> ! {
-        let Self { kind, file_path, line_number } = self;
+        let error = |message| error!("malformed directive: {message} at {}", self.location);
 
-        let error = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
-
-        match kind {
+        match self.kind {
             ErrorKind::LeadingRevisionCondition { revision, context } => {
                 error("found revision condition before `@` instead of after");
                 help!("rewrite the start of the line to `//@[{revision}] ` (from `{context}`)");

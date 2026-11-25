@@ -364,7 +364,6 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
                 &cx.config,
                 &cx.cache,
                 test_name,
-                &test_path,
                 &filterable_path,
                 &file_directives,
                 &variant,
