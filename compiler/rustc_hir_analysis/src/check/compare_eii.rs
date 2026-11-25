@@ -181,8 +181,20 @@ pub(crate) fn compare_eii_statics<'tcx>(
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    let declaration_ty = tcx.type_of(foreign_item).instantiate_identity().skip_norm_wip();
-    debug!(?declaration_ty);
+    let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
+    let normalize = |ty: Ty<'tcx>| -> Result<Ty<'tcx>, ErrorGuaranteed> {
+        if !ty.has_aliases() {
+            return Ok(ty);
+        }
+        match ocx.deeply_normalize(&norm_cause, param_env, Unnormalized::new_wip(ty)) {
+            Ok(ty) => Ok(ty),
+            Err(errors) => Err(infcx.err_ctxt().report_fulfillment_errors(errors)),
+        }
+    };
+    let declaration_ty =
+        normalize(tcx.type_of(foreign_item).instantiate_identity().skip_norm_wip())?;
+    let external_impl_ty = normalize(external_impl_ty)?;
+    debug!(?declaration_ty, ?external_impl_ty);
 
     // FIXME: Copied over from compare impl items, same issue:
     // We'd want to keep more accurate spans than "the method signature" when
@@ -204,6 +216,18 @@ pub(crate) fn compare_eii_statics<'tcx>(
             tcx.item_name(external_impl)
         );
         diag.span_note(eii_attr_span, "expected this because of this attribute");
+        infcx.err_ctxt().note_type_err(
+            &mut diag,
+            &cause,
+            None,
+            Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
+                expected: declaration_ty.into(),
+                found: external_impl_ty.into(),
+            }))),
+            terr,
+            false,
+            None,
+        );
 
         return Err(diag.emit_err());
     }
