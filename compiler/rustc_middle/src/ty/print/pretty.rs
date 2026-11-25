@@ -3496,8 +3496,6 @@ define_print_and_forward_display! {
     }
 }
 
-// Predicate and Clause are owned by rustc_type_ir, which provides their Display impls.
-// Keep rustc's Print implementations here so its existing printer is unchanged.
 define_print! {
     (self, p):
 

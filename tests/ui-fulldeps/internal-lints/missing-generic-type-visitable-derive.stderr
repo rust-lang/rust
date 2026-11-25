@@ -34,8 +34,8 @@ LL | enum EnumDerivesRegular {}
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
   --> $DIR/missing-generic-type-visitable-derive.rs:40:1
    |
-LL | struct GenericOverIDerivesRegular<I: Interner>(I::Clause);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct GenericOverIDerivesRegular<I: Interner>(rustc_type_ir::predicates::Clause<I>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: mark the type with `#[derive(GenericTypeVisitable)]`
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`

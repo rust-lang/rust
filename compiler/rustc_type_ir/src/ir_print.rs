@@ -65,8 +65,6 @@ where
     }
 }
 
-// Display is implemented where the representation is defined. Each frontend
-// provides the actual formatting through IrPrint.
 impl<I: Interner + IrPrint<Predicate<I>>> fmt::Display for Predicate<I> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         <I as IrPrint<Self>>::print(self, fmt)
@@ -115,9 +113,7 @@ where
     }
 }
 
-/// Provides frontend-specific diagnostic formatting for predicates.
-///
-/// The frontend owns the type-printing context and long-type path handling.
+/// Formats predicates and clauses for diagnostics, including long-type paths.
 #[cfg(feature = "nightly")]
 pub trait PredicateDiagFormatter: Interner {
     fn predicate_diag_string(

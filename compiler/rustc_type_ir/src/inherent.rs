@@ -15,8 +15,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, CallerBoundsAccessor, CollectAndApply, Const, FieldInfo, Interner,
-    NoClauses, Region,
+    self as ty, CallerBoundsAccessor, CollectAndApply, Const, FieldInfo, Interner, NoClauses,
+    Region,
 };
 
 #[rust_analyzer::prefer_underscore_import]

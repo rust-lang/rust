@@ -17,10 +17,7 @@ pub trait RelateExt: InferCtxtLike {
         variance: ty::Variance,
         rhs: T,
         span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, Predicate<Self::Interner>>>,
-        TypeError<Self::Interner>,
-    >;
+    ) -> Result<Vec<Goal<Self::Interner, Predicate<Self::Interner>>>, TypeError<Self::Interner>>;
 }
 
 impl<Infcx: InferCtxtLike> RelateExt for Infcx {
@@ -31,10 +28,8 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         variance: ty::Variance,
         rhs: T,
         span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, Predicate<Self::Interner>>>,
-        TypeError<Self::Interner>,
-    > {
+    ) -> Result<Vec<Goal<Self::Interner, Predicate<Self::Interner>>>, TypeError<Self::Interner>>
+    {
         let mut relate = SolverRelating::new(self, variance, param_env, span);
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
@@ -383,19 +378,14 @@ where
 
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<
-            Item: ty::Upcast<I, Predicate<I>>,
-        >,
+        obligations: impl IntoIterator<Item: ty::Upcast<I, Predicate<I>>>,
     ) {
         self.goals.extend(
             obligations.into_iter().map(|pred| Goal::new(self.infcx.cx(), self.param_env, pred)),
         );
     }
 
-    fn register_goals(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<I, Predicate<I>>>,
-    ) {
+    fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, Predicate<I>>>) {
         self.goals.extend(obligations);
     }
 }

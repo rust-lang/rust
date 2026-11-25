@@ -450,13 +450,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
     self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
     env_region: Region<I>,
-) -> Result<
-    (
-        ty::Binder<I, AsyncCallableRelevantTypes<I>>,
-        Vec<Predicate<I>>,
-    ),
-    NoSolution,
-> {
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<Predicate<I>>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             if !cx.coroutine_is_async(cx.coroutine_for_closure(def_id)) {
@@ -618,13 +612,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 fn fn_item_to_async_callable<I: Interner>(
     cx: I,
     bound_sig: ty::Binder<I, ty::FnSig<I>>,
-) -> Result<
-    (
-        ty::Binder<I, AsyncCallableRelevantTypes<I>>,
-        Vec<Predicate<I>>,
-    ),
-    NoSolution,
-> {
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<Predicate<I>>), NoSolution> {
     let sig = bound_sig.skip_binder();
     let future_trait_def_id = cx.require_trait_lang_item(SolverTraitLangItem::Future);
     // `FnDef` and `FnPtr` only implement `AsyncFn*` when their

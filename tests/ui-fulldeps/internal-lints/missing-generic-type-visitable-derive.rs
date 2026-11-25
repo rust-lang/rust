@@ -37,7 +37,7 @@ enum EnumDerivesRegular {}
 // Same but the type is generic, over the interner
 
 #[derive(TypeVisitable_Generic)]
-struct GenericOverIDerivesRegular<I: Interner>(I::Clause);
+struct GenericOverIDerivesRegular<I: Interner>(rustc_type_ir::predicates::Clause<I>);
 //~^ ERROR missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
 
 // manually hand-rolled `#[derive_where(Debug; I: Interner)]`

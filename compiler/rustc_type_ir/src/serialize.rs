@@ -139,9 +139,7 @@ where
     }
 }
 
-/// Encodes a shared predicate using the frontend's existing representation.
-///
-/// Rustc uses predicate shorthands for metadata and incremental caches.
+/// Allows rustc to use its shorthand encoding for predicates.
 pub trait PredicateEncoder<I: Interner>: Encoder {
     fn encode_predicate(&mut self, predicate: Predicate<I>);
 }

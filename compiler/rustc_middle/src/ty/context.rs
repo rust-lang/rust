@@ -2006,7 +2006,6 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, WithCachedTypeInfo<ConstKind<
     }
 }
 
-// Lift the interned representation used by the shared Predicate and Clause.
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>>
     for Interned<'a, WithCachedTypeInfo<ty::Binder<'a, ty::PredicateKind<'a>>>>
 {
@@ -2016,8 +2015,8 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>>
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
         assert!(tcx.interners.predicate.contains_pointer_to(&InternedInSet(&*self.0)));
 
-        // SAFETY: The predicate is interned in this TyCtxt, so its storage
-        // remains valid for the lifetime of the target context.
+        // SAFETY: we just checked that the predicate is interned in this `TyCtxt`,
+        // so it is valid for the lifetime of the target context.
         unsafe { mem::transmute(self) }
     }
 }

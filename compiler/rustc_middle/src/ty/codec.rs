@@ -128,7 +128,7 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-/// Encode a predicate using rustc's existing shorthand representation.
+/// Encode a predicate using shorthands.
 pub fn encode_predicate<'tcx, E: TyEncoder<'tcx>>(e: &mut E, predicate: ty::Predicate<'tcx>) {
     let kind = predicate.kind();
     kind.bound_vars().encode(e);
@@ -196,7 +196,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-/// Decode a predicate, resolving shorthand references before interning it.
+/// Decode and intern a predicate, resolving shorthands if necessary.
 pub fn decode_predicate<'tcx, D: TyDecoder<'tcx>>(decoder: &mut D) -> ty::Predicate<'tcx> {
     let bound_vars = Decodable::decode(decoder);
     // Handle shorthands first, if we have a usize > 0x80.
