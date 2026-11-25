@@ -344,14 +344,6 @@ pub fn pat_to_string(ann: &dyn PpAnn, pat: &hir::Pat<'_>) -> String {
     to_string(ann, |s| s.print_pat(pat))
 }
 
-pub fn expr_to_string(ann: &dyn PpAnn, pat: &hir::Expr<'_>) -> String {
-    to_string(ann, |s| s.print_expr(pat))
-}
-
-pub fn item_to_string(ann: &dyn PpAnn, pat: &hir::Item<'_>) -> String {
-    to_string(ann, |s| s.print_item(pat))
-}
-
 impl<'a> State<'a> {
     fn bclose_maybe_open(&mut self, span: rustc_span::Span, cb: Option<BoxMarker>) {
         self.maybe_print_comment(span.hi());
