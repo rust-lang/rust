@@ -87,6 +87,7 @@
 // tidy-alphabetical-start
 #![feature(asm_experimental_arch)]
 #![feature(byte_str_internals)]
+#![feature(cfg_c_types)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(cfg_target_has_reliable_f16b)]
 #![feature(const_cmp)]

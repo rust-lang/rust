@@ -637,6 +637,7 @@ symbols! {
         cfg_attr,
         cfg_attr_multi,
         cfg_boolean_literals,
+        cfg_c_types,
         cfg_contract_checks,
         cfg_doctest,
         cfg_eval,

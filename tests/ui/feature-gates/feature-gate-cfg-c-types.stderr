@@ -1,0 +1,174 @@
+error[E0658]: `cfg(c_char)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:2:5
+   |
+LL |     c_char = "i8" => i8,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_char)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:3:5
+   |
+LL |     c_char = "u8" => u8,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_schar)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:7:5
+   |
+LL |     c_schar = "i8" => i8,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_uchar)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:11:5
+   |
+LL |     c_uchar = "u8" => u8,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_short)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:15:5
+   |
+LL |     c_short = "i16" => i16,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_ushort)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:19:5
+   |
+LL |     c_ushort = "u16" => u16,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_int)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:23:5
+   |
+LL |     c_int = "i16" => i16,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_int)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:24:5
+   |
+LL |     c_int = "i32" => i32,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_uint)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:28:5
+   |
+LL |     c_uint = "u16" => u16,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_uint)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:29:5
+   |
+LL |     c_uint = "u32" => u32,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_long)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:33:5
+   |
+LL |     c_long = "i32" => i32,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_long)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:34:5
+   |
+LL |     c_long = "i64" => i64,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_ulong)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:38:5
+   |
+LL |     c_ulong = "u32" => u32,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_ulong)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:39:5
+   |
+LL |     c_ulong = "u64" => u64,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_longlong)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:43:5
+   |
+LL |     c_longlong = "i64" => i64,
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_ulonglong)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:47:5
+   |
+LL |     c_ulonglong = "u64" => u64,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_float)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:51:5
+   |
+LL |     c_float = "f32" => f32,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_double)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:55:5
+   |
+LL |     c_double = "f32" => f32,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(c_double)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-c-types.rs:56:5
+   |
+LL |     c_double = "f64" => f64,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_c_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
