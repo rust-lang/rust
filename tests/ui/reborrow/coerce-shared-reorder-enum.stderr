@@ -1,0 +1,8 @@
+error: implementing `CoerceShared` requires source and target types to use the same field style
+  --> $DIR/coerce-shared-reorder-enum.rs:5:20
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |                    ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

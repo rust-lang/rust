@@ -409,23 +409,27 @@ fn validate_coerce_shared_fields<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
 
-    if source_def.adt_kind() != target_def.adt_kind() {
+    // FIXME(reborrow): should we allow target having more variants than the source?
+    if source_def.adt_kind() != target_def.adt_kind()
+        || source_def.variants().len() != target_def.variants().len()
+    {
         return Err(tcx
             .dcx()
             .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
     }
 
-    for source_variant in source_def.variants() {
-        let target_variant = if !source_def.is_enum() {
-            target_def.non_enum_variant()
-        } else if let Some((_, target_variant)) = target_def.find_variant(source_variant.name) {
-            target_variant
-        } else {
-            // FIXME(reborrow): should we support target has more variants than source?
+    for (source_variant, target_variant) in
+        source_def.variants().iter().zip(target_def.variants().iter())
+    {
+        // FIXME(reborrow): should we evaluate the const value of `VariantDiscr::Explicit(DefId)`?
+        if source_def.is_enum()
+            && (source_variant.name != target_variant.name
+                || source_variant.discr != target_variant.discr)
+        {
             return Err(tcx
                 .dcx()
                 .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
-        };
+        }
 
         let fields = match collect_coerce_shared_field_pairs(
             tcx,

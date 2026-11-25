@@ -2590,15 +2590,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // this loop at the time of writing this comment.
             let ty::Adt(src_adt, src_args) = src_ty.kind() else { unreachable!() };
 
-            for dst_variant in dst_adt.variants() {
-                let src_variant = if !src_adt.is_enum() {
-                    src_adt.non_enum_variant()
-                } else {
-                    src_adt
-                        .find_variant(dst_variant.name)
-                        .expect("Reborrow target variants should include all source variants")
-                        .1
-                };
+            for (dst_variant, src_variant) in
+                dst_adt.variants().iter().zip(src_adt.variants().iter())
+            {
+                if dst_adt.is_enum() {
+                    assert_eq!(dst_variant.name, src_variant.name);
+                    assert_eq!(dst_variant.discr, src_variant.discr);
+                }
 
                 for dst_field in &dst_variant.fields {
                     let Some((_, src_field)) = src_variant.find_field(dst_field.name) else {

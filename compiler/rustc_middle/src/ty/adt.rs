@@ -19,7 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
-use rustc_span::{Symbol, bug, sym};
+use rustc_span::{bug, sym};
 use rustc_type_ir::FieldInfo;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
@@ -269,10 +269,6 @@ impl<'tcx> AdtDef<'tcx> {
             _ => panic!(),
         };
         Some(FieldInfo { base, ty, variant, variant_idx, name, field_idx })
-    }
-
-    pub fn find_variant(self, name: Symbol) -> Option<(VariantIdx, &'tcx VariantDef)> {
-        self.variants().iter_enumerated().find(|(_, def)| def.name == name)
     }
 }
 

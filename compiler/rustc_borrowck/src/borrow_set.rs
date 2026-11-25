@@ -2,7 +2,6 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 use std::ops::Index;
 
-use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_index::IndexVec;
@@ -308,14 +307,13 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         debug_assert_eq!(source_adt.adt_kind(), target_adt.adt_kind());
         let is_enum = source_adt.is_enum();
 
-        for (source_variant_idx, source_variant) in source_adt.variants().iter_enumerated() {
-            let (target_variant_idx, target_variant) = if !is_enum {
-                (FIRST_VARIANT, target_adt.non_enum_variant())
-            } else {
-                target_adt
-                    .find_variant(source_variant.name)
-                    .expect("Reborrow target variants should include all source variants")
-            };
+        for ((source_variant_idx, source_variant), (target_variant_idx, target_variant)) in
+            source_adt.variants().iter_enumerated().zip(target_adt.variants().iter_enumerated())
+        {
+            if is_enum {
+                assert_eq!(source_variant.name, target_variant.name);
+                assert_eq!(source_variant.discr, target_variant.discr);
+            }
 
             for (source_idx, source_field) in source_variant.fields.iter_enumerated() {
                 let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
