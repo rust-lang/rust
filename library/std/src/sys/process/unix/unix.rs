@@ -1020,7 +1020,10 @@ impl Process {
     pub(crate) fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
         // See note in `send_signal` regarding recycled PIDs.
         if self.status.is_some() {
-            return Ok(());
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "process group leader has already been awaited",
+            ));
         }
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {

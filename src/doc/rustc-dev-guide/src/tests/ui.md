@@ -177,10 +177,10 @@ The corresponding reference file will use the normalized output to test both
 ...
 ```
 
-Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`] for a concrete usage example.
+Please see [`ui/transmute/main.rs`][mrs] and [`main.current.stderr`] for a concrete usage example.
 
 [mrs]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/transmute/main.rs
-[`main.stderr`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/transmute/main.stderr
+[`main.current.stderr`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/transmute/main.current.stderr
 
 ## Error annotations
 
