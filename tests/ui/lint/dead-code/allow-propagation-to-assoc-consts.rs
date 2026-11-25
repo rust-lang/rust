@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(gca_min_const_items)]
 #![allow(incomplete_features)]
 #![deny(unfulfilled_lint_expectations)]
