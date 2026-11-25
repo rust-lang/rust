@@ -1,3 +1,5 @@
+#![feature(byte_str)]
+
 use core::byte_str::ByteStr;
 
 #[test]

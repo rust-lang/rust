@@ -1,6 +1,6 @@
 use core::num::*;
 
-use crate::num::assert_biteq;
+use crate::assert_biteq;
 
 macro_rules! check_int_clamp {
     ($t:ty, $ut:ty) => {

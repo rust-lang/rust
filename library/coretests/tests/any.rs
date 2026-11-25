@@ -142,7 +142,7 @@ fn dyn_type_name() {
         std::any::type_name::<dyn Fn(i32, i32) -> i32>()
     );
     assert_eq!(
-        "dyn coretests::any::dyn_type_name::Foo<Bar = i32> \
+        "dyn any::dyn_type_name::Foo<Bar = i32> \
         + core::marker::Send + core::marker::Sync",
         std::any::type_name::<dyn Foo<Bar = i32> + Send + Sync>()
     );

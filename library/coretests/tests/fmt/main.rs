@@ -1,3 +1,7 @@
+#![feature(fmt_internals)]
+#![feature(formatting_options)]
+#![expect(internal_features)]
+
 mod builders;
 mod float;
 mod num;
