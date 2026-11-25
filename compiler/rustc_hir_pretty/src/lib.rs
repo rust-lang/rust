@@ -47,7 +47,6 @@ pub enum Nested {
     ImplItem(hir::ImplItemId),
     ForeignItem(hir::ForeignItemId),
     Body(hir::BodyId),
-    BodyParamPat(hir::BodyId, usize),
 }
 
 pub trait PpAnn {
@@ -64,7 +63,6 @@ impl PpAnn for &dyn rustc_hir::intravisit::HirTyCtxt<'_> {
             Nested::ImplItem(id) => state.print_impl_item(self.hir_impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.hir_foreign_item(id)),
             Nested::Body(id) => state.print_expr(self.hir_body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(self.hir_body(id).params[i].pat),
         }
     }
 }
@@ -2341,10 +2339,12 @@ impl<'a> State<'a> {
     fn print_closure_params(&mut self, decl: &hir::FnDecl<'_>, body_id: hir::BodyId) {
         self.word("|");
         let mut i = 0;
+        let params = (self.body_params)(body_id);
+
         self.commasep(Inconsistent, decl.inputs, |s, ty| {
             let ib = s.ibox(INDENT_UNIT);
 
-            s.ann.nested(s, Nested::BodyParamPat(body_id, i));
+            s.print_pat(params[i].pat);
             i += 1;
 
             if let hir::TyKind::Infer(()) = ty.kind {
