@@ -1,3 +1,7 @@
+#![feature(const_result_trait_fn)]
+#![feature(const_trait_impl)]
+#![feature(try_trait_v2)]
+
 use core::ops::DerefMut;
 use core::option::*;
 

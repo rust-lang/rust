@@ -136,10 +136,10 @@ where
     // end of each custom type op, we scrape out the region
     // obligations that resulted). So this vector should be empty on
     // entry.
-    let pre_obligations = infcx.take_registered_region_obligations();
+    let pre_type_outlives = infcx.take_registered_type_outlives_constraints();
     assert!(
-        pre_obligations.is_empty(),
-        "scrape_region_constraints: incoming region obligations = {pre_obligations:#?}",
+        pre_type_outlives.is_empty(),
+        "scrape_region_constraints: incoming type outlives = {pre_type_outlives:#?}",
     );
     let pre_assumptions = infcx.take_registered_region_assumptions();
     assert!(
@@ -205,11 +205,11 @@ where
     // Next trait solver performs operations locally, and normalize goals should resolve vars.
     let value = infcx.deeply_resolve_ignoring_regions(value);
 
-    let region_obligations = infcx.take_registered_region_obligations();
+    let type_outlives_constraints = infcx.take_registered_type_outlives_constraints();
     let region_assumptions = infcx.take_registered_region_assumptions();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
-        region_obligations,
+        type_outlives_constraints,
         &region_constraint_data,
         region_assumptions,
     );

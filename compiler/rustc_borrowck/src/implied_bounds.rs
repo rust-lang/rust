@@ -60,7 +60,8 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
     // to deal with unconstrained regions due to #136547.
     let mut normalized_inputs_and_output = Vec::with_capacity(inputs_and_output.len());
     for &ty in &inputs_and_output {
-        let num_registered_region_obligations = infcx.num_registered_region_obligations();
+        let num_registered_type_outlives_constraints =
+            infcx.num_registered_type_outlives_constraints();
         let normalized_ty = ocx
             .deeply_normalize(&ObligationCause::dummy(), param_env, ty::Unnormalized::new_wip(ty))
             .map_err(|_| NoSolution)?;
@@ -74,7 +75,9 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
         )?);
 
         outlives_bounds.extend(consider_implied_bounds_hack_for_ty(&ocx, normalized_ty, || {
-            infcx.registered_region_obligations_since(num_registered_region_obligations)
+            infcx.registered_type_outlives_constraints_since(
+                num_registered_type_outlives_constraints,
+            )
         }));
 
         normalized_inputs_and_output.push(normalized_ty);
@@ -102,7 +105,8 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
 
             // We don't consider the constraints from normalizing the impl header
             // for the bevy implied bounds hack.
-            let num_registered_region_obligations = infcx.num_registered_region_obligations();
+            let num_registered_type_outlives_constraints =
+                infcx.num_registered_type_outlives_constraints();
             outlives_bounds.extend(compute_implied_outlives_bounds_inner(
                 &ocx,
                 param_env,
@@ -114,7 +118,11 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
             outlives_bounds.extend(consider_implied_bounds_hack_for_ty(
                 &ocx,
                 normalized_ty,
-                || infcx.registered_region_obligations_since(num_registered_region_obligations),
+                || {
+                    infcx.registered_type_outlives_constraints_since(
+                        num_registered_type_outlives_constraints,
+                    )
+                },
             ));
         }
     }

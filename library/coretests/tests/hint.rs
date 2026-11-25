@@ -1,3 +1,8 @@
+#![feature(const_cell_traits)]
+#![feature(const_destruct)]
+#![feature(const_select_unpredictable)]
+#![feature(const_trait_impl)]
+
 #[test]
 fn select_unpredictable_drop() {
     use core::cell::Cell;

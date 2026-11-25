@@ -1,3 +1,4 @@
+use core::mem;
 use std::any::TypeId;
 use std::ptr::DynMetadata;
 
@@ -56,7 +57,7 @@ fn test_dyn_creation() {
             .unwrap()
         }.get_vtable(),
         unsafe {
-            crate::mem::transmute::<_, DynMetadata<*const ()>>(
+            mem::transmute::<_, DynMetadata<*const ()>>(
                 const {
                     TypeId::of::<Garlic>().trait_info_of::<dyn Blah>()
                 }.unwrap().get_vtable(),

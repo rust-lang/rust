@@ -1,3 +1,8 @@
+#![feature(const_convert)]
+#![feature(const_destruct)]
+#![feature(const_ref_cell)]
+#![feature(const_trait_impl)]
+
 use core::cell::*;
 use core::mem::forget;
 
