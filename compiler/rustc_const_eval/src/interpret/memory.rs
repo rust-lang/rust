@@ -417,9 +417,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .into();
         };
 
-        if alloc.mutability.is_not() {
-            throw_ub_format!("deallocating immutable allocation {alloc_id}");
-        }
         if alloc_kind != kind {
             throw_ub_format!(
                 "deallocating {alloc_id}, which is {alloc_kind} memory, using {kind} deallocation operation",

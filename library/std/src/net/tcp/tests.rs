@@ -982,7 +982,6 @@ fn connect_timeout_valid() {
 // macOS with `EINVAL`; `write_all` should now transfer it via short sends.
 #[test]
 #[cfg(all(target_pointer_width = "64", unix))]
-#[cfg(not(skip_unsupported_miri_tests))] // read-only mmap not supported by Miri
 fn write_buffer_larger_than_c_int_max() {
     const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
 
