@@ -192,6 +192,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     /// A specialized version of `self.reserve(len, 1)` which requires the
     /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
+    #[cold]
     #[inline(never)]
     pub(crate) fn grow_one(&mut self) {
         // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
