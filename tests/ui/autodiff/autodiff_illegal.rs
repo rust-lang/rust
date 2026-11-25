@@ -1,9 +1,4 @@
-//@ needs-enzyme
-
 #![feature(autodiff)]
-//@ pretty-mode:expanded
-//@ pretty-compare-only
-//@ pp-exact:autodiff_illegal.pp
 
 // Test that invalid ad macros give nice errors and don't ICE.
 
