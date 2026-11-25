@@ -129,7 +129,8 @@ Similarly, you can use [`tcx.hir_node(n)`][hir_node] to lookup the node for a [`
 This returns a `Option<Node<'hir>>`, where [`Node`] is an enum defined in the map.
 By matching on this,
 you can find out what sort of node the `HirId` referred to and also get a pointer to the data
-itself. Often, you know what sort of node `n` is – e.g. if you know
+itself.
+Often, you know what sort of node `n` is – e.g. if you know
 that `n` must be some HIR expression, you can do [`tcx.hir_expect_expr(n)`][expect_expr],
 which will extract and return the [`&hir::Expr`][Expr],
 panicking if `n` is not in fact an expression.
@@ -148,10 +149,11 @@ via calls like [`tcx.parent_hir_node(n)`][parent_hir_node].
 ## HIR Bodies
 
 A [`rustc_hir::Body`] represents some kind of executable code,
-such as the body of a function/closure or the definition of a constant.
-Bodies are associated with an **owner**, which is typically some kind of item
-(e.g. an `fn()` or `const`), but could also be a closure expression
-(e.g. `|x, y| x + y`). You can use the [`TyCtxt`] to find the body
+such as the body of a function/closure, or the definition of a constant.
+Bodies are associated with an **owner**,
+which is typically some kind of item (e.g. an `fn()` or `const`),
+but could also be a closure expression (e.g. `|x, y| x + y`).
+You can use the [`TyCtxt`] to find the body
 associated with a given def-id ([`hir_maybe_body_owned_by`]) or to find
 the owner of a body ([`hir_body_owner_def_id`]).
 
