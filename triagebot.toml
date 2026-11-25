@@ -1075,7 +1075,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".libs-removed]
+required_labels = ["T-libs"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".libs-processed]
+required_labels = ["T-libs", "beta-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".libs]
 required_labels = ["T-libs"]
@@ -1100,7 +1112,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".libs-removed]
+required_labels = ["T-libs"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".libs-processed]
+required_labels = ["T-libs", "stable-accepted"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".libs]
 required_labels = ["T-libs"]
