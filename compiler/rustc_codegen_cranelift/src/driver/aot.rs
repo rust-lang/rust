@@ -19,12 +19,12 @@ use rustc_codegen_ssa::traits::{ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, WorkProduct};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
+use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_session::output::OutputType;
-use rustc_session::{BorrowedIncrCompSession, Session};
 use rustc_span::Symbol;
 
 use crate::base::CodegenedFunction;

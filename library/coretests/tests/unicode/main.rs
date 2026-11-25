@@ -1,3 +1,8 @@
+#![feature(char_is_xid)]
+#![feature(step_trait)]
+#![feature(unicode_internals)]
+#![expect(internal_features)]
+
 use core::iter::Step;
 use core::unicode::unicode_data;
 use std::ops::RangeInclusive;

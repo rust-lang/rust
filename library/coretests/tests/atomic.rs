@@ -1,3 +1,6 @@
+#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![feature(atomic_volatile)]
+
 use core::sync::atomic::Ordering::SeqCst;
 use core::sync::atomic::*;
 

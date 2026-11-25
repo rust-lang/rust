@@ -1,3 +1,7 @@
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
+#![feature(extend_one)]
+
 use core::ascii::Char;
 use core::fmt::Write;
 

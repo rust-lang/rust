@@ -1,3 +1,6 @@
+#![feature(generic_assert_internals)]
+#![expect(internal_features)]
+
 use core::asserting::{Capture, TryCaptureGeneric, TryCapturePrintable, Wrapper};
 
 macro_rules! test {

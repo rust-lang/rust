@@ -4,7 +4,6 @@ version = "0.0.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "Tests for the Rust Core Library"
-autotests = false
 autobenches = false
 edition = "2024"
 
@@ -13,10 +12,6 @@ path = "lib.rs"
 test = false
 bench = false
 doc = false
-
-[[test]]
-name = "coretests"
-path = "tests/lib.rs"
 
 [[bench]]
 name = "corebenches"

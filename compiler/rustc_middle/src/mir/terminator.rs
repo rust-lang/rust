@@ -500,11 +500,11 @@ mod helper {
     #[inline]
     #[define_opaque(Successors)]
     fn mk_successors(
-        slice: &[BasicBlock],
         option1: Option<BasicBlock>,
         option2: Option<BasicBlock>,
+        slice: &[BasicBlock],
     ) -> Successors<'_> {
-        slice.iter().copied().chain(option1.into_iter().chain(option2))
+        option1.into_iter().chain(option2.into_iter().chain(slice.iter().copied()))
     }
 
     impl SwitchTargets {
@@ -513,7 +513,7 @@ mod helper {
         #[inline]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            mk_successors(&[], Some(target), None)
+            mk_successors(Some(target), None, &[])
         }
     }
 
@@ -523,28 +523,26 @@ mod helper {
             use self::TerminatorKind::*;
             match *self {
                 // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
-                Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
-                    mk_successors(slice::from_ref(t), Some(u), Some(d))
+                Drop { target: t, unwind: UnwindAction::Cleanup(u), drop: Some(ref d), .. } => {
+                    mk_successors(Some(t), Some(u), slice::from_ref(d))
                 }
                 // 2-successors
-                Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
-                | Yield { resume: ref t, drop: Some(u), .. }
-                | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
-                | Drop { target: ref t, unwind: _, drop: Some(u), .. }
-                | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
-                | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    mk_successors(slice::from_ref(t), Some(u), None)
+                Call { target: Some(t), unwind: UnwindAction::Cleanup(u), .. }
+                | Yield { resume: t, drop: Some(u), .. }
+                | Drop { target: t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
+                | Drop { target: t, unwind: _, drop: Some(u), .. }
+                | Assert { target: t, unwind: UnwindAction::Cleanup(u), .. }
+                | FalseUnwind { real_target: t, unwind: UnwindAction::Cleanup(u) } => {
+                    mk_successors(Some(t), Some(u), &[])
                 }
                 // single successor
-                Goto { target: ref t, .. }
-                | Call { target: None, unwind: UnwindAction::Cleanup(ref t), .. }
-                | Call { target: Some(ref t), unwind: _, .. }
-                | Yield { resume: ref t, drop: None, .. }
-                | Drop { target: ref t, unwind: _, .. }
-                | Assert { target: ref t, unwind: _, .. }
-                | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    mk_successors(slice::from_ref(t), None, None)
-                }
+                Goto { target: t, .. }
+                | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
+                | Call { target: Some(t), unwind: _, .. }
+                | Yield { resume: t, drop: None, .. }
+                | Drop { target: t, unwind: _, .. }
+                | Assert { target: t, unwind: _, .. }
+                | FalseUnwind { real_target: t, unwind: _ } => mk_successors(Some(t), None, &[]),
                 // No successors
                 UnwindResume
                 | UnwindTerminate(_)
@@ -552,16 +550,18 @@ mod helper {
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => mk_successors(&[], None, None),
+                | Call { target: None, unwind: _, .. } => mk_successors(None, None, &[]),
                 // Multiple successors
                 InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    mk_successors(targets, Some(u), None)
+                    // note: this branch should be unreachable in practice,
+                    // because `InlineAsm` only ever uses `Continue`
+                    mk_successors(Some(u), None, targets)
                 }
-                InlineAsm { ref targets, unwind: _, .. } => mk_successors(targets, None, None),
-                SwitchInt { ref targets, .. } => mk_successors(&targets.targets, None, None),
+                InlineAsm { ref targets, unwind: _, .. } => mk_successors(None, None, targets),
+                SwitchInt { ref targets, .. } => mk_successors(None, None, &targets.targets),
                 // FalseEdge
-                FalseEdge { ref real_target, imaginary_target } => {
-                    mk_successors(slice::from_ref(real_target), Some(imaginary_target), None)
+                FalseEdge { real_target, imaginary_target } => {
+                    mk_successors(Some(real_target), Some(imaginary_target), &[])
                 }
             }
         }

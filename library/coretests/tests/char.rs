@@ -1,3 +1,11 @@
+#![feature(ascii_char)]
+#![feature(casefold)]
+#![feature(char_case)]
+#![feature(char_internals)]
+#![feature(const_convert)]
+#![feature(const_trait_impl)]
+#![expect(internal_features)]
+
 use std::char::{self, CharCase};
 use std::str;
 use std::str::FromStr;

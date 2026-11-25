@@ -186,7 +186,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
-        let _ = infcx.process_registered_region_obligations(&outlives_env);
+        let _ = infcx.process_registered_type_outlives_constraints(&outlives_env);
 
         // FIXME(-Zassumptions-on-binders): Handle solver_data
         let region_data =

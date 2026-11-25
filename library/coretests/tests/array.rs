@@ -1,3 +1,18 @@
+// tidy-alphabetical-start
+#![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
+#![feature(array_try_from_fn)]
+#![feature(array_try_map)]
+#![feature(const_array)]
+#![feature(const_closures)]
+#![feature(const_destruct)]
+#![feature(const_trait_impl)]
+#![feature(exact_size_is_empty)]
+#![feature(iter_advance_by)]
+#![feature(split_array)]
+#![feature(strict_provenance_lints)]
+// tidy-alphabetical-end
+#![deny(implicit_provenance_casts)]
+
 use core::cell::Cell;
 use core::num::NonZero;
 use core::sync::atomic::{AtomicUsize, Ordering};
