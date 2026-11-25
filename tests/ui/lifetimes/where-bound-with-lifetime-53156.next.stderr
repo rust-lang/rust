@@ -1,0 +1,26 @@
+error: lifetime may not live long enough
+  --> $DIR/where-bound-with-lifetime-53156.rs:35:9
+   |
+LL | impl<'a, B> OwnedWrap<B>
+   |      -- lifetime `'a` defined here
+...
+LL |     pub fn to_arc_aac(&self) -> Arc<B> {
+   |                       - let's call the lifetime of this reference `'1`
+LL |         let OwnedWrap(ref owned) = *self;
+LL |         owned.borrow().into()
+   |         ^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'a`
+
+error[E0621]: explicit lifetime required in the type of `wrap`
+  --> $DIR/where-bound-with-lifetime-53156.rs:135:5
+   |
+LL |     owned.borrow().into()
+   |     ^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `wrap`
+   |
+LL | fn to_arc_aac<'a, B>(wrap: &'a OwnedWrap<B>) -> Arc<B>
+   |                             ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0621`.
