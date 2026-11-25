@@ -2713,27 +2713,24 @@ impl<T, A: Allocator> Vec<T, A> {
         // And avoids any memory writes if we don't need to remove anything.
         let mut first_duplicate_idx: usize = 1;
         let start = self.as_mut_ptr();
-        while first_duplicate_idx != len {
-            let found_duplicate = {
-                // SAFETY: first_duplicate always in range [1..len).
-                // Note that we start iteration from 1 so we never overflow.
-                let prev = unsafe { start.add(first_duplicate_idx.wrapping_sub(1)) };
-                // ignore-tidy-undocumented-unsafe
-                let current = unsafe { start.add(first_duplicate_idx) };
-                // We explicitly say in docs that references are reversed.
-                // ignore-tidy-undocumented-unsafe
-                unsafe { same_bucket(&mut *current, &mut *prev) }
-            };
-            if found_duplicate {
+        loop {
+            // SAFETY: 1 <= first_duplicate_idx < len (should never underflow)
+            let prev = unsafe { &mut *start.add(first_duplicate_idx - 1)};
+            // SAFETY: 1 <= first_duplicate_idx < len (should never go out of bound)
+            let curr = unsafe { &mut *start.add(first_duplicate_idx) };
+
+            if hint::unlikely(same_bucket(curr, prev)) {
                 break;
             }
+
             first_duplicate_idx += 1;
+
+            if first_duplicate_idx == len {
+                // No consecutive duplicate is found by predicate, return early
+                return;
+            }
         }
-        // Don't need to remove anything.
-        // We cannot get bigger than len.
-        if first_duplicate_idx == len {
-            return;
-        }
+
         // SAFETY: first_duplicate_idx always in range [1..len)
         unsafe {
             self.dedup_tail(same_bucket, first_duplicate_idx);
