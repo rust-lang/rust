@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Foo: Bound` is not satisfied
-  --> $DIR/normalizes-to-is-not-productive.rs:41:1
+  --> $DIR/select-assoc-candidate-is-not-productive.rs:41:1
    |
 LL | / fn generic<T>()
 LL | |
@@ -8,17 +8,17 @@ LL | |     <Foo as Trait<T>>::Assoc: Bound,
    | |____________________________________^ unsatisfied trait bound
    |
 help: the trait `Bound` is not implemented for `Foo`
-  --> $DIR/normalizes-to-is-not-productive.rs:19:1
+  --> $DIR/select-assoc-candidate-is-not-productive.rs:19:1
    |
 LL | struct Foo;
    | ^^^^^^^^^^
 help: the trait `Bound` is implemented for `u32`
-  --> $DIR/normalizes-to-is-not-productive.rs:12:1
+  --> $DIR/select-assoc-candidate-is-not-productive.rs:12:1
    |
 LL | impl Bound for u32 {
    | ^^^^^^^^^^^^^^^^^^
 note: required for `Foo` to implement `Trait<T>`
-  --> $DIR/normalizes-to-is-not-productive.rs:24:19
+  --> $DIR/select-assoc-candidate-is-not-productive.rs:24:19
    |
 LL | impl<T: Bound, U> Trait<U> for T {
    |         -----     ^^^^^^^^     ^
