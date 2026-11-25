@@ -1,3 +1,13 @@
+Version 1.100.1 (2026-11-27)
+==========================
+
+<a id="1.100.1"></a>
+
+- [library: fix regression where some types were not inferred as having `Iterator` impls](https://github.com/rust-lang/rust/issues/166229)
+  - This backports a change to the unstable `const` version of `Iterator`, which
+    unintentionally caused existing code to not be seen as implementing `Iterator`
+    when a valid implementation was present.
+
 Version 1.100.0 (2026-11-12)
 ==========================
 
@@ -66,13 +76,13 @@ Stabilized APIs
 - [`Box::new_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.new_in)
 - [`Box::from_raw_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.from_raw_in)
 - [`Box::from_non_null_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.from_non_null_in)
-- [`Box::into_raw_with_allocator`](https://doc.rust-lang.org/std/std/boxed/struct.Box.html#method.into_raw_with_allocator)
+- [`Box::into_raw_with_allocator`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_raw_with_allocator)
 - [`Box::into_non_null_with_allocator`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_non_null_with_allocator)
 - [`Box::allocator`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.allocator)
 - [`Vec::new_in`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.new_in)
 - [`Vec::with_capacity_in`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.with_capacity_in)
 - [`Vec::from_raw_parts_in`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.from_raw_parts_in)
-- [`Vec::from_parts_in`](https://doc.rust-lang.org/stable/stable/vec/struct.Vec.html#method.from_parts_in)
+- [`Vec::from_parts_in`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.from_parts_in)
 - [`Vec::into_raw_parts_with_allocator`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.into_raw_parts_with_allocator)
 - [`Vec::into_parts_with_allocator`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.into_parts_with_allocator)
 - [`Vec::allocator`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.allocator)

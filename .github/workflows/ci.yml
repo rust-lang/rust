@@ -190,6 +190,17 @@ jobs:
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
 
+      # msys2 link.exe conflicts with msvc's link.exe.
+      # Rather than trying to fight over PATH with msys2 we simply delete it
+      # thus avoiding the conflict.
+      - name: Remove link.exe
+        run: rm $(which link.exe) || true
+
+      - name: Pin MSVC
+        if: ${{ contains(matrix.name, 'msvc') }}
+        shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
+        run: src\ci\scripts\pin-msvc.ps1
+
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
         if: ${{ !matrix.codebuild }}
