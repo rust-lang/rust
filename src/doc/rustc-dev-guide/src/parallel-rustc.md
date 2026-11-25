@@ -13,9 +13,9 @@ parallelized.
 
 - The codegen part is executed concurrently by default.
   You can use the `-C codegen-units=n` option to control the number of concurrent tasks.
-- The parts after HIR lowering to codegen such as type checking, borrowing checking,
+- The parts after HIR lowering to codegen, such as type checking, borrow-checking,
   and mir optimization are parallelized in the nightly version.
-  Currently, they are executed in serial by default,
+  Currently, they are executed serially by default,
   and parallelization is manually enabled by the user using the `-Z threads = n` option.
 - Other parts, such as lexical parsing, HIR lowering, and macro expansion,
   are still executed in serial mode.
@@ -42,7 +42,7 @@ This process occurs in the [`rustc_codegen_ssa::base`] module.
 
 The underlying thread-safe data-structures used in the parallel compiler
 can be found in the [`rustc_data_structures::sync`] module.
-These data structures are implemented differently depending on whether `parallel-compiler` is true.
+These data structures are implemented differently, depending on whether `parallel-compiler` is true.
 
 | data structure                   | parallel                                            | non-parallel |
 | -------------------------------- | --------------------------------------------------- | ------------ |
@@ -136,16 +136,16 @@ multiple queries in parallel without too much effort:
 
 When a query `foo` is evaluated, the cache table for `foo` is locked.
 
-- If there already is a result, we can clone it, release the lock and we are done.
+- If there already is a result, we can clone it, release the lock, and we are done.
 - If there is no cache entry and no other active query invocation computing the same result,
-  we mark the key as being "in progress", release the lock and start evaluating.
+  we mark the key as being "in progress", release the lock, and start evaluating.
 - If there *is* another query invocation for the same key in progress, we release the lock,
   and just block the thread until the other invocation has computed the result we are waiting for.
   **Cycle error detection** in the parallel
   compiler requires more complex logic than in single-threaded mode.
   When worker threads in parallel queries stop making progress due to interdependence,
   the compiler uses an extra thread *(named deadlock handler)* to detect,
-  remove and report the cycle error.
+  remove, and report the cycle error.
 
 The parallel query feature still has implementation to do,
 most of which is related to the previous `Data Structures` and `Parallel Iterators`.
