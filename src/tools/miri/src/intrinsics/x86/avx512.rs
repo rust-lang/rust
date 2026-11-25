@@ -14,21 +14,21 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx512.").unwrap();
 
         match unprefixed_name {
             // Used by _mm512_{sllv,srlv}_epi64.
             "psllv.q.512" | "psrlv.q.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let which = match unprefixed_name {
                     "psllv.q.512" => ShiftOp::Left,
                     "psrlv.q.512" => ShiftOp::RightLogic,
                     _ => unreachable!(),
                 };
-                shift_simd_by_simd(this, left, right, which, dest)?;
+                shift_simd_by_simd(ecx, left, right, which, dest)?;
             }
             // Used by _mm512_{sll,srl,sra}_epi{16, 32, 64} and _mm{256}_sra_epi64.
             "psll.w.512" | "psrl.w.512" | "psra.w.512" | "psll.d.512" | "psrl.d.512"
@@ -36,9 +36,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "psra.q.256" => {
                 let target =
                     if unprefixed_name.ends_with("w.512") { "avx512bw" } else { "avx512f" };
-                this.expect_target_feature_for_intrinsic(link_name, target)?;
+                ecx.expect_target_feature_for_intrinsic(link_name, target)?;
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let which = match unprefixed_name.split_at(4).0 {
                     "psll" => ShiftOp::Left,
                     "psrl" => ShiftOp::RightLogic,
@@ -46,17 +46,51 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                shift_simd_by_scalar(this, left, right, which, dest)?;
+                shift_simd_by_scalar(ecx, left, right, which, dest)?;
+            }
+            // Used by _mm512_madd52{lo,hi}_epu64.
+            // In each 64-bit lane, multiply the low 52 bits of `left` and `right`,
+            // ignoring their high bits, resulting in a 104-bit product.
+            // The `lo` and `hi` intrinsic variants select either the low or high 52-bit half of that product,
+            // that half is then added to the full 64-bit `acc`umulator, wrapping on overflow.
+            // <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_madd52lo_epu64>
+            // <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_madd52hi_epu64>
+            "vpmadd52l.uq.512" | "vpmadd52h.uq.512" => {
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512ifma")?;
+                let [acc, left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (acc, acc_len) = ecx.project_to_simd(acc)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
+                // They must all have a length of 8.
+                assert_eq!([acc_len, left_len, right_len, dest_len], [8; 4]);
+
+                let mask = (1u128 << 52).strict_sub(1);
+                for i in 0..dest_len {
+                    let acc = ecx.read_scalar(&ecx.project_index(&acc, i)?)?.to_u64()?;
+                    let left = ecx.read_scalar(&ecx.project_index(&left, i)?)?.to_u64()?;
+                    let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?.to_u64()?;
+                    let product = (u128::from(left) & mask).strict_mul(u128::from(right) & mask);
+                    let product = match unprefixed_name {
+                        "vpmadd52l.uq.512" => product & mask,
+                        "vpmadd52h.uq.512" => product >> 52,
+                        _ => unreachable!(),
+                    };
+                    assert!(product & mask == product);
+                    let result = acc.wrapping_add(u64::try_from(product).unwrap());
+                    ecx.write_scalar(Scalar::from_u64(result), &ecx.project_index(&dest, i)?)?;
+                }
             }
             // Used by the ternarylogic functions.
             "pternlog.d.128" | "pternlog.d.256" | "pternlog.d.512" | "pternlog.q.128"
             | "pternlog.q.256" | "pternlog.q.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
                 if !unprefixed_name.ends_with(".512") {
-                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [a, b, c, imm8] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b, c, imm8] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 assert_eq!(dest.layout, a.layout);
                 assert_eq!(dest.layout, b.layout);
@@ -77,10 +111,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // is bitwise, so the element size only matters to the masked forms, which stdarch
                 // builds from this and a select.
 
-                let (a, _a_len) = this.project_to_simd(a)?;
-                let (b, _b_len) = this.project_to_simd(b)?;
-                let (c, _c_len) = this.project_to_simd(c)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, _a_len) = ecx.project_to_simd(a)?;
+                let (b, _b_len) = ecx.project_to_simd(b)?;
+                let (c, _c_len) = ecx.project_to_simd(c)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 // Compute one lane with ternary table.
                 let tern = |xa: u128, xb: u128, xc: u128, imm: u128, bits: u64| -> u128 {
@@ -97,144 +131,144 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     out
                 };
 
-                let imm8 = u128::from(this.read_scalar(imm8)?.to_u32()? & 0xFF);
+                let imm8 = u128::from(ecx.read_scalar(imm8)?.to_u32()? & 0xFF);
                 for i in 0..dest_len {
-                    let a_lane = this.project_index(&a, i)?;
-                    let b_lane = this.project_index(&b, i)?;
-                    let c_lane = this.project_index(&c, i)?;
-                    let d_lane = this.project_index(&dest, i)?;
+                    let a_lane = ecx.project_index(&a, i)?;
+                    let b_lane = ecx.project_index(&b, i)?;
+                    let c_lane = ecx.project_index(&c, i)?;
+                    let d_lane = ecx.project_index(&dest, i)?;
 
                     let size = d_lane.layout.size;
-                    let va = this.read_scalar(&a_lane)?.to_bits(size)?;
-                    let vb = this.read_scalar(&b_lane)?.to_bits(size)?;
-                    let vc = this.read_scalar(&c_lane)?.to_bits(size)?;
+                    let va = ecx.read_scalar(&a_lane)?.to_bits(size)?;
+                    let vb = ecx.read_scalar(&b_lane)?.to_bits(size)?;
+                    let vc = ecx.read_scalar(&c_lane)?.to_bits(size)?;
 
                     let r = tern(va, vb, vc, imm8, size.bits());
-                    this.write_scalar(Scalar::from_uint(r, size), &d_lane)?;
+                    ecx.write_scalar(Scalar::from_uint(r, size), &d_lane)?;
                 }
             }
             // Used to implement the _mm512_sad_epu8 function.
             "psad.bw.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                psadbw(this, left, right, dest)?
+                psadbw(ecx, left, right, dest)?
             }
             // Used to implement the _mm512_madd_epi16 function.
             "pmaddw.d.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmaddwd(this, left, right, dest)?;
+                pmaddwd(ecx, left, right, dest)?;
             }
             // Used to implement the _mm512_maddubs_epi16 function.
             "pmaddubs.w.512" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmaddbw(this, left, right, dest)?;
+                pmaddbw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm512_permutexvar_epi32/_mm512_permutexvar_epi64 functions.
             "permvar.si.512" | "permvar.di.512" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                permute(this, left, right, dest)?;
+                permute(ecx, left, right, dest)?;
             }
             "permvar.qi.512" | "permvar.qi.256" | "permvar.qi.128" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
                 if !unprefixed_name.ends_with("512") {
-                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                permute(this, left, right, dest)?;
+                permute(ecx, left, right, dest)?;
             }
             // Used to implement the _mm512_permutex2var_epi{32,64} intrinsics.
             "vpermi2var.d.512" | "vpermi2var.q.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
-                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                let [left, indices, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                permute2(this, left, indices, right, dest)?;
+                permute2(ecx, left, indices, right, dest)?;
             }
             // Used to implement the _mm{256,512}_permutex2var_epi8 intrinsics.
             "vpermi2var.qi.256" | "vpermi2var.qi.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
                 if unprefixed_name.ends_with(".256") {
-                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, indices, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                permute2(this, left, indices, right, dest)?;
+                permute2(ecx, left, indices, right, dest)?;
             }
             // Used to implement the _mm512_shuffle_epi8 intrinsic.
             "pshuf.b.512" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pshufb(this, left, right, dest)?;
+                pshufb(ecx, left, right, dest)?;
             }
 
             // Used to implement the _mm512_dpbusd_epi32 function.
             "vpdpbusd.512" | "vpdpbusd.256" | "vpdpbusd.128" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512vnni")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512vnni")?;
                 if matches!(unprefixed_name, "vpdpbusd.128" | "vpdpbusd.256") {
-                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [src, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [src, a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                vpdpbusd(this, src, a, b, dest)?;
+                vpdpbusd(ecx, src, a, b, dest)?;
             }
             // Used to implement the _mm512_mulhrs_epi16 function.
             "pmul.hr.sw.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmulhrsw(this, a, b, dest)?;
+                pmulhrsw(ecx, a, b, dest)?;
             }
             // Used to implement the _mm512_packs_epi16 function
             "packsswb.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packsswb(this, a, b, dest)?;
+                packsswb(ecx, a, b, dest)?;
             }
             // Used to implement the _mm512_packus_epi16 function
             "packuswb.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packuswb(this, a, b, dest)?;
+                packuswb(ecx, a, b, dest)?;
             }
             // Used to implement the _mm512_packs_epi32 function
             "packssdw.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packssdw(this, a, b, dest)?;
+                packssdw(ecx, a, b, dest)?;
             }
             // Used to implement the _mm512_packus_epi32 function
             "packusdw.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                packusdw(this, a, b, dest)?;
+                packusdw(ecx, a, b, dest)?;
             }
             // Used to implement the _mm512_avg_epu8 and _mm512_avg_epu16 functions.
             // Averages packed unsigned 8/16-bit integers in `left` and `right`.
             "pavg.b.512" | "pavg.w.512" => {
-                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pavg(this, left, right, dest)?;
+                pavg(ecx, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
