@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@[nll] compile-flags: -Z polonius=off
 //@[polonius] compile-flags: -Z polonius=next
-//@[polonius] check-pass
-//@[polonius] known-bug: unknown
 
 // When we require that an alias outlives some lifetime `'x`, we may register a
 // type test. Once we *prove* that type test, we ned to register that proof at
@@ -27,7 +25,7 @@ mod simple {
         {
             let x = 42u8;
             y = make(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             escaped = Box::new(y);
         }
         println!("{escaped:?}");
@@ -53,7 +51,7 @@ mod source_not_a_bound {
         {
             let x = Box::new(42u8);
             y = make(&*x, &z);
-            //[nll]~^ ERROR `*x` does not live long enough
+            //~^ ERROR `*x` does not live long enough
             require_static(y);
         }
     }
@@ -78,7 +76,7 @@ mod two_sources {
         {
             let d = 42u8;
             value = make(&0, &d);
-            //[nll]~^ ERROR `d` does not live long enough
+            //~^ ERROR `d` does not live long enough
             require_static(value);
         }
     }
@@ -105,7 +103,7 @@ mod projection {
         {
             let x = 42u8;
             y = <T as Tr<'_, '_>>::mk(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             require_static(y);
         }
     }

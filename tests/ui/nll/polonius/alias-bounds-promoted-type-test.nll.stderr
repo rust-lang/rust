@@ -1,5 +1,5 @@
 error[E0597]: `*x` does not live long enough
-  --> $DIR/alias-bounds-promoted-type-test.rs:28:22
+  --> $DIR/alias-bounds-promoted-type-test.rs:26:22
    |
 LL | fn test<'p, 'q>(seed: &'p u8, slot: &mut Option<Box<dyn Debug + 'q>>, _implied: &'q &'p ()) {
    |         -- lifetime `'p` defined here

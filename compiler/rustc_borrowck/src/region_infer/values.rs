@@ -206,7 +206,7 @@ impl LivenessValues {
     }
 
     #[inline]
-    pub(crate) fn location_map(&self) -> &DenseLocationMap {
+    pub(crate) fn location_map(&self) -> &Rc<DenseLocationMap> {
         &self.location_map
     }
 }
