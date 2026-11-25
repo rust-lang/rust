@@ -1132,3 +1132,21 @@ macro_rules! enter_trace_span {
         rustc_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
     };
 }
+
+pub trait OptionExt<T> {
+    fn try_map<'tcx, U>(
+        self,
+        f: impl FnOnce(T) -> InterpResult<'tcx, U>,
+    ) -> InterpResult<'tcx, Option<U>>;
+}
+impl<T> OptionExt<T> for Option<T> {
+    fn try_map<'tcx, U>(
+        self,
+        f: impl FnOnce(T) -> InterpResult<'tcx, U>,
+    ) -> InterpResult<'tcx, Option<U>> {
+        match self {
+            None => interp_ok(None),
+            Some(x) => interp_ok(Some(f(x)?)),
+        }
+    }
+}
