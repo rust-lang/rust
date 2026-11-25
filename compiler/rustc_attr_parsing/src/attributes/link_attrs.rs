@@ -30,9 +30,11 @@ impl SingleAttributeParser for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -523,12 +525,14 @@ impl SingleAttributeParser for LinkSectionParser {
     };
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Static),
+        // tidy-alphabetical-start
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Static),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",

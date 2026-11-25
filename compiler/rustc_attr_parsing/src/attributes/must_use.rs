@@ -8,20 +8,22 @@ impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Fn),
+        // tidy-alphabetical-start
         Allow(Target::Enum),
-        Allow(Target::Struct),
-        Allow(Target::Union),
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::ForeignFn),
+        Allow(Target::Struct),
         // `impl Trait` in return position can trip
         // `unused_must_use` if `Trait` is marked as
         // `#[must_use]`
         Allow(Target::Trait),
-        Error(Target::WherePredicate),
+        Allow(Target::Union),
         Error(Target::Param),
+        Error(Target::WherePredicate),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",

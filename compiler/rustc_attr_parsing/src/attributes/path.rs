@@ -8,9 +8,11 @@ impl SingleAttributeParser for PathParser {
     const PATH: &[Symbol] = &[sym::path];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::Mod),
         Error(Target::Crate),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "file",

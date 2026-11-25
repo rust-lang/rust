@@ -112,10 +112,12 @@ impl NoArgsAttributeParser for AutomaticallyDerivedParser {
     const PATH: &[Symbol] = &[sym::automatically_derived];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::Impl { of_trait: true }),
         Error(Target::Crate),
-        Error(Target::WherePredicate),
         Error(Target::Param),
+        Error(Target::WherePredicate),
+        // tidy-alphabetical-end
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AutomaticallyDerived;

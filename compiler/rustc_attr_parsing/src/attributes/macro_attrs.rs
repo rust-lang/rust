@@ -36,10 +36,12 @@ const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
 );
 const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-    Allow(Target::Mod),
+    // tidy-alphabetical-start
     Allow(Target::ExternCrate),
-    Error(Target::WherePredicate),
+    Allow(Target::Mod),
     Error(Target::Param),
+    Error(Target::WherePredicate),
+    // tidy-alphabetical-end
 ]);
 
 impl AttributeParser for MacroUseParser {
@@ -149,10 +151,12 @@ impl SingleAttributeParser for MacroExportParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["local_inner_macros"]);
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::MacroDef),
-        Error(Target::WherePredicate),
         Error(Target::Crate),
         Error(Target::Param),
+        Error(Target::WherePredicate),
+        // tidy-alphabetical-end
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 

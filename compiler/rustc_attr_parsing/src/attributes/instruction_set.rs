@@ -9,12 +9,14 @@ pub(crate) struct InstructionSetParser;
 impl SingleAttributeParser for InstructionSetParser {
     const PATH: &[Symbol] = &[sym::instruction_set];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Fn),
+        // tidy-alphabetical-start
         Allow(Target::Closure),
+        Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;

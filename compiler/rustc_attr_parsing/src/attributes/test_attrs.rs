@@ -55,9 +55,11 @@ impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::Fn),
-        Error(Target::WherePredicate),
         Error(Target::Param),
+        Error(Target::WherePredicate),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",

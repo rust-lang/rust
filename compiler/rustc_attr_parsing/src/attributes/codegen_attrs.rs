@@ -55,13 +55,15 @@ impl NoArgsAttributeParser for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
+        Allow(Target::Closure),
         Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::ForeignFn),
-        Allow(Target::Closure),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Cold;
@@ -423,13 +425,15 @@ impl NoArgsAttributeParser for NoMangleParser {
         unsafe_since: Some(Edition2024),
     };
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        // tidy-alphabetical-start
         Allow(Target::Fn),
-        Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Static),
         AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
         Error(Target::Closure),
         Error(Target::Param),
+        // tidy-alphabetical-end
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
