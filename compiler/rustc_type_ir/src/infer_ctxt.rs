@@ -6,7 +6,6 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 
-use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
@@ -641,14 +640,11 @@ where
     I: Interner,
 {
     delegate: &'a D,
-    /// We're able to use a cache here as the folder does not have any
-    /// mutable state.
-    cache: DelayedMap<I::Ty, I::Ty>,
 }
 
 impl<'a, Infcx: InferCtxtLike> DeepVariableResolver<'a, Infcx> {
     fn new(delegate: &'a Infcx) -> Self {
-        DeepVariableResolver { delegate, cache: Default::default() }
+        DeepVariableResolver { delegate }
     }
 }
 
@@ -673,12 +669,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             ty::Infer(ty::FloatVar(vid)) => self.delegate.shallow_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
-                    if let Some(&ty) = self.cache.get(&t) {
-                        return ty;
-                    }
-                    let res = t.super_fold_with(self);
-                    assert!(self.cache.insert(t, res));
-                    res
+                    t.super_fold_with(self)
                 } else {
                     t
                 }
