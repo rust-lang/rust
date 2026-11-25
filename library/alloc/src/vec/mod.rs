@@ -2715,7 +2715,7 @@ impl<T, A: Allocator> Vec<T, A> {
         let start = self.as_mut_ptr();
         loop {
             // SAFETY: 1 <= first_duplicate_idx < len (should never underflow)
-            let prev = unsafe { &mut *start.add(first_duplicate_idx - 1)};
+            let prev = unsafe { &mut *start.add(first_duplicate_idx - 1) };
             // SAFETY: 1 <= first_duplicate_idx < len (should never go out of bound)
             let curr = unsafe { &mut *start.add(first_duplicate_idx) };
 
@@ -2763,34 +2763,20 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                /* This code gets executed when `same_bucket` panics */
-
-                // SAFETY: invariant guarantees that `read - write`
-                // and `len - read` never overflow and that the copy is always
-                // in-bounds.
+                let remaining = self.vec.len() - self.read;
+                // SAFETY: Trailing unchecked items must be valid since we never touch them.
                 unsafe {
-                    let ptr = self.vec.as_mut_ptr();
-                    let len = self.vec.len();
-
-                    /* How many items were left when `same_bucket` panicked.
-                     * Basically vec[read..].len() */
-                    let items_left = len.wrapping_sub(self.read);
-
-                    /* Pointer to first item in vec[write..write+items_left] slice */
-                    let dropped_ptr = ptr.add(self.write);
-                    /* Pointer to first item in vec[read..] slice */
-                    let valid_ptr = ptr.add(self.read);
-
-                    /* Copy `vec[read..]` to `vec[write..write+items_left]`.
-                     * The slices can overlap, so `copy_nonoverlapping` cannot be used */
-                    ptr::copy(valid_ptr, dropped_ptr, items_left);
-
-                    /* How many items have been already dropped
-                     * Basically vec[read..write].len() */
-                    let dropped = self.read.wrapping_sub(self.write);
-
-                    self.vec.set_len(len - dropped);
+                    ptr::copy(
+                        self.vec.as_ptr().add(self.read),
+                        self.vec.as_mut_ptr().add(self.write),
+                        remaining,
+                    );
+                }
+                // SAFETY: After filling holes, all items are in contiguous memory.
+                unsafe {
+                    self.vec.set_len(self.write + remaining);
                 }
             }
         }

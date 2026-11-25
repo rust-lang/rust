@@ -587,6 +587,70 @@ fn test_dedup_unique() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_dedup_by_pred_panic_with_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.dedup_by(|x, _| match **x {
+            0 => true,
+            1 => false,
+            2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_dedup_by_pred_panic_no_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.dedup_by(|x, _| match **x {
+            0 | 1 | 2 => false,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_dedup_by_drop_panic() {
+    struct Wrap(Rc<i32>);
+
+    impl Drop for Wrap {
+        fn drop(&mut self) {
+            if *self.0 == 3 {
+                panic!();
+            }
+        }
+    }
+
+    let v = (0..5).map(|x| Rc::new(x)).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.iter().map(|r| Wrap(r.clone())).collect::<Vec<_>>();
+        v.dedup_by(|w, _| match *w.0 {
+            0 => false,
+            1 => true,
+            2 => false,
+            3 => true, // Drop panic.
+            _ => false,
+        });
+    }))
+    .unwrap_err();
+    // Other elements are dropped when `drop` of one element panicked.
+    // The panicked wrapper also has its Rc dropped.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
 fn zero_sized_values() {
     let mut v = Vec::new();
     assert_eq!(v.len(), 0);
