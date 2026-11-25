@@ -318,7 +318,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     if let Err(e) = directives::do_early_directives_check(cx.config.mode, &file_directives) {
         e.raise_fatal();
     }
-    let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
+    let Ok(early_props) =
+        EarlyProps::from_file_directives(&cx.config, &file_directives).map_err(|e| e.raise_fatal());
 
     // Normally we create one structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that

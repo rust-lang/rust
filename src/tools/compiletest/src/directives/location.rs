@@ -4,7 +4,7 @@ use camino::Utf8Path;
 
 /// A location in a file.
 #[derive(Clone, Copy)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub(crate) struct Location<'a> {
     pub(crate) file_path: &'a Utf8Path,
     pub(crate) line_number: LineNumber,

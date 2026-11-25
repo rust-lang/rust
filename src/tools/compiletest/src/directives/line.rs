@@ -47,10 +47,7 @@ pub(crate) fn line_directive<'a>(
         if rev.contains(",") {
             return error(ErrorKind::CommaInRevisionCondition { revision: rev, directive });
         }
-        if rev.is_empty()
-            || rev
-                .contains(|char: char| char != '-' && char != '_' && !char.is_ascii_alphanumeric())
-        {
+        if !super::is_valid_revision_name(rev) {
             return error(ErrorKind::InvalidRevisionName { revision: rev });
         }
 
@@ -221,10 +218,7 @@ impl Error<'_> {
             ErrorKind::InvalidRevisionName { revision } => {
                 title(&format!("`{revision}` is not a valid revision name"));
 
-                help!(
-                    "the name has to be a non-empty sequence of alphanumeric characters, \
-                    `_` and `-`"
-                );
+                help!("the name has to be {}", super::DESCR_OF_VALID_REVISION_NAMES);
             }
         }
 

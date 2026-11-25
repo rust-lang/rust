@@ -121,7 +121,9 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             }
         }),
         handler("revisions", |config, ln, props| {
-            config.parse_and_update_revisions(ln, &mut props.revisions);
+            if let Err(e) = config.parse_and_update_revisions(ln, &mut props.revisions) {
+                e.raise_fatal();
+            }
         }),
         handler(RUN_FLAGS, |config, ln, props| {
             if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {

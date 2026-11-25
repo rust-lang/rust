@@ -9,8 +9,8 @@ use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind,
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, EarlyValidationError,
     EarlyValidationErrorKind, Edition, EditionRange, FileDirectives, KNOWN_DIRECTIVE_NAMES_SET,
-    LineNumber, Location, extract_llvm_version, extract_version_range, parse_edition,
-    parse_normalize_rule,
+    LineNumber, Location, RevisionsParseError, RevisionsParseErrorKind, extract_llvm_version,
+    extract_version_range, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
@@ -289,7 +289,10 @@ fn cfg() -> ConfigBuilder {
     ConfigBuilder::default()
 }
 
-fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
+fn parse_early_props<'a>(
+    config: &Config,
+    contents: &'a str,
+) -> Result<EarlyProps, RevisionsParseError<'a>> {
     let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
     EarlyProps::from_file_directives(config, &file_directives)
 }
@@ -333,7 +336,10 @@ fn disable_minification_flag() {
 fn revisions() {
     let config: Config = cfg().build();
 
-    assert_eq!(parse_early_props(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: a b c").map(|props| props.revisions),
+        Ok(vec!["a".into(), "b".into(), "c".into()])
+    );
 }
 
 #[test]
@@ -615,44 +621,75 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate revision: `rpass1` at a.rs:1")]
-fn test_duplicate_revisions() {
+fn test_invalid_revisions_in_declaration() {
     let config: Config = cfg().build();
-    parse_early_props(&config, "//@ revisions: rpass1 rpass1");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: ok #&$?+)^").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::InvalidRevisionName("#&$?+)^".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_assembly_mode_forbidden_revisions() {
+fn test_duplicate_revisions_in_declaration() {
+    let config: Config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: rpass1 rpass1").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::DuplicateRevisions("rpass1".into()))
+    );
+}
+
+#[test]
+fn test_assembly_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("assembly").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
 }
 
 #[test]
-#[should_panic(expected = "revision name `true` is not permitted")]
-fn test_forbidden_revisions() {
+fn test_forbidden_revisions_in_declaration() {
     let config = cfg().mode("ui").build();
-    parse_early_props(&config, "//@ revisions: true");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: true").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::InvalidRevisionName("true".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_codegen_mode_forbidden_revisions() {
+fn test_codegen_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("codegen").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_miropt_mode_forbidden_revisions() {
+fn test_miropt_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("mir-opt").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
+}
+
+#[test]
+fn test_comma_separated_revisions_in_declaration() {
+    let config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: a, b, c").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::CommaSeparated("a, b, c".into()))
+    );
+}
+
+#[test]
+fn test_revision_conditional_revisions_directive() {
+    let config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@[recursive] revisions: recursive end").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::Conditional("recursive".into()))
+    );
 }
 
 #[test]
@@ -870,7 +907,7 @@ fn test_directive_padded_revision_condition() {
 }
 
 #[test]
-fn test_directive_empty_revision_name() {
+fn test_directive_empty_revision_condition() {
     let line = "//@ [] key";
 
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
@@ -881,7 +918,7 @@ fn test_directive_empty_revision_name() {
 }
 
 #[test]
-fn test_directive_invalid_revision_name() {
+fn test_directive_invalid_revision_name_in_condition() {
     let line = "//@ [ #&$?+)^ ] key";
 
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
@@ -892,7 +929,7 @@ fn test_directive_invalid_revision_name() {
 }
 
 #[test]
-fn test_multiple_revisions_in_directive() {
+fn test_directive_multiple_revisions_in_condition() {
     // The problem: If we don't reject this early, this will be seen as a single revision.
     let line = "//@ [foo,bar] compile-flags: -Z hello";
 
@@ -1002,7 +1039,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
         let content = format!("//@ revisions: {rev}");
         for mode in modes {
             let config = cfg().mode(mode).build();
-            parse_early_props(&config, &content);
+            parse_early_props(&config, &content).unwrap();
         }
     }
 }
