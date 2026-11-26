@@ -144,11 +144,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
         // Figure out what time zone is in use
-        let tz = ecx.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
-        let tz = match tz.into_string() {
-            Ok(tz) => Tz::from_str(&tz).unwrap_or(Tz::UTC),
-            _ => Tz::UTC,
-        };
+        let tz_name = ecx.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
+        let tz = tz_name.to_str().and_then(|tz| Tz::from_str(tz).ok()).unwrap_or(Tz::UTC);
 
         // Convert that to local time, then return the broken-down time value.
         let dt: DateTime<Tz> = dt_utc.with_timezone(&tz);
@@ -177,7 +174,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let offset_in_seconds = offset.fix().local_minus_utc();
             let timezone_name = offset.abbreviation().unwrap_or_else(|| offset.tz_id());
 
-            // Allocate the string with trailing null.
+            // Allocate the string with trailing null. This acts like a global variable:
+            // it is deduplicated and the user is not expected to free it.
             let tm_zone = ecx.allocate_str_dedup(&format!("{timezone_name}\0"))?;
 
             // Write the timezone pointer and offset into the result structure.

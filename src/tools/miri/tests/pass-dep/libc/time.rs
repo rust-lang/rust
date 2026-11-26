@@ -27,6 +27,7 @@ fn main() {
     test_localtime_r_dst();
     test_localtime_r_pst();
     test_localtime_r_epoch();
+    test_localtime_r_invalid_tz();
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
@@ -99,6 +100,7 @@ struct Tm {
     yday: libc::c_int,
     isdst: libc::c_int,
     gmtoff: libc::c_long,
+    /// If this is empty, it is ignored for the comparison.
     zone: &'static str,
 }
 
@@ -155,7 +157,7 @@ impl Tm {
                     target_os = "macos",
                     target_os = "freebsd",
                     target_os = "android"
-                ) => self.gmtoff == tm_gmtoff && self.zone == tm_zone,
+                ) => self.gmtoff == tm_gmtoff && (self.zone.is_empty() || self.zone == tm_zone),
                 _ => {{
                     // Ignore non-existent fields.
                     let _unused = self.gmtoff;
@@ -303,6 +305,34 @@ fn test_localtime_r_epoch() {
         isdst: 0,
         gmtoff: 0,
         zone: "GMT",
+    };
+    expected.assert_eq(&tm);
+}
+
+fn test_localtime_r_invalid_tz() {
+    // Invalid time zones seem to be interpreted like GMT/UTC.
+    set_tz("TimeZoneDoesNotExist");
+
+    const TIME_SINCE_EPOCH: libc::time_t = 1712475836; // 2024-04-07 07:43:56 GMT
+    let custom_time_ptr = &TIME_SINCE_EPOCH;
+    let mut tm = unsafe { mem::zeroed::<libc::tm>() };
+    let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+    assert!(ptr::eq(res, &raw mut tm));
+
+    let expected = Tm {
+        sec: 56,
+        min: 43,
+        hour: 7,
+        mday: 7,
+        mon: 3,
+        year: 124,
+        wday: 0,
+        yday: 97,
+        isdst: 0,
+        gmtoff: 0,
+        // On Linux this seems to preserve the given name, but on macOS/FreeBSD we see
+        // different behavior. The "natural" behavior of our implementation yields "UTC".
+        zone: if cfg!(any(miri, target_vendor = "apple")) { "UTC" } else { "" },
     };
     expected.assert_eq(&tm);
 }
