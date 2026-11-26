@@ -1213,6 +1213,9 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// The allocators of `self` and `other` may be swapped or cloned between them,
+    /// so either may end up holding the other's allocator.
+    ///
     /// If a key from `other` is already present in `self`, the respective
     /// value from `self` will be overwritten with the respective value from `other`.
     /// Similar to [`insert`], though, the key is not overwritten,
