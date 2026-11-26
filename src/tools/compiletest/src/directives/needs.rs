@@ -155,6 +155,11 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
             ignore_reason: "ignored on targets without inline assembly support",
         },
         Need {
+            name: "needs-debug-gdb-scripts",
+            condition: config.target_cfg().emit_debug_gdb_scripts,
+            ignore_reason: "target does not emit the GDB script section",
+        },
+        Need {
             name: "needs-sanitizer-support",
             condition: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
             ignore_reason: "ignored on targets without sanitizers support",

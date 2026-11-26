@@ -372,13 +372,28 @@ fn thin_lto(
     prof: &SelfProfilerRef,
     incr_comp_session: Option<&BorrowedIncrCompSession>,
     dcx: DiagCtxtHandle<'_>,
-    modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
+    mut modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
 ) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
     let _timer = prof.generic_activity("LLVM_thin_lto_global_analysis");
     unsafe {
         info!("going for that thin, thin LTO");
+
+        // This sort prevents reoptimizing a module because it did not enter
+        // ThinLTO in the same order as before. The order can change which
+        // duplicate definition LLVM keeps, invalidating optimization cache keys.
+        modules.sort_by(|left, right| {
+            let left_name = match left {
+                ThinLtoInput::Red { name, .. } => name,
+                ThinLtoInput::Green { wp, .. } => &wp.cgu_name,
+            };
+            let right_name = match right {
+                ThinLtoInput::Red { name, .. } => name,
+                ThinLtoInput::Green { wp, .. } => &wp.cgu_name,
+            };
+            left_name.cmp(right_name)
+        });
 
         let green_modules: FxHashMap<_, _> = modules
             .iter()
