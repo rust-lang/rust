@@ -269,10 +269,9 @@ impl CodegenBackend for MiriCodegenBackend {
         pending_lto: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut rustc_middle::dep_graph::IncrCompSession>,
-        outputs: &rustc_session::config::OutputFilenames,
         crate_info: &CrateInfo,
     ) -> CompiledModules {
-        self.dummy.perform_lto(pending_lto, sess, incr_comp_session, outputs, crate_info)
+        self.dummy.perform_lto(pending_lto, sess, incr_comp_session, crate_info)
     }
 
     fn link(

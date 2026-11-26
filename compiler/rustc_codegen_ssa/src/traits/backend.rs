@@ -117,9 +117,10 @@ pub trait CodegenBackend {
         pending_lto: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> CompiledModules;
+
+    fn post_codegen_metrics(&self, _sess: &Session, _outputs: &OutputFilenames) {}
 
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(

@@ -135,7 +135,6 @@ impl Linker {
                         pending_lto,
                         sess,
                         lto_incr_comp_session.as_mut(),
-                        &self.output_filenames,
                         &self.crate_info,
                     );
 
@@ -153,6 +152,8 @@ impl Linker {
                 }
             }
         });
+
+        codegen_backend.post_codegen_metrics(sess, &self.output_filenames);
 
         if sess.opts.unstable_opts.no_link {
             let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);

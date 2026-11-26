@@ -93,7 +93,7 @@ use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::IncrCompSession;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames};
+use rustc_session::config::OptLevel;
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TargetTuple};
@@ -336,7 +336,6 @@ impl CodegenBackend for GccCodegenBackend {
         pending_lto: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> CompiledModules {
         pending_lto

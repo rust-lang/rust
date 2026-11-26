@@ -43,7 +43,7 @@ use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
 use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::IncrCompSession;
-use rustc_session::config::{NATIVE_CPU, OutputFilenames};
+use rustc_session::config::NATIVE_CPU;
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
@@ -252,7 +252,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         pending_lto: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> CompiledModules {
         pending_lto

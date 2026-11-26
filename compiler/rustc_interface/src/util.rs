@@ -494,7 +494,6 @@ impl CodegenBackend for DummyCodegenBackend {
         _pending_lto: Box<dyn Any>,
         _sess: &Session,
         _incr_comp_session: Option<&mut IncrCompSession>,
-        _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
     ) -> CompiledModules {
         unreachable!("Linker::link should skip perform_lto for CompiledModules")

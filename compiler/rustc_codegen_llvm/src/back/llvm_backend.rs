@@ -422,15 +422,15 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> CompiledModules {
-        let compiled_modules = ongoing_codegen
+        ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::PendingLto<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's PendingLto, found Box<Any>")
-            .perform_lto(sess, incr_comp_session, crate_info);
+            .perform_lto(sess, incr_comp_session, crate_info)
+    }
 
-        // FIXME also run for non-LTO builds
+    fn post_codegen_metrics(&self, sess: &Session, outputs: &OutputFilenames) {
         if sess.opts.unstable_opts.llvm_time_trace {
             sess.time("llvm_dump_timing_file", || {
                 let file_name = outputs.with_extension("llvm_timings.json");
@@ -465,8 +465,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 ));
             }
         }
-
-        compiled_modules
     }
 
     fn link(
