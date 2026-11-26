@@ -47,7 +47,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OptLevel;
 use rustc_session::output::ErrorOutputType;
-use rustc_session::{EarlyDiagCtxt, EarlySession, Session};
+use rustc_session::{CodegenBackendInit, EarlyDiagCtxt, EarlySession, Session};
 use rustc_structures::CrateType;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
@@ -118,14 +118,12 @@ fn make_miri_codegen_backend(sess: &EarlySession, dep: bool) -> Box<dyn CodegenB
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
-    let mut native_codegen_backend = rustc_interface::util::get_codegen_backend(
+    let native_codegen_backend = rustc_interface::util::get_codegen_backend(
         &early_dcx,
         &sess.opts.sysroot,
         None,
         &sess.target,
     );
-    let _ = native_codegen_backend.init(sess);
-
     Box::new(MiriCodegenBackend { native: native_codegen_backend, dummy: DummyCodegenBackend, dep })
 }
 
@@ -222,9 +220,11 @@ impl CodegenBackend for MiriCodegenBackend {
         "miri"
     }
 
-    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
-        let native_target_config = self.native.target_config(sess);
-        TargetConfig {
+    fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
+        let init = CodegenBackendInit::default();
+
+        let (_init, native_target_config) = self.native.init(sess);
+        let config = TargetConfig {
             internal_target_features: native_target_config.internal_target_features,
 
             // The basic types and ABI always work.
@@ -236,7 +236,9 @@ impl CodegenBackend for MiriCodegenBackend {
             has_reliable_f16_math: cfg!(target_has_reliable_f16_math),
             // Many f128 operations are still missing.
             has_reliable_f128_math: false,
-        }
+        };
+
+        (init, config)
     }
 
     fn target_cpu(&self, _sess: &Session) -> String {

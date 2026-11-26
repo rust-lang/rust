@@ -149,6 +149,8 @@ pub fn compile_codegen_unit(
             // FIXME: to make it less error-prone (calling get_target_info() will add the flag
             // -fsyntax-only), forbid the compilation when get_target_info() is called on a
             // context.
+            // FIXME: the target_info we use here does *not* have `-Ctarget-feature` applied,
+            // so it is out of sync with what we actually use for codegen.
             let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
             let f16b_type_supported = target_info.supports_target_dependent_type(CType::BFloat16);
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);

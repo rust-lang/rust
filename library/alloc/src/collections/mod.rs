@@ -11,6 +11,7 @@ pub mod binary_heap;
 mod btree;
 #[cfg(not(no_global_oom_handling))]
 pub mod linked_list;
+pub(crate) mod retain;
 #[cfg(not(no_global_oom_handling))]
 pub mod vec_deque;
 

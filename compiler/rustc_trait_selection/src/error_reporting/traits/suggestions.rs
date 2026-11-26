@@ -6434,7 +6434,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
                 "vec![]".to_string()
             }
-            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
+            ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
                 "String::new()".to_string()
             }
             ty::Adt(def, args) if def.is_box() => {

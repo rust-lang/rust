@@ -37,26 +37,23 @@ pub trait BackendTypes {
 pub trait CodegenBackend {
     fn name(&self) -> &'static str;
 
-    fn init(&mut self, _sess: &EarlySession) -> CodegenBackendInit {
-        Default::default()
+    fn init(&mut self, _sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
+        (
+            Default::default(),
+            TargetConfig {
+                internal_target_features: Default::default(),
+                // `true` is used as a default so backends need to acknowledge when they do not
+                // support the float types, rather than accidentally quietly skipping all tests.
+                has_reliable_f16: true,
+                has_reliable_f16_math: true,
+                has_reliable_f16b: true,
+                has_reliable_f128: true,
+                has_reliable_f128_math: true,
+            },
+        )
     }
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
-
-    /// Collect target-specific options that should be set in `cfg(...)`, including
-    /// `target_feature` and support for unstable float types.
-    fn target_config(&self, _sess: &EarlySession) -> TargetConfig {
-        TargetConfig {
-            internal_target_features: Default::default(),
-            // `true` is used as a default so backends need to acknowledge when they do not
-            // support the float types, rather than accidentally quietly skipping all tests.
-            has_reliable_f16: true,
-            has_reliable_f16_math: true,
-            has_reliable_f16b: true,
-            has_reliable_f128: true,
-            has_reliable_f128_math: true,
-        }
-    }
 
     fn supported_crate_types(&self, _sess: &Session) -> Vec<CrateType> {
         vec![

@@ -1,6 +1,5 @@
-//! Sometimes `-Ctarget-cpu` can *disable* target features that would by default be enabled on the
-//! current target. Ensure that we catch the case where those target features are important for the
-//! ABI.
+//! Ensure `-Zllvm-target-feature` is honored by `cfg(target_feature)` and by the `extern "C"`
+//! vector ABI checks.
 
 //@ compile-flags: --crate-type=lib
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
@@ -17,7 +16,8 @@
 extern crate minicore;
 use minicore::*;
 
-// Also test the ABI checks by using `extern "C"`
+// Also test the ABI checks by using `extern "C"` (this would error if the feature did not actually
+// get enabled).
 #[no_mangle] // force codegen
 pub extern "C" fn do_thing(x: simd::f32x8, y: simd::f32x8) -> simd::f32x8 {
     #[rustc_intrinsic]

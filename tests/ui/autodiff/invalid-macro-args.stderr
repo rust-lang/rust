@@ -1,0 +1,40 @@
+error: expected 1 activities, but found 0
+  --> $DIR/invalid-macro-args.rs:11:1
+   |
+LL | #[autodiff_reverse(df1)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected an identifier for the generated function name
+  --> $DIR/invalid-macro-args.rs:18:20
+   |
+LL | #[autodiff_forward(::df2)]
+   |                    ^^^^^
+
+error: invalid suffix `f` for float literal
+  --> $DIR/invalid-macro-args.rs:23:20
+   |
+LL | #[autodiff_reverse(2.0f)]
+   |                    ^^^^ invalid suffix `f`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: expected an identifier for the generated function name
+  --> $DIR/invalid-macro-args.rs:23:20
+   |
+LL | #[autodiff_reverse(2.0f)]
+   |                    ^^^^
+
+error: did not recognize Activity: `2.0`
+  --> $DIR/invalid-macro-args.rs:29:25
+   |
+LL | #[autodiff_reverse(df4, 2.0)]
+   |                         ^^^
+
+error: did not recognize Activity: `::Active`
+  --> $DIR/invalid-macro-args.rs:34:25
+   |
+LL | #[autodiff_reverse(df5, ::Active)]
+   |                         ^^^^^^^^
+
+error: aborting due to 6 previous errors
+

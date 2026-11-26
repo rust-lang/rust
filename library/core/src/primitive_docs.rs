@@ -206,7 +206,7 @@ const _: () = ();
 /// In order for `Result<T, !>` to implement `Clone`, `!` must do so as well.
 ///
 /// In general, if a trait only has methods taking a `self` parameter (or `&self`, or an argument
-/// of type `Self`, etc.), consider implementing it for !. In such cases the implementation is
+/// of type `Self`, etc.), consider implementing it for `!`. In such cases the implementation is
 /// trivial, thanks to never-to-any coercion. As an example, take the [`Debug`] trait:
 ///
 /// ```
