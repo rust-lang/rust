@@ -278,11 +278,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // When adding a new shim, you should follow the following pattern:
         // ```
         // "shim_name" => {
-        //     let [arg1, arg2, arg3] = &this.check_shim_sig(
+        //     let [arg1, arg2, arg3] = &ecx.check_shim_sig(
         //         shim_sig!(extern "C" fn(usize, *libc::some_type, *i32) -> u32),
         //         (link_name, abi, args),
         //     )?;
-        //     this.shim_name(arg1, arg2, arg3, dest)?;
+        //     ecx.shim_name(arg1, arg2, arg3, dest)?;
         // }
         // ```
         // and then define `shim_name` as a helper function in an extension trait in a suitable file
