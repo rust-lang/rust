@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn apply_goto(&mut self, bb: BasicBlock, target: BasicBlock) {
-        self.basic_blocks[bb].terminator_mut().kind = TerminatorKind::goto(target);
+        self.basic_blocks[bb].terminator.kind = TerminatorKind::goto(target);
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
         // Replace `target` by `new_target` where it appears.
         // This changes exactly `direct_count` edges.
-        self.basic_blocks[bb].terminator_mut().successors_mut(|s| {
+        self.basic_blocks[bb].terminator.successors_mut(|s| {
             if *s == target {
                 *s = new_target;
             }

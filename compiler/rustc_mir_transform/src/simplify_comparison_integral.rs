@@ -100,7 +100,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
-            let terminator = bb.terminator_mut();
+            let terminator = &mut bb.terminator;
             terminator.kind =
                 TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }

@@ -26,7 +26,7 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
 
         let mut lints = vec![];
         for bbdata in body.basic_blocks.as_mut() {
-            let term = bbdata.terminator_mut();
+            let term = &mut bbdata.terminator;
             let TerminatorKind::Call { ref mut target, destination, .. } = term.kind else {
                 continue;
             };

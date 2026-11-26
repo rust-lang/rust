@@ -323,7 +323,7 @@ impl<'tcx> MirPatch<'tcx> {
             if let TerminatorKind::Unreachable = patch {
                 bb.statements.clear();
             }
-            bb.terminator_mut().kind = patch;
+            bb.terminator.kind = patch;
         }
     }
 

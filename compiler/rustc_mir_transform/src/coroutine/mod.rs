@@ -489,7 +489,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 // Return state.
                 let state = VariantIdx::new(CoroutineArgs::RETURNED);
                 data.statements.push(self.set_discr(state, source_info));
-                data.terminator_mut().kind = TerminatorKind::Return;
+                data.terminator.kind = TerminatorKind::Return;
             }
             TerminatorKind::Yield { ref value, resume, mut resume_arg, drop } => {
                 let source_info = data.terminator().source_info;
@@ -528,7 +528,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
                 let state = VariantIdx::new(state);
                 data.statements.push(self.set_discr(state, source_info));
-                data.terminator_mut().kind = TerminatorKind::Return;
+                data.terminator.kind = TerminatorKind::Return;
             }
             _ => {}
         }
@@ -672,7 +672,7 @@ fn eliminate_get_context_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             continue;
         }
 
-        let terminator = bb_data.terminator_mut();
+        let terminator = &mut bb_data.terminator;
         if let TerminatorKind::Call { func, args, destination, target, .. } = &terminator.kind
             && let func_ty = func.ty(&body.local_decls, tcx)
             && let ty::FnDef(def_id, _) = *func_ty.kind()
@@ -865,13 +865,13 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
             // An existing `Resume` terminator is redirected to jump to our dedicated
             // "poisoning block" above.
             if idx != poison_block {
-                *block.terminator_mut() =
+                block.terminator =
                     Terminator { source_info, kind: TerminatorKind::goto(poison_block) };
             }
         } else if !block.is_cleanup
             // Any terminators that *can* unwind but don't have an unwind target set are also
             // pointed at our poisoning block (unless they're part of the cleanup path).
-            && let Some(unwind @ UnwindAction::Continue) = block.terminator_mut().unwind_mut()
+            && let Some(unwind @ UnwindAction::Continue) = block.terminator.unwind_mut()
         {
             *unwind = UnwindAction::Cleanup(poison_block);
         }

@@ -202,7 +202,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     insert_switch(&mut body, cases, transform, default_block);
 
     for block in body.basic_blocks_mut() {
-        let kind = &mut block.terminator_mut().kind;
+        let kind = &mut block.terminator.kind;
         if let TerminatorKind::CoroutineDrop = *kind {
             *kind = TerminatorKind::Return;
         }
@@ -302,7 +302,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     insert_switch(&mut body, cases, transform, default_block);
 
     for block in body.basic_blocks_mut() {
-        let kind = &mut block.terminator_mut().kind;
+        let kind = &mut block.terminator.kind;
         if let TerminatorKind::CoroutineDrop = *kind {
             *kind = TerminatorKind::Return;
             block.statements.push(return_poll_ready_assign(tcx, source_info));

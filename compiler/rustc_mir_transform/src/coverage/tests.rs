@@ -78,7 +78,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn link(&mut self, from_block: BasicBlock, to_block: BasicBlock) {
-        match self.blocks[from_block].terminator_mut().kind {
+        match self.blocks[from_block].terminator.kind {
             TerminatorKind::Assert { ref mut target, .. }
             | TerminatorKind::Call { target: Some(ref mut target), .. }
             | TerminatorKind::Drop { ref mut target, .. }
@@ -103,7 +103,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn set_branch(&mut self, switchint: BasicBlock, branch_index: usize, to_block: BasicBlock) {
-        match self.blocks[switchint].terminator_mut().kind {
+        match self.blocks[switchint].terminator.kind {
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
                 let mut branches = targets.iter().collect::<Vec<_>>();
                 let otherwise = if branch_index == branches.len() {

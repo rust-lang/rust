@@ -60,6 +60,6 @@ fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_ite
         let new_terminator_kind = TerminatorKind::goto(*bb);
 
         block.statements.push(add_statement);
-        block.terminator_mut().kind = new_terminator_kind;
+        block.terminator.kind = new_terminator_kind;
     }
 }

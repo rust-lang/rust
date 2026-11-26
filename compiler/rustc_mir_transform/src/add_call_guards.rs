@@ -100,7 +100,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         for (source, action) in work {
             let block = &mut basic_blocks[source];
             let is_cleanup = block.is_cleanup;
-            let term = block.terminator_mut();
+            let term = &mut block.terminator;
             let source_info = term.source_info;
             let destination = match action {
                 Action::Call => {

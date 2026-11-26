@@ -120,7 +120,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
                 if let TerminatorKind::Return | TerminatorKind::UnwindResume =
                     bbdata.terminator().kind
                 {
-                    bbdata.terminator_mut().kind = TerminatorKind::goto(START_BLOCK);
+                    bbdata.terminator.kind = TerminatorKind::goto(START_BLOCK);
                 }
             }
             body = &body_mem;

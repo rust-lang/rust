@@ -1356,11 +1356,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         &self.terminator
     }
 
-    #[inline]
-    pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
-        &mut self.terminator
-    }
-
     /// Does the block have no statements and an unreachable terminator?
     #[inline]
     pub fn is_empty_unreachable(&self) -> bool {

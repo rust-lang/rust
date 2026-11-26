@@ -438,7 +438,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 ))),
             ));
 
-            bb.terminator_mut().kind = mir::TerminatorKind::goto(destination_block);
+            bb.terminator.kind = mir::TerminatorKind::goto(destination_block);
         }
     }
 

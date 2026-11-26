@@ -829,7 +829,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let terminator = if self.keep_original {
                 self.source[loc.block].terminator().clone()
             } else {
-                let terminator = self.source[loc.block].terminator_mut();
+                let terminator = &mut self.source[loc.block].terminator;
                 let target = match &terminator.kind {
                     TerminatorKind::Call { target: Some(target), .. } => *target,
                     kind => {
@@ -858,7 +858,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let last = self.promoted.basic_blocks.last_index().unwrap();
                     let new_target = self.new_block();
 
-                    *self.promoted[last].terminator_mut() = Terminator {
+                    self.promoted[last].terminator = Terminator {
                         kind: TerminatorKind::Call {
                             func,
                             args,
@@ -1086,7 +1086,7 @@ fn promote_candidates<'tcx>(
             }
             _ => true,
         });
-        let terminator = block.terminator_mut();
+        let terminator = &mut block.terminator;
         if let TerminatorKind::Drop { place, target, .. } = &terminator.kind
             && let Some(index) = place.as_local()
         {

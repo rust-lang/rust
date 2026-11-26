@@ -21,7 +21,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         let typing_env = body.typing_env(tcx);
         let mut should_simplify = false;
         for block in body.basic_blocks.as_mut() {
-            let terminator = block.terminator_mut();
+            let terminator = &mut block.terminator;
             let TerminatorKind::Drop { place, target, .. } = terminator.kind else { continue };
             let ty = place.ty(&body.local_decls, tcx).ty;
 

@@ -28,7 +28,7 @@ impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
             if let TerminatorKind::Goto { target, .. } = bb.terminator().kind
                 && bbs_simple_returns.contains(target)
             {
-                bb.terminator_mut().kind = TerminatorKind::Return;
+                bb.terminator.kind = TerminatorKind::Return;
             }
         }
 

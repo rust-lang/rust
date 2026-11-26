@@ -62,7 +62,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
             };
 
             // Replace block terminator with `Goto`.
-            block.terminator_mut().kind = TerminatorKind::goto(*target);
+            block.terminator.kind = TerminatorKind::goto(*target);
         }
     }
 
