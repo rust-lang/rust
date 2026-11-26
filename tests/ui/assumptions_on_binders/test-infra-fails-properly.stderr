@@ -16,6 +16,14 @@ error: expected lifetime, found keyword `for`
 LL |         T: for<'b> Trait<'b>,
    |            ^^^ expected lifetime
 
+error[E0403]: the name `'a` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/test-infra-fails-properly.rs:122:16
+   |
+LL |         forall<'a> {},
+   |                -- first use of `'a`
+LL |         forall<'a> {},
+   |                ^^ already used
+
 error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/test-infra-fails-properly.rs:48:16
    |
@@ -135,6 +143,7 @@ error: unable to satisfy constraints involving placeholders due to unknown impli
 LL |         forall<'a> where 'a: 'static {
    |         ^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0403, E0658.
+For more information about an error, try `rustc --explain E0403`.

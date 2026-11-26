@@ -4637,7 +4637,6 @@ pub enum TestBinderItem<'hir> {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderForall<'hir> {
     pub span: Span,
-    pub hir_id: HirId,
     pub generics: &'hir Generics<'hir>,
     pub body: &'hir TestBinderBody<'hir>,
     pub assert_on_exit: Option<&'hir TestBinderConstraint<'hir>>,
@@ -4646,7 +4645,6 @@ pub struct TestBinderForall<'hir> {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderExists<'hir> {
     pub span: Span,
-    pub hir_id: HirId,
     pub params: &'hir [GenericParam<'hir>],
     pub body: &'hir TestBinderBody<'hir>,
 }
@@ -5079,8 +5077,6 @@ pub enum Node<'hir> {
     Infer(&'hir InferArg),
     WherePredicate(&'hir WherePredicate<'hir>),
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
-    TestBinderForall(&'hir TestBinderForall<'hir>),
-    TestBinderExists(&'hir TestBinderExists<'hir>),
     TestBinderBoundTypeConstraint(&'hir TestBinderBoundTypeConstraint<'hir>),
     // Created by query feeding
     Synthetic,
@@ -5139,8 +5135,6 @@ impl<'hir> Node<'hir> {
             | Node::NestedUseTree(_)
             | Node::Infer(..)
             | Node::WherePredicate(..)
-            | Node::TestBinderForall(..)
-            | Node::TestBinderExists(..)
             | Node::TestBinderBoundTypeConstraint(..)
             | Node::Synthetic
             | Node::Err(..) => None,
