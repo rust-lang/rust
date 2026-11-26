@@ -5,11 +5,12 @@ use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::line::{DirectiveLine, Error, ErrorKind};
+use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind, line_directive};
 use crate::directives::{
-    self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
-    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
+    self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, EarlyValidationError,
+    EarlyValidationErrorKind, Edition, EditionRange, FileDirectives, KNOWN_DIRECTIVE_NAMES_SET,
+    LineNumber, Location, RevisionsParseError, RevisionsParseErrorKind, extract_llvm_version,
+    extract_version_range, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
@@ -61,7 +62,6 @@ fn make_test_description(
         config,
         &cache,
         name,
-        path,
         filterable_path,
         &file_directives,
         &variant,
@@ -82,7 +82,7 @@ fn test_parse_normalize_rule() {
             "something (32 bits)",
             "something ($WORD bits)",
         ),
-        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+        (r#"" with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
     ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
@@ -289,7 +289,10 @@ fn cfg() -> ConfigBuilder {
     ConfigBuilder::default()
 }
 
-fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
+fn parse_early_props<'a>(
+    config: &Config,
+    contents: &'a str,
+) -> Result<EarlyProps, RevisionsParseError<'a>> {
     let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
     EarlyProps::from_file_directives(config, &file_directives)
 }
@@ -333,7 +336,10 @@ fn disable_minification_flag() {
 fn revisions() {
     let config: Config = cfg().build();
 
-    assert_eq!(parse_early_props(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: a b c").map(|props| props.revisions),
+        Ok(vec!["a".into(), "b".into(), "c".into()])
+    );
 }
 
 #[test]
@@ -615,70 +621,269 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
-fn test_duplicate_revisions() {
+fn test_invalid_revisions_in_declaration() {
     let config: Config = cfg().build();
-    parse_early_props(&config, "//@ revisions: rpass1 rpass1");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: ok #&$?+)^").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::InvalidRevisionName("#&$?+)^".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_assembly_mode_forbidden_revisions() {
+fn test_duplicate_revisions_in_declaration() {
+    let config: Config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: rpass1 rpass1").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::DuplicateRevisions("rpass1".into()))
+    );
+}
+
+#[test]
+fn test_assembly_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("assembly").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
 }
 
 #[test]
-#[should_panic(expected = "revision name `true` is not permitted")]
-fn test_forbidden_revisions() {
+fn test_forbidden_revisions_in_declaration() {
     let config = cfg().mode("ui").build();
-    parse_early_props(&config, "//@ revisions: true");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: true").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::InvalidRevisionName("true".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_codegen_mode_forbidden_revisions() {
+fn test_codegen_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("codegen").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
 }
 
 #[test]
-#[should_panic(
-    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
-)]
-fn test_miropt_mode_forbidden_revisions() {
+fn test_miropt_mode_forbidden_revisions_in_declaration() {
     let config = cfg().mode("mir-opt").build();
-    parse_early_props(&config, "//@ revisions: CHECK");
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: CHECK").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::ForbiddenFileCheckRevisionName("CHECK".into()))
+    );
 }
 
 #[test]
-fn test_ok_directive() {
+fn test_comma_separated_revisions_in_declaration() {
+    let config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@ revisions: a, b, c").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::CommaSeparated("a, b, c".into()))
+    );
+}
+
+#[test]
+fn test_revision_conditional_revisions_directive() {
+    let config = cfg().build();
+    assert_eq!(
+        parse_early_props(&config, "//@[recursive] revisions: recursive end").map_err(|e| e.kind),
+        Err(RevisionsParseErrorKind::Conditional("recursive".into()))
+    );
+}
+
+#[test]
+fn test_empty_directive() {
+    let line = "//@";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::MissingDirectiveName, .. }))
+    );
+}
+
+#[test]
+fn test_missing_directive_name() {
+    let line = "//@: value";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::MissingDirectiveName, .. }))
+    );
+}
+
+#[test]
+fn test_key_value_directive() {
     let line = "//@ aux-build: file.rs";
 
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
-        result,
+        line_directive(location, line),
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            raw_directive: "aux-build: file.rs",
+            payload: Some(DirectivePayload::Value("file.rs")),
             ..
         }))
     );
 }
 
 #[test]
-fn indented_directive() {
+fn test_valueless_directive() {
+    let line = "//@ only-unix";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "only-unix", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_non_alphanumeric_directive_name() {
+    let line = "//@ #&$?+)^";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "#&$?+)^", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_non_alphanumeric_directive_name_with_payload() {
+    let line = "//@ #&$?+)^ payload";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "#&$?+)^",
+            payload: Some(DirectivePayload::Remark("payload")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_ok_conditional_directive() {
+    let line = "//@[revision] directive";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: Some("revision"),
+            name: "directive",
+            payload: None,
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_indented_directive() {
     let line = "  //@ key: value";
 
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
-        result,
-        Some(Ok(DirectiveLine { revision: None, name: "key", raw_directive: "key: value", .. }))
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_padded_colon() {
+    // Historical context: For the longest time we used to parse this as a valueless directive with
+    // remark ` : value` since we were naively splitting by [':', ' '].
+
+    let line = "//@ key : value";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_two_names() {
+    // We parse the second half as a remark so we can later reject it as a trailing directive if
+    // `key1` turns out to be the name of a real directive.
+
+    let line = "//@ key0 key1: value";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key0",
+            payload: Some(DirectivePayload::Remark("key1: value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_key_value_directive_trailing_whitespace() {
+    let line = "//@ key: value  \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_valueless_directive_with_trailing_whitespace() {
+    let line = "//@ key   \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "key", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_directive_empty_value_0() {
+    let line = "//@ key:";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::MissingValue, .. }))
+    );
+}
+
+#[test]
+fn test_directive_empty_value_1() {
+    let line = "//@ key:   \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::MissingValue, .. }))
     );
 }
 
@@ -686,18 +891,51 @@ fn indented_directive() {
 fn test_doc_comment_at_sign_not_a_directive() {
     let line = "///@ aux-build: file.rs";
 
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, None);
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(line_directive(location, line), None);
 }
 
 #[test]
-fn test_multiple_revisions_in_directive() {
+fn test_directive_padded_revision_condition() {
+    let line = "//@ [ rev ] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: Some("rev"), name: "key", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_directive_empty_revision_condition() {
+    let line = "//@ [] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "" }, .. }))
+    );
+}
+
+#[test]
+fn test_directive_invalid_revision_name_in_condition() {
+    let line = "//@ [ #&$?+)^ ] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "#&$?+)^" }, .. }))
+    );
+}
+
+#[test]
+fn test_directive_multiple_revisions_in_condition() {
     // The problem: If we don't reject this early, this will be seen as a single revision.
     let line = "//@ [foo,bar] compile-flags: -Z hello";
 
-    let result = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, line);
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
-        result,
+        line_directive(location, line),
         Some(Err(Error {
             kind: ErrorKind::CommaInRevisionCondition {
                 revision: "foo,bar",
@@ -711,16 +949,21 @@ fn test_multiple_revisions_in_directive() {
 #[test]
 fn test_whitespace_before_at_sign_in_directive() {
     let line = "// @ check-pass";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, Some(Err(Error { kind: ErrorKind::WhitespaceBeforeAtSign, .. })));
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::WhitespaceBeforeAtSign, .. }))
+    );
 }
 
 #[test]
 fn test_leading_revision_condition_in_directive_0() {
     let line = "//[leading]@ compile-flags: -Aunused";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
-        result,
+        line_directive(location, line),
         Some(Err(Error {
             kind: ErrorKind::LeadingRevisionCondition {
                 revision: "leading",
@@ -734,9 +977,10 @@ fn test_leading_revision_condition_in_directive_0() {
 #[test]
 fn test_leading_revision_condition_in_directive_1() {
     let line = "//  [leading]  @ compile-flags: -Aunused";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
-        result,
+        line_directive(location, line),
         Some(Err(Error {
             kind: ErrorKind::LeadingRevisionCondition {
                 revision: "leading",
@@ -750,22 +994,28 @@ fn test_leading_revision_condition_in_directive_1() {
 #[test]
 fn test_not_a_leading_revision_condition_in_directive_0() {
     let line = "//  [leading  @ compile-flags: -Aunused";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, None);
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(line_directive(location, line), None);
 }
 
 #[test]
 fn test_not_a_leading_revision_condition_in_directive_1() {
     let line = "// [closure@file.rs]";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, None);
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(line_directive(location, line), None);
 }
 
 #[test]
 fn test_unclosed_revision_condition_in_directive() {
     let line = "//@[revision edition: 2021";
-    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, Some(Err(Error { kind: ErrorKind::UnclosedRevisionCondition, .. })));
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::UnclosedRevisionCondition, .. }))
+    );
 }
 
 #[test]
@@ -789,7 +1039,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
         let content = format!("//@ revisions: {rev}");
         for mode in modes {
             let config = cfg().mode(mode).build();
-            parse_early_props(&config, &content);
+            parse_early_props(&config, &content).unwrap();
         }
     }
 }
@@ -985,77 +1235,129 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
+fn parse_and_early_validate_directives<'a>(
+    path: &'a Utf8Path,
+    file_contents: &'a str,
+) -> Result<Vec<DirectiveLine<'a>>, EarlyValidationError<'a>> {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
-    if result.is_err() {
-        *poisoned = true;
-    }
+    directives::do_early_directives_check(TestMode::Ui, &file_directives)?;
+    Ok(file_directives.lines)
 }
 
 #[test]
 fn test_unknown_directive_check() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_and_early_validate_directives(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/unknown_directive.rs"),
     );
-    assert!(poisoned);
+    assert_matches!(
+        result,
+        Err(EarlyValidationError {
+            kind: EarlyValidationErrorKind::UnknownDirective { name: "needs-headpat" },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_known_directive_check_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_and_early_validate_directives(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/known_directive.rs"),
     );
-    assert!(!poisoned);
+    assert_matches!(
+        result.as_deref(),
+        Ok([
+            DirectiveLine { revision: None, name: "ignore-wasm", payload: None, .. },
+            DirectiveLine { revision: None, name: "check-pass", payload: None, .. },
+        ])
+    );
 }
 
 #[test]
 fn test_error_annotation_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_and_early_validate_directives(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/error_annotation.rs"),
     );
-    assert!(!poisoned);
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine { revision: None, name: "check-pass", payload: None, .. },])
+    );
 }
 
 #[test]
 fn test_non_rs_unknown_directive_not_checked() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_and_early_validate_directives(
         Utf8Path::new("a.Makefile"),
         include_str!("./test-auxillary/not_rs.Makefile"),
     );
-    assert!(!poisoned);
+    assert_matches!(result.as_deref(), Ok([]));
 }
 
 #[test]
 fn test_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
-    assert!(poisoned);
+    let result =
+        parse_and_early_validate_directives(Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
+    assert_matches!(
+        result,
+        Err(EarlyValidationError {
+            kind: EarlyValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                trailing_directive: "only-arm",
+            },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86   only-arm with comment");
-    assert!(poisoned);
+    let result = parse_and_early_validate_directives(
+        Utf8Path::new("a.rs"),
+        "//@ only-x86   only-arm with comment",
+    );
+    assert_matches!(
+        result,
+        Err(EarlyValidationError {
+            kind: EarlyValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                trailing_directive: "only-arm with comment",
+            },
+            ..
+        })
+    );
+}
+
+#[test]
+fn test_trailing_directive_with_colon() {
+    let result =
+        parse_and_early_validate_directives(Utf8Path::new("a.rs"), "//@ check-pass edition: 2015");
+    assert_matches!(
+        result,
+        Err(EarlyValidationError {
+            kind: EarlyValidationErrorKind::TrailingDirective {
+                leading_directive: "check-pass",
+                trailing_directive: "edition: 2015",
+            },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_not_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ revisions: incremental");
-    assert!(!poisoned);
+    let result =
+        parse_and_early_validate_directives(Utf8Path::new("a.rs"), "//@ revisions: incremental");
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine {
+            revision: None,
+            name: "revisions",
+            payload: Some(DirectivePayload::Value("incremental")),
+            ..
+        }])
+    );
 }
 
 #[test]
@@ -1252,10 +1554,9 @@ fn implied_needs_target_std() {
 fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
+    let location = Location { file_path: Utf8Path::new("tmp.rs"), line_number: LineNumber::ZERO };
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment)
-        .unwrap()
-        .unwrap();
+    let line = line_directive(location, &line_with_comment).unwrap().unwrap();
 
     super::parse_edition_range(&config, &line)
 }
