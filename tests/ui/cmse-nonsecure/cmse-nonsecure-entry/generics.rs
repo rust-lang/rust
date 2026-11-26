@@ -100,3 +100,22 @@ const CONST: u8 = const_fn_works(0);
 fn fn_ptr_works(f: extern "cmse-nonsecure-entry" fn(_: u8) -> u8) -> u8 {
     f(0)
 }
+
+struct X<const N: usize> {}
+
+trait WithAssocTy {
+    type Output;
+}
+
+impl<const Z: usize> WithAssocTy for X<Z> {
+    type Output = usize;
+}
+
+impl<const Z: usize> X<Z> {
+    #[allow(improper_ctypes_definitions)]
+    extern "cmse-nonsecure-entry" fn trait_projection(self) -> <Self as WithAssocTy>::Output {
+        //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+        //~| ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+        0
+    }
+}

@@ -46,6 +46,18 @@ error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signat
 LL |         _: Wrapper<T>,
    |            ^^^^^^^^^^
 
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:116:55
+   |
+LL |     extern "cmse-nonsecure-entry" fn trait_projection(self) -> <Self as WithAssocTy>::Output {
+   |                                                       ^^^^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:116:64
+   |
+LL |     extern "cmse-nonsecure-entry" fn trait_projection(self) -> <Self as WithAssocTy>::Output {
+   |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
   --> $DIR/generics.rs:47:65
    |
@@ -85,6 +97,6 @@ error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` sig
 LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
    |                                                                ^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0798`.

@@ -90,6 +90,11 @@ fn is_valid_cmse_inputs<'tcx>(
             return Err((hir_ty.span, tcx.arena.alloc(err)));
         }
 
+        if ty.has_param() {
+            let err = LayoutError::TooGeneric(*ty);
+            return Err((hir_ty.span, tcx.arena.alloc(err)));
+        }
+
         let layout = tcx
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))
             .map_err(|e| (hir_ty.span, e))?;
@@ -144,6 +149,11 @@ fn is_valid_cmse_output<'tcx>(
 
     if return_type.has_infer_types() {
         let err = LayoutError::Unknown(return_type);
+        return Err(tcx.arena.alloc(err));
+    }
+
+    if return_type.has_param() {
+        let err = LayoutError::TooGeneric(return_type);
         return Err(tcx.arena.alloc(err));
     }
 
