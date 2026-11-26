@@ -1115,6 +1115,9 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// The allocators of `self` and `other` may be swapped or cloned between them,
+    /// so either may end up holding the other's allocator.
+    ///
     /// # Examples
     ///
     /// ```
