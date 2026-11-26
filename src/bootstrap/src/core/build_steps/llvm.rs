@@ -1021,6 +1021,17 @@ fn configure_cmake(
     if use_compiler_launcher && let Some(ref ccache) = builder.config.ccache {
         cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
             .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+        // LLVM started using PreCompiledHeaders (PCH) to improve build times. In the default
+        // configuration, ccache won't cache pch, which makes it a lot less effective. We follow
+        // the ccache docs and LLVM's default to allow using pch and ccache together.
+        if builder.cxx_tool(target).is_like_clang() && env::var_os("CCACHE_SLOPPINESS").is_none() {
+            cfg.env("CCACHE_SLOPPINESS", "pch_defines,time_macros");
+        }
+        // FIXME(LLVM 24): Once our minimal supported LLVM version is 24, we can consider using
+        // `LLVM_CCACHE_BUILD` instead of tuning ccache ourselves.
+        if env::var_os("CCACHE_DEPEND").is_none() && env::var_os("CCACHE_NODEPEND").is_none() {
+            cfg.env("CCACHE_DEPEND", "1");
+        }
     }
     cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
         .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
