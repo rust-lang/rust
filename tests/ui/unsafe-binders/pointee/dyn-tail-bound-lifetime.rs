@@ -21,9 +21,7 @@ type B2 = unsafe<'a> MD<dyn Tr<'a> + 'a>;
 type B3 = unsafe<'a> MD<dyn Iterator<Item = &'a u8> + 'a>;
 type B4 = unsafe<'a> MD<(&'a u8, dyn Debug + 'a)>;
 
-// The `dyn` tail is reached through a struct that isn't `ManuallyDrop`. Only the
-// type directly inside the binder has to be `Copy` or `ManuallyDrop`, so `W` can
-// be unsized.
+// The metadata follows the tuple tail through W to its final field.
 struct W<'a>(u8, MD<dyn Debug + 'a>);
 type B5 = unsafe<'a> MD<(u8, W<'a>)>;
 
@@ -32,6 +30,11 @@ type B6 = unsafe<'a, 'b> MD<(&'b u8, dyn Tr<'a> + 'a)>;
 
 // Nested `ManuallyDrop`s collapse.
 type B7 = unsafe<'a> MD<MD<dyn Debug + 'a>>;
+
+struct Foo<'a>(&'a ());
+type B8 = unsafe<'a> (MD<Foo<'a>>, MD<dyn Debug + 'a>);
+
+type B9 = unsafe<'a> MD<(MD<Foo<'a>>, unsafe<'b> MD<dyn Tr<'b> + 'a>)>;
 
 fn metadata_is<T: ?Sized + Pointee<Metadata = M>, M>() {}
 
@@ -43,6 +46,8 @@ fn exact_metadata() {
     metadata_is::<B5, DynMetadata<unsafe<'a> MD<dyn Debug + 'a>>>();
     metadata_is::<B6, DynMetadata<unsafe<'a> MD<dyn Tr<'a> + 'a>>>();
     metadata_is::<B7, DynMetadata<unsafe<'a> MD<dyn Debug + 'a>>>();
+    metadata_is::<B8, DynMetadata<unsafe<'a> MD<dyn Debug + 'a>>>();
+    metadata_is::<B9, DynMetadata<unsafe<'a, 'b> MD<dyn Tr<'b> + 'a>>>();
 }
 
 // Free regions in the `dyn` stay free; only the bound ones are re-bound.

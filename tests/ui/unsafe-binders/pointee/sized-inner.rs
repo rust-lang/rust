@@ -16,6 +16,7 @@ struct BinderTail {
 
 fn main() {
     metadata_is::<unsafe<'a> &'a u8, ()>();
+    metadata_is::<unsafe<'a> &'a mut [u8], ()>();
     metadata_is::<unsafe<'a> (&'a u8, u32), ()>();
     metadata_is::<unsafe<> u8, ()>();
     metadata_is::<BinderTail, ()>();

@@ -253,24 +253,19 @@ fn take_pointee_step<I: Interner>(cx: I, self_ty: I::Ty) -> PointeeStep<I> {
 ///   want to lie about lifetimes lie that.
 fn take_unsafe_binder_step<I: Interner>(cx: I, binder: ty::Binder<I, I::Ty>) -> PointeeStep<I> {
     let manually_drop = cx.require_adt_lang_item(SolverAdtLangItem::ManuallyDrop);
-    let as_manually_drop = |ty: I::Ty| {
-        if let ty::Adt(def, args) = ty.kind()
-            && def.def_id() == manually_drop
-        {
-            Some(args.as_slice()[0].expect_ty())
-        } else {
-            None
-        }
-    };
     let mk_unsafe_binder = |inner: I::Ty, bound_vars: I::BoundVarKinds| {
         let manually_drop_args = cx.mk_args_from_iter([I::GenericArg::from(inner)].into_iter());
         let manually_drop_self = Ty::new_adt(cx, cx.adt_def(manually_drop), manually_drop_args);
         Ty::new_unsafe_binder(cx, ty::Binder::bind_with_vars(manually_drop_self, bound_vars))
     };
 
-    // `unsafe<..> X` means `X` is `ManuallyDrop<Y>` or `Copy` (and thus metadata is `()`, because `trait Copy: Sized`).
-    let Some(bound_ty) = as_manually_drop(binder.skip_binder()) else {
-        return PointeeStep::Metadata(Ty::new_unit(cx));
+    let body = binder.skip_binder();
+    let bound_ty = match body.kind() {
+        ty::Adt(..) => match take_pointee_step(cx, body) {
+            PointeeStep::Tail(tail) => tail,
+            step => return step,
+        },
+        _ => body,
     };
 
     match bound_ty.kind() {
@@ -300,10 +295,6 @@ fn take_unsafe_binder_step<I: Interner>(cx: I, binder: ty::Binder<I, I::Ty>) -> 
                 outer_bound_vars.iter().chain(inner_bound_vars.iter()),
             );
             PointeeStep::Tail(mk_unsafe_binder(inner, bound_vars))
-        }
-        // `unsafe<..> MD<MD<Z>>` => `unsafe<..> MD<Z>`.
-        _ if let Some(inner) = as_manually_drop(bound_ty) => {
-            PointeeStep::Tail(mk_unsafe_binder(inner, binder.bound_vars()))
         }
         _ => match take_pointee_step(cx, bound_ty) {
             PointeeStep::Metadata(metadata) => PointeeStep::Metadata(metadata),
