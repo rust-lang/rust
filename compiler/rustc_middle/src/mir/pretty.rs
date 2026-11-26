@@ -837,32 +837,30 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         // Terminator at the bottom.
         (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
-        if data.terminator.is_some() {
-            let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-            if self.options.include_extra_comments {
-                writeln!(
-                    w,
-                    "{:A$} // {}{}",
-                    indented_terminator,
-                    if self.tcx.sess.verbose_internals() {
-                        format!("{current_location:?}: ")
-                    } else {
-                        String::new()
-                    },
-                    comment(self.tcx, data.terminator().source_info),
-                    A = ALIGN,
-                )?;
-            } else {
-                writeln!(w, "{indented_terminator}")?;
-            }
-
-            write_extra(
-                self.tcx,
+        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+        if self.options.include_extra_comments {
+            writeln!(
                 w,
-                &|visitor| visitor.visit_terminator(data.terminator(), current_location),
-                self.options,
+                "{:A$} // {}{}",
+                indented_terminator,
+                if self.tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
+                comment(self.tcx, data.terminator().source_info),
+                A = ALIGN,
             )?;
+        } else {
+            writeln!(w, "{indented_terminator}")?;
         }
+
+        write_extra(
+            self.tcx,
+            w,
+            &|visitor| visitor.visit_terminator(data.terminator(), current_location),
+            self.options,
+        )?;
 
         (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
         (self.extra_data)(PassWhere::AfterTerminator(block), w)?;

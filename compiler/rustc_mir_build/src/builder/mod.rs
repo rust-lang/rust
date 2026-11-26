@@ -984,14 +984,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         body.coverage_early_info = self.coverage_info.map(|b| b.into_done());
 
-        let writer = pretty::MirWriter::new(self.tcx);
-        for (index, block) in body.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
-                writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
-                span_bug!(self.fn_span, "no terminator on block {:?}", index);
-            }
-        }
-
         body
     }
 

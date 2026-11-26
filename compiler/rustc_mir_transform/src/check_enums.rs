@@ -407,7 +407,7 @@ fn insert_direct_enum_check<'tcx>(
         .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr_masked, rvalue)))));
 
     // Branch based on the discriminant value.
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::SwitchInt {
             discr: Operand::Copy(discr_masked),
@@ -418,7 +418,7 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
-    });
+    };
 }
 
 // Note: this function replaces the block's terminator
@@ -446,7 +446,7 @@ fn insert_uninhabited_enum_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -464,7 +464,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }
 
 // Note: this function replaces the block's terminator.
@@ -530,7 +530,7 @@ fn insert_niche_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -542,5 +542,5 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }

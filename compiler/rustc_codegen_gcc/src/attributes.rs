@@ -36,10 +36,9 @@ fn recursively_inline<'gcc, 'tcx>(
     // `expect_local` ought to never fail: we should be checking a function within this codegen unit.
     let body = cx.tcx.optimized_mir(instance.def_id());
     for block in body.basic_blocks.iter() {
-        let Some(ref terminator) = block.terminator else { continue };
         // I assume that the recursive-inline issue applies only to functions, and not to drops.
         // In principle, a recursive, `#[inline(always)]` drop could(?) exist, but I don't think it does.
-        let TerminatorKind::Call { ref func, .. } = terminator.kind else { continue };
+        let TerminatorKind::Call { ref func, .. } = block.terminator.kind else { continue };
         let Some((def, _args)) = func.const_fn_def() else { continue };
         // Check if the called function is recursively inline.
         if matches!(

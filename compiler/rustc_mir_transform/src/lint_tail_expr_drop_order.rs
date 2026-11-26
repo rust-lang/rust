@@ -61,7 +61,7 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
         let make_new_path_set = || Rc::new(RefCell::new(MixedBitSet::new_empty(move_set_size)));
 
         let data = &self.body.basic_blocks[block];
-        let Some(terminator) = &data.terminator else { return };
+        let terminator = &data.terminator;
         // Given that we observe these dropped locals here at `block` so far, we will try to update
         // the successor blocks. An occupied entry at `block` in `self.visited` signals that we
         // have visited `block` before.
@@ -129,7 +129,7 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                     vacant_entry.insert(Rc::new(RefCell::new(dropped_local_here.borrow().clone()))),
                 ),
             };
-            if let Some(terminator) = &target.terminator
+            if let terminator = &target.terminator
                 && let TerminatorKind::Drop {
                     place: dropped_place,
                     target: _,
