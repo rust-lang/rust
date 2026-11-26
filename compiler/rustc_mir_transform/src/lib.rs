@@ -361,6 +361,14 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
         }
     }
 
+    for def_id in tcx.hir_crate_items(()).definitions() {
+        if let DefKind::Const | DefKind::AssocConst = tcx.def_kind(def_id)
+            && tcx.const_of_item(def_id).is_some()
+        {
+            set.insert(def_id);
+        }
+    }
+
     set
 }
 
