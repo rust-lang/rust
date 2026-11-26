@@ -717,16 +717,6 @@ impl<T, A: Allocator> Box<T, A> {
         Self::into_pin(Self::new_in(x, alloc))
     }
 
-    /// Converts a `Box<T>` into a `Box<[T]>`
-    ///
-    /// This conversion does not allocate on the heap and happens in place.
-    #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
-    pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(boxed);
-        // SAFETY: A pointer to T is also a valid pointer to [T; 1].
-        unsafe { Box::from_raw_in(raw as *mut [T; 1], alloc) }
-    }
-
     /// Consumes the `Box`, returning the wrapped value.
     ///
     /// # Examples
