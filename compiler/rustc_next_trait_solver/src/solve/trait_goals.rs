@@ -1624,7 +1624,17 @@ where
         if let Some(response) = self.try_merge_candidates(candidates) {
             (response, Some(proven_via))
         } else {
-            (self.bail_with_ambiguity(candidates), None)
+            let proven_via = if matches!(proven_via, TraitGoalProvenVia::AliasBound)
+                && candidates.iter().any(|c| {
+                    c.result.value.certainty == Certainty::Yes
+                        && has_only_region_constraints(c.result)
+                }) {
+                Some(proven_via)
+            } else {
+                None
+            };
+
+            (self.bail_with_ambiguity(candidates), proven_via)
         }
     }
 
