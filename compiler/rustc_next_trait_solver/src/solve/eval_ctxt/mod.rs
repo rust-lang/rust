@@ -110,7 +110,7 @@ where
     ///
     /// NOTE: The `InferCtxt` that backs the `EvalCtxt` is intentionally private,
     /// because the `InferCtxt` is much more general than `EvalCtxt`. Methods such
-    /// as  `take_registered_region_obligations` can mess up query responses,
+    /// as  `take_registered_type_outlives_constraints` can mess up query responses,
     /// using `At::normalize` is totally wrong, calling `evaluate_root_goal` can
     /// cause coinductive unsoundness, etc.
     ///

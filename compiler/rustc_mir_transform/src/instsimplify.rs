@@ -54,7 +54,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                 ctx.simplify_repeat_once(rvalue);
             }
 
-            let terminator = block.terminator.as_mut().unwrap();
+            let terminator = &mut block.terminator;
             ctx.simplify_primitive_clone(terminator, &mut block.statements);
             ctx.simplify_size_or_align_of_val(terminator, &mut block.statements);
             ctx.simplify_raw_eq(terminator, &mut block.statements);

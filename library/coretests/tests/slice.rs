@@ -1,3 +1,21 @@
+// tidy-alphabetical-start
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
+#![feature(iter_advance_by)]
+#![feature(slice_from_ptr_range)]
+#![feature(slice_internals)]
+#![feature(slice_partition_dedup)]
+#![feature(slice_shift)]
+#![feature(split_as_slice)]
+#![feature(strict_provenance_lints)]
+#![feature(u8_split_ascii_whitespace)]
+// tidy-alphabetical-end
+#![allow(internal_features)]
+#![deny(implicit_provenance_casts)]
+
+#[macro_use]
+mod common;
+
 use core::cell::Cell;
 use core::cmp::Ordering;
 use core::mem::MaybeUninit;
@@ -1687,7 +1705,7 @@ fn select_nth_unstable() {
     use rand::Rng;
     use rand::seq::IndexedRandom;
 
-    let mut rng = crate::test_rng();
+    let mut rng = common::test_rng();
 
     for len in (2..21).chain(500..501) {
         let mut orig = vec![0; len];

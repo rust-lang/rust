@@ -1,3 +1,5 @@
+#![feature(ip)]
+
 use core::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
 mod ip_addr;

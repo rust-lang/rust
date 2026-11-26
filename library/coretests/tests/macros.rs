@@ -1,3 +1,4 @@
+#![feature(non_exhaustive_omitted_patterns_lint)]
 #![allow(unused_must_use)]
 
 use std::{assert_matches, debug_assert_matches};

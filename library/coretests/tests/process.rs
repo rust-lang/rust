@@ -1,3 +1,6 @@
+#![feature(abort_immediate)]
+#![feature(breakpoint)]
+
 use core::process;
 
 #[test]

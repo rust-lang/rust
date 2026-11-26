@@ -51,7 +51,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         if block.is_cleanup {
             continue;
         }
-        let Some(terminator) = &block.terminator else { continue };
+        let terminator = &block.terminator;
 
         if let TerminatorKind::InlineAsm { options, .. } = &terminator.kind {
             if options.contains(InlineAsmOptions::MAY_UNWIND) {

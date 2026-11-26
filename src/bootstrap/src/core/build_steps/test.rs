@@ -2996,6 +2996,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             // Note that if we encounter `PATH` we make sure to append to our own `PATH`
             // rather than stomp over it.
             if !builder.config.dry_run() && target.is_msvc() {
+                // Update VSCMD_ARG_TGT_ARCH when cross compiling to i686-msvc
+                if std::env::var_os("VSCMD_ARG_TGT_ARCH").is_some() && target.contains("i686") {
+                    cmd.env("VSCMD_ARG_TGT_ARCH", "x86");
+                }
                 for (k, v) in builder.cc[&target].env() {
                     if k != "PATH" {
                         cmd.env(k, v);

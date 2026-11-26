@@ -1,3 +1,7 @@
+#![feature(hasher_prefixfree_extras)]
+#![feature(hashmap_internals)]
+#![expect(internal_features)]
+
 mod sip;
 
 use std::hash::{BuildHasher, Hash, Hasher};

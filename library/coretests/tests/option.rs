@@ -1,3 +1,6 @@
+#![feature(const_option_ops)]
+#![feature(const_trait_impl)]
+
 use core::cell::Cell;
 use core::mem;
 use core::ops::DerefMut;
