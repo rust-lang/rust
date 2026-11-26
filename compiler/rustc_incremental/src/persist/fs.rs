@@ -111,7 +111,7 @@ use rustc_middle::dep_graph::{IncrCompSession, WorkProduct};
 use rustc_session::output::OutputType;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::{Symbol, bug};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::diagnostics;
 
@@ -268,7 +268,18 @@ pub(crate) fn prepare_session_directory(
         None
     };
 
-    IncrCompSession::new(old_session_directory, new_session_directory)
+    let incr_comp_session = IncrCompSession::new(old_session_directory, new_session_directory);
+
+    sess.time("incr_comp_garbage_collect_session_directories", || {
+        if let Err(e) = garbage_collect_session_directories(sess, &incr_comp_session) {
+            warn!(
+                "Error while trying to garbage collect incremental compilation \
+                cache directory: {e}",
+            );
+        }
+    });
+
+    incr_comp_session
 }
 
 /// This function finalizes and thus 'publishes' the session directory by
@@ -549,7 +560,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 }
 
 /// Runs garbage collection for the current session.
-pub(crate) fn garbage_collect_session_directories(
+fn garbage_collect_session_directories(
     sess: &Session,
     incr_comp_session: &IncrCompSession,
 ) -> io::Result<()> {

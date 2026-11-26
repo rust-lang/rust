@@ -10,7 +10,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use super::file_format;
 use super::fs::*;
@@ -180,15 +180,6 @@ pub fn setup_dep_graph(
     let mut incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
     // Try to load the previous session's dep graph and work products.
     let load_result = load_dep_graph(sess, &incr_comp_session);
-
-    sess.time("incr_comp_garbage_collect_session_directories", || {
-        if let Err(e) = garbage_collect_session_directories(sess, &incr_comp_session) {
-            warn!(
-                "Error while trying to garbage collect incremental compilation \
-                cache directory: {e}",
-            );
-        }
-    });
 
     // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
     maybe_assert_incr_state(sess, load_result.is_ok());
