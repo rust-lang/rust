@@ -4,6 +4,9 @@
 
 #[rustc_comptime]
 pub fn hello() {
+    let a = 5;
+    let b = a;
+
     let _ = core::mem::comptime::read_file("files/hello2");
     //~^ ERROR: not allowed to read `files/hello2`: not whitelisted
 }

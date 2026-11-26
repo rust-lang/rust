@@ -15,7 +15,7 @@ use rustc_span::{Symbol, sym};
 use tracing::instrument;
 
 use crate::const_eval::CompileTimeMachine;
-use crate::interpret::{self, Immediate, InterpCx, OpTy, PlaceTy, Projectable};
+use crate::interpret::{self, Immediate, InterpCx, OpTy, PlaceTy};
 
 #[instrument(skip(tcx), level = "debug")]
 pub fn experimental_comptime_list_files_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[Symbol] {
@@ -62,18 +62,25 @@ pub fn experimental_comptime_fetch_file_provider<'tcx>(
             Err(e) => Err(ReadFileError::IO(tcx.arena.alloc_str(&e.to_string()))),
         }
     } else {
-        Err(ReadFileError::NotWhitelisted)
+        Err(ReadFileError::NotInComptimeFilesList)
     }
 }
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
+    #[allow(unused)]
     fn build_fs_diag(&self, msg: String) -> Diag<'_> {
-        let parent_span =
-            self.stack().iter().rev().nth(1).map(|parent_frame| parent_frame.current_span());
+        let parent_frame = self.stack().iter().rev().nth(1);
+
+        let caller_span = parent_frame.map(|parent_frame| parent_frame.current_span());
+        let instance_span =
+            parent_frame.map(|parent_frame| self.tcx.def_span(parent_frame.instance().def_id()));
 
         let item_span = self.tcx.span;
-
-        self.tcx.dcx().struct_err(msg).with_span(parent_span).with_span_context(item_span)
+        let mut diag = self.tcx.dcx().struct_err(msg).with_span(caller_span);
+        if let Some(instance_span) = instance_span {
+            diag = diag.with_span_context(instance_span);
+        }
+        diag.with_span_label(item_span, "while evaluating this item")
     }
 
     /// intrinsics related to `comptime_ops_*`
@@ -91,17 +98,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let path = self.read_str(&arg_place)?;
                 let path_sym = Symbol::intern(path);
 
-                let krate = self
-                    .stack()
-                    .first()
-                    .expect("should have a call frame if we are here")
-                    .instance()
-                    .def_id()
-                    .krate;
-
                 let content_maybe = match self
                     .tcx
-                    .experimental_comptime_fetch_file((krate, path_sym))
+                    .experimental_comptime_fetch_file((self.item_crate(), path_sym))
                 {
                     Ok(content) => content,
                     Err(ReadFileError::IO(err)) => {
@@ -113,7 +112,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         )));
                     }
 
-                    Err(ReadFileError::NotWhitelisted) => {
+                    Err(ReadFileError::NotInComptimeFilesList) => {
                         let guard = self
                             .build_fs_diag(format!("not allowed to read `{path_sym}`: not whitelisted"))
                             .with_help("pass -Zexperimental-comptime-files=<path> to the compiler to allow reading this file")
@@ -147,22 +146,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
 
             sym::comptime_list_files => {
-                let krate = self
-                    .stack()
-                    .first()
-                    .expect("should have a call frame if we are here")
-                    .instance()
-                    .def_id()
-                    .krate;
+                let filelist = self.tcx().experimental_comptime_list_files(self.item_crate());
 
-                let filelist = self.tcx().experimental_comptime_list_files(krate);
-
-                let element_type = dest
-                    .layout()
-                    .ty
-                    .builtin_deref(false)
-                    .unwrap()
-                    .sequence_element_type(self.tcx());
+                let element_type = Ty::new_static_str(self.tcx());
 
                 // type and layout of [&str, filelist.len()];
                 let array_ty =

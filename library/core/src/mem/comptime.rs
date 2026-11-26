@@ -12,6 +12,7 @@
 #[unstable(feature = "comptime_ops_fs", issue = "165159")]
 #[rustc_const_unstable(feature = "comptime_ops_fs", issue = "165159")]
 #[rustc_comptime]
+#[track_caller]
 pub fn read_file(path: &str) -> Option<&'static [u8]> {
     crate::intrinsics::comptime::comptime_fetch_file(path)
 }
@@ -20,6 +21,7 @@ pub fn read_file(path: &str) -> Option<&'static [u8]> {
 #[unstable(feature = "comptime_ops_fs", issue = "165159")]
 #[rustc_const_unstable(feature = "comptime_ops_fs", issue = "165159")]
 #[rustc_comptime]
+#[track_caller]
 pub fn list_files() -> &'static [&'static str] {
     crate::intrinsics::comptime::comptime_list_files()
 }

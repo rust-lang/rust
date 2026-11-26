@@ -7,6 +7,7 @@ pub enum ReadFileError<'tcx> {
     /// Another IO error happened while trying to read the file
     IO(&'tcx str),
 
-    /// The file being accessed at comptime has not been whitelisted
-    NotWhitelisted,
+    /// The file being accessed at comptime is not in the list passed to rustc
+    /// by `-Zexperimental-comptime-files`
+    NotInComptimeFilesList,
 }
