@@ -1706,14 +1706,15 @@ impl SyntaxContext {
 
             let get_hashing_data = |data: &HygieneData| {
                 let (expn_id, transparency) = data.outer_mark(self);
-                (data.expn_hash(expn_id).0, transparency)
+                (data.parent_ctxt(self), data.expn_hash(expn_id).0, transparency)
             };
 
-            let (hash, transparency) = match data {
+            let (parent, hash, transparency) = match data {
                 Some(data) => get_hashing_data(data),
                 None => HygieneData::with(|data| get_hashing_data(data)),
             };
 
+            parent.stable_hash_internal(data, hcx, hasher);
             hash.stable_hash(hcx, hasher);
             transparency.stable_hash(hcx, hasher);
         }
