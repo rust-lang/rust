@@ -194,7 +194,7 @@ pub fn setup_dep_graph(
     maybe_assert_incr_state(sess, load_result.is_ok());
 
     let (prev_graph, prev_work_products) = match load_result {
-        Ok((prev_graph, prev_work_products)) => (prev_graph, prev_work_products),
+        Ok(prev) => prev,
         Err(()) => {
             invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
