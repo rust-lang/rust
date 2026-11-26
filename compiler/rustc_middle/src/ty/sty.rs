@@ -1787,6 +1787,15 @@ impl<'tcx> Ty<'tcx> {
         mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), &mut normalize, || {});
+        tail.ptr_metadata_ty_for_tail(tcx, normalize)
+    }
+
+    fn ptr_metadata_ty_for_tail(
+        self,
+        tcx: TyCtxt<'tcx>,
+        normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
+    ) -> Result<Ty<'tcx>, Ty<'tcx>> {
+        let tail = self;
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1871,7 +1880,13 @@ impl<'tcx> Ty<'tcx> {
         if pointee_ty.has_trivial_sizedness(tcx, SizedTraitKind::Sized) {
             tcx.types.unit
         } else {
-            match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x.skip_norm_wip()) {
+            let normalize = |x: Unnormalized<'tcx, Ty<'tcx>>| x.skip_norm_wip();
+            let tail = tcx.struct_tail_raw(pointee_ty, &ObligationCause::dummy(), normalize, || {});
+            let metadata = match tail.kind() {
+                ty::UnsafeBinder(_) => Err(tail),
+                _ => tail.ptr_metadata_ty_for_tail(tcx, normalize),
+            };
+            match metadata {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
                     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, DUMMY_SP);

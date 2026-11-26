@@ -1,13 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ build-fail
-//@ failure-status: 101
-//@ known-bug: #130516
-//@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "(compiler/[a-z_/]+\.rs):\d+:\d+" -> "$1:LL:CC"
-//@ normalize-stderr: "query stack during panic:\n(.*\n)*?(end of query stack|\.\.\. and \d+ other queries.*)\n" -> ""
-//@ normalize-stderr: "Normalizing .* without wrapping in a `Binder`" -> "Normalizing .. without wrapping in a `Binder`"
-//@ normalize-stderr: "`ProjectionClause\(.*\)` has escaping bound vars" -> "`ProjectionClause(..)` has escaping bound vars"
+//@ run-pass
 //@ compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy -Cdebuginfo=2
 
 // After monomorphization, the metadata of every binder must be concrete: the
@@ -16,8 +8,6 @@
 // `align_of_val` through the binder, debuginfo for wide pointers to binders, and
 // unwrapping through a wide pointer. It uses legacy mangling because v0
 // mangling ICEs on unsafe binders (#154367).
-//
-// Expected: run-pass. See the `.stderr` files for the current behavior.
 
 #![feature(unsafe_binders, ptr_metadata)]
 #![allow(incomplete_features, dead_code)]

@@ -1,4 +1,4 @@
-use rustc_type_ir::{FnMutDelegate, PredicateProxy};
+use rustc_type_ir::PredicateProxy;
 use tracing::debug;
 
 use crate::query::Providers;
@@ -49,21 +49,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserAndAnonymizerVisitor<'tcx> {
             ty
         } else if ty.has_infer() {
             ty.super_fold_with(self)
-        } else if let ty::UnsafeBinder(inner) = ty.kind() {
-            let delegate = FnMutDelegate {
-                regions: &mut |_br: ty::BoundRegion<'tcx>| self.tcx.lifetimes.re_erased,
-                types: &mut |_bound_ty: ty::BoundTy<'tcx>| {
-                    unreachable!("we only replace regions in nll_relate, not types")
-                },
-                consts: &mut |_bound_const: ty::BoundConst<'tcx>| {
-                    unreachable!("we only replace regions in nll_relate, not consts")
-                },
-            };
-
-            let replaced = self.tcx.replace_bound_vars_uncached(**inner, delegate);
-            debug!(?replaced);
-
-            replaced
         } else {
             self.tcx.erase_and_anonymize_regions_ty(ty)
         }

@@ -180,6 +180,10 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             (full_size, full_align)
         }
+        ty::UnsafeBinder(inner) => {
+            let body = bx.tcx().instantiate_bound_regions_with_erased((*inner).into());
+            size_and_align_of_dst(bx, body, info, span)
+        }
         _ => bug!("size_and_align_of_dst: {t} not supported"),
     }
 }
