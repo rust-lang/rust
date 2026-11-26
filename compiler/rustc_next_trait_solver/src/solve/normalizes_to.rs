@@ -241,7 +241,7 @@ fn take_pointee_step<I: Interner>(cx: I, self_ty: I::Ty) -> PointeeStep<I> {
 
 /// If we encounter an `unsafe<..> X` type, then we need to be a bit clever in
 /// the metadata that we return. There are a couple things to consider:
-/// - If we see nested unsafe binders, we combine both into a single under binder,
+/// - If we see nested unsafe binders, we combine both into a single unsafe binder,
 ///   which may bind some inner metadata ty.
 /// - If we see nested `ManuallyDrop` types, then we just collapse them into as single one.
 /// - If the eventual metadata ty is a `dyn Trait + 'a`, then the metadata is
