@@ -1,0 +1,17 @@
+error[E0080]: unable to normalize `fn() -> usize {std::mem::size_of::<<dyn Ob<A = u16> as Ob>::A>}` during evaluation
+  --> $DIR/unresolved-dyn-associated-const-two-definitions-issue-311.rs:16:25
+   |
+LL | impl<T: ?Sized + Ob> First<T> {
+LL |     const SIZE: usize = size_of::<T::A>();
+   |                         ^^^^^^^^^^^^^^^^^ evaluation of `First::<dyn Ob<A = u16>>::SIZE` failed here
+
+error[E0080]: unable to normalize `fn() -> usize {std::mem::size_of::<<dyn Ob<A = u16> as Ob>::A>}` during evaluation
+  --> $DIR/unresolved-dyn-associated-const-two-definitions-issue-311.rs:19:25
+   |
+LL | impl<T: ?Sized + Ob> Second<T> {
+LL |     const SIZE: usize = size_of::<T::A>();
+   |                         ^^^^^^^^^^^^^^^^^ evaluation of `Second::<dyn Ob<A = u16>>::SIZE` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
