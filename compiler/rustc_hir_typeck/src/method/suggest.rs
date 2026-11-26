@@ -201,8 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Some(sym::into_iter);
         };
 
-        let rcvr_expr = rcvr_expr.peel_drop_temps().peel_blocks();
-        let Ok(place_with_id) = expr_place(self, rcvr_expr) else {
+        let Ok(place_with_id) = expr_place(self, rcvr_expr.peel_drop_temps().peel_blocks()) else {
             return None;
         };
 
