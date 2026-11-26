@@ -1445,9 +1445,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // We don't have a complete picture in our use of ThinLTO, just our immediate
   // crate, so we need `ImportEnabled = false` to limit internalization.
   // Otherwise, we sometimes lose `static` values -- see #60184.
-  computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
-                                  deadIsPrevailing,
-                                  /* ImportEnabled = */ false);
+  computeDeadSymbolsWithConstProp(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing,
+      /* ImportEnabled = */ false);
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
   //
@@ -1465,8 +1468,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
       return true;
     return Prevailing->second == S;
   };
-  ComputeCrossModuleImport(Ret->Index, Ret->ModuleToDefinedGVSummaries,
-                           isPrevailing, Ret->ImportLists, Ret->ExportLists);
+  ComputeCrossModuleImport(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      Ret->Index, Ret->ModuleToDefinedGVSummaries, isPrevailing,
+      Ret->ImportLists, Ret->ExportLists);
 
   auto recordNewLinkage = [&](StringRef ModuleIdentifier,
                               GlobalValue::GUID GUID,
@@ -1478,8 +1485,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // formats. We probably could and should use ELF visibility scheme for many of
   // our targets, however.
   lto::Config conf;
-  thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing,
-                                  recordNewLinkage, Ret->GUIDPreservedSymbols);
+  thinLTOResolvePrevailingInIndex(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      conf, Ret->Index, isPrevailing, recordNewLinkage,
+      Ret->GUIDPreservedSymbols);
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
