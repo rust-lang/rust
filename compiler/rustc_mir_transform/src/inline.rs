@@ -4,7 +4,6 @@ use std::ops::{Range, RangeFrom};
 use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -783,9 +782,12 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         return Ok(());
     }
 
-    if let Some(callee_def_id) = callee_def_id.as_local()
-        && !inliner.tcx().is_lang_item(inliner.tcx().parent(caller_def_id), LangItem::FnOnce)
-    {
+    if matches!(caller_body.source.instance, InstanceKind::Shim(_)) {
+        trace!("caller is a MIR shim");
+        return Ok(());
+    }
+
+    if let Some(callee_def_id) = callee_def_id.as_local() {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.
         let Some(cyclic_callees) = inliner.tcx().mir_callgraph_cyclic(caller_def_id.expect_local())
