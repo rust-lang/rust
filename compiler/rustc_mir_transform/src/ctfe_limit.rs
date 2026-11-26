@@ -20,7 +20,7 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
             .basic_blocks
             .iter_enumerated()
             .filter_map(|(node, node_data)| {
-                if matches!(node_data.terminator().kind, TerminatorKind::Call { .. } | TerminatorKind::TailCall { .. })
+                if matches!(node_data.terminator.kind, TerminatorKind::Call { .. } | TerminatorKind::TailCall { .. })
                     // Back edges in a CFG indicate loops
                     || has_back_edge(doms, node, node_data)
                 {
@@ -34,7 +34,7 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
         let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
         for index in indices {
             let bbdata = &mut basic_blocks[index];
-            let source_info = bbdata.terminator().source_info;
+            let source_info = bbdata.terminator.source_info;
             bbdata.statements.push(Statement::new(source_info, StatementKind::ConstEvalCounter));
         }
     }
@@ -54,5 +54,5 @@ fn has_back_edge(
         return false;
     }
     // Check if any of the dominators of the node are also the node's successor.
-    node_data.terminator().successors().any(|succ| doms.dominates(succ, node))
+    node_data.terminator.successors().any(|succ| doms.dominates(succ, node))
 }

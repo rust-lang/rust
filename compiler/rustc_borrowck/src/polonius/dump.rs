@@ -307,7 +307,7 @@ fn emit_mermaid_cfg(body: &Body<'_>, out: &mut dyn io::Write) -> io::Result<()> 
     // Emit the edges between blocks, from the terminator edges.
     for (block_idx, block) in body.basic_blocks.iter_enumerated() {
         let block_idx = block_idx.as_usize();
-        let terminator = block.terminator();
+        let terminator = &block.terminator;
         match terminator.edges() {
             TerminatorEdges::None => {}
             TerminatorEdges::Single(bb) => {

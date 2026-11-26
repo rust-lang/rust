@@ -52,7 +52,7 @@ impl<'tcx> MirPatch<'tcx> {
 
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             // Check if we already have a resume block
-            if matches!(block.terminator().kind, TerminatorKind::UnwindResume)
+            if matches!(block.terminator.kind, TerminatorKind::UnwindResume)
                 && block.statements.is_empty()
             {
                 result.resume_block = Some(bb);
@@ -60,7 +60,7 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have an unreachable block
-            if matches!(block.terminator().kind, TerminatorKind::Unreachable)
+            if matches!(block.terminator.kind, TerminatorKind::Unreachable)
                 && block.statements.is_empty()
             {
                 if block.is_cleanup {
@@ -72,7 +72,7 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have a terminate block
-            if let TerminatorKind::UnwindTerminate(reason) = block.terminator().kind
+            if let TerminatorKind::UnwindTerminate(reason) = block.terminator.kind
                 && block.statements.is_empty()
             {
                 result.terminate_block = Some((bb, reason));
@@ -221,7 +221,7 @@ impl<'tcx> MirPatch<'tcx> {
         let kind = self
             .term_patch_map
             .entry(bb)
-            .or_insert_with(|| body.basic_blocks[bb].terminator().kind.clone());
+            .or_insert_with(|| body.basic_blocks[bb].terminator.kind.clone());
         f(kind);
     }
 
@@ -330,7 +330,7 @@ impl<'tcx> MirPatch<'tcx> {
     fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
         match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
-            None => data.terminator().source_info,
+            None => data.terminator.source_info,
         }
     }
 

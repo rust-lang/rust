@@ -223,7 +223,7 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
             return ControlFlow::Break(NonRecursive);
         }
 
-        match self.body[bb].terminator().kind {
+        match self.body[bb].terminator.kind {
             // These terminators return control flow to the caller.
             TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::CoroutineDrop
@@ -262,7 +262,7 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
 
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
-        let terminator = self.body[bb].terminator();
+        let terminator = &self.body[bb].terminator;
 
         // FIXME(explicit_tail_calls): highlight tail calls as "recursive call site"
         //
@@ -280,7 +280,7 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
-        let terminator = self.body[bb].terminator();
+        let terminator = &self.body[bb].terminator;
         let ignore_unwind = terminator.unwind() == Some(&mir::UnwindAction::Cleanup(target))
             && terminator.successors().count() > 1;
         if ignore_unwind || self.classifier.is_recursive_terminator(self.tcx, self.body, terminator)

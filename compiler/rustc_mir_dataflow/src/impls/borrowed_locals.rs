@@ -120,7 +120,7 @@ pub fn borrowed_locals(body: &Body<'_>) -> DenseBitSet<Local> {
         for stmt in &bb_data.statements {
             MaybeBorrowedLocals::gen_statement(&mut borrowed, stmt);
         }
-        MaybeBorrowedLocals::gen_terminator(&mut borrowed, bb_data.terminator());
+        MaybeBorrowedLocals::gen_terminator(&mut borrowed, &bb_data.terminator);
     }
     borrowed
 }

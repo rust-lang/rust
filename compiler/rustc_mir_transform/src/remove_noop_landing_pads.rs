@@ -27,7 +27,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
         let has_resume = body
             .basic_blocks
             .iter_enumerated()
-            .any(|(_bb, block)| matches!(block.terminator().kind, TerminatorKind::UnwindResume));
+            .any(|(_bb, block)| matches!(block.terminator.kind, TerminatorKind::UnwindResume));
         if !has_resume {
             debug!("no resume block in MIR");
             return;
@@ -112,7 +112,7 @@ impl RemoveNoopLandingPads {
             }
         }
 
-        let terminator = bbdata.terminator();
+        let terminator = &bbdata.terminator;
         match terminator.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume

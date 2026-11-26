@@ -581,7 +581,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::Nop => {}
                     }
                 }
-                match &bb_data.terminator().kind {
+                match &bb_data.terminator.kind {
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::SwitchInt { .. }
                     | TerminatorKind::UnwindResume

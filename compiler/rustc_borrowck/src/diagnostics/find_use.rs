@@ -77,11 +77,11 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
                     } else {
                         queue.extend(
                             block_data
-                                .terminator()
+                                .terminator
                                 .successors()
                                 .filter(|&bb| {
                                     Some(&mir::UnwindAction::Cleanup(bb))
-                                        != block_data.terminator().unwind()
+                                        != block_data.terminator.unwind()
                                 })
                                 .map(|bb| Location { statement_index: 0, block: bb }),
                         );

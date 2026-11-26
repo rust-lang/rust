@@ -122,7 +122,7 @@ fn find_unreachable_code_from<'tcx>(
         }
     }
 
-    let term = bbdata.terminator();
+    let term = &bbdata.terminator;
     match term.kind {
         // The user does not care for `goto` and compiler-generated drops. If the target block is
         // only reachable through those terminators, continue searching there.

@@ -30,7 +30,7 @@ fn get_switched_on_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    let terminator = block_data.terminator();
+    let terminator = &block_data.terminator;
 
     // Only bother checking blocks which terminate by switching on a local.
     let local = get_discriminant_local(&terminator.kind)?;
@@ -116,7 +116,7 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
             trace!("allowed_variants = {:?}", allowed_variants);
 
             unreachable_targets.clear();
-            let TerminatorKind::SwitchInt { targets, discr } = &bb_data.terminator().kind else {
+            let TerminatorKind::SwitchInt { targets, discr } = &bb_data.terminator.kind else {
                 bug!()
             };
 

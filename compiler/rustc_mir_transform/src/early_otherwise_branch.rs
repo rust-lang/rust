@@ -121,7 +121,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             should_cleanup = true;
 
             let TerminatorKind::SwitchInt { discr: parent_op, targets: parent_targets } =
-                &bbs[parent].terminator().kind
+                &bbs[parent].terminator.kind
             else {
                 unreachable!()
             };
@@ -164,8 +164,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             );
 
             let eq_new_targets = parent_targets.iter().map(|(value, child)| {
-                let TerminatorKind::SwitchInt { targets, .. } = &bbs[child].terminator().kind
-                else {
+                let TerminatorKind::SwitchInt { targets, .. } = &bbs[child].terminator.kind else {
                     unreachable!()
                 };
                 (value, targets.target_for_value(value))
@@ -176,7 +175,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             // Create `bbEq` in example above
             let eq_switch = BasicBlockData::new(
                 Terminator {
-                    source_info: bbs[parent].terminator().source_info,
+                    source_info: bbs[parent].terminator.source_info,
                     kind: TerminatorKind::SwitchInt {
                         // switch on the first discriminant, so we can mark the second one as dead
                         discr: parent_op,
@@ -227,7 +226,7 @@ fn evaluate_candidate<'tcx>(
     if bbs[parent].is_cleanup {
         return None;
     }
-    let TerminatorKind::SwitchInt { targets, discr: parent_discr } = &bbs[parent].terminator().kind
+    let TerminatorKind::SwitchInt { targets, discr: parent_discr } = &bbs[parent].terminator.kind
     else {
         return None;
     };
@@ -237,7 +236,7 @@ fn evaluate_candidate<'tcx>(
     let Terminator {
         kind: TerminatorKind::SwitchInt { targets: child_targets, discr: child_discr },
         source_info,
-    } = bbs[child].terminator()
+    } = &bbs[child].terminator
     else {
         return None;
     };
@@ -340,7 +339,7 @@ fn verify_candidate_branch<'tcx>(
     need_hoist_discriminant: bool,
 ) -> bool {
     // In order for the optimization to be correct, the terminator must be a `SwitchInt`.
-    let TerminatorKind::SwitchInt { discr: switch_op, targets } = &branch.terminator().kind else {
+    let TerminatorKind::SwitchInt { discr: switch_op, targets } = &branch.terminator.kind else {
         return false;
     };
     if need_hoist_discriminant {

@@ -148,7 +148,7 @@ pub trait Analysis<'tcx> {
                 Effect::Primary => self.apply_primary_statement_effect(state, statement, loc),
             }
         } else {
-            let terminator = block_data.terminator();
+            let terminator = &block_data.terminator;
             match idx.effect {
                 Effect::Early => self.apply_early_terminator_effect(state, terminator, loc),
                 Effect::Primary => {

@@ -425,7 +425,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
 }
 
 fn has_dummy_terminator(bbdata: &BasicBlockData<'_>) -> bool {
-    match bbdata.terminator().kind {
+    match bbdata.terminator.kind {
         TerminatorKind::Goto { target, .. } => target == BasicBlock::MAX,
         _ => false,
     }

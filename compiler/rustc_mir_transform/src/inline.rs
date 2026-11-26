@@ -210,7 +210,7 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
             && callee_body
                 .basic_blocks
                 .iter()
-                .any(|bb| matches!(bb.terminator().kind, TerminatorKind::InlineAsm { .. }))
+                .any(|bb| matches!(bb.terminator.kind, TerminatorKind::InlineAsm { .. }))
         {
             // During the attribute checking stage we allow a callee with no
             // instruction_set assigned to count as compatible with a function that does
@@ -400,7 +400,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
             let blk = &callee_body.basic_blocks[bb];
             checker.visit_basic_block_data(bb, blk);
 
-            let term = blk.terminator();
+            let term = &blk.terminator;
             let caller_attrs = tcx.codegen_fn_attrs(self.caller_def_id());
             if let TerminatorKind::Drop { ref place, target, unwind, replace: _, drop: _ } =
                 term.kind
@@ -459,7 +459,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
         let new_calls_count = new_blocks
             .clone()
-            .filter(|&bb| is_call_like(caller_body.basic_blocks[bb].terminator()))
+            .filter(|&bb| is_call_like(&caller_body.basic_blocks[bb].terminator))
             .count();
         if new_calls_count > 1 {
             self.top_down_counter += 1;
@@ -534,7 +534,7 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
 ) -> Option<CallSite<'tcx>> {
     let tcx = inliner.tcx();
     // Only consider direct calls to functions
-    let terminator = bb_data.terminator();
+    let terminator = &bb_data.terminator;
 
     // FIXME(explicit_tail_calls): figure out if we can inline tail calls
     if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
@@ -1375,12 +1375,11 @@ fn try_instance_mir<'tcx>(
 }
 
 fn body_is_forwarder(body: &Body<'_>) -> bool {
-    let TerminatorKind::Call { target, .. } = body.basic_blocks[START_BLOCK].terminator().kind
-    else {
+    let TerminatorKind::Call { target, .. } = body.basic_blocks[START_BLOCK].terminator.kind else {
         return false;
     };
     if let Some(target) = target {
-        let TerminatorKind::Return = body.basic_blocks[target].terminator().kind else {
+        let TerminatorKind::Return = body.basic_blocks[target].terminator.kind else {
             return false;
         };
     }
@@ -1399,7 +1398,7 @@ fn body_is_forwarder(body: &Body<'_>) -> bool {
     body.basic_blocks.iter_enumerated().all(|(bb, bb_data)| {
         bb == START_BLOCK
             || matches!(
-                bb_data.terminator().kind,
+                bb_data.terminator.kind,
                 TerminatorKind::Return
                     | TerminatorKind::Drop { .. }
                     | TerminatorKind::UnwindResume

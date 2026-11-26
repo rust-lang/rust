@@ -20,7 +20,7 @@ pub(crate) fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) 
     let mut edges = Vec::new();
     for (source, _) in body.basic_blocks.iter_enumerated() {
         let def_id = body.source.def_id();
-        let terminator = body[source].terminator();
+        let terminator = &body[source].terminator;
         let labels = terminator.kind.fmt_successor_labels();
 
         for (target, label) in terminator.successors().zip(labels) {
@@ -51,7 +51,7 @@ fn bb_to_graph_node(block: BasicBlock, body: &Body<'_>, dark_mode: bool) -> Node
 
     // add the terminator to the stmts, gsgdt can print it out separately
     let mut terminator_head = String::new();
-    data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+    data.terminator.kind.fmt_head(&mut terminator_head).unwrap();
     stmts.push(terminator_head);
 
     Node::new(stmts, label, title, style)

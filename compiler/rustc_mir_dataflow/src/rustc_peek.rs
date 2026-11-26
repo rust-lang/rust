@@ -70,7 +70,7 @@ where
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
 
     let peek_calls = cursor.body().basic_blocks.iter_enumerated().filter_map(|(bb, block_data)| {
-        PeekCall::from_terminator(tcx, block_data.terminator()).map(|call| (bb, block_data, call))
+        PeekCall::from_terminator(tcx, &block_data.terminator).map(|call| (bb, block_data, call))
     });
 
     for (bb, block_data, call) in peek_calls {

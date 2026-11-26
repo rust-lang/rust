@@ -476,9 +476,9 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self, data), ret)]
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
-        match data.terminator().kind {
+        match data.terminator.kind {
             TerminatorKind::Return => {
-                let source_info = data.terminator().source_info;
+                let source_info = data.terminator.source_info;
                 // We must assign the value first in case it gets declared dead below
                 self.make_state(
                     Operand::Move(Place::return_place()),
@@ -492,7 +492,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 data.terminator.kind = TerminatorKind::Return;
             }
             TerminatorKind::Yield { ref value, resume, mut resume_arg, drop } => {
-                let source_info = data.terminator().source_info;
+                let source_info = data.terminator.source_info;
                 // We must assign the value first in case it gets declared dead below
                 self.make_state(value.clone(), source_info, false, &mut data.statements);
                 // Yield state.
@@ -714,7 +714,7 @@ fn insert_switch<'tcx>(
     // MIR validation ensures that no block targets `ENTRY_BLOCK`.
     #[cfg(debug_assertions)]
     for bb in body.basic_blocks.iter() {
-        for target in bb.terminator().successors() {
+        for target in bb.terminator.successors() {
             assert_ne!(target, START_BLOCK);
         }
     }
@@ -832,7 +832,7 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, typing_env: ty::Typing
     }
 
     // If there's a return terminator the function may return.
-    body.basic_blocks.iter().any(|block| matches!(block.terminator().kind, TerminatorKind::Return))
+    body.basic_blocks.iter().any(|block| matches!(block.terminator.kind, TerminatorKind::Return))
     // Otherwise the function can't return.
 }
 
@@ -843,7 +843,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     }
 
     // If we don't find an unwinding terminator, the function cannot unwind.
-    body.basic_blocks.iter().any(|block| block.terminator().unwind().is_some())
+    body.basic_blocks.iter().any(|block| block.terminator.unwind().is_some())
 }
 
 // Poison the coroutine when it unwinds
@@ -859,9 +859,9 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     ));
 
     for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
-        let source_info = block.terminator().source_info;
+        let source_info = block.terminator.source_info;
 
-        if let TerminatorKind::UnwindResume = block.terminator().kind {
+        if let TerminatorKind::UnwindResume = block.terminator.kind {
             // An existing `Resume` terminator is redirected to jump to our dedicated
             // "poisoning block" above.
             if idx != poison_block {

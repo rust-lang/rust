@@ -455,7 +455,7 @@ pub fn liveness_matrix<'tcx>(
         // only consists of a return terminator then only gen the return place
         // instead. This ensures that StorageDead for all other locals are
         // inserted before the return terminator.
-        let terminator = block_data.terminator();
+        let terminator = &block_data.terminator;
         if let mir::TerminatorKind::Return = terminator.kind
             && block_data.statements.is_empty()
         {

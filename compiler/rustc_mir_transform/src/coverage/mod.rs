@@ -45,7 +45,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
 
         // An otherwise-eligible function is still skipped if its start block
         // is known to be unreachable.
-        match mir_body.basic_blocks[mir::START_BLOCK].terminator().kind {
+        match mir_body.basic_blocks[mir::START_BLOCK].terminator.kind {
             TerminatorKind::Unreachable => {
                 trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
                 return;
@@ -108,7 +108,7 @@ fn inject_coverage_statements<'tcx>(mir_body: &mut mir::Body<'tcx>, graph: &Cove
 fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb: BasicBlock) {
     debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
-    let source_info = data.terminator().source_info;
+    let source_info = data.terminator.source_info;
     let statement = Statement::new(source_info, StatementKind::Coverage(counter_kind));
     data.statements.insert(0, statement);
 }

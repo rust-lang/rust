@@ -196,7 +196,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 let call = location.block;
                 let TerminatorKind::Call { target, func, .. } =
-                    &self.fx.mir.basic_blocks[call].terminator().kind
+                    &self.fx.mir.basic_blocks[call].terminator.kind
                 else {
                     bug!()
                 };
@@ -302,7 +302,7 @@ pub(crate) fn cleanup_kinds(
         nop_landing_pads: &DenseBitSet<mir::BasicBlock>,
     ) {
         for (bb, data) in mir.basic_blocks.iter_enumerated() {
-            match data.terminator().kind {
+            match data.terminator.kind {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::UnwindResume
                 | TerminatorKind::UnwindTerminate(_)
@@ -368,7 +368,7 @@ pub(crate) fn cleanup_kinds(
                 bb, data, result[bb], funclet
             );
 
-            for succ in data.terminator().successors() {
+            for succ in data.terminator.successors() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}", funclet, succ, kind);
                 match kind {

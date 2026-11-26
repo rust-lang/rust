@@ -329,21 +329,21 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         if fx.clif_comments.enabled() {
             let mut terminator_head = "\n".to_string();
             with_no_trimmed_paths!({
-                bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+                bb_data.terminator.kind.fmt_head(&mut terminator_head).unwrap();
             });
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
             fx.add_post_comment(inst, terminator_head);
         }
 
-        let source_info = bb_data.terminator().source_info;
+        let source_info = bb_data.terminator.source_info;
         fx.set_debug_loc(source_info);
 
         let _print_guard =
-            crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator().kind));
+            crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator.kind));
 
-        match &bb_data.terminator().kind {
+        match &bb_data.terminator.kind {
             TerminatorKind::Goto { target, loop_hint_attrs: _ } => {
-                if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
+                if let TerminatorKind::Return = fx.mir[*target].terminator.kind {
                     let mut can_immediately_return = true;
                     for stmt in &fx.mir[*target].statements {
                         if let StatementKind::StorageDead(_) = stmt.kind {
@@ -593,7 +593,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::CoroutineDrop => {
-                bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
+                bug!("shouldn't exist at codegen {:?}", &bb_data.terminator);
             }
             TerminatorKind::Drop { place, target, unwind, replace: _, drop } => {
                 assert!(

@@ -39,7 +39,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     pub(super) fn add_function_level_costs(&mut self) {
         // If the only has one Call (or similar), inlining isn't increasing the total
         // number of calls, so give extra encouragement to inlining that.
-        if self.callee_body.basic_blocks.iter().filter(|bbd| is_call_like(bbd.terminator())).count()
+        if self.callee_body.basic_blocks.iter().filter(|bbd| is_call_like(&bbd.terminator)).count()
             == 1
         {
             self.bonus += CALL_PENALTY;

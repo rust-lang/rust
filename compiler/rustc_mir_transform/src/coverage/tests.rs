@@ -63,7 +63,7 @@ impl<'tcx> MockBlocks<'tcx> {
 
     fn push(&mut self, kind: TerminatorKind<'tcx>) -> BasicBlock {
         let next_lo = if let Some(last) = self.blocks.last_index() {
-            self.blocks[last].terminator().source_info.span.hi()
+            self.blocks[last].terminator.source_info.span.hi()
         } else {
             BytePos(1)
         };
@@ -170,7 +170,7 @@ fn debug_basic_blocks(mir_body: &Body<'_>) -> String {
             .basic_blocks
             .iter_enumerated()
             .map(|(bb, data)| {
-                let term = &data.terminator();
+                let term = &data.terminator;
                 let kind = &term.kind;
                 let span = term.source_info.span;
                 let sp = format!("(span:{},{})", span.lo().to_u32(), span.hi().to_u32());
@@ -212,7 +212,7 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
                         "    {:?} [label=\"{:?}: {}\"];\n{}",
                         bb,
                         bb,
-                        data.terminator().kind.name(),
+                        data.terminator.kind.name(),
                         mir_body
                             .basic_blocks
                             .successors(bb)
@@ -237,7 +237,7 @@ fn print_coverage_graphviz(name: &str, mir_body: &Body<'_>, graph: &graph::Cover
                         "    {:?} [label=\"{:?}: {}\"];\n{}",
                         bcb,
                         bcb,
-                        mir_body[bcb_data.last_bb()].terminator().kind.name(),
+                        mir_body[bcb_data.last_bb()].terminator.kind.name(),
                         graph
                             .successors(bcb)
                             .map(|successor| { format!("    {:?} -> {:?};", bcb, successor) })

@@ -737,7 +737,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 .overlaps(self.body.local_decls[borrow.assigned_place.local].source_info.span) =>
             {
                 if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
-                    &self.body.basic_blocks[location.block].terminator().kind
+                    &self.body.basic_blocks[location.block].terminator.kind
                 {
                     // Just point to the function, to reduce the chance of overlapping spans.
                     let function_span = match func {
@@ -783,7 +783,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
                     if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
-                        &block.terminator().kind
+                        &block.terminator.kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
@@ -897,7 +897,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 queue.push(current_location.successor_within_block());
             } else {
                 // The only thing we need to do for terminators is progress to the next block.
-                let terminator = block.terminator();
+                let terminator = &block.terminator;
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
                 if let TerminatorKind::Call { destination, target: Some(block), args, .. } =

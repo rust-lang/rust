@@ -49,7 +49,7 @@ fn get_next_instruction_kind<'tcx>(
         // Statements can't be atomic.
         return interp_ok(NonAtomic);
     }
-    match &basic_block.terminator().kind {
+    match &basic_block.terminator.kind {
         // All atomics are modeled as function calls to intrinsic functions.
         // The one exception is thread joining, but those are also calls.
         TerminatorKind::Call { func, .. } | TerminatorKind::TailCall { func, .. } =>

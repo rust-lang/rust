@@ -31,7 +31,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
 }
 
 fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_item_def_id: DefId) {
-    let terminator = block.terminator();
+    let terminator = &block.terminator;
     if let TerminatorKind::Call {
         func,
         args,

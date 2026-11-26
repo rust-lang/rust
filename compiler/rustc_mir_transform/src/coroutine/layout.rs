@@ -109,7 +109,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
     let mut borrowed_locals_cursor = ResultsCursor::new_owning(body, borrowed_locals);
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
-        let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
+        let TerminatorKind::Yield { .. } = data.terminator.kind else { continue };
 
         let loc = Location { block, statement_index: data.statements.len() };
 
@@ -152,7 +152,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
         live_locals_at_any_suspension_point.union(&live_locals);
 
         live_locals_at_suspension_points.push(live_locals);
-        source_info_at_suspension_points.push(data.terminator().source_info);
+        source_info_at_suspension_points.push(data.terminator.source_info);
     }
 
     debug!(?live_locals_at_any_suspension_point);
@@ -259,7 +259,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     // - reachable blocks that end in `Unreachable`, because they never complete execution and
     //   conflicts within them are spurious.
     let blocks = traversal::reachable(body).filter_map(|(bb, data)| {
-        (!matches!(data.terminator().kind, TerminatorKind::Unreachable)).then_some(bb)
+        (!matches!(data.terminator.kind, TerminatorKind::Unreachable)).then_some(bb)
     });
     visit_results(body, blocks, results, &mut visitor);
 

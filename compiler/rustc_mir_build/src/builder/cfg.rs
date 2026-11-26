@@ -20,7 +20,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub(crate) fn assert_terminator(&self, bb: BasicBlock) -> &Terminator<'tcx> {
-        self.block_data(bb).as_ref().left().unwrap().terminator()
+        &self.block_data(bb).as_ref().left().unwrap().terminator
     }
 
     pub(crate) fn assert_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {

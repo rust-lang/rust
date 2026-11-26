@@ -837,7 +837,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         // Terminator at the bottom.
         (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
-        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator.kind);
         if self.options.include_extra_comments {
             writeln!(
                 w,
@@ -848,7 +848,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
                 } else {
                     String::new()
                 },
-                comment(self.tcx, data.terminator().source_info),
+                comment(self.tcx, data.terminator.source_info),
                 A = ALIGN,
             )?;
         } else {
@@ -858,7 +858,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
         write_extra(
             self.tcx,
             w,
-            &|visitor| visitor.visit_terminator(data.terminator(), current_location),
+            &|visitor| visitor.visit_terminator(&data.terminator, current_location),
             self.options,
         )?;
 

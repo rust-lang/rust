@@ -76,7 +76,7 @@ pub(super) fn is_inline_valid_on_body<'tcx>(
     if body
         .basic_blocks
         .iter()
-        .any(|bb| matches!(bb.terminator().kind, TerminatorKind::TailCall { .. }))
+        .any(|bb| matches!(bb.terminator.kind, TerminatorKind::TailCall { .. }))
     {
         return Err("can't inline functions with tail calls");
     }
