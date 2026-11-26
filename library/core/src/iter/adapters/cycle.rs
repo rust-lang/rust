@@ -61,24 +61,20 @@ where
         // fully iterate the current iterator. this is necessary because
         // `self.iter` may be empty even when `self.orig` isn't
         acc = self.iter.try_fold(acc, &mut f)?;
-        self.iter = self.orig.clone();
-
-        // complete a full cycle, keeping track of whether the cycled
-        // iterator is empty or not. we need to return early in case
-        // of an empty iterator to prevent an infinite loop
-        let mut is_empty = true;
-        acc = self.iter.try_fold(acc, |acc, x| {
-            is_empty = false;
-            f(acc, x)
-        })?;
-
-        if is_empty {
-            return try { acc };
-        }
 
         loop {
             self.iter = self.orig.clone();
-            acc = self.iter.try_fold(acc, &mut f)?;
+
+            let mut is_empty = true;
+
+            acc = self.iter.try_fold(acc, |acc, item| {
+                is_empty = false;
+                f(acc, item)
+            })?;
+
+            if is_empty {
+                return try { acc };
+            }
         }
     }
 
