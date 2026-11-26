@@ -2064,7 +2064,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
         hir::TestBinderForall {
             span: self.lower_span(forall.span),
-            hir_id: self.lower_node_id(forall.node_id),
             generics,
             body: self.arena.alloc(body),
             assert_on_exit,
@@ -2087,7 +2086,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = generics.params;
         hir::TestBinderExists {
             span: self.lower_span(exists.span),
-            hir_id: self.lower_node_id(exists.node_id),
             params,
             body: self.arena.alloc(body),
         }

@@ -116,4 +116,12 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl {
+        forall<'a> {},
+        forall<'a> {},
+        //~^ ERROR the name `'a` is already used for a generic parameter in this item's generic parameters
+    }
+}
+
 fn main() {}
