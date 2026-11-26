@@ -21,8 +21,8 @@ LL |     return;
    |
 help: give the `return` a value of the expected type
    |
-LL |     return Default::default();
-   |            ++++++++++++++++++
+LL |     return String::new();
+   |            +++++++++++++
 
 error[E0069]: `return;` in a function whose return type is not `()`
   --> $DIR/suggest-a-value.rs:12:5
