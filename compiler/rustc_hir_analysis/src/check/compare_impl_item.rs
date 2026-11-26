@@ -2302,10 +2302,11 @@ pub(super) fn compare_const_directness<'tcx>(
             // When `#![feature(gca_macroless_items)]` is enabled,
             // expressions that are allowed in `gca!` are considered to be direct.
             // We are here because the expression is not allowed in `gca!`.
-            tcx.dcx()
-                .struct_span_err(tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_const_item.def_id.expect_local())),
-                "the expression of this associated constant cannot be marked as direct")
-                .with_note("`#![feature(gca_macroless_items)]` only supports expressions that are allowed in `gca!`")
+            let err = "the expression of this associated constant was unable to be \
+                treated as a gca constant";
+            let note = "`#![feature(gca_macroless_items)]` only supports expressions \
+                that are allowed in `gca!`";
+            tcx.dcx().struct_span_err(tcx.def_span(impl_const_item.def_id), err).with_note(note)
         } else {
             tcx.dcx().struct_span_err(
                 tcx.def_span(impl_const_item.def_id),

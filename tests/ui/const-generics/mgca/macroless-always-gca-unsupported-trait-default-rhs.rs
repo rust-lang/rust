@@ -3,7 +3,7 @@
 trait Trait {
     #[rustc_always_gca]
     const ASSOC: usize = 1 + 1;
-    //~^ ERROR the expression of this associated constant cannot be marked as direct
+    //~^ ERROR the expression of this associated constant was unable to be treated as a gca constant
 }
 
 fn main() {}
