@@ -265,3 +265,80 @@ fn bench_extend_chained_bytes(b: &mut Bencher) {
         ring.extend(black_box(input1.iter().chain(input2.iter())));
     });
 }
+
+fn retain_rand(i: usize) -> u32 {
+    let mut x = (i as u32).wrapping_add(0x9e37_79b9);
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^= x >> 16;
+    x
+}
+
+fn fill_retain_deque(v: &mut VecDeque<u32>, src: &[u32], wrapped: bool) {
+    v.clear();
+    if wrapped {
+        let (front, back) = src.split_at(src.len() / 2);
+        v.extend(back);
+        v.prepend(front.iter().copied());
+    } else {
+        v.extend(src);
+    }
+    assert_eq!(v.as_slices().1.is_empty(), !wrapped);
+}
+
+macro_rules! retain_layout_bench {
+    ($name:ident, $len:literal, $wrapped:literal, $src:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let src: Vec<u32> = (0..$len).map($src).collect();
+            let mut v = VecDeque::with_capacity($len);
+            b.iter(|| {
+                fill_retain_deque(&mut v, black_box(&src), $wrapped);
+                v.retain(|x| *x == 0);
+            });
+        }
+    };
+}
+
+macro_rules! retain_layout_benches {
+    (@layout $len:literal, $suffix:literal, $layout:ident, $wrapped:literal) => {
+        retain_layout_bench!(
+            ${concat(bench_retain_whole_, $layout, _, $suffix)},
+            $len, $wrapped, |_| 0
+        );
+        retain_layout_bench!(
+            ${concat(bench_retain_odd_, $layout, _, $suffix)},
+            $len, $wrapped, |i| (i & 1) as u32
+        );
+        retain_layout_bench!(
+            ${concat(bench_retain_half_, $layout, _, $suffix)},
+            $len, $wrapped, |i| (i < $len / 2) as u32
+        );
+        retain_layout_bench!(
+            ${concat(bench_retain_rand50_, $layout, _, $suffix)},
+            $len, $wrapped, |i| retain_rand(i) & 1
+        );
+    };
+    ($($len:literal => $suffix:literal;)*) => {
+        $(
+            retain_layout_benches!(@layout $len, $suffix, contiguous, false);
+            retain_layout_benches!(@layout $len, $suffix, wrapped, true);
+        )*
+    };
+}
+
+retain_layout_benches! {
+    4 => "000004";
+    8 => "000008";
+    16 => "000016";
+    32 => "000032";
+    64 => "000064";
+    128 => "000128";
+    256 => "000256";
+    512 => "000512";
+    1000 => "001000";
+    10000 => "010000";
+    100000 => "100000";
+}
