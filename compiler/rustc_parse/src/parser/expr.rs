@@ -2094,7 +2094,10 @@ impl<'a> Parser<'a> {
                 let token = self.token;
                 match self.parse_expr_res(restrictions) {
                     Ok(expr) => expr,
-                    Err(err) => self.recover_closure_body(err, before, prev, token, lo, decl_hi)?,
+                    Err(err) if self.token.span == token.span => {
+                        self.recover_closure_body(err, before, prev, token, lo, decl_hi)?
+                    }
+                    Err(err) => return Err(err),
                 }
             }
             // Explicit return type (`->`) needs block `-> T { }`.
