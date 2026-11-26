@@ -290,7 +290,8 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///
 /// ## Size of Unions
 ///
-/// The size of a union is the size of its largest field.
+/// The size of a union is the size of its largest field, rounded up to the union's
+/// alignment (which is the largest of the alignments of its fields).
 ///
 /// Unlike `C`, zero sized unions are not rounded up to one byte in size.
 ///
