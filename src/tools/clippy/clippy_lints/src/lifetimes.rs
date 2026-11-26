@@ -149,9 +149,17 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            check_fn_inner(cx, sig, Some(id), cx.tcx.hir_body(id).params, generics, item.span, true, self.msrv, || {
-                is_from_proc_macro(cx, item)
-            });
+            check_fn_inner(
+                cx,
+                sig,
+                Some(id),
+                cx.tcx.hir_body(id).params,
+                generics,
+                item.span,
+                true,
+                self.msrv,
+                || is_from_proc_macro(cx, item),
+            );
         } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
             && !is_from_proc_macro(cx, item)
@@ -189,17 +197,9 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(params) => (None, params),
                 TraitFn::Provided(id) => (Some(id), cx.tcx.hir_body(id).params),
             };
-            check_fn_inner(
-                cx,
-                sig,
-                body,
-                params,
-                item.generics,
-                item.span,
-                true,
-                self.msrv,
-                || is_from_proc_macro(cx, item),
-            );
+            check_fn_inner(cx, sig, body, params, item.generics, item.span, true, self.msrv, || {
+                is_from_proc_macro(cx, item)
+            });
         }
     }
 }
@@ -407,7 +407,12 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 }
 
 // elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
-fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, params: &[Param<'tcx>], msrv: Msrv) -> bool {
+fn non_elidable_self_type<'tcx>(
+    cx: &LateContext<'tcx>,
+    func: &FnDecl<'tcx>,
+    params: &[Param<'tcx>],
+    msrv: Msrv,
+) -> bool {
     if let &[first_param, ..] = params
         && let Some(first_ident) = first_param.pat.simple_ident()
         && first_ident.name == kw::SelfLower
