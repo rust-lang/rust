@@ -5,7 +5,7 @@ LL |         (Some(a), &Some(mut b)) => {
    |                         ^^^^^ this value is reassigned later and never used
 ...
 LL |             b = 7;
-   |             ----- `b` is overwritten here before the previous value is read
+   |             ----- `b` is overwritten here before the previous value is used
    |
    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
 

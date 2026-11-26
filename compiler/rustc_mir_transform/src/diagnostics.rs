@@ -222,7 +222,7 @@ impl Subdiagnostic for UnusedAssignOverwrite {
         diag.span_label(self.assigned_span, "this value is reassigned later and never used");
         diag.span_label(
             self.overwrite_span,
-            format!("`{}` is overwritten here before the previous value is read", self.name),
+            format!("`{}` is overwritten here before the previous value is used", self.name),
         );
     }
 }
