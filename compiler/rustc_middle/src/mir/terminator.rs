@@ -558,7 +558,14 @@ mod helper {
                     mk_successors(Some(u), None, targets)
                 }
                 InlineAsm { ref targets, unwind: _, .. } => mk_successors(None, None, targets),
-                SwitchInt { ref targets, .. } => mk_successors(None, None, &targets.targets),
+                SwitchInt { ref targets, .. } => {
+                    let mut targets = targets.targets.as_slice().iter();
+                    mk_successors(
+                        targets.next().copied(),
+                        targets.next().copied(),
+                        targets.as_slice(),
+                    )
+                }
                 // FalseEdge
                 FalseEdge { real_target, imaginary_target } => {
                     mk_successors(Some(real_target), Some(imaginary_target), &[])
