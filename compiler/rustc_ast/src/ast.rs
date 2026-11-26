@@ -4255,7 +4255,6 @@ pub struct TestBinderRegionEquality {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderForall {
     pub span: Span,
-    pub node_id: NodeId,
     pub generics: Generics,
     pub body: TestBinderBody,
     pub assert_on_exit: Option<ThinVec<TestBinderConstraint>>,
@@ -4264,7 +4263,6 @@ pub struct TestBinderForall {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderExists {
     pub span: Span,
-    pub node_id: NodeId,
     pub params: ThinVec<GenericParam>,
     pub body: TestBinderBody,
 }

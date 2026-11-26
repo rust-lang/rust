@@ -2790,7 +2790,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        Ok(TestBinderForall { span, node_id: DUMMY_NODE_ID, generics, body, assert_on_exit })
+        Ok(TestBinderForall { span, generics, body, assert_on_exit })
     }
 
     pub fn parse_test_binder_exists(&mut self) -> PResult<'a, TestBinderExists> {
@@ -2798,7 +2798,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let params = self.parse_generics()?.params;
         let body = self.parse_test_binder_body()?;
-        Ok(TestBinderExists { span, node_id: DUMMY_NODE_ID, params, body })
+        Ok(TestBinderExists { span, params, body })
     }
 
     pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {
