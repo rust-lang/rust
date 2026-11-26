@@ -35,6 +35,11 @@
 /// Other signals such as `SIGABRT`, `SIGTRAP`, `SIGSEGV`, and `SIGBUS` may be
 /// produced instead, depending on specifics. This is not an exhaustive list.
 ///
+/// On Windows, this function is currently equivalent to MSVC's [`__fastfail`]
+/// with error code 7 (`FAST_FAIL_FATAL_APP_EXIT`).
+///
+/// [`__fastfail`]: https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+///
 /// # Examples
 ///
 /// ```no_run
@@ -73,10 +78,10 @@
 ///     // the destructor implemented for HasDrop will never get run
 /// }
 /// ```
-///
 #[unstable(feature = "abort_immediate", issue = "154601")]
 #[rustc_const_unstable(feature = "abort_immediate", issue = "154601")]
 #[cold]
+#[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
 #[doc(alias = "trap")]

@@ -40,6 +40,7 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     ) -> Self::Value;
 
     /// Ungracefully stop execution in the simplest way possible.
+    /// (Note: on Windows, this does not match the Rustc intrinsic)
     fn abort_immediate(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;

@@ -53,6 +53,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     // core::ffi contains platform-specific type and linkage configuration
     "library/core/src/ffi/mod.rs",
     "library/core/src/ffi/primitives.rs",
+    // This intrinsic has a fallback body only on Windows
+    "library/core/src/intrinsics/abort_immediate.rs",
     "library/core/src/os", // Platform-specific public interfaces
     "library/std/src/sys", // Platform-specific code for std lives here.
     "library/std/src/os",  // Platform-specific public interfaces
