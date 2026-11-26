@@ -1,0 +1,15 @@
+error: post-monomorphization error: unable to normalize `fn() -> usize {std::mem::size_of::<<dyn Project<Item = u16> as Project>::Item>}` during evaluation
+  --> tests/fail/normalization-failure-issue-311.rs:LL:CC
+   |
+LL |     std::mem::size_of::<T::Item>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ post-monomorphization error occurred here
+   |
+   = note: stack backtrace:
+           0: projected_size::<dyn Project<Item = u16>>
+               at tests/fail/normalization-failure-issue-311.rs:LL:CC
+           1: main
+               at tests/fail/normalization-failure-issue-311.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
