@@ -3790,6 +3790,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_hashes",
  "rustc_hir",
+ "rustc_incremental",
  "rustc_index",
  "rustc_lint_defs",
  "rustc_llvm",

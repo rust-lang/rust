@@ -13,6 +13,6 @@ pub use fs::{
     finalize_session_directory, in_incr_comp_dir_sess, in_old_incr_comp_dir_sess,
     prepare_session_directory,
 };
-pub use load::{load_query_result_cache, setup_dep_graph};
+pub use load::{load_query_result_cache, load_work_product_index, setup_dep_graph};
 pub(crate) use save::save_dep_graph;
 pub use work_product::copy_cgu_workproduct_to_incr_comp_cache_dir;

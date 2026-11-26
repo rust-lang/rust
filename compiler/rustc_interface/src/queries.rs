@@ -6,12 +6,13 @@ use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_incremental::prepare_session_directory;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{DepGraph, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames};
 use rustc_session::output::OutputType;
+use rustc_session::{Session, StableCrateId};
 
 use crate::diagnostics::FailedWritingFile;
 use crate::passes;
@@ -19,6 +20,7 @@ use crate::passes;
 pub struct Linker {
     dep_graph: DepGraph,
     output_filenames: Arc<OutputFilenames>,
+    local_crate_id: StableCrateId,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     crate_info: CrateInfo,
@@ -37,6 +39,7 @@ impl Linker {
         Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
+            local_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
             crate_hash: if tcx.sess.opts.incremental.is_some() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {
@@ -54,23 +57,12 @@ impl Linker {
         mut incr_comp_session: Option<IncrCompSession>,
         codegen_backend: &dyn CodegenBackend,
     ) {
-        let compiled_modules = sess.time("finish_ongoing_codegen", || {
-            let maybe_pending_lto = if self.ongoing_codegen.is::<CompiledModules>() {
+        let maybe_pending_lto = sess.time("finish_ongoing_codegen", || {
+            if self.ongoing_codegen.is::<CompiledModules>() {
                 // This was a check only build
                 self.ongoing_codegen
             } else {
                 codegen_backend.join_codegen(self.ongoing_codegen, sess, incr_comp_session.as_mut())
-            };
-
-            match maybe_pending_lto.downcast::<CompiledModules>() {
-                Ok(compiled_modules) => *compiled_modules,
-                Err(pending_lto) => codegen_backend.perform_lto(
-                    pending_lto,
-                    sess,
-                    incr_comp_session.as_mut(),
-                    &self.output_filenames,
-                    &self.crate_info,
-                ),
             }
         });
 
@@ -123,6 +115,44 @@ impl Linker {
         if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             return;
         }
+
+        let compiled_modules = sess.time("maybe_perform_lto", || {
+            match maybe_pending_lto.downcast::<CompiledModules>() {
+                // This was a check only build
+                Ok(compiled_modules) => *compiled_modules,
+
+                Err(pending_lto) => {
+                    let mut lto_incr_comp_session = sess.opts.incremental.is_some().then(|| {
+                        prepare_session_directory(
+                            sess,
+                            self.crate_info.local_crate_name,
+                            self.local_crate_id,
+                            "thinlto",
+                        )
+                    });
+
+                    let compiled_modules = codegen_backend.perform_lto(
+                        pending_lto,
+                        sess,
+                        lto_incr_comp_session.as_mut(),
+                        &self.output_filenames,
+                        &self.crate_info,
+                    );
+
+                    if let Some(lto_incr_comp_session) = lto_incr_comp_session {
+                        // Now that we won't touch anything in the incremental compilation directory
+                        // any more, we can finalize it (which involves renaming it)
+                        rustc_incremental::finalize_session_directory(
+                            sess,
+                            lto_incr_comp_session,
+                            self.crate_hash.unwrap(),
+                        );
+                    }
+
+                    compiled_modules
+                }
+            }
+        });
 
         if sess.opts.unstable_opts.no_link {
             let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);

@@ -765,6 +765,7 @@ pub fn codegen_crate<
     let regular_module_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
     let bitcode_needed = regular_module_config.bitcode_needed();
     let allocator_module_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
+    let output_filenames = tcx.output_filenames(());
 
     let ongoing_codegen = start_async_codegen(
         backend.clone(),
@@ -871,6 +872,7 @@ pub fn codegen_crate<
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
                     tcx.sess,
+                    output_filenames,
                     tcx.incr_comp_session.unwrap(),
                     &ongoing_codegen.coordinator,
                     CachedModuleCodegen {

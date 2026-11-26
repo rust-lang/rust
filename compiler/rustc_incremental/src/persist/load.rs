@@ -75,7 +75,8 @@ fn load_dep_graph(
     }
 }
 
-fn load_work_product_index(
+/// Attempt to load the work product index from disk
+pub fn load_work_product_index(
     sess: &Session,
     incr_comp_session: &IncrCompSession,
 ) -> Result<WorkProductMap, ()> {

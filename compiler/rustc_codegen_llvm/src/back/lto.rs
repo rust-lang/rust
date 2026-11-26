@@ -18,8 +18,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::BorrowedIncrCompSession;
-use rustc_session::config;
+use rustc_incremental::load_work_product_index;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductId, WorkProductMap};
+use rustc_session::{Session, config};
 use rustc_span::bug;
 use rustc_structures::SanitizerSet;
 use tracing::{debug, info};
@@ -185,8 +186,8 @@ pub(crate) fn run_fat(
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
-    incr_comp_session: Option<&BorrowedIncrCompSession>,
+    sess: &Session,
+    incr_comp_session: Option<&IncrCompSession>,
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
@@ -202,7 +203,7 @@ pub(crate) fn run_thin(
                       is deferred to the linker"
         );
     }
-    thin_lto(prof, incr_comp_session, dcx, modules, upstream_modules, &symbols_below_threshold)
+    thin_lto(sess, incr_comp_session, dcx, modules, upstream_modules, &symbols_below_threshold)
 }
 
 fn fat_lto(
@@ -369,22 +370,39 @@ fn fat_lto(
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    prof: &SelfProfilerRef,
-    incr_comp_session: Option<&BorrowedIncrCompSession>,
+    sess: &Session,
+    incr_comp_session: Option<&IncrCompSession>,
     dcx: DiagCtxtHandle<'_>,
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
 ) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<CachedModuleCodegen>) {
-    let _timer = prof.generic_activity("LLVM_thin_lto_global_analysis");
+    let _timer = sess.prof.generic_activity("LLVM_thin_lto_global_analysis");
     unsafe {
         info!("going for that thin, thin LTO");
+
+        // Try to load the previous session's dep graph and work products.
+        let prev_work_products = incr_comp_session.map(|incr_comp_session| {
+            load_work_product_index(sess, &incr_comp_session)
+                .unwrap_or_else(|()| WorkProductMap::default())
+        });
 
         let green_modules: FxHashMap<_, _> = modules
             .iter()
             .filter_map(|module| {
-                if let ThinLtoInput::Green { cached_module, .. } = module {
-                    Some((cached_module.name.clone(), cached_module.clone()))
+                if let ThinLtoInput::Green { name, .. } = module {
+                    Some((
+                        name.clone(),
+                        CachedModuleCodegen {
+                            name: name.clone(),
+                            source: prev_work_products
+                                .as_ref()
+                                .unwrap()
+                                .get(&WorkProductId::from_cgu_name(name))
+                                .unwrap()
+                                .clone(),
+                        },
+                    ))
                 } else {
                     None
                 }
@@ -398,9 +416,9 @@ fn thin_lto(
 
         for (i, module) in modules.into_iter().enumerate() {
             let (name, buffer) = match module {
-                ThinLtoInput::Red { name, buffer } => (name, buffer),
-                ThinLtoInput::Green { bitcode_path, cached_module } => {
-                    (cached_module.name, SerializedModule::from_file(&bitcode_path))
+                ThinLtoInput::Red { name, path: _, buffer } => (name, buffer),
+                ThinLtoInput::Green { name: cgu_name, bitcode_path } => {
+                    (cgu_name, SerializedModule::from_file(&bitcode_path))
                 }
             };
             info!("local module: {} - {}", i, name);
@@ -461,7 +479,7 @@ fn thin_lto(
 
         info!("thin LTO data created");
 
-        let new_key_map_path = incr_comp_session.as_ref().map(|incr_comp_session| {
+        let new_key_map_path = incr_comp_session.map(|incr_comp_session| {
             incr_comp_session.new_session_directory.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME)
         });
 
