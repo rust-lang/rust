@@ -1,0 +1,44 @@
+error[E0506]: cannot assign to `*v` because it is borrowed
+  --> $DIR/divergent-guard-bindings-deref-patterns.rs:13:25
+   |
+LL |         &mut [[x]] if { *v = vec![]; true } || return => {}
+   |              -----      ^^ `*v` is assigned to here but it was already borrowed
+   |              | |
+   |              | borrow later used here
+   |              `*v` is borrowed here
+   |
+   = note: borrow occurs due to deref coercion to `[Vec<bool>]`
+note: deref defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0510]: cannot assign `v` in match guard
+  --> $DIR/divergent-guard-bindings-deref-patterns.rs:15:25
+   |
+LL |     match v {
+   |           - value is immutable in match guard
+...
+LL |         &mut [[x]] if { v = empty; true } || return => {}
+   |                         ^^^^^^^^^ cannot assign
+
+error[E0506]: cannot assign to `***b` because it is borrowed
+  --> $DIR/divergent-guard-bindings-deref-patterns.rs:23:37
+   |
+LL |         &mut deref!(deref!(x)) if { ***b = true; true } || return => {}
+   |                            -        ^^^^^^^^^^^                 - borrow later used here
+   |                            |        |
+   |                            |        `***b` is assigned to here but it was already borrowed
+   |                            `***b` is borrowed here
+
+error[E0510]: cannot assign `b` in match guard
+  --> $DIR/divergent-guard-bindings-deref-patterns.rs:25:37
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+...
+LL |         &mut deref!(deref!(x)) if { b = t; true } || return => {}
+   |                                     ^^^^^ cannot assign
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0506, E0510.
+For more information about an error, try `rustc --explain E0506`.
