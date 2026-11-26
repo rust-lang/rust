@@ -1,3 +1,10 @@
+#![feature(core_intrinsics)]
+#![feature(one_sided_range)]
+#![feature(range_intersect)]
+#![feature(range_into_bounds)]
+#![feature(try_trait_v2)]
+#![expect(internal_features)]
+
 mod control_flow;
 mod from_residual;
 

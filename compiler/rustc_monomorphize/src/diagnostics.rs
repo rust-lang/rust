@@ -78,6 +78,13 @@ pub(crate) struct GenericKernelNotInstantiated {
 }
 
 #[derive(Diagnostic)]
+#[diag("offload item `{$krate}{$def_path}` cannot be resolved during the device pass")]
+pub(crate) struct OffloadItemResolveError {
+    pub krate: Symbol,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("the above error was encountered while instantiating `{$kind} {$instance}`")]
 pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]

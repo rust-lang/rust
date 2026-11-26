@@ -31,7 +31,7 @@
 use core::fmt;
 use core::str::FromStr;
 
-use crate::num::{assert_biteq, float_test};
+use crate::{assert_biteq, float_test};
 
 /// ToString uses the default fmt::Display impl without special concerns, and bypasses other parts
 /// of the formatting infrastructure, which makes it ideal for testing here.

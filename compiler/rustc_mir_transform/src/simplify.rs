@@ -121,10 +121,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         pred_count[START_BLOCK] = 1;
 
         for (_, data) in traversal::preorder(body) {
-            if let Some(ref term) = data.terminator {
-                for tgt in term.successors() {
-                    pred_count[tgt] += 1;
-                }
+            for tgt in data.terminator.successors() {
+                pred_count[tgt] += 1;
             }
         }
 
@@ -194,7 +192,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     self.basic_blocks[bb].after_last_stmt_debuginfos = parent_bb_last_debuginfos;
                 }
 
-                self.basic_blocks[bb].terminator = Some(terminator);
+                self.basic_blocks[bb].terminator = terminator;
             }
 
             if !changed {
@@ -216,7 +214,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             source_info: SourceInfo { span: DUMMY_SP, scope: SourceScope::ZERO },
             kind: TerminatorKind::Goto { target: BasicBlock::MAX, loop_hint_attrs: ThinVec::new() },
         };
-        std::mem::replace(&mut self.basic_blocks[bb].terminator, Some(dummy_terminator))
+        Some(std::mem::replace(&mut self.basic_blocks[bb].terminator, dummy_terminator))
     }
 
     /// This function will return `None` if
@@ -228,7 +226,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             BasicBlockData {
                 ref statements,
                 terminator:
-                    ref mut terminator @ Some(Terminator { kind: TerminatorKind::Goto { .. }, .. }),
+                    ref mut terminator @ Terminator { kind: TerminatorKind::Goto { .. }, .. },
                 ..
             } if statements.is_empty() => self.take_terminator(bb),
             // if `terminator` is None, this means we are in a loop. In that
@@ -285,7 +283,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 self.pred_count[*target] += 1;
                 self.pred_count[current] -= 1;
             }
-            self.basic_blocks[current].terminator = Some(terminator);
+            self.basic_blocks[current].terminator = terminator;
         }
     }
 

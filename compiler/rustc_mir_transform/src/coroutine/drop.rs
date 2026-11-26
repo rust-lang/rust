@@ -362,8 +362,6 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     // Take the coroutine info out of the body, since the drop shim is
     // not a coroutine body itself; it just has its drop built out of it.
     let _ = body.coroutine.take();
-    let basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>> = IndexVec::new();
-    body.basic_blocks = BasicBlocks::new(basic_blocks);
     body.var_debug_info.clear();
 
     // Keeping return value and args
@@ -376,20 +374,13 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
-    // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData::maybe_unterminated(None, false));
-
-    // return Poll::Ready()
-    let ret_bb = insert_poll_ready_block(tcx, &mut body);
-
-    let kind = TerminatorKind::Drop {
-        place: Place::from(ty::CAPTURE_STRUCT_LOCAL),
-        target: ret_bb,
-        unwind: UnwindAction::Continue,
-        replace: false,
-        drop: None,
-    };
-    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+    let ret_bb = BasicBlock::new(1);
+    body.basic_blocks = BasicBlocks::new(indexvec![
+        // call coroutine_drop() - has to be first (bb0) because it's an entry block
+        make_drop_call_block(source_info, ret_bb),
+        // return Poll::Ready()
+        make_poll_ready_block(tcx, source_info)
+    ]);
 
     make_coroutine_state_argument_pinned(tcx, &mut body);
 
@@ -405,4 +396,15 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     }
 
     body
+}
+
+fn make_drop_call_block<'tcx>(source_info: SourceInfo, ret_bb: BasicBlock) -> BasicBlockData<'tcx> {
+    let kind = TerminatorKind::Drop {
+        place: Place::from(ty::CAPTURE_STRUCT_LOCAL),
+        target: ret_bb,
+        unwind: UnwindAction::Continue,
+        replace: false,
+        drop: None,
+    };
+    BasicBlockData::new(Terminator { source_info, kind }, false)
 }

@@ -1,3 +1,6 @@
+#![feature(const_bool)]
+#![feature(const_trait_impl)]
+
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::ops::{BitAnd, BitOr, BitXor};
 

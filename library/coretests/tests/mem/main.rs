@@ -1,3 +1,20 @@
+// tidy-alphabetical-start
+#![feature(const_cmp)]
+#![feature(const_trait_impl)]
+#![feature(extern_types)]
+#![feature(maybe_uninit_fill)]
+#![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(min_specialization)]
+#![feature(ptr_metadata)]
+#![feature(register_tool)]
+#![feature(splat)]
+#![feature(strict_provenance_lints)]
+#![feature(type_info)]
+// tidy-alphabetical-end
+#![deny(implicit_provenance_casts)]
+#![expect(incomplete_features)]
+#![register_tool(reflective_tool(reflect))] // to allow testing of attribute reflection in `mem/type_info.rs`
+
 mod fn_ptr;
 mod trait_info_of;
 mod type_info;

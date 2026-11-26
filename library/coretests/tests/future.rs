@@ -1,3 +1,6 @@
+#![feature(future_join)]
+#![feature(try_blocks)]
+
 use std::future::{Future, join};
 use std::pin::Pin;
 use std::sync::Arc;

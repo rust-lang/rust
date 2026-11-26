@@ -3,8 +3,6 @@ macro_rules! uint_module {
         use core::num::ParseIntError;
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 
-        use crate::num;
-
         #[test]
         fn test_overflows() {
             assert!($T::MAX > 0);
@@ -14,7 +12,7 @@ macro_rules! uint_module {
 
         #[test]
         fn test_num() {
-            num::test_num(10 as $T, 2 as $T);
+            crate::test_num(10 as $T, 2 as $T);
         }
 
         #[test]

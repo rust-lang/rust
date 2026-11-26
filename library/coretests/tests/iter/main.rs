@@ -15,6 +15,36 @@
 //! if a test in `traits` uses a specific adapter, then it should be moved to
 //! that adapter's test file in `adapters`.
 
+// tidy-alphabetical-start
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
+#![feature(const_iter)]
+#![feature(const_trait_impl)]
+#![feature(exact_size_is_empty)]
+#![feature(iter_advance_by)]
+#![feature(iter_array_chunks)]
+#![feature(iter_collect_into)]
+#![feature(iter_intersperse)]
+#![feature(iter_is_partitioned)]
+#![feature(iter_map_windows)]
+#![feature(iter_next_chunk)]
+#![feature(iter_order_by)]
+#![feature(iter_partition_in_place)]
+#![feature(iterator_try_collect)]
+#![feature(iterator_try_reduce)]
+#![feature(min_specialization)]
+#![feature(next_index)]
+#![feature(std_internals)]
+#![feature(step_trait)]
+#![feature(strict_provenance_lints)]
+#![feature(trusted_len)]
+#![feature(trusted_random_access)]
+#![feature(try_find)]
+#![feature(try_trait_v2)]
+// tidy-alphabetical-end
+#![deny(implicit_provenance_casts)]
+#![expect(internal_features)]
+
 mod adapters;
 mod range;
 mod sources;

@@ -1,3 +1,13 @@
+#![feature(ascii_char)]
+#![feature(clone_to_uninit)]
+#![feature(const_clone)]
+#![feature(const_cmp)]
+#![feature(const_default)]
+#![feature(const_index)]
+#![feature(const_trait_impl)]
+#![feature(f128)]
+#![feature(f16)]
+
 use core::clone::CloneToUninit;
 use core::ffi::CStr;
 use core::mem::MaybeUninit;

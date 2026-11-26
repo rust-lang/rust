@@ -1,3 +1,6 @@
+#![feature(async_iter_from_iter)]
+#![feature(async_iterator)]
+
 use core::async_iter::{self, AsyncIterator, IntoAsyncIterator};
 use core::pin::pin;
 use core::task::Poll;

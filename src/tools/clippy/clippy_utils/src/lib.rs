@@ -662,9 +662,8 @@ pub fn is_default_equivalent_call(
             && did == repl_def_id
         {
             return true;
-        } else if block_data.statements.is_empty()
-            && let Some(term) = &block_data.terminator
-        {
+        } else if block_data.statements.is_empty() {
+            let term = &block_data.terminator;
             match &term.kind {
                 TerminatorKind::Call {
                     func: Operand::Constant(c),

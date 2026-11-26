@@ -264,7 +264,7 @@ pub(crate) const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
 /// Verify that floats are within a tolerance of each other.
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr $(,)?) => {{
-        assert_approx_eq!($a, $b, $crate::num::floats::lim_for_ty($a))
+        assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a))
     }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
@@ -303,8 +303,8 @@ macro_rules! assert_biteq {
             // We rely on the `Float` type being brought in scope by the macros below.
             l: Float = l,
             r: Float = r,
-            lb: <Float as $crate::num::floats::TestableFloat>::Int = l.to_bits(),
-            rb: <Float as $crate::num::floats::TestableFloat>::Int = r.to_bits(),
+            lb: <Float as $crate::floats::TestableFloat>::Int = l.to_bits(),
+            rb: <Float as $crate::floats::TestableFloat>::Int = r.to_bits(),
             width: usize = ((bits / 4) + 2) as usize,
         );
     }};

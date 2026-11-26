@@ -1,3 +1,7 @@
+#![feature(const_cell_traits)]
+#![feature(const_destruct)]
+#![feature(const_drop_in_place)]
+#![feature(const_trait_impl)]
 #![allow(undropped_manually_drops)]
 
 use core::mem::ManuallyDrop;
