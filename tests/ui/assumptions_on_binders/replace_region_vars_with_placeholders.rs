@@ -21,8 +21,8 @@ core::test_binder_constraints! {
             for<'a> <T as Trait<'a>>::Assoc: 'b
         {
             forall<> {
-                exists<'a> {
-                    for<> <T as Trait<'a>>::Assoc: 'b
+                exists<'c> {
+                    for<> <T as Trait<'c>>::Assoc: 'b
                 }
             } expect {
                 for<'a> <T as Trait<'a>>::Assoc: 'b

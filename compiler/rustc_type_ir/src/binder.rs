@@ -123,6 +123,10 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
+    pub fn as_mut(&mut self) -> Binder<I, &mut T> {
+        Binder { value: &mut self.value, bound_vars: self.bound_vars }
+    }
+
     pub fn as_deref(&self) -> Binder<I, &T::Target>
     where
         T: Deref,

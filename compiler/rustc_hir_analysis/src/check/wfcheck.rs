@@ -17,7 +17,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{BoundRegionConversionTime, SolverRegionConstraint, TyCtxtInferExt};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SolverRegionConstraint,
+    TyCtxtInferExt,
+};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_lint_defs::builtin::{
     REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS, UNEVALUATED_DEFAULT_FIELD_VALUE,
@@ -2423,8 +2426,138 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         }
     }
 
+    // The binder here is not a normal binder. Consider the following:
+    //
+    // core::test_binder_constraints! {
+    //     impl {
+    //         forall<'a> { exists<'b> { 'b: 'a } },
+    //         forall<'c> { },
+    //         'a: 'b,
+    //     }
+    // }
+    //
+    // To allow testing uses of leaked variables, this is lowered to something like the following:
+    //
+    // core::test_binder_constraints! {
+    //     impl {
+    //         for<'a, 'b, 'c> {
+    //             forall { exists { 'b: 'a } },
+    //             forall { },
+    //             'a: 'b,
+    //         }
+    //     }
+    // }
+    //
+    // but we remember where 'a, 'b, and 'c came from. This outer binder is then instantiated with a
+    // bit of a cursed set of arguments, with potentially different universes used for each arg:
+    //
+    // 'a => placeholder in universe 1
+    // 'b => existential in universe 1
+    // 'c => placeholder in universe 2
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
+    pub(super) fn check_test_binder_constraints(
+        &self,
+        mut body: ty::Binder<'tcx, TestBinderBody<'tcx>>,
+    ) {
+        // Create a new universe for each forall. This corresponds to the universes that
+        // `infcx.enter_forall` would create for each forall. Also, figure out which kind of arg we
+        // should use for each binder parameter.
+        fn create_universes<'tcx>(
+            infcx: &InferCtxt<'tcx>,
+            args: &mut Vec<Arg<'tcx>>,
+            body: &mut TestBinderBody<'tcx>,
+        ) {
+            for item in &mut body.items {
+                match item {
+                    TestBinderItem::Forall(item) => {
+                        let u = infcx.create_next_universe();
+                        item.universe = Some(u);
+                        args.extend(item.params.iter().map(|_| Arg::Universal(u)));
+                        create_universes(infcx, args, &mut item.body);
+                    }
+                    TestBinderItem::Exists(item) => {
+                        let u = infcx.universe();
+                        args.extend(item.params.iter().map(|sp| Arg::Existential(u, *sp, None)));
+                        create_universes(infcx, args, &mut item.body);
+                    }
+                    TestBinderItem::RegionEquality(..)
+                    | TestBinderItem::Constraint(..)
+                    | TestBinderItem::Predicate { .. } => (),
+                }
+            }
+        }
+        let mut args = vec![];
+        create_universes(self.infcx, &mut args, body.as_mut().skip_binder());
+        debug_assert_eq!(args.len(), body.bound_vars().len());
+
+        enum Arg<'tcx> {
+            // Instantiate as if `infcx.instantiate_binder_with_fresh_vars` was used
+            Existential(ty::UniverseIndex, Span, Option<ty::GenericArg<'tcx>>),
+            // Instantiate as if `infcx.enter_forall` was used
+            Universal(ty::UniverseIndex),
+        }
+        struct TestBinderDelegate<'a, 'tcx> {
+            infcx: &'a InferCtxt<'tcx>,
+            args: Vec<Arg<'tcx>>,
+        }
+
+        impl<'a, 'tcx> ty::BoundVarReplacerDelegate<TyCtxt<'tcx>> for TestBinderDelegate<'a, 'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
+                // We could eagerly create the existential variables beforehand, but that requires
+                // knowing the kind up front, so just lazily create them when requested.
+                match &mut self.args[br.var.index()] {
+                    Arg::Existential(u, span, e) => e
+                        .get_or_insert_with(|| {
+                            self.infcx
+                                .next_region_var_in_universe(
+                                    RegionVariableOrigin::BoundRegion(
+                                        *span,
+                                        br.kind,
+                                        BoundRegionConversionTime::HigherRankedType,
+                                    ),
+                                    *u,
+                                )
+                                .into()
+                        })
+                        .expect_region(),
+                    Arg::Universal(u) => ty::Region::new_placeholder(
+                        self.infcx.tcx,
+                        ty::PlaceholderRegion::new(*u, br),
+                    ),
+                }
+            }
+            fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx> {
+                match &mut self.args[bt.var.index()] {
+                    Arg::Existential(u, span, e) => e
+                        .get_or_insert_with(|| self.infcx.next_ty_var_in_universe(*span, *u).into())
+                        .expect_ty(),
+                    Arg::Universal(u) => {
+                        Ty::new_placeholder(self.infcx.tcx, ty::PlaceholderType::new(*u, bt))
+                    }
+                }
+            }
+            fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
+                match &mut self.args[bc.var.index()] {
+                    Arg::Existential(u, span, e) => e
+                        .get_or_insert_with(|| {
+                            self.infcx.next_const_var_in_universe(*span, *u).into()
+                        })
+                        .expect_const(),
+                    Arg::Universal(u) => ty::Const::new_placeholder(
+                        self.infcx.tcx,
+                        ty::PlaceholderConst::new(*u, bc),
+                    ),
+                }
+            }
+        }
+
+        let delegate = TestBinderDelegate { infcx: self.infcx, args };
+        let body = self.tcx().replace_bound_vars_uncached(body, delegate);
+        self.check_test_binder_body(body);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
         let TestBinderBody { span, items } = body;
         for item in items {
             match item {
@@ -2512,45 +2645,32 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn check_test_binder_forall(&self, forall: TestBinderForall<'tcx>) {
-        let prev_u = self.infcx.universe();
-        self.infcx.enter_forall(forall.binder, |body| {
-            let u = if prev_u == self.infcx.universe() {
-                // `enter_forall` has some special cases to avoid creating universes
-                // in some cases for perf reasons. Not creating the universe unconditionally
-                // breaks calling `eagerly_handle_placeholders` later on in this function.
-                //
-                // See `test_infra_empty_forall.rs`.
-                self.infcx.create_next_universe()
-            } else {
-                self.infcx.universe()
-            };
-
-            let assumptions = self.build_test_binder_assumptions(
-                forall.span,
-                body.type_outlives,
-                body.region_outlives,
+        let u = forall.universe.unwrap();
+        let assumptions = self.build_test_binder_assumptions(
+            forall.span,
+            forall.type_outlives,
+            forall.region_outlives,
+        );
+        self.infcx.insert_placeholder_assumptions(u, assumptions);
+        self.check_test_binder_body(forall.body);
+        let solver_region_constraint = self.infcx.get_solver_region_constraint();
+        let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(
+            self.infcx,
+            solver_region_constraint.without_spans(),
+            u,
+        )
+        .with_spans(forall.span);
+        if constraint.is_false() {
+            self.tcx().dcx().span_err(forall.span, "forall evaluated to false");
+            self.infcx.overwrite_solver_region_constraint(
+                ty::region_constraint::RegionConstraint::new_true(),
             );
-            self.infcx.insert_placeholder_assumptions(u, assumptions);
-            self.check_test_binder_body(body.value);
-            let solver_region_constraint = self.infcx.get_solver_region_constraint();
-            let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(
-                self.infcx,
-                solver_region_constraint.without_spans(),
-                u,
-            )
-            .with_spans(forall.span);
-            if constraint.is_false() {
-                self.tcx().dcx().span_err(forall.span, "forall evaluated to false");
-                self.infcx.overwrite_solver_region_constraint(
-                    ty::region_constraint::RegionConstraint::new_true(),
-                );
-                return;
-            }
-            if let Some(assert_on_exit) = &forall.assert_on_exit {
-                self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
-            }
-            self.infcx.overwrite_solver_region_constraint(constraint);
-        });
+            return;
+        }
+        if let Some(assert_on_exit) = &forall.assert_on_exit {
+            self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
+        }
+        self.infcx.overwrite_solver_region_constraint(constraint);
     }
 
     fn build_test_binder_assumptions(
@@ -2681,12 +2801,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn check_test_binder_exists(&self, exists: TestBinderExists<'tcx>) {
-        let body = self.infcx.instantiate_binder_with_fresh_vars(
-            exists.span,
-            BoundRegionConversionTime::HigherRankedType,
-            exists.binder,
-        );
-        self.check_test_binder_body(body);
+        self.check_test_binder_body(exists.body);
     }
 }
 
@@ -2880,22 +2995,24 @@ pub(crate) enum TestBinderItem<'tcx> {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderForall<'tcx> {
     pub span: Span,
-    pub binder: ty::Binder<'tcx, WithWhereClauses<'tcx, TestBinderBody<'tcx>>>,
+
+    // HACK(khyperia): This universe index is specific to a particular infcx, and becomes invalid
+    // after that infcx is done. However, this struct is dropped before the infcx that fills in this
+    // field is finished, so the universe index is never observed by anyone else.
+    pub universe: Option<ty::UniverseIndex>,
+    pub params: Vec<Span>,
+
+    pub type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
+    pub region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
+
+    pub body: TestBinderBody<'tcx>,
+
     pub assert_on_exit: Option<SolverRegionConstraint<'tcx>>,
 }
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderExists<'tcx> {
     pub span: Span,
-    pub binder: ty::Binder<'tcx, TestBinderBody<'tcx>>,
-}
-
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub(crate) struct WithWhereClauses<'tcx, T> {
-    pub value: T,
-
-    // The where clauses on the forall. These eventually will probably get stored inside
-    // `ty::Binder` but they're here for now.
-    pub type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
-    pub region_outlives: Vec<ty::RegionOutlivesClause<'tcx>>,
+    pub params: Vec<Span>,
+    pub body: TestBinderBody<'tcx>,
 }
