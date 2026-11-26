@@ -8,7 +8,7 @@ use proc_macro2::{TokenStream, TokenTree};
 use rustc_attr_ir::{AttributeKind, CfgEntry, find_attr};
 use rustc_attr_parsing::eval_config_entry;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
@@ -26,6 +26,7 @@ struct RustCollector {
     cur_path: Vec<String>,
     position: Span,
     global_crate_attrs: Vec<String>,
+    hir_id: Option<HirId>,
 }
 
 impl RustCollector {
@@ -81,6 +82,7 @@ impl DocTestVisitor for RustCollector {
             span,
             code_mappings,
             self.global_crate_attrs.clone(),
+            self.hir_id,
         ));
     }
 
@@ -101,6 +103,7 @@ impl<'tcx> HirCollector<'tcx> {
             position: DUMMY_SP,
             tests: vec![],
             global_crate_attrs: Vec::new(),
+            hir_id: None,
         };
         Self { codes, tcx, collector }
     }
@@ -122,7 +125,8 @@ impl HirCollector<'_> {
         sp: Span,
         nested: F,
     ) {
-        let hir_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
+        let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
+        let hir_attrs = self.tcx.hir_attrs(hir_id);
 
         let mut cfg_info = CfgInfo::default();
         let mut found_features = 0;
@@ -226,6 +230,7 @@ impl HirCollector<'_> {
                     .map(|sp| sp.ctxt().outer_expn().expansion_cause().unwrap_or(sp));
                 cause_span.unwrap_or(DUMMY_SP)
             };
+            self.collector.hir_id = Some(hir_id);
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,

@@ -484,3 +484,52 @@ note: the lint level is defined here
 1  | #![deny(rustdoc::invalid_markdown_table)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
+
+## `unexpected_indented_doctest`
+
+This lint is **warn-by-default**. It is emitted when a doctest which fails compilation
+is an indented code block.
+
+For example:
+
+```rust
+//! text
+//!
+//!     not rust code
+```
+
+Will emit:
+
+```text
+running 1 test
+test foo.rs - (line 3) ... FAILED
+
+failures:
+
+---- foo.rs - (line 3) stdout ----
+error: expected one of `!` or `::`, found `rust`
+ --> foo.rs:4:5
+  |
+4 | not rust code
+  |     ^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    foo.rs - (line 3)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+warning: this indented doctest failed to compile
+ --> foo.rs:3:1
+  |
+3 | //!     not rust code
+  | ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: if it wasn't intended to be a doctest, remove indentation
+  = note: `#[warn(rustdoc::unexpected_indented_doctest)]` on by default
+
+warning: 1 warning emitted
+```

@@ -1,0 +1,15 @@
+error: this indented doctest failed to compile
+  --> $DIR/unexpected-indented-doctest-deny.rs:11:1
+   |
+LL | ///     not rust code
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it wasn't intended to be a doctest, remove indentation
+note: the lint level is defined here
+  --> $DIR/unexpected-indented-doctest-deny.rs:7:9
+   |
+LL | #![deny(rustdoc::unexpected_indented_doctest)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

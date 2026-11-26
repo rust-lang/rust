@@ -1,0 +1,11 @@
+warning: this indented doctest failed to compile
+  --> $DIR/unexpected-indented-doctest.rs:9:1
+   |
+LL | ///     not rust code
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it wasn't intended to be a doctest, remove indentation
+   = note: `#[warn(rustdoc::unexpected_indented_doctest)]` on by default
+
+warning: 1 warning emitted
+
