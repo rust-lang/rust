@@ -1,7 +1,7 @@
 use camino::Utf8Path;
 
-use crate::directives::LineNumber;
 use crate::directives::line::{DirectiveLine, line_directive};
+use crate::directives::{LineNumber, Location};
 
 pub(crate) struct FileDirectives<'a> {
     pub(crate) path: &'a Utf8Path,
@@ -17,6 +17,7 @@ impl<'a> FileDirectives<'a> {
         let mut has_explicit_no_std_core_attribute = false;
 
         for (line_number, ln) in LineNumber::enumerate().zip(file_contents.lines()) {
+            let location = Location { file_path: path, line_number };
             let ln = ln.trim();
 
             // Perform a naive check for lines starting with `#![no_std]`/`#![no_core]`, which
@@ -32,7 +33,7 @@ impl<'a> FileDirectives<'a> {
                 continue;
             }
 
-            if let Some(directive_line) = line_directive(path, line_number, ln) {
+            if let Some(directive_line) = line_directive(location, ln) {
                 let Ok(line) = directive_line.map_err(|e| e.raise_fatal());
                 lines.push(line);
             }
