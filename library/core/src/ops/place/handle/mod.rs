@@ -27,9 +27,15 @@ pub use self::shared_ref::RefHandle;
 /// is available depends on the handle type implementing the respective [*place
 /// operation trait*][self#place-operation-traits].
 ///
-/// Place handles are not user-facing. Instead, they and the use of their
-/// operations are emitted by the compiler as part of desugaring [*place
-/// expressions*](self#places-and-place-expressions) and place operations.
+/// Place handles are usually not visible in user-written code. Instead, they
+/// and the use of their operations are emitted by the compiler as part of
+/// desugaring [*place expressions*](self#places-and-place-expressions) and
+/// place operations.
+///
+/// Types implementing [`PlaceHandle`] do not carry *borrow checker invariants*,
+/// like uniqueness of ownership or access. Instead they may only rely on the
+/// local invariants granted by the place operation traits (e.g. [`WritePlace`]
+/// grants unique access for the write).
 pub trait PlaceHandle: Sized {
     /// The type stored at the place.
     type Target: ?Sized;

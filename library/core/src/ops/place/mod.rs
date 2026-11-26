@@ -10,20 +10,24 @@
 //! [ref-place-exprs]: https://doc.rust-lang.org/reference/expressions.html#r-expr.place-value.place-expr-kinds
 //!
 //! - `$path`: paths that refer to local variables (also parameters) and
-//!   statics,
-//! - `*$place`: dereferencing another place expression,
-//! - `$place[$expr]`: indexing into another place expression,
-//! - `$place.$ident`: accessing a field of another place expression,
+//!   statics (represented by [`LocalHandle<T>`]),
+//! - `*$place`: dereferencing another place expression (represented by
+//!   [`DerefPlace`]),
+//! - `$place[$expr]`: indexing into another place expression (represented by
+//!   [`IndexPlace`]),
+//! - `$place.$ident`: accessing a field of another place expression
+//!   (represented by [`ProjectPlace`]),
 //! - `($place)`: parenthesized place expressions,
 //! - `$value`: an arbitrary expression; it's value is stored in a temporary
-//!   place whose lifetime is determined from its context.
+//!   place whose lifetime is determined from its context (also represented by
+//!   [`LocalHandle<T>`]).
 //!
 //! Further reading:
 //! - <https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html>
 //! - <https://www.ralfj.de/blog/2024/08/14/places.html>
 //!
 //! Place expressions have a direct representation in the form of a
-//! [`PlaceHandle`]. A handle points at a place and is responsible for
+//! [`impl PlaceHandle`]. A handle points at a place and is responsible for
 //! performing all available place operations on the represented place.
 //!
 //! ## Place Operation Traits
@@ -91,6 +95,9 @@ pub use self::wrapper::*;
 /// A value of this type represents a specific place. The operations that are
 /// available on that place are controlled by which *place operation traits* are
 /// implemented on the handle of that place.
+///
+/// Types implementing [`PlaceProxy`] often carry *borrow checker invariants*,
+/// for example uniqueness of ownership or access.
 pub trait PlaceProxy {
     /// The type stored at the proxied place.
     type Target: ?Sized;
