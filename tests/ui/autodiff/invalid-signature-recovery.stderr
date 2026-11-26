@@ -1,0 +1,20 @@
+error: expected type, found keyword `struct`
+  --> $DIR/invalid-signature-recovery.rs:9:10
+   |
+LL | fn f(_x: struct S<B, T>) {}
+   |          ^^^^^^ expected type
+
+error: expected one of `:`, `@`, or `|`, found `>`
+  --> $DIR/invalid-signature-recovery.rs:9:23
+   |
+LL | fn f(_x: struct S<B, T>) {}
+   |                       ^ expected one of `:`, `@`, or `|`
+
+error: expected 2 activities, but found 1
+  --> $DIR/invalid-signature-recovery.rs:7:1
+   |
+LL | #[core::autodiff::autodiff_forward(fd_inner, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
