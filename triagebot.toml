@@ -923,9 +923,21 @@ decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s beta-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+[notify-zulip."beta-nominated".rustdoc-removed]
+required_labels = ["T-rustdoc"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "beta-nominated: #{number}"
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".rustdoc-processed]
+required_labels = ["T-rustdoc", "beta-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "beta-nominated: #{number}"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
@@ -955,9 +967,21 @@ decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s stable-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+[notify-zulip."stable-nominated".rustdoc-removed]
+required_labels = ["T-rustdoc"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "stable-nominated: #{number}"
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".rustdoc-processed]
+required_labels = ["T-rustdoc", "stable-accepted"]
+zulip_stream = 266220 # #t-rustdoc
+topic = "stable-nominated: #{number}"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
