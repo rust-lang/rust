@@ -1,9 +1,8 @@
-use std::ffi::{OsStr, OsString};
-use std::str::FromStr;
+use std::ffi::OsStr;
 use std::time::{Duration, SystemTime};
 
-use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
-use chrono_tz::{OffsetComponents, OffsetName, Tz};
+use jiff::Timestamp;
+use jiff::tz::TimeZone;
 use rustc_target::spec::Os;
 
 use crate::*;
@@ -142,16 +141,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
         let sec_since_epoch: i64 = ecx.read_int::<i64>(&timep)?;
-        let dt_utc: DateTime<Utc> =
-            DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
+        let timestamp = Timestamp::new(sec_since_epoch, 0).expect("timestamp should be valid");
 
         // Figure out what time zone is in use
-        let tz_name = ecx.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
-        let tz = tz_name.to_str().and_then(|tz| Tz::from_str(tz).ok()).unwrap_or(Tz::UTC);
+        let tz = ecx
+            .get_env_var(OsStr::new("TZ"))?
+            .and_then(|tz| TimeZone::get(tz.to_str()?).ok())
+            .unwrap_or(TimeZone::UTC);
 
-        // Convert that to local time, then return the broken-down time value.
-        let dt: DateTime<Tz> = dt_utc.with_timezone(&tz);
-        let offset = dt.offset();
+        // Put the two together. Looks like we have to do this twice to get all the information.
+        let dt = timestamp.to_zoned_datetime(tz.clone());
+        let offset_info = tz.to_offset_info(timestamp);
 
         ecx.write_int_fields_named(
             &[
@@ -159,22 +159,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("tm_min", dt.minute().into()),
                 ("tm_hour", dt.hour().into()),
                 ("tm_mday", dt.day().into()),
-                ("tm_mon", dt.month0().into()),
+                ("tm_mon", dt.month().strict_sub(1).into()),
                 ("tm_year", dt.year().strict_sub(1900).into()),
-                ("tm_wday", dt.weekday().num_days_from_sunday().into()),
-                ("tm_yday", dt.ordinal0().into()),
-                ("tm_isdst", if offset.dst_offset().is_zero() { 0 } else { 1 }),
+                ("tm_wday", dt.weekday().to_sunday_zero_offset().into()),
+                ("tm_yday", dt.day_of_year().strict_sub(1).into()),
+                ("tm_isdst", offset_info.dst().is_dst().into()),
             ],
             &result,
         )?;
 
-        // solaris/illumos system tm struct does not have
-        // the additional tm_zone/tm_gmtoff fields.
+        // solaris/illumos system tm struct does not have the additional tm_zone/tm_gmtoff fields.
         // https://docs.oracle.com/cd/E36784_01/html/E36874/localtime-r-3c.html
         if !matches!(&ecx.tcx.sess.target.os, Os::Solaris | Os::Illumos) {
             // Get relevant information.
-            let offset_in_seconds = offset.fix().local_minus_utc();
-            let timezone_name = offset.abbreviation().unwrap_or_else(|| offset.tz_id());
+            let offset_in_seconds = offset_info.offset().seconds();
+            let timezone_name = offset_info.abbreviation();
 
             // Allocate the string with trailing null. This acts like a global variable:
             // it is deduplicated and the user is not expected to free it.

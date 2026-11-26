@@ -29,8 +29,7 @@ rand = "0.10"
 smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.9", features = ["hazmat"] }
 measureme = "12"
-chrono = { version = "0.4.38", default-features = false }
-chrono-tz = "0.10"
+jiff = { version = "1" }
 directories = "6"
 bitflags = "2.6"
 serde_json = { version = "1.0", optional = true }
