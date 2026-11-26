@@ -3,7 +3,6 @@
 //! configs (autodiff enabled or disabled), so we have to add cfg's to each import.
 
 use std::str::FromStr;
-use std::string::String;
 
 use rustc_ast::expand::autodiff_attrs::{
     DiffActivity, DiffMode, valid_input_activity, valid_ret_activity, valid_ty_for_activity,
@@ -42,26 +41,6 @@ fn has_ret(ty: &FnRetTy) -> bool {
         FnRetTy::Default(_) => false,
     }
 }
-fn first_ident(x: &MetaItemInner) -> rustc_span::Ident {
-    if let Some(l) = x.lit() {
-        match l.kind {
-            ast::LitKind::Int(val, _) => {
-                // get an Ident from a lit
-                return rustc_span::Ident::from_str(val.get().to_string().as_str());
-            }
-            _ => {}
-        }
-    }
-
-    let segments = &x.meta_item().unwrap().path.segments;
-    assert!(segments.len() == 1);
-    segments[0].ident
-}
-
-fn name(x: &MetaItemInner) -> String {
-    first_ident(x).name.to_string()
-}
-
 fn width(x: &MetaItemInner) -> Option<u128> {
     let lit = x.lit()?;
     match lit.kind {
@@ -113,7 +92,15 @@ fn from_ast(
     let mut activities: Vec<DiffActivity> = vec![];
     let mut errors = false;
     for x in &meta_item[first_activity..] {
-        let activity_str = name(x);
+        let Some(ident) = x.ident() else {
+            dcx.emit_err(diagnostics::AutoDiffUnknownActivity {
+                span: x.span(),
+                act: rustc_ast_pretty::pprust::meta_list_item_to_string(x),
+            });
+            errors = true;
+            continue;
+        };
+        let activity_str = ident.name.to_string();
         let res = DiffActivity::from_str(&activity_str);
         match res {
             Ok(x) => activities.push(x),
@@ -132,15 +119,10 @@ fn from_ast(
 
     // If a return type exist, we need to split the last activity,
     // otherwise we return None as placeholder.
-    let (ret_activity, input_activity) = if has_ret {
-        let Some((last, rest)) = activities.split_last() else {
-            unreachable!(
-                "should not be reachable because we counted the number of activities previously"
-            );
-        };
-        (last, rest)
-    } else {
-        (&DiffActivity::None, activities.as_slice())
+    // A missing return activity is reported by the count check in `gen_enzyme_decl`.
+    let (ret_activity, input_activity) = match activities.split_last() {
+        Some((last, rest)) if has_ret => (last, rest),
+        _ => (&DiffActivity::None, activities.as_slice()),
     };
 
     RustcAutodiff {
@@ -153,7 +135,7 @@ fn from_ast(
 
 fn meta_item_inner_to_ts(t: &MetaItemInner, ts: &mut Vec<TokenTree>) {
     let comma = Token::new(TokenKind::Comma, Span::default());
-    let val = first_ident(t);
+    let val = t.ident().expect("activities are validated in `from_ast`");
     let t = Token::from_ast_ident(val);
     ts.push(TokenTree::Token(t, Spacing::Joint));
     ts.push(TokenTree::Token(comma, Spacing::Alone));
@@ -255,6 +237,18 @@ fn expand_with_mode(
         return vec![item];
     }
 
+    let Some(d_ident) = meta_item_vec[0].ident() else {
+        dcx.emit_err(diagnostics::AutoDiffInvalidName { span: meta_item_vec[0].span() });
+        return vec![item];
+    };
+
+    let x = from_ast(ecx, &meta_item_vec, has_ret, mode);
+    if !x.is_active() {
+        // We encountered an error, so we return the original item.
+        // This allows us to potentially parse other attributes.
+        return vec![item];
+    }
+
     let mode_symbol = match mode {
         DiffMode::Forward => sym::Forward,
         DiffMode::Reverse => sym::Reverse,
@@ -302,32 +296,18 @@ fn expand_with_mode(
     ts.pop();
     let ts = TokenStream::from_iter(ts);
 
-    let x = from_ast(ecx, &meta_item_vec, has_ret, mode);
-    if !x.is_active() {
-        // We encountered an error, so we return the original item.
-        // This allows us to potentially parse other attributes.
-        return vec![item];
-    }
     let span = ecx.with_def_site_ctxt(expand_span);
 
-    let d_sig = gen_enzyme_decl(ecx, &sig, &x, span);
+    let Some(d_sig) = gen_enzyme_decl(ecx, &sig, &x, span) else {
+        return vec![item];
+    };
 
     let d_body = ecx.block(
         span,
-        thin_vec![call_autodiff(
-            ecx,
-            primal,
-            first_ident(&meta_item_vec[0]),
-            span,
-            &sig,
-            &d_sig,
-            &generics,
-            is_impl,
-        )],
+        thin_vec![call_autodiff(ecx, primal, d_ident, span, &sig, &d_sig, &generics, is_impl)],
     );
 
-    // The first element of it is the name of the function to be generated
-    let d_fn = ecx.item_fn(d_sig, first_ident(&meta_item_vec[0]), generics, Some(d_body));
+    let d_fn = ecx.item_fn(d_sig, d_ident, generics, Some(d_body));
     let mut rustc_ad_attr =
         Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
@@ -588,8 +568,9 @@ fn gen_turbofish_expr(
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
 //
-// Error handling: If the user provides an invalid configuration (incorrect numbers, types, or
-// both), we emit an error and return the original signature. This allows us to continue parsing.
+// Error handling: If the user provides the wrong number of activities, we emit an error and
+// return `None`. If the types don't fit the activities, we emit an error and return the
+// original signature. This allows us to continue parsing.
 // FIXME(Sa4dUs): make individual activities' span available so errors
 // can point to only the activity instead of the entire attribute
 fn gen_enzyme_decl(
@@ -597,7 +578,7 @@ fn gen_enzyme_decl(
     sig: &ast::FnSig,
     x: &RustcAutodiff,
     span: Span,
-) -> ast::FnSig {
+) -> Option<ast::FnSig> {
     let dcx = ecx.sess.dcx();
     let has_ret = has_ret(&sig.decl.output);
     let sig_args = sig.decl.inputs.len() + if has_ret { 1 } else { 0 };
@@ -608,8 +589,7 @@ fn gen_enzyme_decl(
             expected: sig_args,
             found: num_activities,
         });
-        // This is not the right signature, but we can continue parsing.
-        return sig.clone();
+        return None;
     }
     assert!(sig.decl.inputs.len() == x.input_activity.len());
     assert!(has_ret == x.has_ret_activity());
@@ -650,7 +630,7 @@ fn gen_enzyme_decl(
 
     if errors {
         // This is not the right signature, but we can continue parsing.
-        return sig.clone();
+        return Some(sig.clone());
     }
 
     let unsafe_activities = x
@@ -822,5 +802,5 @@ fn gen_enzyme_decl(
     }
     let d_sig = FnSig { header: d_header, decl: d_decl, span };
     trace!("Generated signature: {:?}", d_sig);
-    d_sig
+    Some(d_sig)
 }
