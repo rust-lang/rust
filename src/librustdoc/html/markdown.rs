@@ -277,7 +277,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     }
                     parse_result
                 }
-                CodeBlockKind::Indented => Default::default(),
+                CodeBlockKind::Indented => LangString::indented(),
             };
 
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
@@ -760,12 +760,12 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                 let block_info = match kind {
                     CodeBlockKind::Fenced(ref lang) => {
                         if lang.is_empty() {
-                            Default::default()
+                            LangString::default()
                         } else {
                             LangString::parse(lang, error_codes, extra_info)
                         }
                     }
-                    CodeBlockKind::Indented => Default::default(),
+                    CodeBlockKind::Indented => LangString::indented(),
                 };
                 if !include_non_rust && !block_info.rust {
                     continue;
@@ -929,6 +929,7 @@ pub(crate) struct LangString {
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
     pub(crate) unknown: Vec<String>,
+    pub(crate) is_fenced: bool,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -1252,11 +1253,18 @@ impl Default for LangString {
             edition: None,
             added_classes: Vec::new(),
             unknown: Vec::new(),
+            is_fenced: true,
         }
     }
 }
 
 impl LangString {
+    fn indented() -> Self {
+        let mut ret = Self::default();
+        ret.is_fenced = false;
+        ret
+    }
+
     fn parse_without_check(string: &str, allow_error_code_check: ErrorCodes) -> Self {
         Self::parse(string, allow_error_code_check, None)
     }
@@ -2078,7 +2086,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
-                        Default::default()
+                        LangString::default()
                     } else {
                         LangString::parse(syntax, ErrorCodes::Yes, Some(extra_info))
                     };
@@ -2118,14 +2126,14 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<
                     // these cases.
                     if offset.end > offset.start && md.get(offset.end..=offset.end) == Some("\n") {
                         (
-                            LangString::default(),
+                            LangString::indented(),
                             offset.start,
                             offset.end,
                             Range { start: offset.start, end: offset.end - 1 },
                             false,
                         )
                     } else {
-                        (LangString::default(), offset.start, offset.end, offset, false)
+                        (LangString::indented(), offset.start, offset.end, offset, false)
                     }
                 }
             };
