@@ -22,6 +22,21 @@ error[E0282]: type annotations needed
 LL |         mem::transmute::<fn(_: (i32, _)) -> (), extern "cmse-nonsecure-call" fn(_: (i32, _)) -> ()>;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
 
-error: aborting due to 4 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/infer.rs:38:63
+   |
+LL |     let _: Option<extern "cmse-nonsecure-call" fn([u8; _])> = Option::None;
+   |            ------------------------------------------------   ^^^^^^^^^^^^ cannot infer the value of the const parameter `T` declared on the enum `Option`
+   |            |
+   |            type must be known at this point
+   |
+   = note: the length of array `[u8; _]` must be type `usize`
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     let _: Option<extern "cmse-nonsecure-call" fn([u8; _])> = Option::</* Type */>::None;
+   |                                                                     ++++++++++++++
 
-For more information about this error, try `rustc --explain E0282`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0282, E0284.
+For more information about an error, try `rustc --explain E0282`.

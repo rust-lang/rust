@@ -1,3 +1,15 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/infer.rs:39:56
+   |
+LL | extern "cmse-nonsecure-entry" fn infer_const() -> [u8; _] {
+   |                                                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - extern "cmse-nonsecure-entry" fn infer_const() -> [u8; _] {
+LL + extern "cmse-nonsecure-entry" fn infer_const() -> [u8; 3] {
+   |
+
 error[E0282]: type annotations needed
   --> $DIR/infer.rs:17:13
    |
@@ -27,6 +39,7 @@ LL | |         extern "cmse-nonsecure-entry" fn(_: (i32, _)) -> (),
 LL | |     >;
    | |_____^ cannot infer type of the type parameter `Src` declared on the function `transmute`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0121, E0282.
+For more information about an error, try `rustc --explain E0121`.

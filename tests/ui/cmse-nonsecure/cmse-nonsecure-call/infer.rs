@@ -33,3 +33,8 @@ fn infer_4() {
         mem::transmute::<fn(_: (i32, _)) -> (), extern "cmse-nonsecure-call" fn(_: (i32, _)) -> ()>;
     //~^ ERROR type annotations needed
 }
+
+fn infer_const() {
+    let _: Option<extern "cmse-nonsecure-call" fn([u8; _])> = Option::None;
+    //~^ ERROR type annotations needed
+}
