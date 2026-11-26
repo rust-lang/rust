@@ -19,7 +19,7 @@ note: method defined here
    |
 LL | impl C {
 LL |     pub fn speak<T>(&mut self, const N: usize ) {}
-   |            ^^^^^                     -
+   |            ^^^^^               --------------
 
 error: aborting due to 2 previous errors
 
