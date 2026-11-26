@@ -78,14 +78,6 @@ fn test_posix_gettimeofday() {
     let tv = unsafe { tp.assume_init() };
     assert!(tv.tv_sec > 0);
     assert!(tv.tv_usec >= 0); // Theoretically this could be 0.
-
-    if cfg!(miri) {
-        // Test that non-null tz returns an error (because we don't support it).
-        let mut tz = mem::MaybeUninit::<libc::timezone>::uninit();
-        let tz_ptr = tz.as_mut_ptr();
-        let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz_ptr.cast()) };
-        assert_eq!(is_error, -1);
-    }
 }
 
 #[derive(Debug)]

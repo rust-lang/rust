@@ -109,7 +109,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = ecx.read_pointer(tz_op)?;
         if !ecx.ptr_is_null(tz)? {
-            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            throw_unsup_format!(
+                "gettimeofday with non-null `tz` pointer is obsolete and not supported"
+            );
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
