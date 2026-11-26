@@ -14,10 +14,11 @@ LL |     }
 LL |     impl Unnameable for u8 {}
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
-help: trait `Unnameable` which provides `unnameable_method` is implemented but not in scope; perhaps you want to import it
+help: trait `unnameable_traits::private::Unnameable` which provides `unnameable_method` is implemented but not reachable
+  --> $DIR/auxiliary/unnameable-traits.rs:2:5
    |
-LL + use unnameable_traits::private::Unnameable;
-   |
+LL |     pub trait Unnameable {
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `leaked_method` found for type `u8` in the current scope
   --> $DIR/suggest-unnameable-foreign-trait.rs:8:9
@@ -35,10 +36,11 @@ LL |     }
 LL |     impl Leaked for u8 {}
    |     ^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
-help: trait `Leaked` which provides `leaked_method` is implemented but not in scope; perhaps you want to import it
+help: trait `unnameable_traits::private::Leaked` which provides `leaked_method` is implemented but not reachable
+  --> $DIR/auxiliary/unnameable-traits.rs:7:5
    |
-LL + use unnameable_traits::private::Leaked;
-   |
+LL |     pub trait Leaked {
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `reexported_method` found for type `u8` in the current scope
   --> $DIR/suggest-unnameable-foreign-trait.rs:10:9
