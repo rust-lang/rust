@@ -96,8 +96,10 @@ pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
         if !ptr::eq(canary, &CANARY) {
             // A foreign Rust exception, treat it slightly differently from other
             // foreign exceptions, because call into `_Unwind_DeleteException` will
-            // call into `__rust_drop_panic` which produces a confusing
-            // "Rust panic must be rethrown" message.
+            // call into `__rust_drop_panic` which used to produce a confusing
+            // "Rust panic must be rethrown" message. `__rust_foreign_exception`
+            // will abort the process anyway so leaking the exception doesn't
+            // matter.
             super::__rust_foreign_exception();
         }
 
