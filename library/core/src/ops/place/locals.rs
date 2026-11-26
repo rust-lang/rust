@@ -1,9 +1,23 @@
+use crate::field::Subplace;
+use crate::ops::place::{
+    BorrowPlace, CreateHandle, CreateIndexHandle, DerefPlace, DropPlace, IndexPlace, MetadataPlace,
+    MovePlace, PlaceHandle, ProjectPlace, ReadPlace, WritePlace,
+};
+use crate::ptr::Metadata;
+use crate::{fmt, ptr};
+
 pub struct LocalHandle<T: ?Sized>(*mut T);
 
 impl<T: ?Sized> Copy for LocalHandle<T> {}
 impl<T: ?Sized> Clone for LocalHandle<T> {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl<T: ?Sized> fmt::Debug for LocalHandle<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("LocalHandle").field(&self.get()).finish()
     }
 }
 
@@ -34,12 +48,12 @@ where
 
 unsafe impl<T, Idx> IndexPlace<Idx> for LocalHandle<T>
 where
-    T: ?Sized + IndexProxy<Idx>,
+    T: ?Sized + CreateIndexHandle<Idx>,
 {
-    type Derefed = T::Handle;
+    type Indexed = T::Handle;
 
-    unsafe fn deref_place(self) -> Self::Derefed {
-        compiler_error!("TODO: create a index version of CreateHandle?");
+    unsafe fn index_place(self, idx: Idx) -> Self::Indexed {
+        unsafe { T::create_index_handle(self.get(), idx) }
     }
 }
 
@@ -50,38 +64,39 @@ where
     type Projected = LocalHandle<S::Target>;
 
     unsafe fn project_place(self, subplace: S) -> Self::Projected {
-        unsafe { LocalHandle::new(self.get().byte_add(subplace.offset()).cast()) }
+        let (offset, ()) = subplace.offset(());
+        unsafe { LocalHandle::new(self.get().byte_add(offset).cast()) }
     }
 }
 
-impl<T: ?Sized> ReadPlace for LocalHandle<T> {
+unsafe impl<T> ReadPlace for LocalHandle<T> {
     unsafe fn read_place(self) -> Self::Target {
         unsafe { self.0.read() }
     }
 }
 
-impl<T: ?Sized> MovePlace for LocalHandle<T> {}
+unsafe impl<T> MovePlace for LocalHandle<T> {}
 
-impl<T> WritePlace for LocalHandle<T> {
+unsafe impl<T> WritePlace for LocalHandle<T> {
     unsafe fn write_place(self, value: Self::Target) {
         unsafe { self.0.write(value) }
     }
 }
 
-impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a mut T> for LocalHandle<T> {
+unsafe impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a mut T> for LocalHandle<T> {
     unsafe fn borrow_place(self) -> &'a mut T {
-        unsafe { self.0.as_mut() }
+        unsafe { self.0.as_mut_unchecked() }
     }
 }
 
-impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a T> for LocalHandle<T> {
+unsafe impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a T> for LocalHandle<T> {
     unsafe fn borrow_place(self) -> &'a T {
-        unsafe { self.0.as_ref() }
+        unsafe { self.0.as_ref_unchecked() }
     }
 }
 
-impl<T: ?Sized> MetadataPlace for LocalHandle<T> {
-    unsafe fn metadata(self) -> <Self::Target as Pointee>::Metadata {
+unsafe impl<T: ?Sized> MetadataPlace for LocalHandle<T> {
+    unsafe fn metadata(self) -> Metadata<T> {
         ptr::metadata(self.get())
     }
 }

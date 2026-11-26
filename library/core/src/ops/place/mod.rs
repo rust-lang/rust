@@ -78,6 +78,8 @@
 //! set to `false`. For example, `&mut T` will have `SAFE = true` in
 //! [`ReadPlace`], but `NonNull<T>` will set it to `false`.
 
+use crate::ptr::Metadata;
+
 mod handle;
 mod locals;
 mod wrapper;
@@ -85,7 +87,6 @@ mod wrapper;
 pub use self::handle::*;
 pub use self::locals::*;
 pub use self::wrapper::*;
-use crate::ptr::Pointee;
 
 /// A type that acts as a proxy for a place.
 ///
@@ -108,9 +109,15 @@ pub trait IndexProxy<Idx> {
 }
 
 pub unsafe trait CreateHandle: PlaceProxy {
-    type Handle;
+    type Handle: PlaceHandle<Target = Self::Target>;
 
     unsafe fn create_handle(ptr: *const Self) -> Self::Handle;
+}
+
+pub unsafe trait CreateIndexHandle<Idx>: IndexProxy<Idx> {
+    type Handle: PlaceHandle<Target = Self::Element>;
+
+    unsafe fn create_index_handle(ptr: *const Self, idx: Idx) -> Self::Handle;
 }
 
 /// Read from a place.
@@ -148,7 +155,7 @@ where
 }
 
 pub unsafe trait MetadataPlace: PlaceHandle {
-    unsafe fn metadata(self) -> <Self::Target as Pointee>::Metadata;
+    unsafe fn metadata(self) -> Metadata<Self::Target>;
 }
 
 /// Drop the contents of a place.

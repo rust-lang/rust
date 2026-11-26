@@ -67,6 +67,11 @@ pub trait Pointee: PointeeSized {
     type Metadata: fmt::Debug + Copy + Send + Sync + Ord + Hash + Unpin + Freeze;
 }
 
+/// The pointer metadata type of `T`.
+///
+/// See [`Pointee::Metadata`].
+pub type Metadata<T> = <T as Pointee>::Metadata;
+
 /// Pointers to types implementing this trait alias are “thin”.
 ///
 /// This includes statically-`Sized` types and `extern` types.

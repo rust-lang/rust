@@ -436,7 +436,9 @@ use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod metadata;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
-pub use metadata::{DynMetadata, Pointee, Thin, from_raw_parts, from_raw_parts_mut, metadata};
+pub use metadata::{
+    DynMetadata, Metadata, Pointee, Thin, from_raw_parts, from_raw_parts_mut, metadata,
+};
 
 mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]
