@@ -64,7 +64,12 @@ fn main() {
         }
     }
 
-    dbg!(&sources);
-    assert_eq!(sources.len(), 1);
-    assert_eq!(sources.get("main.rs").unwrap(), "// hello\nfn main() {}\n");
+    // Sources from other crates may also be embedded when available.
+    assert!(!sources.is_empty());
+    assert_eq!(
+        sources.get("main.rs").unwrap(),
+        "// hello
+fn main() {}
+"
+    );
 }
