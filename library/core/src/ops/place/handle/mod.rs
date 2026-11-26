@@ -9,6 +9,18 @@
 use super::{IndexProxy, PlaceProxy};
 use crate::field::Subplace;
 
+mod const_ptr;
+mod local;
+mod mut_ptr;
+mod mutable_ref;
+mod shared_ref;
+
+pub use self::const_ptr::PtrHandle;
+pub use self::local::LocalHandle;
+pub use self::mut_ptr::MutPtrHandle;
+pub use self::mutable_ref::MutHandle;
+pub use self::shared_ref::RefHandle;
+
 /// A *handle* to a place.
 ///
 /// All place operations are carried out by handles. Whether a place operation

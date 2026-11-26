@@ -35,6 +35,12 @@ impl<T: ?Sized> PlaceHandle for LocalHandle<T> {
     type Target = T;
 }
 
+unsafe impl<T: ?Sized> MetadataPlace for LocalHandle<T> {
+    unsafe fn metadata(self) -> Metadata<T> {
+        ptr::metadata(self.get())
+    }
+}
+
 unsafe impl<T> DerefPlace for LocalHandle<T>
 where
     T: ?Sized + CreateHandle,
@@ -59,13 +65,15 @@ where
 
 unsafe impl<T, S> ProjectPlace<S> for LocalHandle<T>
 where
-    S: Subplace<Source = T, Target: Sized>,
+    T: ?Sized,
+    S: Subplace<Source = T>,
 {
     type Projected = LocalHandle<S::Target>;
 
     unsafe fn project_place(self, subplace: S) -> Self::Projected {
-        let (offset, ()) = subplace.offset(());
-        unsafe { LocalHandle::new(self.get().byte_add(offset).cast()) }
+        let (offset, meta) = subplace.offset(unsafe { self.metadata() });
+        let data = unsafe { self.get().cast::<u8>().add(offset) };
+        unsafe { LocalHandle::new(ptr::from_raw_parts_mut(data, meta)) }
     }
 }
 
@@ -83,21 +91,15 @@ unsafe impl<T> WritePlace for LocalHandle<T> {
     }
 }
 
-unsafe impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a mut T> for LocalHandle<T> {
+unsafe impl<'a, T: ?Sized> BorrowPlace<'a, &'a mut T> for LocalHandle<T> {
     unsafe fn borrow_place(self) -> &'a mut T {
         unsafe { self.0.as_mut_unchecked() }
     }
 }
 
-unsafe impl<'a, T: 'a + ?Sized> BorrowPlace<'a, &'a T> for LocalHandle<T> {
+unsafe impl<'a, T: ?Sized> BorrowPlace<'a, &'a T> for LocalHandle<T> {
     unsafe fn borrow_place(self) -> &'a T {
         unsafe { self.0.as_ref_unchecked() }
-    }
-}
-
-unsafe impl<T: ?Sized> MetadataPlace for LocalHandle<T> {
-    unsafe fn metadata(self) -> Metadata<T> {
-        ptr::metadata(self.get())
     }
 }
 

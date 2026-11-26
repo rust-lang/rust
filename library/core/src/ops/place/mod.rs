@@ -81,11 +81,9 @@
 use crate::ptr::Metadata;
 
 mod handle;
-mod locals;
 mod wrapper;
 
 pub use self::handle::*;
-pub use self::locals::*;
 pub use self::wrapper::*;
 
 /// A type that acts as a proxy for a place.
