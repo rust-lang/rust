@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, DelayedSet, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Binder, Const, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
@@ -212,17 +212,12 @@ where
             fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
                 struct StalledOnCoroutines<'tcx> {
                     pub stalled_coroutines: &'tcx ty::List<LocalDefId>,
-                    pub cache: DelayedSet<Ty<'tcx>>,
                 }
 
                 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
                     type Result = ControlFlow<()>;
 
                     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                        if !self.cache.insert(ty) {
-                            return ControlFlow::Continue(());
-                        }
-
                         if let ty::Coroutine(def_id, _) = ty.kind()
                             && def_id
                                 .as_local()
@@ -241,7 +236,6 @@ where
                     .deeply_resolve_ignoring_regions(pending_obligation.obligation.predicate)
                     .visit_with(&mut StalledOnCoroutines {
                         stalled_coroutines: self.stalled_coroutines,
-                        cache: Default::default(),
                     })
                     .is_break()
             }
