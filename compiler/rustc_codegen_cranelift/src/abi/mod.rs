@@ -171,7 +171,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                             (param, arg)
                         }
                     })
-                    .unzip();
+                    .collect();
 
                 (params, args.into())
             } else {
