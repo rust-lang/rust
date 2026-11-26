@@ -1,3 +1,5 @@
+#![feature(pattern)]
+
 use std::str::pattern::*;
 
 // This macro makes it easier to write

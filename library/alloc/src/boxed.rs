@@ -2694,6 +2694,10 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
     }
 }
 
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
+unsafe impl<T: ?Sized + StaticAllocator, A: Allocator> StaticAllocator for Box<T, A> {}
+
 /// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]

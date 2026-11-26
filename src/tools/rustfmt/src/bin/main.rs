@@ -28,7 +28,7 @@ extern crate rustc_driver;
 extern crate rustc_session;
 
 use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::output::ErrorOutputType;
 
 fn main() {
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |_| ());

@@ -1,0 +1,56 @@
+// MIR for `short_array_match` after built
+
+fn short_array_match(_1: [u8; 3]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        switchInt(copy _1[0 of 3]) -> [1: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb10;
+    }
+
+    bb2: {
+        switchInt(copy _1[1 of 3]) -> [2: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        switchInt(copy _1[2 of 3]) -> [3: bb6, otherwise: bb5];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        falseEdge -> [real: bb9, imaginary: bb1];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb9: {
+        _0 = const true;
+        goto -> bb10;
+    }
+
+    bb10: {
+        return;
+    }
+}

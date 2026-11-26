@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, attr};
+use rustc_ast::{self as ast, GeneratedAttr, attr};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_feature::Features;
@@ -65,7 +65,7 @@ pub fn inject(
     // Inject the relevant crate's prelude.
     let use_item = cx.item(
         span,
-        thin_vec![cx.attr_word(sym::prelude_import, span)],
+        thin_vec![cx.generated_attr(span, GeneratedAttr::PreludeImport)],
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, &import_path),
             kind: ast::UseTreeKind::Glob(span),

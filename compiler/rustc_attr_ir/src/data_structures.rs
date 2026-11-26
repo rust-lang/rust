@@ -960,7 +960,7 @@ pub enum AttributeKind {
     InstrumentFn(InstrumentFnAttr),
 
     /// Represents `#[lang]`
-    Lang(LangItem),
+    Lang(LangItem, Span),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
@@ -988,11 +988,30 @@ pub enum AttributeKind {
     /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     LintAsPtr,
 
+    /// Represents `#[lint::c_buffer_length(pointer, length)]`.
+    LintCBufferLength {
+        pointer: Ident,
+        length: Ident,
+    },
+
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
 
+    /// Represents `#[lint::must_match_exhaustively]` (used by the
+    /// `rustc::must_match_exhaustively` lint).
+    LintMustMatchExhaustively(Span),
+
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
+
+    /// Represents `#[lint::no_implicit_autorefs]` (used by the `dangerous_implicit_autorefs` lint).
+    LintNoImplicitAutorefs,
+
+    /// Represents `#[lint::panics_when_zero]` (used by the `unconditional_panic` lint).
+    LintPanicsWhenZero,
+
+    /// Represents `#[lint::pass_by_value)]` (used by the `rustc::disallowed_pass_by_ref` lint).
+    LintPassByValue,
 
     /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
     /// `const_item_interior_mutations` lint).
@@ -1421,13 +1440,6 @@ pub enum AttributeKind {
         attr_span: Span,
         fn_names: ThinVec<Ident>,
     },
-
-    /// Represents `#[rustc_must_match_exhaustively]`
-    RustcMustMatchExhaustively(Span),
-
-    /// Represents `#[rustc_no_implicit_autorefs]`
-    RustcNoImplicitAutorefs,
-
     /// Represents `#[rustc_no_implicit_bounds]`
     RustcNoImplicitBounds,
 
@@ -1459,18 +1471,13 @@ pub enum AttributeKind {
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
 
-    /// Represents `#[rustc_panics_when_zero]` (used for linting).
-    RustcPanicsWhenZero,
-
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar,
-
-    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
-    RustcPassByValue,
 
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`,
     ///
     /// See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
     /// Represents `#[rustc_preserve_ub_checks]`

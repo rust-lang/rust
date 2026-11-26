@@ -1,5 +1,6 @@
 // This is a regression test for <https://github.com/rust-lang/rust/issues/139462>.
 //@ check-pass
+//@ compile-flags: -Znext-solver
 //@ compile-flags: -Cdebuginfo=2
 #![feature(unsafe_binders)]
 

@@ -293,7 +293,7 @@ pub(crate) fn relevance_score(
         if let Some(ty) = ty {
             if ty == *expected {
                 score = 100000;
-            } else if ty.could_unify_with(ctx.db(), &expected.instantiate_with_errors()) {
+            } else if ty.could_unify_with(ctx.db(), &expected.instantiate_with_errors(ctx.db())) {
                 score = 10000;
             }
         }
@@ -2091,6 +2091,46 @@ fn main() {
     Continue;
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn carries_cfg_attr_from_macro() {
+        check_assist(
+            auto_import,
+            r#"
+//- /lib.rs crate:std
+pub mod time {
+    pub struct Instant;
+}
+
+//- /main.rs crate:main deps:std
+// comment comment comment comment
+
+macro_rules! m {
+    ($t: path) => {
+        #[cfg(anything)]
+        fn f() -> $t {}
+    };
+}
+
+m! {Instant$0}
+"#,
+            r#"
+// comment comment comment comment
+
+#[cfg(anything)]
+use std::time::Instant;
+
+macro_rules! m {
+    ($t: path) => {
+        #[cfg(anything)]
+        fn f() -> $t {}
+    };
+}
+
+m! {Instant}
+"#,
         );
     }
 }

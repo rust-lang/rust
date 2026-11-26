@@ -1,9 +1,11 @@
 // Reference: ELF Application Binary Interface s390x Supplement
 // https://github.com/IBM/s390x-abi
 
-use rustc_abi::{BackendRepr, FieldsShape, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    BackendRepr, CanonAbi, FieldsShape, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout,
+};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
 
 /// Is this a struct with a single float field?
@@ -21,7 +23,7 @@ where
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Float(_) => true,
-                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Bool | Primitive::Int(_, _) | Primitive::Pointer(_) => false,
             },
             BackendRepr::Memory { .. } => {
                 // A single-element array or union does not qualify.
@@ -65,7 +67,6 @@ where
         // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == Os::Linux
             && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
-            && arg.layout.is_repr_c()
         {
             arg.make_indirect_from_ignore();
         }
@@ -127,16 +128,28 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct S390XCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for S390XCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C, _conv: CanonAbi, _c_variadic: bool) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn passes_zsts(&self) -> bool {
+        true
+    }
+
+    fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(ret);
+        }
+    }
+
+    fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         classify_arg(cx, arg);
     }
 }

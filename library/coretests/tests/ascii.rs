@@ -1,3 +1,7 @@
+#![feature(ascii_char)]
+#![feature(is_ascii_octdigit)]
+#![feature(iter_advance_by)]
+
 use core::char::from_u32;
 
 #[test]

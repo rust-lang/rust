@@ -264,7 +264,7 @@ pub(crate) const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
 /// Verify that floats are within a tolerance of each other.
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr $(,)?) => {{
-        assert_approx_eq!($a, $b, $crate::num::floats::lim_for_ty($a))
+        assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a))
     }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
@@ -303,8 +303,8 @@ macro_rules! assert_biteq {
             // We rely on the `Float` type being brought in scope by the macros below.
             l: Float = l,
             r: Float = r,
-            lb: <Float as $crate::num::floats::TestableFloat>::Int = l.to_bits(),
-            rb: <Float as $crate::num::floats::TestableFloat>::Int = r.to_bits(),
+            lb: <Float as $crate::floats::TestableFloat>::Int = l.to_bits(),
+            rb: <Float as $crate::floats::TestableFloat>::Int = r.to_bits(),
             width: usize = ((bits / 4) + 2) as usize,
         );
     }};
@@ -1229,6 +1229,67 @@ float_test! {
         assert!((Float::ONE / Float::NEG_INFINITY).is_sign_negative());
         assert!(!Float::NAN.is_sign_negative());
         assert!((-Float::NAN).is_sign_negative());
+    }
+}
+
+float_test! {
+    name: scalbn,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test {
+        assert_biteq!(flt(3.0).scalbn(4), 48.0);
+        assert_biteq!(flt(-3.0).scalbn(4), -48.0);
+
+        assert_biteq!(flt(0.0).scalbn(4), 0.0);
+        assert_biteq!(flt(-0.0).scalbn(4), -0.0);
+
+        assert_biteq!(Float::ONE.scalbn(0), Float::ONE);
+        assert_biteq!(Float::ONE.scalbn(1), 2.0);
+        assert_biteq!(Float::ONE.scalbn(-1), 0.5);
+        assert_biteq!(Float::ONE.scalbn(10), 1024.0);
+        assert_biteq!(Float::ONE.scalbn(-10), 1.0 / 1024.0);
+
+        assert_biteq!(Float::MAX.scalbn(1), Float::INFINITY);
+        assert_biteq!(Float::MAX.scalbn(0), Float::MAX);
+        assert_biteq!(Float::TINY.scalbn(-1), Float::ZERO);
+        assert_biteq!((-Float::TINY).scalbn(-1), -Float::ZERO);
+
+        assert_biteq!(Float::ONE.scalbn(i32::MAX), Float::INFINITY);
+        assert_biteq!(Float::ONE.scalbn(i32::MIN), Float::ZERO);
+
+        assert!(Float::NAN.scalbn(100).is_nan());
+    }
+}
+
+float_test! {
+    name: ilogb,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test {
+        assert_eq_const_safe!(Option<i32>: flt(32.0).ilogb(), Some(5));
+
+        assert_eq_const_safe!(Option<i32>: Float::ONE.ilogb(), Some(0));
+        assert_eq_const_safe!(Option<i32>: flt(2.0).ilogb(), Some(1));
+        assert_eq_const_safe!(Option<i32>: flt(4.0).ilogb(), Some(2));
+        assert_eq_const_safe!(Option<i32>: flt(0.5).ilogb(), Some(-1));
+        assert_eq_const_safe!(Option<i32>: flt(0.25).ilogb(), Some(-2));
+
+        assert_eq_const_safe!(Option<i32>: Float::INFINITY.ilogb(), Some(i32::MAX));
+        assert_eq_const_safe!(Option<i32>: Float::NEG_INFINITY.ilogb(), Some(i32::MAX));
+
+        // The return value of the intrinsic for 0.0 is implementation-defined,
+        // we guarantee that the method returns i32::MIN.
+        assert_eq_const_safe!(Option<i32>: Float::ZERO.ilogb(), Some(i32::MIN));
+        assert_eq_const_safe!(Option<i32>: (-Float::ZERO).ilogb(), Some(i32::MIN));
+
+        // The return value of the intrinsic for NaN is implementation-defined, we
+        // guarantee that the method returns None.
+        assert_eq_const_safe!(Option<i32>: Float::NAN.ilogb(), None);
+
     }
 }
 

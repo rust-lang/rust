@@ -28,9 +28,8 @@ use rustc_hir::{
     ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
-    UNUSED_ATTRIBUTES,
+    INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -182,6 +181,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &AttributeKind,
     ) {
         match attr {
+            AttributeKind::LintCBufferLength { pointer, length } => {
+                self.check_c_buffer_length(hir_id, target, *pointer, *length)
+            }
             AttributeKind::ProcMacro => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
             }
@@ -257,7 +259,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::LintAsPtr => (),
+            AttributeKind::LintMustMatchExhaustively(..) => (),
             AttributeKind::LintNeverReturnsNullPtr => (),
+            AttributeKind::LintNoImplicitAutorefs => (),
+            AttributeKind::LintPanicsWhenZero => (),
+            AttributeKind::LintPassByValue => (),
             AttributeKind::LintShouldNotBeCalledOnConstItems => (),
             AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
@@ -356,8 +362,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMacroTransparency(_) => (),
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),
-            AttributeKind::RustcMustMatchExhaustively(..) => (),
-            AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),
             AttributeKind::RustcNoWritable => (),
@@ -367,9 +371,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcObjcClass { .. } => (),
             AttributeKind::RustcObjcSelector { .. } => (),
             AttributeKind::RustcOffloadKernel => (),
-            AttributeKind::RustcPanicsWhenZero => (),
             AttributeKind::RustcParenSugar => (),
-            AttributeKind::RustcPassByValue => (),
             AttributeKind::RustcPassIndirectlyInNonRusticAbis(..) => (),
             AttributeKind::RustcPreserveUbChecks => (),
             AttributeKind::RustcProcMacroDecls => (),
@@ -549,6 +551,38 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {}
+        }
+    }
+
+    /// Checks use of buffer/length parameters in `#[lint::c_buffer_length]`
+    fn check_c_buffer_length(&self, hir_id: HirId, target: Target, pointer: Ident, length: Ident) {
+        if !matches!(target, Target::Fn | Target::ForeignFn) {
+            return;
+        }
+        let def_id = hir_id.owner.def_id;
+        let names = self.tcx.fn_arg_idents(def_id);
+        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        for (ident, is_pointer) in [(pointer, true), (length, false)] {
+            let normalized_ident = ident.normalize_to_macro_rules();
+            let reason = match names.iter().zip(sig.inputs()).find(|(name, _)| {
+                name.is_some_and(|n| n.normalize_to_macro_rules() == normalized_ident)
+            }) {
+                None => "the name must refer to a parameter of this function",
+                Some((_, ty)) => {
+                    if is_pointer && !ty.is_raw_ptr() {
+                        "the buffer parameter must have a raw pointer type"
+                    } else if !is_pointer && !ty.is_integral() {
+                        "the length parameter must have an integer type"
+                    } else {
+                        continue;
+                    }
+                }
+            };
+            self.dcx().emit_err(diagnostics::CBufferLengthParameter {
+                span: ident.span,
+                name: ident.name,
+                reason,
+            });
         }
     }
 
@@ -1065,17 +1099,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
-        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
+        // Also error on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
-            || (int_reprs == 1 && is_c && item.is_some_and(is_c_like_enum))
+            || (int_reprs == 1 && is_c && item.is_some_and(is_fieldless_enum))
         {
-            self.tcx.emit_node_span_lint(
-                CONFLICTING_REPR_HINTS,
-                hir_id,
-                hint_spans.collect::<Vec<Span>>(),
-                diagnostics::ReprConflictingLint,
-            );
+            let hint_spans = hint_spans.clone().collect();
+            self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
     }
 
@@ -1344,8 +1374,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for LintCheck { lint_name, lint_span, .. } in lints {
-            if lint_name.is(sym::dead_code_pub_in_binary) {
+        for LintCheck { lint_name_normalized, lint_span, .. } in lints {
+            if lint_name_normalized.is(sym::dead_code_pub_in_binary) {
                 if !self.tcx.crate_types().contains(&CrateType::Executable) {
                     self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
@@ -1359,7 +1389,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if lint_name.is(sym::linker_messages) | lint_name.is(sym::linker_info) {
+            if lint_name_normalized.is(sym::linker_messages)
+                | lint_name_normalized.is(sym::linker_info)
+            {
                 if hir_id == CRATE_HIR_ID
                     && self
                         .tcx
@@ -1489,7 +1521,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 }
 
-fn is_c_like_enum(item: &Item<'_>) -> bool {
+fn is_fieldless_enum(item: &Item<'_>) -> bool {
     if let ItemKind::Enum(_, _, ref def) = item.kind {
         for variant in def.variants {
             match variant.data {

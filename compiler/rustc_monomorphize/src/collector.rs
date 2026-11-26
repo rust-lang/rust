@@ -1506,7 +1506,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         match crate::offload::manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
             Ok(instances) => {
                 for instance in instances {
-                    if instance.def_id().is_local() {
+                    if tcx.should_codegen_locally(instance) {
                         roots.push(dummy_spanned(MonoItem::Fn(instance)));
                     }
                 }

@@ -3,6 +3,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(float_erf)]
 #![feature(float_gamma)]
+#![feature(float_exponent_methods)]
 #![feature(core_intrinsics)]
 #![feature(f128)]
 #![feature(f16)]
@@ -1063,14 +1064,8 @@ fn mul_add() {
     assert_eq!(f.to_bits(), f32::to_bits(-0.0));
 }
 
+// FIXME(f128): add tests when supported
 fn libm() {
-    fn ldexp(a: f64, b: i32) -> f64 {
-        extern "C" {
-            fn ldexp(x: f64, n: i32) -> f64;
-        }
-        unsafe { ldexp(a, b) }
-    }
-
     assert_approx_eq!(25f16.powi(-2), 0.0016f16);
     assert_approx_eq!(25f32.powi(-2), 0.0016f32);
     assert_approx_eq!(23.2f64.powi(2), 538.24f64);
@@ -1205,10 +1200,34 @@ fn libm() {
     assert_approx_eq!(3.0f32.hypot(4.0f32), 5.0f32);
     assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
 
-    assert_eq!(ldexp(0.65f64, 3i32), 5.2f64);
-    assert_eq!(ldexp(1.42, 0xFFFF), f64::INFINITY);
-    assert_eq!(ldexp(1.42, -0xFFFF), 0f64);
-    assert_eq!(ldexp(42.0, 0), 42.0);
+    assert_eq!(0.65f16.scalbn(3i32), 5.2f16);
+    assert_eq!(0.65f32.scalbn(3i32), 5.2f32);
+    assert_eq!(0.65f64.scalbn(3i32), 5.2f64);
+    assert_eq!(1.42f16.scalbn(0xFFFF), f16::INFINITY);
+    assert_eq!(1.42f32.scalbn(0xFFFF), f32::INFINITY);
+    assert_eq!(1.42f64.scalbn(0xFFFF), f64::INFINITY);
+    assert_eq!(1.42f16.scalbn(-0xFFFF), 0f16);
+    assert_eq!(1.42f32.scalbn(-0xFFFF), 0f32);
+    assert_eq!(1.42f64.scalbn(-0xFFFF), 0f64);
+    assert_eq!(42.0f16.scalbn(0), 42.0);
+    assert_eq!(42.0f32.scalbn(0), 42.0);
+    assert_eq!(42.0f64.scalbn(0), 42.0);
+
+    assert_eq!(8.0f16.ilogb(), Some(3));
+    assert_eq!(8.0f32.ilogb(), Some(3));
+    assert_eq!(8.0f64.ilogb(), Some(3));
+    assert_eq!((-8.0f16).ilogb(), Some(3));
+    assert_eq!((-8.0f32).ilogb(), Some(3));
+    assert_eq!((-8.0f64).ilogb(), Some(3));
+    assert_eq!(f16::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(f32::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(f64::INFINITY.ilogb(), Some(i32::MAX));
+    assert_eq!(0.0f16.ilogb(), Some(i32::MIN));
+    assert_eq!(0.0f32.ilogb(), Some(i32::MIN));
+    assert_eq!(0.0f64.ilogb(), Some(i32::MIN));
+    assert_eq!(f16::NAN.ilogb(), None);
+    assert_eq!(f32::NAN.ilogb(), None);
+    assert_eq!(f64::NAN.ilogb(), None);
 
     // Trigonometric functions.
 
@@ -1245,14 +1264,16 @@ fn libm() {
     let pi_f32 = f32_consts::PI;
     let pi_f64 = f64_consts::PI;
     for _ in 0..64 {
-        // sin() should be clamped to [-1, 1] so asin() can never return NaN
-        assert!(!halve_pi_f16.sin().asin().is_nan());
-        assert!(!halve_pi_f32.sin().asin().is_nan());
-        assert!(!halve_pi_f64.sin().asin().is_nan());
-        // cos() should be clamped to [-1, 1] so acos() can never return NaN
-        assert!(!pi_f16.cos().acos().is_nan());
-        assert!(!pi_f32.cos().acos().is_nan());
-        assert!(!pi_f64.cos().acos().is_nan());
+        // sin() should be clamped to [-1, 1] so asin() can never return NaN.
+        // asin() should itself be clamped to [-π/2, π/2].
+        assert!((-halve_pi_f16..=halve_pi_f16).contains(&halve_pi_f16.sin().asin()));
+        assert!((-halve_pi_f32..=halve_pi_f32).contains(&halve_pi_f32.sin().asin()));
+        assert!((-halve_pi_f64..=halve_pi_f64).contains(&halve_pi_f64.sin().asin()));
+        // cos() should be clamped to [-1, 1] so acos() can never return NaN.
+        // acos() should itself be clamped to [0, π].
+        assert!((0.0..=pi_f16).contains(&pi_f16.cos().acos()));
+        assert!((0.0..=pi_f32).contains(&pi_f32.cos().acos()));
+        assert!((0.0..=pi_f64).contains(&pi_f64.cos().acos()));
     }
 
     assert_eq!(0f16.cos(), 1f16);
@@ -1301,6 +1322,7 @@ fn libm() {
             // Associated items cannot be brought into scope with a `use`, hence the `const`s.
             const INFINITY: $float_type = <$float_type>::INFINITY;
             const NEG_INFINITY: $float_type = <$float_type>::NEG_INFINITY;
+            const NAN: $float_type = <$float_type>::NAN;
 
             // atan2(±0,−0) = ±π.
             assert_eq!($float_type::atan2(0.0, -0.0), PI, "atan2(0,−0) = π");
@@ -1333,6 +1355,10 @@ fn libm() {
             // atan2(±∞, +∞) = ±π/4
             assert_eq!($float_type::atan2(INFINITY, INFINITY), FRAC_PI_4, "atan2(+∞, +∞) = π/4");
             assert_eq!($float_type::atan2(NEG_INFINITY, INFINITY), -FRAC_PI_4, "atan2(-∞, +∞) = -π/4");
+
+            // We should never mask a NaN though, which we used to get wrong.
+            assert!($float_type::atan2(NAN, NEG_INFINITY).is_nan());
+            assert!($float_type::atan2(NAN, 0.0).is_nan());
         }}
     }
     fixed_atan2_cases!(f16);
@@ -1680,6 +1706,7 @@ fn test_non_determinism() {
     }
     fn test_operations_f128(a: f128, b: f128) {
         test_operations_f!(a, b);
+        // FIXME(f128): add more operations when supported
     }
 
     test_operations_f16(3., 5.);

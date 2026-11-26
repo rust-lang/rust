@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation, relate_args_invariantly};
-use rustc_middle::ty::{self, DelayedSet, Ty, TyCtxt, TyVar, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
@@ -23,29 +23,6 @@ pub(crate) struct TypeRelating<'infcx, 'tcx> {
     // Mutable fields.
     ambient_variance: ty::Variance,
     obligations: PredicateObligations<'tcx>,
-    /// The cache only tracks the `ambient_variance` as it's the
-    /// only field which is mutable and which meaningfully changes
-    /// the result when relating types.
-    ///
-    /// The cache does not track whether the state of the
-    /// `InferCtxt` has been changed or whether we've added any
-    /// obligations to `self.goals`. Whether a goal is added
-    /// once or multiple times is not really meaningful.
-    ///
-    /// Changes in the inference state may delay some type inference to
-    /// the next fulfillment loop. Given that this loop is already
-    /// necessary, this is also not a meaningful change. Consider
-    /// the following three relations:
-    /// ```text
-    /// Vec<?0> sub Vec<?1>
-    /// ?0 eq u32
-    /// Vec<?0> sub Vec<?1>
-    /// ```
-    /// Without a cache, the second `Vec<?0> sub Vec<?1>` would eagerly
-    /// constrain `?1` to `u32`. When using the cache entry from the
-    /// first time we've related these types, this only happens when
-    /// later proving the `Subtype(?0, ?1)` goal from the first relation.
-    cache: DelayedSet<(ty::Variance, Ty<'tcx>, Ty<'tcx>)>,
 }
 
 impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
@@ -64,7 +41,6 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
             define_opaque_types,
             ambient_variance,
             obligations: PredicateObligations::new(),
-            cache: Default::default(),
         }
     }
 
@@ -129,10 +105,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         let infcx = self.infcx;
         let a = infcx.shallow_resolve(a);
         let b = infcx.shallow_resolve(b);
-
-        if self.cache.contains(&(self.ambient_variance, a, b)) {
-            return Ok(a);
-        }
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -210,8 +182,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 super_combine_tys(infcx, self, a, b)?;
             }
         }
-
-        assert!(self.cache.insert((self.ambient_variance, a, b)));
 
         Ok(a)
     }

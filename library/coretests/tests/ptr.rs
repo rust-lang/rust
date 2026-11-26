@@ -1,3 +1,12 @@
+#![feature(array_ptr_get)]
+#![feature(extern_types)]
+#![feature(freeze)]
+#![feature(pointer_is_aligned_to)]
+#![feature(ptr_metadata)]
+#![feature(strict_provenance_lints)]
+#![feature(unsize)]
+#![deny(implicit_provenance_casts)]
+
 use core::cell::RefCell;
 use core::marker::Freeze;
 use core::mem::MaybeUninit;

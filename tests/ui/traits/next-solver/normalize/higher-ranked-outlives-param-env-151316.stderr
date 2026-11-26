@@ -1,0 +1,34 @@
+error[E0277]: expected `FnOnce(&'a mut i32)` signature, found `i32`
+  --> $DIR/higher-ranked-outlives-param-env-151316.rs:11:1
+   |
+LL | struct S<T>(T)
+   | ^^^^^^^^^^^ expected `FnOnce(&'a mut i32)` signature, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
+
+error[E0277]: expected `FnOnce<&'a mut i32>` signature, found `i32`
+  --> $DIR/higher-ranked-outlives-param-env-151316.rs:17:1
+   |
+LL | / fn wrapper<F>()
+LL | |
+LL | | where
+LL | |     F:,
+LL | |     for<'a> <i32 as FnOnce<&'a mut i32>>::Output: Future + 'a,
+   | |______________________________________________________________^ expected `FnOnce<&'a mut i32>` signature, found `i32`
+   |
+   = help: the trait `for<'a> FnOnce<&'a mut i32>` is not implemented for `i32`
+
+error[E0277]: the trait bound `for<'b> T: Trait<'a, 'b>` is not satisfied
+  --> $DIR/higher-ranked-outlives-param-env-151316.rs:29:1
+   |
+LL | struct ImpliedBound<'a, 'c, T>(T, &'a (), &'c ())
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> Trait<'a, 'b>` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Trait`
+   |
+LL |     for<'b> <T as Trait<'a, 'b>>::Assoc: 'c, T: for<'b> Trait<'a, 'b>;
+   |                                            ++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

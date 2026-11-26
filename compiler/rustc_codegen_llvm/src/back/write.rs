@@ -19,7 +19,8 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, Passes, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::output::OutputType;
 use rustc_span::{BytePos, DUMMY_SP, InnerSpan, Pos, RemapPathScopeComponents};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
@@ -1138,7 +1139,7 @@ pub(crate) fn codegen(
 
             EmitObj::Bitcode => {
                 debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-                if let Err(err) = link_or_copy(&bc_out, &obj_out) {
+                if let Err(err) = link_or_copy(&bc_out, &obj_out, true /* allow_overwrite */) {
                     dcx.emit_err(CopyBitcode { err });
                 }
 

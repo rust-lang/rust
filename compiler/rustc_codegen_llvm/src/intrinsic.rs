@@ -20,7 +20,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAlloc, alloc_range};
 use rustc_middle::mir::{self, BinOp};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgs, Instance, Intrinsic, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
@@ -219,6 +219,18 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                 match scalar.primitive() {
                     Primitive::Pointer(_) => {
                         // Pointers are always OK.
+                    }
+                    Primitive::Bool => {
+                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                        if 1 < u64::from(target_c_int_width) {
+                            // Smaller integer types are automatically promototed and `va_arg`
+                            // should not be called on them.
+                            bug!(
+                                "va_arg got i{} but needs at least c_int (an i{})",
+                                1,
+                                target_c_int_width
+                            );
+                        }
                     }
                     Primitive::Int(..) => {
                         let int_width = self.cx().size_of(result_layout.ty).bits();
@@ -541,6 +553,26 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                 )
             }
 
+            sym::scalbn => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    span_bug!(
+                        span,
+                        "the `{}` intrinsic requires a floating-point argument, got {:?}",
+                        name,
+                        ty
+                    );
+                };
+                let llty = self.type_float_from_ty(*f);
+
+                // For our floats (that use a radix of 2), scalbn corresponds to ldexp.
+                self.call_intrinsic(
+                    "llvm.ldexp",
+                    &[llty, self.type_i32()],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+
             sym::raw_eq => {
                 use BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);
@@ -799,6 +831,17 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                         _ => unreachable!(),
                     };
                     self.type_vector(elem_ll_ty, size)
+                } else if let ty::Array(elem, _) = result_layout.ty.kind()
+                    && let ty::Uint(ty::UintTy::U8) = elem.kind()
+                {
+                    // Byte arrays are used to represent iN.
+                    assert_matches!(
+                        result_layout.backend_repr,
+                        BackendRepr::Memory { sized: true }
+                    );
+                    self.type_ix(result_layout.size.bits())
+                } else if result_layout.is_zst() {
+                    self.type_void()
                 } else {
                     result_layout.llvm_type(self)
                 };
@@ -880,7 +923,8 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
         instance: ty::Instance<'tcx>,
         intrinsic_name: &str,
         args: &[OperandRef<'tcx, Value<'ll>>],
-    ) -> Value<'ll> {
+        memory_return_place: Option<PlaceValue<Value<'ll>>>,
+    ) -> (IntrinsicResult<'tcx, Value<'ll>>, TyAndLayout<'tcx>) {
         let tcx = self.tcx();
 
         let fn_ty = instance.ty(tcx, self.typing_env());
@@ -893,10 +937,15 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
         assert!(!fn_sig.c_variadic());
 
         let ret_layout = self.layout_of(fn_sig.output());
-        let llreturn_ty = if ret_layout.is_zst() {
-            self.type_void()
+        let (llreturn_ty, return_struct_fields) = if ret_layout.is_zst() {
+            (self.type_void(), vec![])
+        } else if ret_layout.is_aggregate() {
+            let fields =
+                rustc_codegen_ssa::mir::intrinsic_return_struct_fields(self.cx, ret_layout);
+            let llvm_fields = fields.iter().copied().map(|(t, _)| t).collect::<Vec<_>>();
+            (self.type_struct(&llvm_fields), fields)
         } else {
-            ret_layout.immediate_llvm_type(self)
+            (ret_layout.immediate_llvm_type(self), vec![])
         };
 
         let mut llargument_tys = Vec::with_capacity(fn_sig.inputs().len());
@@ -950,14 +999,44 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
             )
         };
 
-        let src_ty = self.val_ty(llret);
-        let dest_ty = llreturn_ty;
-        assert!(
-            can_autocast(self, dest_ty, src_ty),
-            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
-        );
+        if ret_layout.is_zst() {
+            // Match `llvm_value_to_intrinsicresult`
+            (IntrinsicResult::WroteIntoPlace, ret_layout)
+        } else if return_struct_fields.is_empty() {
+            let src_ty = self.val_ty(llret);
+            let dest_ty = llreturn_ty;
+            assert!(
+                can_autocast(self, dest_ty, src_ty),
+                "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+            );
 
-        autocast(self, llret, src_ty, dest_ty)
+            (
+                IntrinsicResult::Operand(OperandValue::Immediate(autocast(
+                    self, llret, src_ty, dest_ty,
+                ))),
+                ret_layout,
+            )
+        } else {
+            let fields = return_struct_fields.into_iter().enumerate().map(|(i, (dest_ty, offset))| {
+                let value = self.extract_value(llret, i as u64);
+                let src_ty = self.val_ty(value);
+                assert!(
+                    can_autocast(self, dest_ty, src_ty),
+                    "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+                );
+                let value = autocast(self, value, src_ty, dest_ty);
+                (offset, value)
+            }).collect();
+            (
+                rustc_codegen_ssa::mir::store_intrinsic_return_struct(
+                    self,
+                    ret_layout,
+                    memory_return_place,
+                    fields,
+                ),
+                ret_layout,
+            )
+        }
     }
 }
 
@@ -983,8 +1062,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 name,
             ),
             Intrinsic::Backend { llvm } => {
-                let value = self.codegen_llvm_intrinsic_call_impl(instance, llvm.as_str(), args);
-                self.llvm_value_to_intrinsicresult(value, result_layout, result_place)
+                self.codegen_llvm_intrinsic_call_impl(instance, llvm.as_str(), args, result_place).0
             }
         }
     }
@@ -993,9 +1071,31 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
+        memory_return_place: Option<PlaceValue<Self::Value>>,
         _is_cleanup: bool,
     ) -> Self::Value {
-        self.codegen_llvm_intrinsic_call_impl(instance, self.tcx().symbol_name(instance).name, args)
+        let (result, ret_layout) = self.codegen_llvm_intrinsic_call_impl(
+            instance,
+            self.tcx().symbol_name(instance).name,
+            args,
+            memory_return_place,
+        );
+        let is_memory = matches!(ret_layout.backend_repr, BackendRepr::Memory { .. });
+        match result {
+            IntrinsicResult::Operand(val) => {
+                assert!(!is_memory);
+                assert!(memory_return_place.is_none());
+                OperandRef { val, layout: ret_layout, move_annotation: None }
+                    .immediate_or_packed_pair(self)
+            }
+            IntrinsicResult::WroteIntoPlace => {
+                assert!(is_memory);
+                assert!(memory_return_place.is_some() || ret_layout.is_zst());
+                // Return value won't be used.
+                self.const_u8(0)
+            }
+            res => bug!("Unexpected LLVM intrinsic result {res:?}"),
+        }
     }
 
     fn abort_immediate(&mut self) {
@@ -1081,23 +1181,6 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<
     }
 
     match cx.type_kind(llvm_ty) {
-        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
-        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
-        // as, well, packed structs, so they won't match with those either)
-        TypeKind::Struct if cx.type_kind(rust_ty) == TypeKind::Struct => {
-            let rust_element_tys = cx.struct_element_types(rust_ty);
-            let llvm_element_tys = cx.struct_element_types(llvm_ty);
-
-            if rust_element_tys.len() != llvm_element_tys.len() {
-                return false;
-            }
-
-            iter::zip(rust_element_tys, llvm_element_tys).all(
-                |(rust_element_ty, llvm_element_ty)| {
-                    can_autocast(cx, rust_element_ty, llvm_element_ty)
-                },
-            )
-        }
         _ if let Some((llvm_element_ty, element_count)) =
             cx.vector_element_type_and_length(llvm_ty) =>
         {
@@ -1141,19 +1224,6 @@ fn autocast<'ll>(
         return val;
     }
     match (bx.type_kind(src_ty), bx.type_kind(dest_ty)) {
-        // re-pack structs
-        (TypeKind::Struct, TypeKind::Struct) => {
-            let mut ret = bx.const_poison(dest_ty);
-            for (idx, (src_element_ty, dest_element_ty)) in
-                iter::zip(bx.struct_element_types(src_ty), bx.struct_element_types(dest_ty))
-                    .enumerate()
-            {
-                let elt = bx.extract_value(val, idx as u64);
-                let casted_elt = autocast(bx, elt, src_element_ty, dest_element_ty);
-                ret = bx.insert_value(ret, casted_elt, idx as u64);
-            }
-            ret
-        }
         // cast from the i1xN vector type to the primitive type
         (TypeKind::Vector, TypeKind::Integer)
             if let Some((elem, vector_length)) = bx.vector_element_type_and_length(src_ty)
@@ -1251,9 +1321,17 @@ fn intrinsic_fn<'ll, 'tcx>(
         let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
         let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
 
+        let (rust_return_tys, llvm_return_tys) = if bx.type_kind(rust_return_ty) == TypeKind::Struct
+            && bx.type_kind(llvm_return_ty) == TypeKind::Struct
+        {
+            (bx.struct_element_types(rust_return_ty), bx.struct_element_types(llvm_return_ty))
+        } else {
+            (vec![rust_return_ty], vec![llvm_return_ty])
+        };
         let is_correct_signature = !llvm_is_variadic
             && rust_argument_tys.len() == llvm_argument_tys.len()
-            && iter::once((rust_return_ty, llvm_return_ty))
+            && rust_return_tys.len() == llvm_return_tys.len()
+            && iter::zip(rust_return_tys, llvm_return_tys)
                 .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
                 .all(|(rust_ty, llvm_ty)| can_autocast(bx, rust_ty, llvm_ty));
 
@@ -2420,12 +2498,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             {
                 // Zero-extend iN to the array length:
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
-
-                // Convert the integer to a byte array
-                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
-                bx.store(ze, ptr, Align::ONE);
-                let array_ty = bx.type_byte_array(Size::from_bytes(expected_bytes));
-                return Ok(bx.load(array_ty, ptr, Align::ONE));
+                // `codegen_intrinsic_call` will store the result to the return place for
+                // `BackendRepr::Memory` types.
+                return Ok(ze);
             }
             _ => return_error!(InvalidMonomorphization::CannotReturn {
                 span,

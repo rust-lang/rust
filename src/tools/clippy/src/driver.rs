@@ -18,7 +18,7 @@ rustc_driver::override_c_allocator_in_binary!();
 use clippy_utils::sym;
 use declare_clippy_lint::LintListBuilder;
 use rustc_interface::interface;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::output::ErrorOutputType;
 use rustc_session::{EarlyDiagCtxt, Session};
 use rustc_span::symbol::Symbol;
 

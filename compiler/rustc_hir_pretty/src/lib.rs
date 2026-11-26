@@ -20,8 +20,8 @@ use rustc_attr_ir::{AttrArgs, AttrItem, Attribute, AttributeKind, PrintAttribute
 use rustc_hir as hir;
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
-    PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
+    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, Param,
+    PatKind, PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
@@ -519,14 +519,15 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_attrs(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(sig, arg_idents, generics) => {
+            hir::ForeignItemKind::Fn(sig, params, generics) => {
                 let (cb, ib) = self.head("");
                 self.print_fn(
                     sig.header,
                     Some(item.ident.name),
                     generics,
                     sig.decl,
-                    arg_idents,
+                    &[],
+                    params,
                     None,
                 );
                 self.end(ib);
@@ -660,7 +661,15 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
                 let (cb, ib) = self.head("");
-                self.print_fn(sig.header, Some(ident.name), generics, sig.decl, &[], Some(body));
+                self.print_fn(
+                    sig.header,
+                    Some(ident.name),
+                    generics,
+                    sig.decl,
+                    &[],
+                    &[],
+                    Some(body),
+                );
                 self.word(" ");
                 self.end(ib);
                 self.end(cb);
@@ -981,10 +990,10 @@ impl<'a> State<'a> {
         ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
-        arg_idents: &[Option<Ident>],
+        params: &[Param<'_>],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.header, Some(ident.name), generics, m.decl, arg_idents, body_id);
+        self.print_fn(m.header, Some(ident.name), generics, m.decl, &[], params, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -996,8 +1005,8 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_idents)) => {
-                self.print_method_sig(ti.ident, sig, ti.generics, arg_idents, None);
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(params)) => {
+                self.print_method_sig(ti.ident, sig, ti.generics, params, None);
                 self.word(";");
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
@@ -2280,7 +2289,9 @@ impl<'a> State<'a> {
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
         decl: &hir::FnDecl<'_>,
+        // Will take from one of these three for the param names
         arg_idents: &[Option<Ident>],
+        params: &[hir::Param<'_>],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header);
@@ -2308,6 +2319,10 @@ impl<'a> State<'a> {
                         s.word(":");
                         s.space();
                     }
+                } else if let Some(param) = params.get(i) {
+                    s.print_param(param);
+                    s.word(":");
+                    s.space();
                 } else if let Some(body_id) = body_id {
                     s.ann.nested(s, Nested::BodyParamPat(body_id, i));
                     s.word(":");
@@ -2618,6 +2633,7 @@ impl<'a> State<'a> {
             generics,
             decl,
             arg_idents,
+            &[],
             None,
         );
         self.end(ib);

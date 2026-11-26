@@ -11,6 +11,16 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use crate::check_attr::ProcMacroKind;
 
 #[derive(Diagnostic)]
+#[diag("invalid parameter `{$name}` in `lint::c_buffer_length`")]
+#[help("{$reason}")]
+pub(crate) struct CBufferLengthParameter {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub reason: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label("`{$no_mangle_attr}` is ignored")]
@@ -103,10 +113,6 @@ pub(crate) struct ReprConflicting {
     #[primary_span]
     pub hint_spans: Vec<Span>,
 }
-
-#[derive(Diagnostic)]
-#[diag("conflicting representation hints", code = E0566)]
-pub(crate) struct ReprConflictingLint;
 
 #[derive(Diagnostic)]
 #[diag("couldn't read {$file}: {$error}")]

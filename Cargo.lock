@@ -360,7 +360,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tar",
- "toml 0.7.8",
+ "toml 0.8.23",
  "xz2",
 ]
 
@@ -462,7 +462,6 @@ dependencies = [
  "cargo_metadata 0.23.1",
  "directories",
  "rustc-build-sysroot",
- "rustc_tools_util 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version",
  "serde",
  "serde_json",
@@ -667,7 +666,7 @@ dependencies = [
  "itertools",
  "pulldown-cmark",
  "regex",
- "rustc_tools_util 0.4.2",
+ "rustc_tools_util",
  "serde",
  "serde_json",
  "tempfile",
@@ -877,6 +876,13 @@ dependencies = [
  "tracing-subscriber",
  "walkdir",
  "windows 0.61.3",
+]
+
+[[package]]
+name = "compiletest-lint-driver"
+version = "0.1.0"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
@@ -4298,8 +4304,7 @@ version = "0.0.0"
 dependencies = [
  "expect-test",
  "memchr",
- "unicode-ident",
- "unicode-properties",
+ "rustc_unicode",
 ]
 
 [[package]]
@@ -4330,10 +4335,10 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_unicode",
  "smallvec",
  "thin-vec",
  "tracing",
- "unicode-security",
 ]
 
 [[package]]
@@ -4583,11 +4588,9 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "rustc_unicode",
  "thin-vec",
  "tracing",
- "unicode-normalization",
- "unicode-properties",
- "unicode-width 0.2.3",
 ]
 
 [[package]]
@@ -4821,11 +4824,11 @@ dependencies = [
  "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_unicode",
  "scoped-tls",
  "sha1",
  "sha2",
  "tracing",
- "unicode-width 0.2.3",
 ]
 
 [[package]]
@@ -4899,12 +4902,6 @@ dependencies = [
 [[package]]
 name = "rustc_tools_util"
 version = "0.4.2"
-
-[[package]]
-name = "rustc_tools_util"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3b75158011a63889ba12084cf1224baad7bcad50f6ee7c842f772b74aa148ed"
 
 [[package]]
 name = "rustc_trait_selection"
@@ -5027,6 +5024,18 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "synstructure",
+]
+
+[[package]]
+name = "rustc_unicode"
+version = "0.0.0"
+dependencies = [
+ "unicode-ident",
+ "unicode-normalization",
+ "unicode-properties",
+ "unicode-script",
+ "unicode-security",
+ "unicode-width 0.2.3",
 ]
 
 [[package]]
@@ -5780,7 +5789,7 @@ dependencies = [
  "similar",
  "tempfile",
  "termcolor",
- "toml 0.7.8",
+ "toml 0.8.23",
  "walkdir",
 ]
 
@@ -5826,18 +5835,6 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "toml"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
-dependencies = [
- "serde",
- "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
- "toml_edit 0.19.15",
-]
-
-[[package]]
-name = "toml"
 version = "0.8.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
@@ -5845,7 +5842,7 @@ dependencies = [
  "serde",
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
- "toml_edit 0.22.27",
+ "toml_edit",
 ]
 
 [[package]]
@@ -5879,19 +5876,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97251a7c317e03ad83774a8752a7e81fb6067740609f75ea2b585b569a59198f"
 dependencies = [
  "serde_core",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.19.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
-dependencies = [
- "indexmap",
- "serde",
- "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
- "winnow 0.5.40",
 ]
 
 [[package]]
@@ -6774,15 +6758,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3949bd5b99cafdf1c7ca86b43ca564028dfe27d66958f2470940f73d86d75b37"
 dependencies = [
  "windows-link 0.2.1",
-]
-
-[[package]]
-name = "winnow"
-version = "0.5.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
-dependencies = [
- "memchr",
 ]
 
 [[package]]

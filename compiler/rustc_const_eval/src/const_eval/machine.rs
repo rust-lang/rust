@@ -2,32 +2,31 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::{fmt, mem};
 
-use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
+use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::{HasAttrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
+use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, Intrinsic, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{mir, throw_machine_stop};
-use rustc_span::{Span, Symbol, bug, span_bug, sym};
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
+use rustc_span::{Span, Symbol, bug, span_bug};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
-    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
-    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
-    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
-    type_implements_dyn_trait,
+    self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
+    InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode, Scalar,
+    compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_unsup,
+    throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -211,7 +210,7 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'tcx> CompileTimeInterpCx<'tcx> {
-    fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
 
@@ -278,7 +277,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     ///
     /// Note that this intrinsic is exposed on stable for comparison with null. In other words, any
     /// change to this function that affects comparison with null is insta-stable!
-    fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
+    pub(crate) fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.
             (Scalar::Int(a), Scalar::Int(b)) => (a == b) as u8,
@@ -488,7 +487,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         }
         let intrinsic_name = ecx.tcx.intrinsic(instance.def_id()).unwrap().name;
 
-        let do_fallback = || {
+        let do_fallback = |ecx: &mut InterpCx<'tcx, Self>| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
             if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!(
@@ -504,490 +503,15 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // Backend intrinsics are not supported in const eval except with their fallback
         // bodies.
         let Intrinsic::Rustc(intrinsic_name) = intrinsic_name else {
-            return do_fallback();
+            return do_fallback(ecx);
         };
 
-        // CTFE-specific intrinsics.
-        match intrinsic_name {
-            sym::abort_immediate => {
-                // Note that `abort_immediate` is also hooked separately in Miri.
-                throw_machine_stop!(ConstEvalErrKind::Abort);
-            }
-            sym::ptr_guaranteed_cmp => {
-                let a = ecx.read_scalar(&args[0])?;
-                let b = ecx.read_scalar(&args[1])?;
-                let cmp = ecx.guaranteed_cmp(a, b)?;
-                ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
-            }
-            sym::const_allocate => {
-                let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
-                let align = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
-
-                let align = match Align::from_bytes(align) {
-                    Ok(a) => a,
-                    Err(err) => {
-                        throw_ub_format!("invalid align passed to `const_allocate`: {err}")
-                    }
-                };
-
-                let ptr = ecx.allocate_ptr(
-                    Size::from_bytes(size),
-                    align,
-                    interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
-                    AllocInit::Uninit,
-                )?;
-                ecx.write_pointer(ptr, dest)?;
-            }
-            sym::const_deallocate => {
-                let ptr = ecx.read_pointer(&args[0])?;
-                let size = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
-                let align = ecx.read_scalar(&args[2])?.to_target_usize(ecx)?;
-
-                let size = Size::from_bytes(size);
-                let align = match Align::from_bytes(align) {
-                    Ok(a) => a,
-                    Err(err) => {
-                        throw_ub_format!("invalid align passed to `const_deallocate`: {err}")
-                    }
-                };
-
-                // If an allocation is created in an another const,
-                // we don't deallocate it.
-                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr, 0)?;
-                let is_allocated_in_another_const = matches!(
-                    ecx.tcx.try_get_global_alloc(alloc_id),
-                    Some(interpret::GlobalAlloc::Memory(_))
-                );
-
-                if !is_allocated_in_another_const {
-                    ecx.deallocate_ptr(
-                        ptr,
-                        Some((size, align)),
-                        interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
-                    )?;
-                }
-            }
-
-            sym::const_make_global => {
-                let ptr = ecx.read_pointer(&args[0])?;
-                ecx.make_const_heap_ptr_global(ptr)?;
-                ecx.write_pointer(ptr, dest)?;
-            }
-
-            // The intrinsic represents whether the value is known to the optimizer (LLVM).
-            // We're not doing any optimizations here, so there is no optimizer that could know the value.
-            // (We know the value here in the machine of course, but this is the runtime of that code,
-            // not the optimization stage.)
-            sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
-
-            // We handle these here since Miri does not want to have them.
-            sym::assert_inhabited
-            | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
-                let ty = instance.args.type_at(0);
-                let requirement =
-                    ValidityRequirement::from_rustc_intrinsic(intrinsic_name).unwrap();
-
-                let should_panic = !ecx
-                    .tcx
-                    .check_validity_requirement((requirement, ecx.typing_env().as_query_input(ty)))
-                    .map_err(|_| err_inval!(TooGeneric))?;
-
-                if should_panic {
-                    let layout = ecx.layout_of(ty)?;
-
-                    let msg = match requirement {
-                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                        // error message.
-                        _ if layout.is_uninhabited() => format!(
-                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
-                        ),
-                        ValidityRequirement::Inhabited => bug!("handled earlier"),
-                        ValidityRequirement::Zero => format!(
-                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
-                        ),
-                        ValidityRequirement::UninitMitigated0x01Fill => format!(
-                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
-                        ),
-                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
-                    };
-
-                    Self::panic_nounwind(ecx, &msg)?;
-                    // Skip the `return_to_block` at the end (we panicked, we do not return).
-                    return interp_ok(None);
-                }
-            }
-
-            sym::type_id_vtable => {
-                let tp_ty = ecx.read_type_id(&args[0])?;
-                let result_ty = ecx.read_type_id(&args[1])?;
-
-                let (implements_trait, preds) = type_implements_dyn_trait(ecx, tp_ty, result_ty)?;
-
-                if implements_trait {
-                    let vtable_ptr = ecx.get_vtable_ptr(tp_ty, preds)?;
-                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
-                    ecx.write_pointer(vtable_ptr, dest)?;
-                } else {
-                    // Write `None`
-                    ecx.write_discriminant(FIRST_VARIANT, dest)?;
-                }
-            }
-
-            sym::type_id_type_of => {
-                let ty = ecx.read_type_id(&args[0])?;
-                ecx.write_type_info(ty, dest)?;
-            }
-
-            sym::type_id_is_signed => {
-                let ty = ecx.read_type_id(&args[0])?;
-                ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
-            }
-
-            sym::type_id_points_mutably => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let is_mutable = matches!(
-                    ty.kind(),
-                    ty::RawPtr(_, Mutability::Mut) | &ty::Ref(_, _, Mutability::Mut)
-                );
-                ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
-            }
-
-            sym::type_id_size_of => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let layout = ecx.layout_of(ty)?;
-                let variant_index = if layout.is_sized() {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let size_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_scalar(
-                        ScalarInt::try_from_target_usize(layout.size.bytes(), ecx.tcx.tcx).unwrap(),
-                        &size_field_place,
-                    )?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
-            }
-
-            sym::type_id_element_ty => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind() {
-                    let (variant_idx, variant_place) =
-                        ecx.project_downcast_named(dest, sym::Some)?;
-                    let type_id_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*ty, &type_id_field_place)?;
-                    variant_idx
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
-            }
-
-            sym::type_id_array_len => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let len = if let ty::Array(_, len) = ty.kind() {
-                    len.to_leaf().to_target_usize(ecx.tcx.tcx())
-                } else {
-                    0
-                };
-                ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
-            }
-
-            sym::type_id_fields => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variant_idx = ecx.read_target_usize(&args[1])? as usize;
-
-                let variants_num =
-                    ty.ty_adt_def().map(|adt_def| adt_def.variants().len()).unwrap_or(1);
-                if variant_idx >= variants_num {
-                    throw_ub!(BoundsCheckFailed {
-                        len: variants_num as u64,
-                        index: variant_idx as u64
-                    });
-                }
-
-                let fields_num = match ty.kind() {
-                    ty::Adt(adt_def, _) => {
-                        let variant_def = &adt_def.variants()[VariantIdx::from_usize(variant_idx)];
-                        variant_def.fields.len()
-                    }
-                    ty::Tuple(fields) => fields.len(),
-                    _ => 0, // Other types have no fields
-                };
-
-                ecx.write_scalar(Scalar::from_target_usize(fields_num as u64, ecx), dest)?;
-            }
-
-            sym::type_id_field_representing_type => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variant_idx = ecx.read_target_usize(&args[1])? as usize;
-                let field_idx = ecx.read_target_usize(&args[2])? as usize;
-
-                let variants_num =
-                    ty.ty_adt_def().map(|adt_def| adt_def.variants().len()).unwrap_or(1);
-                if variant_idx >= variants_num {
-                    throw_ub!(BoundsCheckFailed {
-                        len: variants_num as u64,
-                        index: variant_idx as u64
-                    });
-                }
-
-                let fields_num = match ty.kind() {
-                    ty::Adt(adt_def, _) => {
-                        let variant_def = &adt_def.variants()[VariantIdx::from_usize(variant_idx)];
-                        variant_def.fields.len()
-                    }
-                    ty::Tuple(fields) => fields.len(),
-                    _ => 0, // Other types have no fields
-                };
-                if field_idx >= fields_num {
-                    throw_ub!(BoundsCheckFailed {
-                        len: fields_num as u64,
-                        index: field_idx as u64
-                    });
-                }
-
-                let frt = Ty::new_field_representing_type(
-                    *ecx.tcx,
-                    ty,
-                    VariantIdx::from_usize(variant_idx),
-                    FieldIdx::from_usize(field_idx),
-                );
-                ecx.write_type_id(frt, dest)?;
-            }
-            sym::type_id_function_ptr => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
-                    ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
-            }
-            sym::type_id_points_to => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =
-                    ty.kind()
-                {
-                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
-                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*pointee_ty, &field_place)?;
-                    variant
-                } else {
-                    ecx.project_downcast_named(dest, sym::None)?.0
-                };
-                ecx.write_discriminant(variant_index, dest)?;
-            }
-
-            sym::type_id_variants => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let variants_num = ty.ty_adt_def().map(|def| def.variants().len()).unwrap_or(1);
-                ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
-            }
-
-            sym::type_id_variant_name => {
-                let base = ecx.read_type_id(&args[0])?;
-
-                let field_name = if let ty::Adt(def, _) = base.kind() {
-                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
-                    if variant_idx >= def.variants().len() {
-                        throw_ub!(BoundsCheckFailed {
-                            len: def.variants().len() as u64,
-                            index: variant_idx as u64
-                        });
-                    }
-                    let variant_idx = VariantIdx::from_usize(variant_idx);
-                    def.variant(variant_idx).name
-                } else {
-                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
-                };
-                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
-                ecx.write_immediate(
-                    Immediate::ScalarPair(
-                        Scalar::from_pointer(ptr, ecx),
-                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
-                    ),
-                    dest,
-                )?;
-            }
-
-            sym::type_id_variant_reflected_attrs => {
-                let base = ecx.read_type_id(&args[0])?;
-
-                if let ty::Adt(def, _) = base.kind() {
-                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
-                    if variant_idx >= def.variants().len() {
-                        throw_ub!(BoundsCheckFailed {
-                            len: def.variants().len() as u64,
-                            index: variant_idx as u64
-                        });
-                    }
-                    let variant_idx = VariantIdx::from_usize(variant_idx);
-
-                    ecx.write_reflect_attributes(
-                        dest,
-                        def.variant(variant_idx).def_id.get_attrs(&ecx.tcx),
-                    )?;
-                } else {
-                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
-                };
-            }
-
-            sym::type_id_variant_non_exhaustive => {
-                let base = ecx.read_type_id(&args[0])?;
-
-                let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
-                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
-                    if variant_idx >= def.variants().len() {
-                        throw_ub!(BoundsCheckFailed {
-                            len: def.variants().len() as u64,
-                            index: variant_idx as u64
-                        });
-                    }
-                    let variant_idx = VariantIdx::from_usize(variant_idx);
-                    def.variant(variant_idx).is_field_list_non_exhaustive()
-                } else {
-                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
-                };
-                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
-            }
-
-            sym::field_offset => {
-                let frt_ty = instance.args.type_at(0);
-                ensure_monomorphic_enough(frt_ty)?;
-
-                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
-                {
-                    (base, variant_idx, field_idx)
-                } else {
-                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                let layout = ecx.layout_of(ty)?;
-                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
-
-                let layout = layout.for_variant(&cx, variant);
-                let offset = layout.fields.offset(field.index()).bytes();
-
-                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
-            }
-
-            sym::field_representing_type_name => {
-                let frt_ty = ecx.read_type_id(&args[0])?;
-
-                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
-                {
-                    name
-                } else {
-                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
-                ecx.write_immediate(
-                    Immediate::ScalarPair(
-                        Scalar::from_pointer(ptr, ecx),
-                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
-                    ),
-                    dest,
-                )?;
-            }
-
-            sym::field_representing_type_offset => {
-                let frt_ty = ecx.read_type_id(&args[0])?;
-
-                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
-                {
-                    (base, variant_idx, field_idx)
-                } else {
-                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                let layout = ecx.layout_of(ty)?;
-                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
-
-                let layout = layout.for_variant(&cx, variant);
-                let offset = layout.fields.offset(field.index()).bytes();
-
-                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
-            }
-
-            sym::field_representing_type_actual_type_id => {
-                let frt_ty = ecx.read_type_id(&args[0])?;
-
-                let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { ty, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
-                {
-                    ecx.tcx.erase_and_anonymize_regions(ty)
-                } else {
-                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                ecx.write_type_id(field_ty, dest)?;
-            }
-
-            sym::type_id_reflected_attrs => {
-                let ty = ecx.read_type_id(&args[0])?;
-                let attrs = match ty.kind() {
-                    ty::Adt(def, args)
-                        if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                            def.field_representing_type_info(ecx.tcx(), *args) =>
-                    {
-                        match base.kind() {
-                            ty::Adt(base_def, _) => {
-                                let field = &base_def.variants()[variant_idx].fields[field_idx];
-                                field.did.get_attrs(&ecx.tcx)
-                            }
-                            ty::Tuple(_) => &[],
-                            _ => {
-                                // only adts and tuples have fields
-                                span_bug!(ecx.cur_span(), "expected adt or tuple type, got {ty}");
-                            }
-                        }
-                    }
-                    ty::Adt(def, _) => def.did().get_attrs(&ecx.tcx),
-                    _ => &[],
-                };
-
-                ecx.write_reflect_attributes(dest, attrs)?;
-            }
-
-            sym::type_id_generics => {
-                let ty = ecx.read_type_id(&args[0])?;
-                ecx.write_type_id_generics(dest, ty)?;
-            }
-
-            sym::type_id_non_exhaustive => {
-                let ty = ecx.read_type_id(&args[0])?;
-
-                // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.
-                let non_exhaustive = if let ty::Adt(def, _) = ty.kind() {
-                    if def.is_enum() {
-                        def.is_variant_list_non_exhaustive()
-                    } else {
-                        def.non_enum_variant().is_field_list_non_exhaustive()
-                    }
-                } else {
-                    false
-                };
-
-                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
-            }
-
-            _ => {
-                return do_fallback();
-            }
+        if !ecx.call_type_info_intrinsic(intrinsic_name, instance, args, dest, target)?
+            && !ecx.call_ctfe_intrinsic(intrinsic_name, instance, args, dest, target)?
+        {
+            return do_fallback(ecx);
         }
 
-        // Intrinsic is done, jump to next block.
-        ecx.return_to_block(target)?;
         interp_ok(None)
     }
 

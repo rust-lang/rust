@@ -15,6 +15,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 use crate::diagnostics;
+use crate::util::generic_param_to_arg;
 
 pub(crate) fn expand_derive_coerce_pointee(
     cx: &ExtCtxt<'_>,

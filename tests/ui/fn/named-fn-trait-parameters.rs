@@ -7,6 +7,7 @@ fn allowed<F>(
     f3: impl Fn(String, msg: String),
     f4: impl Fn(msg: String, String),
     f5: impl Fn(duplicate_name: bool, duplicate_name: bool),
+    //~^ WARN identifier `duplicate_name` is bound more than once in this parameter list
     fg: F
 ) where F: Fn(msg: String)
 { }
@@ -57,6 +58,7 @@ fn semantics<F>(
     //~^ ERROR C-variadic parameters aren't allowed in parenthesized argument lists
 
     duplicate_names: impl Fn(x: usize, x: usize),
+    //~^ WARN identifier `x` is bound more than once in this parameter list
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not

@@ -2,12 +2,12 @@
 
 use std::any::{Any, TypeId};
 use std::mem::offset_of;
-use std::mem::type_info::{Const, Generic, GenericType, Type, TypeKind};
+use std::mem::type_info::{Const, Generic, GenericType, TypeKind};
 
 #[test]
 fn test_arrays() {
     // Normal array.
-    assert!(matches!(Type::of::<[u16; 4]>().kind, TypeKind::Array));
+    assert!(matches!(TypeKind::of::<[u16; 4]>(), TypeKind::Array));
     const {
         let ty_id = TypeId::of::<[u16; 4]>();
         assert!(ty_id.element_ty() == Some(TypeId::of::<u16>()));
@@ -15,7 +15,7 @@ fn test_arrays() {
     }
 
     // Zero-length array.
-    assert!(matches!(Type::of::<[bool; 0]>().kind, TypeKind::Array));
+    assert!(matches!(TypeKind::of::<[bool; 0]>(), TypeKind::Array));
     const {
         let ty_id = TypeId::of::<[bool; 0]>();
         assert!(ty_id.element_ty() == Some(TypeId::of::<bool>()));
@@ -25,10 +25,15 @@ fn test_arrays() {
 
 #[test]
 fn test_slices() {
-    assert!(matches!(Type::of::<[usize]>().kind, TypeKind::Slice));
+    assert!(matches!(TypeKind::of::<[usize]>(), TypeKind::Slice));
     const {
         assert!(TypeId::of::<[usize]>().element_ty() == Some(TypeId::of::<usize>()));
     }
+}
+
+#[test]
+fn test_never() {
+    assert!(matches!(TypeKind::of::<!>(), TypeKind::Never));
 }
 
 #[test]
@@ -58,11 +63,15 @@ fn test_tuples() {
 fn test_structs() {
     const {
         #[reflective_tool::TestStruct]
+        ///test-doc
         struct TestStruct {
             #[reflective_tool::first(1)]
             #[reflective_tool::first(2)]
+            #[doc = "first-doc 1"]
+            ///first-doc 2
             first: u8,
             #[reflective_tool::second]
+            ///    second-doc
             second: u16,
             reference: &'static u16,
         }
@@ -71,6 +80,7 @@ fn test_structs() {
         assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::TestStruct]"]);
+        assert!(ty_id.docs() == &["test-doc"]);
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 3);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
@@ -80,13 +90,16 @@ fn test_structs() {
             ty_id.field(0, 0).reflected_attrs()
                 == &["#[reflective_tool::first(1)]", "#[reflective_tool::first(2)]"]
         );
+        assert!(ty_id.field(0, 0).docs() == &["first-doc 1", "first-doc 2"]);
         assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
         assert!(ty_id.field(0, 1).offset() == offset_of!(TestStruct, second));
         assert!(ty_id.field(0, 1).name() == "second");
         assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflective_tool::second]"]);
+        assert!(ty_id.field(0, 1).docs() == &["    second-doc"]);
         assert!(ty_id.field(0, 2).type_id() == TypeId::of::<&u16>());
         assert!(ty_id.field(0, 2).offset() == offset_of!(TestStruct, reference));
         assert!(ty_id.field(0, 2).name() == "reference");
+        assert!(ty_id.field(0, 2).docs() == &[""; 0]);
     }
 
     const {
@@ -107,17 +120,21 @@ fn test_structs() {
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
         assert!(ty_id.field(0, 0).name() == "0");
+        assert!(ty_id.field(0, 0).docs() == &[""; 0]);
         assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
         assert!(ty_id.field(0, 1).name() == "1");
+        assert!(ty_id.field(0, 1).docs() == &[""; 0]);
     }
 
     const {
         #[reflective_tool::a]
+        ///doc
         struct Generics<'a, T, const C: u64> {
             a: &'a T,
         }
 
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
+        assert!(ty_id.docs() == &["doc"]);
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.generics().len() == 3);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
@@ -136,34 +153,43 @@ fn test_structs() {
 fn test_unions() {
     const {
         #[reflective_tool::a]
+        ///test-doc 1
+        ///test-doc 2
         union TestUnion {
             #[reflective_tool::first]
+            #[doc = "first-doc"]
             first: i16,
             #[reflective_tool::second]
+            ///second-doc
             second: u16,
         }
 
         let ty_id = TypeId::of::<TestUnion>();
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
+        assert!(ty_id.docs() == &["test-doc 1", "test-doc 2"]);
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.field(0, 0).name() == "first");
+        assert!(ty_id.field(0, 0).docs() == &["first-doc"]);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<i16>());
         assert!(ty_id.field(0, 0).reflected_attrs() == &["#[reflective_tool::first]"]);
         assert!(ty_id.field(0, 1).name() == "second");
+        assert!(ty_id.field(0, 1).docs() == &["second-doc"]);
         assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
         assert!(ty_id.field(0, 1).reflected_attrs() == &["#[reflective_tool::second]"]);
     }
 
     const {
         #[reflective_tool::a]
+        ///doc
         union Generics<'a, T: Copy, const C: u64> {
             a: T,
             z: &'a (),
         }
 
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
+        assert!(ty_id.docs() == &["doc"]);
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.field(0, 1).offset() == offset_of!(Generics<'static, i32, 1_u64>, a));
@@ -184,16 +210,21 @@ fn test_unions() {
 fn test_enums() {
     const {
         #[reflective_tool::a]
+        ///doc
         enum E {
             #[reflective_tool::some]
+            ///somedoc
             Some(u32),
             #[reflective_tool::none]
+            ///nonedoc
             None,
             #[reflective_tool::foomp]
             #[non_exhaustive]
+            ///foompdoc
             Foomp {
                 a: (),
                 #[reflective_tool::b]
+                ///bdoc
                 b: &'static str,
             },
         }
@@ -202,27 +233,32 @@ fn test_enums() {
         assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<E>()));
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
+        assert!(ty_id.docs() == &["doc"]);
         assert!(ty_id.variants() == 3);
 
         assert!(ty_id.variant(0).name() == "Some");
         assert!(ty_id.variant(0).reflected_attrs() == &["#[reflective_tool::some]"]);
+        assert!(ty_id.variant(0).docs() == &["somedoc"]);
         assert!(!ty_id.variant(0).non_exhaustive());
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u32>());
 
         assert!(ty_id.variant(1).name() == "None");
         assert!(ty_id.variant(1).reflected_attrs() == &["#[reflective_tool::none]"]);
+        assert!(ty_id.variant(1).docs() == &["nonedoc"]);
         assert!(!ty_id.variant(1).non_exhaustive());
         assert!(ty_id.fields(1) == 0);
 
         assert!(ty_id.variant(2).name() == "Foomp");
         assert!(ty_id.variant(2).reflected_attrs() == &["#[reflective_tool::foomp]"]);
+        assert!(ty_id.variant(2).docs() == &["foompdoc"]);
         assert!(ty_id.variant(2).non_exhaustive());
         assert!(ty_id.fields(2) == 2);
         assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
         assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
         assert!(ty_id.field(2, 1).name() == "b");
         assert!(ty_id.field(2, 1).reflected_attrs() == &["#[reflective_tool::b]"]);
+        assert!(ty_id.field(2, 1).docs() == &["bdoc"]);
 
         assert!(ty_id.generics().is_empty());
     }
@@ -251,56 +287,64 @@ fn test_primitives() {
     use TypeKind::*;
 
     const {
-        let Type { kind: Bool, .. } = (const { Type::of::<bool>() }) else { panic!() };
+        let Bool = (const { TypeKind::of::<bool>() }) else { panic!() };
         let ty_id = TypeId::of::<bool>();
         assert!(ty_id.size() == Some(size_of::<bool>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Char, .. } = (const { Type::of::<char>() }) else { panic!() };
+        let Char = (const { TypeKind::of::<char>() }) else { panic!() };
         let ty_id = TypeId::of::<char>();
         assert!(ty_id.size() == Some(size_of::<char>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<i32>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<i32>() }) else { panic!() };
         let ty_id = TypeId::of::<i32>();
         assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<i32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<isize>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<isize>() }) else { panic!() };
         let ty_id = TypeId::of::<isize>();
         assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<isize>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<u32>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<u32>() }) else { panic!() };
         let ty_id = TypeId::of::<u32>();
         assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<u32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int, .. } = (const { Type::of::<usize>() }) else { panic!() };
+        let Int = (const { TypeKind::of::<usize>() }) else { panic!() };
         let ty_id = TypeId::of::<usize>();
         assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<usize>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Float, .. } = (const { Type::of::<f32>() }) else { panic!() };
+        let Float = (const { TypeKind::of::<f32>() }) else { panic!() };
         let ty_id = TypeId::of::<f32>();
         assert!(ty_id.size() == Some(size_of::<f32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Str(_ty), .. } = (const { Type::of::<str>() }) else { panic!() };
+        let Str = (const { TypeKind::of::<str>() }) else { panic!() };
         let ty_id = TypeId::of::<str>();
         assert!(ty_id.size() == None);
         assert!(ty_id.reflected_attrs() == &[""; 0]);
+        assert!(ty_id.docs() == &[""; 0]);
         assert!(ty_id.variants() == 1);
     }
 }
@@ -310,7 +354,7 @@ fn test_references() {
     use TypeKind::Reference;
 
     // Immutable reference.
-    let Type { kind: Reference, .. } = Type::of::<&u8>() else { panic!() };
+    let Reference = TypeKind::of::<&u8>() else { panic!() };
     const {
         let ty = TypeId::of::<&u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
@@ -318,7 +362,7 @@ fn test_references() {
     }
 
     // Mutable references.
-    let Type { kind: Reference, .. } = Type::of::<&mut u64>() else { panic!() };
+    let Reference = TypeKind::of::<&mut u64>() else { panic!() };
     const {
         let ty = TypeId::of::<&mut u64>();
         assert!(ty.points_to() == Some(TypeId::of::<u64>()));
@@ -326,7 +370,7 @@ fn test_references() {
     }
 
     // Wide references.
-    let Type { kind: Reference, .. } = Type::of::<&dyn Any>() else { panic!() };
+    let Reference = TypeKind::of::<&dyn Any>() else { panic!() };
     const {
         let ty = TypeId::of::<&dyn Any>();
         assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
@@ -339,7 +383,7 @@ fn test_pointers() {
     use TypeKind::Pointer;
 
     // Immutable pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*const u8>() else { panic!() };
+    let Pointer = TypeKind::of::<*const u8>() else { panic!() };
     const {
         let ty = TypeId::of::<*const u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
@@ -347,7 +391,7 @@ fn test_pointers() {
     }
 
     // Mutable pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*mut u64>() else { panic!() };
+    let Pointer = TypeKind::of::<*mut u64>() else { panic!() };
     const {
         let ty = TypeId::of::<*mut u64>();
         assert!(ty.points_to() == Some(TypeId::of::<u64>()));
@@ -355,7 +399,7 @@ fn test_pointers() {
     }
 
     // Wide pointer.
-    let Type { kind: Pointer, .. } = Type::of::<*const dyn Any>() else { panic!() };
+    let Pointer = TypeKind::of::<*const dyn Any>() else { panic!() };
     const {
         let ty = TypeId::of::<*const dyn Any>();
         assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
@@ -378,10 +422,7 @@ fn test_dynamic_traits() {
     trait ProjectorTrait<'a, 'b> {}
 
     fn preds_of<T: ?Sized + 'static>() -> &'static [DynTraitPredicate] {
-        match const { Type::of::<T>() }.kind {
-            TypeKind::DynTrait(d) => d.predicates,
-            _ => unreachable!(),
-        }
+        const { TypeId::of::<T>().dyn_trait() }.unwrap().predicates
     }
 
     fn pred<'a>(preds: &'a [DynTraitPredicate], want: TypeId) -> &'a DynTraitPredicate {

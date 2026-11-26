@@ -540,10 +540,10 @@ fn virtual_call_violations_for_method<'tcx>(
                 };
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
                 match trait_fn {
-                    hir::TraitFn::Required([Some(name), ..])
-                        if name.span.ctxt() == sig.decl.inputs[0].span.ctxt() =>
+                    hir::TraitFn::Required([param, ..])
+                        if param.span.ctxt() == sig.decl.inputs[0].span.ctxt() =>
                     {
-                        Some(name.span.to(sig.decl.inputs[0].span))
+                        Some(param.span.to(sig.decl.inputs[0].span))
                     }
                     hir::TraitFn::Provided(body_id)
                         if let body = tcx.hir_body(*body_id)
@@ -915,6 +915,7 @@ impl<'tcx> IllegalSelfTypeVisitor<'tcx> {
                 self.tcx,
                 ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id)),
             )
+            .map(Unnormalized::skip_norm_wip)
             .map(|trait_ref| {
                 self.tcx.erase_and_anonymize_regions(
                     self.tcx.instantiate_bound_regions_with_erased(trait_ref),

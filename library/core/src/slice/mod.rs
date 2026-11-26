@@ -112,7 +112,7 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn len(&self) -> usize {
@@ -132,7 +132,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -186,12 +186,14 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &[0, 1, 2];
+    /// let many = &[0, 1, 2];
+    /// assert_eq!(many.split_first(), Some((&0, &[1, 2][..])));
     ///
-    /// if let Some((first, elements)) = x.split_first() {
-    ///     assert_eq!(first, &0);
-    ///     assert_eq!(elements, &[1, 2]);
-    /// }
+    /// let one = &[42];
+    /// assert_eq!(one.split_first(), Some((&42, &[][..])));
+    ///
+    /// let none: &[i32] = &[];
+    /// assert_eq!(none.split_first(), None);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
@@ -206,14 +208,22 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &mut [0, 1, 2];
+    /// let many = &mut [0, 1, 2];
     ///
-    /// if let Some((first, elements)) = x.split_first_mut() {
+    /// if let Some((first, rest)) = many.split_first_mut() {
     ///     *first = 3;
-    ///     elements[0] = 4;
-    ///     elements[1] = 5;
+    ///     rest[0] = 4;
+    ///     rest[1] = 5;
     /// }
-    /// assert_eq!(x, &[3, 4, 5]);
+    /// assert_eq!(many, &[3, 4, 5]);
+    ///
+    /// let mut one = [42];
+    /// let (first, rest) = one.split_first_mut().unwrap();
+    /// assert_eq!(*first, 42);
+    /// assert!(rest.is_empty());
+    ///
+    /// let none: &mut [i32] = &mut [];
+    /// assert!(none.split_first_mut().is_none());
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
@@ -228,12 +238,14 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &[0, 1, 2];
+    /// let many = &[0, 1, 2];
+    /// assert_eq!(many.split_last(), Some((&2, &[0, 1][..])));
     ///
-    /// if let Some((last, elements)) = x.split_last() {
-    ///     assert_eq!(last, &2);
-    ///     assert_eq!(elements, &[0, 1]);
-    /// }
+    /// let one = &[42];
+    /// assert_eq!(one.split_last(), Some((&42, &[][..])));
+    ///
+    /// let none: &[i32] = &[];
+    /// assert_eq!(none.split_last(), None);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
@@ -248,14 +260,22 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let x = &mut [0, 1, 2];
+    /// let many = &mut [0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_mut() {
+    /// if let Some((last, rest)) = many.split_last_mut() {
     ///     *last = 3;
-    ///     elements[0] = 4;
-    ///     elements[1] = 5;
+    ///     rest[0] = 4;
+    ///     rest[1] = 5;
     /// }
-    /// assert_eq!(x, &[4, 5, 3]);
+    /// assert_eq!(many, &[4, 5, 3]);
+    ///
+    /// let mut one = [42];
+    /// let (last, rest) = one.split_last_mut().unwrap();
+    /// assert_eq!(*last, 42);
+    /// assert!(rest.is_empty());
+    ///
+    /// let none: &mut [i32] = &mut [];
+    /// assert!(none.split_last_mut().is_none());
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[rustc_const_stable(feature = "const_slice_first_last", since = "1.83.0")]
@@ -567,7 +587,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
@@ -594,7 +614,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
@@ -634,7 +654,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -679,7 +699,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_no_implicit_autorefs]
+    #[lint::no_implicit_autorefs]
     #[inline]
     #[must_use]
     #[track_caller]
@@ -1336,7 +1356,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     #[track_caller]
-    pub const unsafe fn as_chunks_unchecked<#[rustc_panics_when_zero] const N: usize>(
+    pub const unsafe fn as_chunks_unchecked<#[lint::panics_when_zero] const N: usize>(
         &self,
     ) -> &[[T; N]] {
         assert_unsafe_precondition!(
@@ -1396,7 +1416,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_chunks<#[rustc_panics_when_zero] const N: usize>(&self) -> (&[[T; N]], &[T]) {
+    pub const fn as_chunks<#[lint::panics_when_zero] const N: usize>(&self) -> (&[[T; N]], &[T]) {
         assert!(N != 0, "chunk size must be non-zero");
         let len_rounded_down = self.len() / N * N;
         // SAFETY: The rounded-down value is always the same or smaller than the
@@ -1443,7 +1463,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_rchunks<#[rustc_panics_when_zero] const N: usize>(&self) -> (&[T], &[[T; N]]) {
+    pub const fn as_rchunks<#[lint::panics_when_zero] const N: usize>(&self) -> (&[T], &[[T; N]]) {
         assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
@@ -1498,7 +1518,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     #[track_caller]
-    pub const unsafe fn as_chunks_unchecked_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const unsafe fn as_chunks_unchecked_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> &mut [[T; N]] {
         assert_unsafe_precondition!(
@@ -1554,7 +1574,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_chunks_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn as_chunks_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> (&mut [[T; N]], &mut [T]) {
         assert!(N != 0, "chunk size must be non-zero");
@@ -1609,7 +1629,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_rchunks_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn as_rchunks_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> (&mut [T], &mut [[T; N]]) {
         assert!(N != 0, "chunk size must be non-zero");
@@ -1652,7 +1672,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub const fn array_windows<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn array_windows<#[lint::panics_when_zero] const N: usize>(
         &self,
     ) -> ArrayWindows<'_, T, N> {
         assert!(N != 0, "window size must be non-zero");
@@ -5648,8 +5668,11 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
+            self[idx].clone_from(&src[idx]);
+            idx += 1;
         }
     }
 }

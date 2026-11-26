@@ -151,4 +151,12 @@ fn main() {
     }]
     //~^^^ ERROR attribute value must be a literal
     unreachable!();
+
+    #[deprecated]
+    //~^ WARN cannot be used on
+    //~| WARN previously accepted
+    #[deprecated]
+    //~^ WARN cannot be used on
+    //~| WARN previously accepted
+    unreachable!();
 }

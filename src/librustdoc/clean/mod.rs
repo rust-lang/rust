@@ -1113,7 +1113,7 @@ fn clean_fn_or_proc_macro<'tcx>(
                 cx,
                 sig,
                 generics,
-                ParamsSrc::Body(body_id),
+                cx.tcx.hir_body(body_id).params,
                 item.owner_id.to_def_id(),
             );
             let mut func = Function { generics, decl };
@@ -1145,16 +1145,11 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[rustc_attr_
     }
 }
 
-enum ParamsSrc<'tcx> {
-    Body(hir::BodyId),
-    Idents(&'tcx [Option<Ident>]),
-}
-
 fn clean_function<'tcx>(
     cx: &mut DocContext<'tcx>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
-    params: ParamsSrc<'tcx>,
+    params: &'tcx [hir::Param<'tcx>],
     def_id: DefId,
 ) -> (Generics, FnDecl) {
     enter_impl_trait(cx, |cx| {
@@ -1170,20 +1165,14 @@ fn clean_function<'tcx>(
             let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
             clean_poly_fn_sig(cx, Some(def_id), sig)
         } else {
-            let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl, body_id),
-                // Let's not perpetuate anon params from Rust 2015; use `_` for them.
-                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl, idents, |ident| {
-                    Some(ident.map_or(kw::Underscore, |ident| ident.name))
-                }),
-            };
+            let params = clean_params(cx, sig.decl, params);
             clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params)
         };
         (generics, decl)
     })
 }
 
-fn clean_params<'tcx>(
+fn clean_params_from_idents<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'_>,
     idents: &[Option<Ident>],
@@ -1201,14 +1190,14 @@ fn clean_params<'tcx>(
         .collect()
 }
 
-fn clean_params_via_body<'tcx>(
+fn clean_params<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'tcx>,
-    body_id: hir::BodyId,
+    params: &'tcx [hir::Param<'tcx>],
 ) -> Vec<Parameter> {
     decl.inputs
         .iter()
-        .zip(cx.tcx.hir_body(body_id).params)
+        .zip(params)
         .enumerate()
         .map(|(i, (ty, param))| Parameter {
             name: Some(name_from_pat(param.pat)),
@@ -1312,10 +1301,10 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Fn(ref sig, body) => {
                 let (params, body) = match body {
                     hir::TraitFn::Provided(body) => (
-                        ParamsSrc::Body(body),
+                        cx.tcx.hir_body(body).params,
                         Some(Defaultness::from_trait_item(trait_item.defaultness)),
                     ),
-                    hir::TraitFn::Required(idents) => (ParamsSrc::Idents(idents), None),
+                    hir::TraitFn::Required(params) => (params, None),
                 };
                 let (generics, decl) =
                     clean_function(cx, sig, trait_item.generics, params, local_did);
@@ -1356,8 +1345,13 @@ pub(crate) fn clean_impl_item<'tcx>(
                 }))
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let (generics, decl) =
-                    clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
+                let (generics, decl) = clean_function(
+                    cx,
+                    sig,
+                    impl_.generics,
+                    cx.tcx.hir_body(body).params,
+                    local_did,
+                );
                 ItemKind::AssocFunction(Box::new(AssocFunction {
                     generics,
                     decl,
@@ -1916,7 +1910,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
                     // FIXME: Avoid re-HIR-ty-lowering.
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
-                    let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
+                    let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(cx.tcx, *def_id);
                     let ct =
                         cx.tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ct));
                     print_const(cx.tcx, ct)
@@ -2741,7 +2735,7 @@ fn clean_bare_fn_ty<'tcx>(
         };
         let fallback =
             bare_fn.param_idents.iter().copied().find_map(filter).map(|_| kw::Underscore);
-        let params = clean_params(cx, bare_fn.decl, bare_fn.param_idents, |ident| {
+        let params = clean_params_from_idents(cx, bare_fn.decl, bare_fn.param_idents, |ident| {
             filter(ident).or(fallback)
         });
         let decl = clean_fn_decl_with_params(cx, bare_fn.decl, None, params);
@@ -3374,9 +3368,8 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(sig, idents, generics) => {
-                let (generics, decl) =
-                    clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id);
+            hir::ForeignItemKind::Fn(sig, params, generics) => {
+                let (generics, decl) = clean_function(cx, &sig, generics, params, def_id);
                 ItemKind::ForeignFunction(
                     Box::new(Function { generics, decl }),
                     sig.header.safety(),

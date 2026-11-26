@@ -53,6 +53,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// # std::io::Result::Ok(())
 /// ```
 #[stable(feature = "iter_once", since = "1.2.0")]
+#[rustc_diagnostic_item = "iter_once"]
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }

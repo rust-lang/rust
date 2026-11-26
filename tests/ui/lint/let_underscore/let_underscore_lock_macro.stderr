@@ -1,0 +1,40 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock_macro.rs:14:10
+   |
+LL |      let _ = dbg!(m.lock().unwrap());
+   |          ^ this lock is not assigned to a binding and is immediately dropped
+   |
+   = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)]`) on by default
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |      let _unused = dbg!(m.lock().unwrap());
+   |           ++++++
+help: consider immediately dropping the value
+   |
+LL -      let _ = dbg!(m.lock().unwrap());
+LL +      drop(dbg!(m.lock().unwrap()));
+   |
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock_macro.rs:8:14
+   |
+LL |  macro_rules! foo {
+...
+LL |          let _ = dbg!(m.lock().unwrap());
+   |              ^ this lock is not assigned to a binding and is immediately dropped
+...
+LL |      foo!();
+   |      ------ in this macro invocation
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |          let _unused = dbg!(m.lock().unwrap());
+   |               ++++++
+help: consider immediately dropping the value
+   |
+LL -          let _ = dbg!(m.lock().unwrap());
+LL +          drop(dbg!(m.lock().unwrap()));
+   |
+
+error: aborting due to 2 previous errors
+

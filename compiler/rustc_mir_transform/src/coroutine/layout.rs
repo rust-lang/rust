@@ -49,8 +49,6 @@ use tracing::{debug, instrument};
 
 use crate::diagnostics::{MustNotSuspend, MustNotSuspendReason};
 
-const SELF_ARG: Local = Local::arg(0);
-
 pub(super) struct LivenessInfo {
     /// Which locals are live across any suspension point.
     pub(super) saved_locals: CoroutineSavedLocals,
@@ -145,7 +143,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
         live_locals.intersect(requires_storage_cursor.get());
 
         // The coroutine argument is ignored.
-        live_locals.remove(SELF_ARG);
+        live_locals.remove(ty::CAPTURE_STRUCT_LOCAL);
 
         debug!(?loc, ?live_locals);
 

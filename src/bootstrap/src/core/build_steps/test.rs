@@ -1071,12 +1071,17 @@ pub struct IntrinsicTest {
     host: TargetSelection,
 }
 
+impl IntrinsicTest {
+    const ALIAS: &'static str = "stdarch-intrinsic-test";
+}
+
 impl CommandLineStep for IntrinsicTest {
     type Output = ();
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("intrinsic-test")
+        // Not using a path since we don't want this to be part of `./x test library`.
+        run.alias(Self::ALIAS)
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1087,12 +1092,12 @@ impl CommandLineStep for IntrinsicTest {
         let target = run.target;
         let builder = run.builder;
 
-        let is_explicit =
-            builder.config.paths.iter().any(|p| p.to_string_lossy() == "intrinsic-test");
+        let is_explicit = builder.config.paths.iter().any(|p| p.to_string_lossy() == Self::ALIAS);
 
         if target.contains("x86_64-unknown-linux") && builder.config.sde.is_none() && is_explicit {
             panic!(
-                "SDE is required to run intrinsic-test. Please configure `build.sde` in config.toml."
+                "SDE is required to run {}. Please configure `build.sde` in config.toml.",
+                Self::ALIAS
             );
         }
 
@@ -2394,6 +2399,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
+        let lint_driver_compiler = query_compiler.unwrap_or(test_compiler);
+        if suite == "ui-fulldeps" {
+            builder.std(lint_driver_compiler, target);
+            builder.std(lint_driver_compiler, lint_driver_compiler.host);
+        }
+
         // Build the standard library for wasm32-wasip2 (current target for wasm proc macros).
         if builder.config.wasm_proc_macros {
             builder.ensure(compile::Std::new(
@@ -2467,6 +2478,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(test_compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(test_compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(test_compiler));
+        if suite == "ui-fulldeps" {
+            let lint_driver: PathBuf = builder
+                .ensure(tool::CompiletestLintDriver {
+                    compiler: test_compiler,
+                    target: test_compiler.host,
+                })
+                .tool_path;
+            cmd.arg("--rustc-lint-driver-path").arg(lint_driver);
+            cmd.arg("--rustc-lint-driver-lib-path").arg(builder.rustc_libdir(lint_driver_compiler));
+            cmd.arg("--rustc-lint-driver-sysroot").arg(builder.sysroot(lint_driver_compiler));
+        }
         if let Some(query_compiler) = query_compiler {
             cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
             cmd.arg("--query-rustc-lib-path").arg(builder.rustc_libdir(query_compiler));
@@ -2974,6 +2996,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             // Note that if we encounter `PATH` we make sure to append to our own `PATH`
             // rather than stomp over it.
             if !builder.config.dry_run() && target.is_msvc() {
+                // Update VSCMD_ARG_TGT_ARCH when cross compiling to i686-msvc
+                if std::env::var_os("VSCMD_ARG_TGT_ARCH").is_some() && target.contains("i686") {
+                    cmd.env("VSCMD_ARG_TGT_ARCH", "x86");
+                }
                 for (k, v) in builder.cc[&target].env() {
                     if k != "PATH" {
                         cmd.env(k, v);

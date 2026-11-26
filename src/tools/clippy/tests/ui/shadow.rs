@@ -204,4 +204,26 @@ fn tuple_unrelated((x,): (u8,)) {
     //~^ shadow_unrelated
 }
 
+unsafe extern "C" {
+    fn foreign(x: u8);
+}
+
+pub trait Trait {
+    fn required_method(x: u8);
+    fn provided_method(x: u8) {
+        let x = 1u8;
+        //~^ shadow_unrelated
+    }
+}
+
+fn nested() {
+    let x = 1u8;
+    let f = |x: u8| {};
+    //~^ shadow_unrelated
+
+    unsafe extern "C" {
+        fn foreign(x: u8);
+    }
+}
+
 fn main() {}

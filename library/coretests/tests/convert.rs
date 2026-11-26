@@ -1,3 +1,6 @@
+#![feature(const_convert)]
+#![feature(const_trait_impl)]
+
 #[test]
 fn convert() {
     const fn from(x: i32) -> i32 {

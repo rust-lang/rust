@@ -373,7 +373,7 @@ export TEST_DEVICE_ADDR="127.0.0.1:12345"
 # FIXME(madsmtm): Allow debuginfo tests to work (maybe needs `.dSYM` folder to be copied to the target?).
 ```
 
-[armhf-gnu]: https://github.com/rust-lang/rust/tree/HEAD/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
+[armhf-gnu]: https://github.com/rust-lang/rust/tree/HEAD/src/ci/docker/host-x86_64/test-armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
 [remote-test-client]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/remote-test-client
 [remote-test-server]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/remote-test-server

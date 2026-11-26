@@ -1,6 +1,10 @@
 warning: `readlink` was made to return an error due to isolation
 
+warning: `unlinkat` was made to return an error due to isolation
+
+warning: `mkdirat` was made to return an error due to isolation
+
 warning: `$STAT` was made to return an error due to isolation
 
-warning: 2 warnings emitted
+warning: 4 warnings emitted
 

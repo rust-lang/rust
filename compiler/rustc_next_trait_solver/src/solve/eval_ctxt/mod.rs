@@ -110,7 +110,7 @@ where
     ///
     /// NOTE: The `InferCtxt` that backs the `EvalCtxt` is intentionally private,
     /// because the `InferCtxt` is much more general than `EvalCtxt`. Methods such
-    /// as  `take_registered_region_obligations` can mess up query responses,
+    /// as  `take_registered_type_outlives_constraints` can mess up query responses,
     /// using `At::normalize` is totally wrong, calling `evaluate_root_goal` can
     /// cause coinductive unsoundness, etc.
     ///
@@ -1455,10 +1455,6 @@ where
         self.delegate.deeply_resolve_ignoring_regions(value)
     }
 
-    pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
-        self.delegate.shallow_resolve(ty)
-    }
-
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.shallow_resolve_region_var(vid)
@@ -1611,7 +1607,7 @@ where
                     // To prevent this we discard all the generic arguments and evalaute with identity args
                     // and in its own environment instead of the current environment we are normalizing in.
                     let args = GenericArgs::identity_for_item(cx, def_id.into());
-                    let typing_env = TypingEnv::post_analysis(cx, def_id.into());
+                    let typing_env = TypingEnv::post_analysis_no_rigid_aliases(cx, def_id.into());
 
                     Ok((typing_env, args))
                 }

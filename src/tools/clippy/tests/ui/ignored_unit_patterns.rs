@@ -54,3 +54,16 @@ fn test_unit_ref_2(v: &[(usize, ())]) {
         let _ = x;
     }
 }
+
+unsafe extern "C" {
+    #[expect(improper_ctypes)]
+    fn test_extern_param(_: ());
+}
+
+trait Test {
+    fn test_required_param(_: ());
+}
+
+fn test_fn_ty() {
+    let x: fn(_: ());
+}

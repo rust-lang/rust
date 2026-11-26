@@ -25,7 +25,7 @@ pub enum RegKind {
 impl RegKind {
     pub fn from_primitive(primitive: Primitive) -> Self {
         match primitive {
-            Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+            Primitive::Bool | Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
             Primitive::Float(Float::PpcF128) => RegKind::PpcF128,
             Primitive::Float(
                 Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::X87F80 | Float::F128,

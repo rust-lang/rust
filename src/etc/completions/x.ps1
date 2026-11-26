@@ -1089,8 +1089,9 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             break
         }
         'x;perf;eprintln' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1117,6 +1118,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', '--reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', '--set', [CompletionResultType]::ParameterName, 'override options in bootstrap.toml')
             [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'Make bootstrap to behave as it''s running on the CI environment or not')
+            [CompletionResult]::new('--purge', '--purge', [CompletionResultType]::ParameterName, 'Purge previously computed benchmark results matching the given parameters')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-q', '-q', [CompletionResultType]::ParameterName, 'use quiet output')
@@ -1138,8 +1140,9 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             break
         }
         'x;perf;samply' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1166,6 +1169,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', '--reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', '--set', [CompletionResultType]::ParameterName, 'override options in bootstrap.toml')
             [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'Make bootstrap to behave as it''s running on the CI environment or not')
+            [CompletionResult]::new('--purge', '--purge', [CompletionResultType]::ParameterName, 'Purge previously computed benchmark results matching the given parameters')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-q', '-q', [CompletionResultType]::ParameterName, 'use quiet output')
@@ -1187,8 +1191,9 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             break
         }
         'x;perf;cachegrind' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1215,6 +1220,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', '--reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', '--set', [CompletionResultType]::ParameterName, 'override options in bootstrap.toml')
             [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'Make bootstrap to behave as it''s running on the CI environment or not')
+            [CompletionResult]::new('--purge', '--purge', [CompletionResultType]::ParameterName, 'Purge previously computed benchmark results matching the given parameters')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-q', '-q', [CompletionResultType]::ParameterName, 'use quiet output')
@@ -1236,8 +1242,9 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             break
         }
         'x;perf;benchmark' {
-            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed')
-            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Select the benchmarks matching a prefix in this comma-separated list that you don''t want to run')
+            [CompletionResult]::new('--exact-match', '--exact-match', [CompletionResultType]::ParameterName, 'Only benchmarks that exactly match the given name(s) will be executed. You can pass multiple names separated by commas')
+            [CompletionResult]::new('--include', '--include', [CompletionResultType]::ParameterName, 'Only benchmarks starting with the given prefix(es) will be executed. You can pass multiple prefixes separated by commas. If unspecified, all benchmarks will be executed')
+            [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'Benchmarks starting with the given prefix(es) will NOT be executed. You can pass multiple prefixes separated by commas')
             [CompletionResult]::new('--scenarios', '--scenarios', [CompletionResultType]::ParameterName, 'Select the scenarios that should be benchmarked')
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--database-path', '--database-path', [CompletionResultType]::ParameterName, 'database-path')
@@ -1264,6 +1271,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', '--reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', '--set', [CompletionResultType]::ParameterName, 'override options in bootstrap.toml')
             [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'Make bootstrap to behave as it''s running on the CI environment or not')
+            [CompletionResult]::new('--purge', '--purge', [CompletionResultType]::ParameterName, 'Purge previously computed benchmark results matching the given parameters')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-q', '-q', [CompletionResultType]::ParameterName, 'use quiet output')

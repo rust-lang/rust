@@ -618,14 +618,14 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 impl Stdio {
     fn to_handle(&self, stdio_id: u32, pipe: &mut Option<ChildPipe>) -> io::Result<Handle> {
         let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
-            Ok(io) => unsafe {
+            Some(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
                 let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
                 let _ = io.into_raw_handle(); // Don't close the handle
                 ret
             },
             // If no stdio handle is available, then propagate the null value.
-            Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
+            None => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
         };
         match *self {
             Stdio::Inherit => use_stdio_id(stdio_id),

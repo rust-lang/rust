@@ -15,6 +15,10 @@ pub(crate) fn target() -> Target {
         is_like_vexos: true,
         llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+        pre_link_args: TargetOptions::link_args(
+            LinkerFlavor::Gnu(Cc::No, Lld::No),
+            &["--build-id=sha1"],
+        ),
         linker: Some("rust-lld".into()),
         features: "+v7,+neon,+vfp3d16,+thumb2".into(),
         relocation_model: RelocModel::Static,

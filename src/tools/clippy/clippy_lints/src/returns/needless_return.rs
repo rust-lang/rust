@@ -12,9 +12,9 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LintContext as _};
+use rustc_lint_defs::LintName;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{BytePos, Pos as _, Span};
-use rustc_structures::LintName;
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -189,7 +189,7 @@ fn check_final_expr<'tcx>(
                         matches!(
                             lint,
                             LintCheck {
-                                lint_name: LintName {
+                                lint_name_normalized: LintName {
                                     tool: Some(sym::clippy),
                                     name: sym::needless_return | sym::style | sym::all | sym::warnings
                                 },

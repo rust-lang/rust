@@ -3074,7 +3074,7 @@ impl<'hir> TraitItem<'hir> {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
-    Required(&'hir [Option<Ident>]),
+    Required(&'hir [Param<'hir>]),
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),
@@ -4876,12 +4876,7 @@ impl ForeignItem<'_> {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    ///
-    /// All argument idents are actually always present (i.e. `Some`), but
-    /// `&[Option<Ident>]` is used because of code paths shared with `TraitFn`
-    /// and `FnPtrTy`. The sharing is due to all of these cases not allowing
-    /// arbitrary patterns for parameters.
-    Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
+    Fn(FnSig<'hir>, &'hir [Param<'hir>], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.

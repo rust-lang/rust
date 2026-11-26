@@ -208,7 +208,6 @@ impl AttributeParser for BodyStabilityParser {
 pub(crate) struct RustcConstStableIndirectParser;
 impl NoArgsAttributeParser for RustcConstStableIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),

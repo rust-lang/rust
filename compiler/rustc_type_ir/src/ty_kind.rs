@@ -309,9 +309,16 @@ pub enum TyKind<I: Interner> {
 
     /// A view over an [`Adt`].
     ///
-    /// This variant contains the same data as `Adt` as well as a `Ty` field that represents the
-    /// set of fields that are viewed. This `Ty` should be either a type variable or a tuple of
-    /// `FieldRepresentingType`.
+    /// Takes an ADT and restricts the fields that can be accessed. The layout
+    /// is the same as the initial ADT. View types are `!MetaSized`.
+    ///
+    /// The fields that can be accessed are encoded as a tuple of `FieldRepresentingType`.
+    /// For instance, `view_type!(MyStruct.{ field1, field2 })` is represented as
+    /// `View(MyStruct, [], (field_of!(MyStruct.field1), field_of!(FieldInfo.field2)))`.
+    ///
+    /// Refer to the [View types experiment][1] project goal for more infos.
+    ///
+    /// [1]: https://goals.rust-lang.org/2026/view-types-experiment.html
     View(I::AdtDef, I::GenericArgs, I::Ty),
 
     /// A projection, opaque type, free type alias, or inherent associated type.
@@ -468,21 +475,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Int(i) => write!(f, "{i:?}"),
             Uint(u) => write!(f, "{u:?}"),
             Float(float) => write!(f, "{float:?}"),
-            Adt(d, s) => {
-                write!(f, "{d:?}")?;
-                let mut s = s.iter();
-                let first = s.next();
-                match first {
-                    Some(first) => write!(f, "<{:?}", first)?,
-                    None => return Ok(()),
-                };
-
-                for arg in s {
-                    write!(f, ", {:?}", arg)?;
-                }
-
-                write!(f, ">")
-            }
+            Adt(d, s) => debug_adt::<I>(f, d, s),
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{t:?}; {c:?}]"),
@@ -516,17 +509,41 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                 }
                 write!(f, ")")
             }
+            ty::View(d, s, fields) => {
+                write!(
+                    f,
+                    "view_type!({}.{{ {fields:?} }})",
+                    fmt::from_fn(|f| debug_adt::<I>(f, d, s))
+                )
+            }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
     }
+}
+
+fn debug_adt<I: Interner>(
+    f: &mut fmt::Formatter<'_>,
+    d: &<I as Interner>::AdtDef,
+    s: &<I as Interner>::GenericArgs,
+) -> Result<(), fmt::Error> {
+    write!(f, "{d:?}")?;
+    let mut s = s.iter();
+    let first = s.next();
+    match first {
+        Some(first) => write!(f, "<{:?}", first)?,
+        None => return Ok(()),
+    };
+
+    for arg in s {
+        write!(f, ", {:?}", arg)?;
+    }
+
+    write!(f, ">")
 }
 
 impl<I: Interner> AliasTy<I> {

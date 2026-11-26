@@ -141,6 +141,19 @@ pub(crate) struct ClosureKindMismatch {
     pub fn_mut_label: Option<ClosureFnMutLabel>,
 }
 
+#[derive(Diagnostic)]
+#[diag("expected `{$trait_prefix}FnOnce`, found reference", code = E0525)]
+#[note("`{$trait_prefix}FnOnce` isn't implemented for references")]
+pub(crate) struct RefToFnOnce {
+    #[primary_span]
+    #[label("closure passed by reference here")]
+    pub cause_span: Span,
+    pub trait_prefix: &'static str,
+
+    #[subdiagnostic]
+    pub fn_once_label: Option<ClosureFnOnceLabel>,
+}
+
 #[derive(Subdiagnostic)]
 #[label(
     "closure is `{$trait_prefix}FnOnce` because it moves the variable `{$place}` out of its environment"

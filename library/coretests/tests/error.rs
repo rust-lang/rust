@@ -1,3 +1,5 @@
+#![feature(error_generic_member_access)]
+
 use core::error::{Request, request_ref, request_value};
 
 // Test the `Request` API.
