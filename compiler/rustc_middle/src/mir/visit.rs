@@ -316,9 +316,7 @@ macro_rules! make_mir_visitor {
                 for debuginfo in after_last_stmt_debuginfos as & $($mutability)? [_] {
                     self.visit_statement_debuginfo(debuginfo, location);
                 }
-                if let Some(terminator) = terminator {
-                    self.visit_terminator(terminator, location);
-                }
+                self.visit_terminator(terminator, location);
             }
 
             fn super_source_scope_data(
@@ -998,9 +996,7 @@ macro_rules! make_mir_visitor {
                 let basic_block =
                     & $($mutability)? basic_blocks!(body, $($mutability, true)?)[location.block];
                 if basic_block.statements.len() == location.statement_index {
-                    if let Some(ref $($mutability)? terminator) = basic_block.terminator {
-                        self.visit_terminator(terminator, location)
-                    }
+                    self.visit_terminator( & $($mutability)? basic_block.terminator, location)
                 } else {
                     let statement = & $($mutability)?
                         basic_block.statements[location.statement_index];

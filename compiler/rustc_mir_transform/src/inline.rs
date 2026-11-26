@@ -620,7 +620,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
 
-    let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+    let terminator = &caller_body[callsite.block].terminator;
     let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
     let destination_ty = destination.ty(&caller_body.local_decls, tcx).ty;
     for arg in args {
@@ -868,7 +868,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     mut callee_body: Body<'tcx>,
 ) {
     let tcx = inliner.tcx();
-    let terminator = caller_body.basic_blocks.as_mut()[callsite.block].terminator.as_mut().unwrap();
+    let terminator = &mut caller_body.basic_blocks.as_mut()[callsite.block].terminator;
     let TerminatorKind::Call { ref func, ref mut args, destination, unwind, target, .. } =
         terminator.kind
     else {
@@ -1005,10 +1005,10 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     }
     caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 
-    caller_body[callsite.block].terminator = Some(Terminator {
+    caller_body[callsite.block].terminator = Terminator {
         source_info: callsite.source_info,
         kind: TerminatorKind::goto(integrator.map_block(START_BLOCK)),
-    });
+    };
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
     // pushing constants that still need evaluation to `required_consts`, here they may have been evaluated
