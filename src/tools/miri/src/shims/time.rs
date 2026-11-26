@@ -1,10 +1,9 @@
 use std::ffi::{OsStr, OsString};
-use std::fmt::Write;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
-use chrono_tz::Tz;
+use chrono_tz::{OffsetComponents, OffsetName, Tz};
 use rustc_target::spec::Os;
 
 use crate::*;
@@ -110,7 +109,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = ecx.read_pointer(tz_op)?;
         if !ecx.ptr_is_null(tz)? {
-            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            throw_unsup_format!(
+                "gettimeofday with non-null `tz` pointer is obsolete and not supported"
+            );
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -145,19 +146,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
         // Figure out what time zone is in use
-        let tz = ecx.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
-        let tz = match tz.into_string() {
-            Ok(tz) => Tz::from_str(&tz).unwrap_or(Tz::UTC),
-            _ => Tz::UTC,
-        };
+        let tz_name = ecx.get_env_var(OsStr::new("TZ"))?.unwrap_or_else(|| OsString::from("UTC"));
+        let tz = tz_name.to_str().and_then(|tz| Tz::from_str(tz).ok()).unwrap_or(Tz::UTC);
 
         // Convert that to local time, then return the broken-down time value.
         let dt: DateTime<Tz> = dt_utc.with_timezone(&tz);
+        let offset = dt.offset();
 
-        // This value is always set to -1, because there is no way to know if dst is in effect with
-        // chrono crate yet.
-        // This may not be consistent with libc::localtime_r's result.
-        let tm_isdst = -1;
         ecx.write_int_fields_named(
             &[
                 ("tm_sec", dt.second().into()),
@@ -168,7 +163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("tm_year", dt.year().strict_sub(1900).into()),
                 ("tm_wday", dt.weekday().num_days_from_sunday().into()),
                 ("tm_yday", dt.ordinal0().into()),
-                ("tm_isdst", tm_isdst),
+                ("tm_isdst", if offset.dst_offset().is_zero() { 0 } else { 1 }),
             ],
             &result,
         )?;
@@ -177,33 +172,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // the additional tm_zone/tm_gmtoff fields.
         // https://docs.oracle.com/cd/E36784_01/html/E36874/localtime-r-3c.html
         if !matches!(&ecx.tcx.sess.target.os, Os::Solaris | Os::Illumos) {
-            // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
-            // This may not be consistent with libc::localtime_r's result.
+            // Get relevant information.
+            let offset_in_seconds = offset.fix().local_minus_utc();
+            let timezone_name = offset.abbreviation().unwrap_or_else(|| offset.tz_id());
 
-            let offset_in_seconds = dt.offset().fix().local_minus_utc();
-            let tm_gmtoff = offset_in_seconds;
-            let mut tm_zone = String::new();
-            if offset_in_seconds < 0 {
-                tm_zone.push('-');
-            } else {
-                tm_zone.push('+');
-            }
-            let offset_hour = offset_in_seconds.abs() / 3600;
-            write!(tm_zone, "{offset_hour:02}").unwrap();
-            let offset_min = (offset_in_seconds.abs() % 3600) / 60;
-            if offset_min != 0 {
-                write!(tm_zone, "{offset_min:02}").unwrap();
-            }
-
-            // Add null terminator for C string compatibility.
-            tm_zone.push('\0');
-
-            // Deduplicate and allocate the string.
-            let tm_zone_ptr = ecx.allocate_bytes_dedup(tm_zone.as_bytes())?;
+            // Allocate the string with trailing null. This acts like a global variable:
+            // it is deduplicated and the user is not expected to free it.
+            let tm_zone = ecx.allocate_str_dedup(&format!("{timezone_name}\0"))?;
 
             // Write the timezone pointer and offset into the result structure.
-            ecx.write_pointer(tm_zone_ptr, &ecx.project_field_named(&result, "tm_zone")?)?;
-            ecx.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
+            ecx.write_pointer(tm_zone.ptr(), &ecx.project_field_named(&result, "tm_zone")?)?;
+            ecx.write_int_fields_named(&[("tm_gmtoff", offset_in_seconds.into())], &result)?;
         }
         interp_ok(result.ptr())
     }
