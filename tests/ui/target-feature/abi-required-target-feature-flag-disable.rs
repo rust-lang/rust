@@ -1,7 +1,7 @@
-//! Ensure ABI-required features cannot be disabled via `-Ctarget-feature`.
+//! Ensure ABI-required features cannot be disabled via `-Ctarget-feature`/`-Zllvm-target-feature`.
 //! Also covers the case of a feature indirectly disabling another via feature implications.
 //@ compile-flags: --crate-type=lib
-//@ revisions: x86 x86-implied aarch64 powerpc64 powerpc64le riscv loongarch
+//@ revisions: x86 x86-implied aarch64 aarch64-llvm powerpc64 powerpc64le riscv riscv-llvm loongarch
 //@[x86] compile-flags: --target=x86_64-unknown-linux-gnu -Ctarget-feature=-x87
 //@[x86] needs-llvm-components: x86
 //@[x86] build-pass
@@ -17,25 +17,31 @@
 //@[riscv] compile-flags: --target=riscv64gc-unknown-none-elf -Ctarget-feature=-d
 //@[riscv] needs-llvm-components: riscv
 //@[riscv] build-pass
+//@[riscv-llvm] compile-flags: --target=riscv64gc-unknown-none-elf -Zllvm-target-feature=-d
+//@[riscv-llvm] needs-llvm-components: riscv
+//@[riscv-llvm] build-pass
 //@[loongarch] compile-flags: --target=loongarch64-unknown-none -Ctarget-feature=-d
 //@[loongarch] needs-llvm-components: loongarch
 //@[loongarch] build-pass
 
+// Just a warning on most targets, but a hard error on aarch64
 //@[aarch64] compile-flags: --target=aarch64-unknown-linux-gnu -Ctarget-feature=-neon
 //@[aarch64] needs-llvm-components: aarch64
-//@[aarch64] minicore-compile-flags: -Ctarget-feature=+neon
-// Just a warning on most targets, but a hard error on aarch64
 //@[aarch64] check-fail
+//@[aarch64-llvm] compile-flags: --target=aarch64-unknown-linux-gnu -Zllvm-target-feature=-neon
+//@[aarch64-llvm] needs-llvm-components: aarch64
+//@[aarch64-llvm] check-fail
 
 // Remove some LLVM warnings that only show up sometimes.
 //@ normalize-stderr: "\n[^\n]*(target-abi|lp64f)[^\n]*" -> ""
-//@ add-minicore
+
 
 #![feature(no_core)]
 #![no_core]
 
-extern crate minicore;
-use minicore::*;
+// Cannot use minicore as some of these flags make it fail to compile, and it is those flags we are
+// testing. The -Zllvm-target-feature flag is even a target modifier so we cannot compile minicore
+// with different flags either.
 
-//[x86,x86-implied,powerpc64,powerpc64le,riscv,loongarch]~? WARN must be enabled to ensure that the ABI
-//[aarch64]~? ERROR must be enabled to ensure that the ABI
+//[x86,x86-implied,powerpc64,powerpc64le,riscv,riscv-llvm,loongarch]~? WARN must be enabled to ensure that the ABI
+//[aarch64,aarch64-llvm]~? ERROR must be enabled to ensure that the ABI

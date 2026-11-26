@@ -168,21 +168,23 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     #[cfg(not(feature = "master"))]
     let x86_interrupt = false;
 
-    let mut function_features = codegen_fn_attrs
-        .target_features
-        .iter()
-        .map(|features| features.name.as_str())
-        .flat_map(|feat| to_gcc_features(&cx.tcx.sess.target, feat).into_iter())
-        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match *x {
-            InstructionSetAttr::ArmA32 => "-thumb-mode", // FIXME(antoyo): support removing feature.
-            InstructionSetAttr::ArmT32 => "thumb-mode",
-        }))
-        .collect::<Vec<_>>();
-
     // FIXME(antoyo): cg_llvm adds global features to each function so that LTO keep them.
     // Check if GCC requires the same.
-    let mut global_features = cx.tcx.sess.global_backend_features.iter().map(|s| s.as_str());
-    function_features.extend(&mut global_features);
+    let mut function_features: Vec<&str> =
+        cx.tcx.sess.global_backend_features.iter().map(|s| s.as_str()).collect();
+
+    function_features.extend(
+        codegen_fn_attrs
+            .target_features
+            .iter()
+            .map(|features| features.name.as_str())
+            .flat_map(|feat| to_gcc_features(&cx.tcx.sess.target, feat).into_iter())
+            .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match *x {
+                InstructionSetAttr::ArmA32 => "-thumb-mode", // FIXME(antoyo): support removing feature.
+                InstructionSetAttr::ArmT32 => "thumb-mode",
+            })),
+    );
+
     if x86_interrupt {
         // GCC does not preserve SSE, MMX, or x87 state in interrupt handlers and rejects
         // them whenever those instruction sets are enabled, even if the handler does not
