@@ -1,3 +1,4 @@
+use core::mem;
 use std::any::TypeId;
 use std::ptr::DynMetadata;
 
@@ -12,6 +13,9 @@ impl Blah for Garlic {
 }
 unsafe impl Send for Garlic {}
 
+trait RefUnit {}
+impl<'a> RefUnit for &'a () {}
+
 #[test]
 fn test_implements_trait() {
     const {
@@ -19,6 +23,14 @@ fn test_implements_trait() {
         assert!(TypeId::of::<Garlic>().trait_info_of::<dyn Blah + Send>().is_some());
         assert!(TypeId::of::<*const Box<Garlic>>().trait_info_of::<dyn Sync>().is_none());
         assert!(TypeId::of::<u8>().trait_info_of_trait_type_id(TypeId::of::<dyn Blah>()).is_none());
+        assert!(
+            TypeId::of::<for<'a> fn(&'a ()) -> &'a ()>()
+                .function_ptr()
+                .unwrap()
+                .output()
+                .trait_info_of::<dyn RefUnit>()
+                .is_some()
+        );
     }
 }
 
@@ -45,7 +57,7 @@ fn test_dyn_creation() {
             .unwrap()
         }.get_vtable(),
         unsafe {
-            crate::mem::transmute::<_, DynMetadata<*const ()>>(
+            mem::transmute::<_, DynMetadata<*const ()>>(
                 const {
                     TypeId::of::<Garlic>().trait_info_of::<dyn Blah>()
                 }.unwrap().get_vtable(),

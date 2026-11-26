@@ -2,6 +2,7 @@
 use std::num::NonZero;
 
 use rustc_attr_ir::find_attr;
+use rustc_attr_parsing::{RenamedLintSuggestion, UnknownLintSuggestion};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
@@ -12,13 +13,13 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
+use rustc_lint_defs::LintName;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
-use rustc_structures::LintName;
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
@@ -64,17 +65,6 @@ impl Subdiagnostic for OverruledAttributeSub {
             }
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$lint_name}`", code = E0710)]
-pub(crate) struct UnknownToolInScopedLint {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub tool_name: Symbol,
-    pub lint_name: LintName,
-    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
-    pub is_nightly_build: bool,
 }
 
 #[derive(Diagnostic)]
@@ -310,6 +300,17 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
     #[suggestion("try naming the parameter or explicitly ignoring it", code = "_: {ty_snip}")]
     pub suggestion: (Span, Applicability),
     pub ty_snip: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag("identifier `{$ident}` is bound more than once in this parameter list")]
+pub(crate) struct BuiltinDuplicateParameterNames {
+    #[primary_span]
+    #[label("used as parameter more than once")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("used here already")]
+    pub(crate) prev_use: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1100,7 +1101,7 @@ pub(crate) struct ConstItemInteriorMutationsDiag<'tcx> {
     pub method_name: Ident,
     pub const_name: Ident,
     pub const_ty: Ty<'tcx>,
-    #[label("`{$const_name}` is a interior mutable `const` item of type `{$const_ty}`")]
+    #[label("`{$const_name}` is an interior mutable `const` item of type `{$const_ty}`")]
     pub receiver_span: Span,
     #[subdiagnostic]
     pub sugg_static: Option<ConstItemInteriorMutationsSuggestionStatic>,
@@ -1311,7 +1312,7 @@ pub(crate) struct AttributeKindInFindAttr;
 #[derive(Diagnostic)]
 #[diag("match is not exhaustive")]
 #[help("explicitly list all variants of the enum in a `match`")]
-pub(crate) struct RustcMustMatchExhaustivelyNotExhaustive {
+pub(crate) struct LintMustMatchExhaustivelyNotExhaustive {
     #[label("required because of this attribute")]
     pub attr_span: Span,
 
@@ -1403,42 +1404,12 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName {
-    pub lint_name: LintName,
-    #[suggestion("change it to", code = "{replacement}", applicability = "machine-applicable")]
-    pub suggestion: Span,
-    pub replacement: LintName,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
 #[help("change it to {$replacement}")]
 pub(crate) struct DeprecatedLintNameFromCommandLine {
     pub lint_name: LintName,
     pub replacement: LintName,
     #[subdiagnostic]
     pub requested_level: RequestedLevel,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint `{$name}` has been renamed to `{$replacement}`")]
-pub(crate) struct RenamedLint {
-    pub name: LintName,
-    pub replacement: LintName,
-    #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion {
-    #[suggestion("use the new name", code = "{replacement}", applicability = "machine-applicable")]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replacement: LintName,
-    },
-    #[help("use the new name `{$replacement}`")]
-    WithoutSpan { replacement: LintName },
 }
 
 #[derive(Diagnostic)]
@@ -1453,52 +1424,12 @@ pub(crate) struct RenamedLintFromCommandLine {
 }
 
 #[derive(Diagnostic)]
-#[diag("lint `{$name}` has been removed: {$reason}")]
-pub(crate) struct RemovedLint<'a> {
-    pub name: LintName,
-    pub reason: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag("lint `{$lint_name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLintFromCommandLine<'a> {
     pub lint_name: LintName,
     pub reason: &'a str,
     #[subdiagnostic]
     pub requested_level: RequestedLevel,
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown lint: `{$name}`")]
-pub(crate) struct UnknownLint {
-    pub name: LintName,
-    #[subdiagnostic]
-    pub suggestion: Option<UnknownLintSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnknownLintSuggestion {
-    #[suggestion(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints
-            *[false] did you mean
-        }",
-        code = "{replacement}",
-        applicability = "maybe-incorrect"
-    )]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replacement: LintName,
-        from_rustc: bool,
-    },
-    #[help(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints: `{$replacement}`
-            *[false] did you mean: `{$replacement}`
-        }"
-    )]
-    WithoutSpan { replacement: LintName, from_rustc: bool },
 }
 
 #[derive(Diagnostic)]
@@ -3145,12 +3076,16 @@ pub(crate) struct EqInternalMethodImplemented;
 #[derive(Diagnostic)]
 #[diag("cast from `{$expr_ty}` to `{$cast_ty}` implicitly relies on exposed provenance")]
 #[help(
-    "if conforming to strict provenance is not possible, use `std::ptr::with_exposed_provenance()`"
+    "if conforming to strict provenance is not possible, use `{$krate}::ptr::with_exposed_provenance()`"
 )]
-#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+#[note(
+    "for more information, visit <https://doc.rust-lang.org/{$krate}/ptr/index.html#provenance>"
+)]
 pub(crate) struct ImplicitProvenanceCastsInt2Ptr<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
+    /// Either `std` or `core`.
+    pub krate: &'static str,
     #[subdiagnostic]
     pub sugg: Option<Int2PtrSuggestion>,
 }
@@ -3170,10 +3105,14 @@ pub(crate) struct Int2PtrSuggestion {
 #[derive(Diagnostic)]
 #[diag("cast from `{$cast_from_ty}` to `{$cast_to_ty}` implicitly exposes pointer provenance")]
 #[help("if conforming to strict provenance is not possible, use `.expose_provenance()`")]
-#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+#[note(
+    "for more information, visit <https://doc.rust-lang.org/{$krate}/ptr/index.html#provenance>"
+)]
 pub(crate) struct ImplicitProvenanceCastsPtr2Int<'tcx> {
     pub cast_from_ty: Ty<'tcx>,
     pub cast_to_ty: Ty<'tcx>,
+    /// Either `std` or `core`, used to link to the matching documentation.
+    pub krate: &'static str,
     #[subdiagnostic]
     pub sugg: Option<Ptr2IntSuggestion<'tcx>>,
 }

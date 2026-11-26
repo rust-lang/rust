@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{iter, mem};
+use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
@@ -1769,7 +1769,7 @@ impl InvocationCollectorNode for ast::Arm {
 impl InvocationCollectorNode for ast::Stmt {
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Stmt(Box::new(self))
+        Annotatable::Stmt(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_stmts()
@@ -2228,17 +2228,35 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Run attributes through the attribute parser
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
-        AttributeParser::parse_limited_all(
-            self.cx.sess,
-            attrs,
-            None,
-            AstTarget::MacroCall,
-            call.span(),
-            self.cx.current_expansion.lint_node_id,
-            Some(self.cx.ecfg.features),
-            ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
-            Some(self.cx.resolver.registered_attr_tools()),
-        );
+        let parse = |group| {
+            AttributeParser::parse_limited_all(
+                self.cx.sess,
+                group,
+                None,
+                AstTarget::MacroCall,
+                call.span(),
+                self.cx.current_expansion.lint_node_id,
+                Some(self.cx.ecfg.features),
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                Some(self.cx.resolver.registered_attr_tools()),
+                Some(self.cx.resolver.registered_lint_tools()),
+            )
+        };
+
+        let mut doc_attrs = vec![];
+        for attr in attrs {
+            if matches!(attr.kind, AttrKind::DocComment(..)) {
+                doc_attrs.push(attr.clone());
+                continue;
+            }
+            parse(slice::from_ref(attr));
+        }
+
+        // Parse all doc comments together in a group, to prevent a group of
+        // unused doc comments from emitting multiple lints
+        if !doc_attrs.is_empty() {
+            parse(doc_attrs.as_slice());
+        }
     }
 
     fn expand_cfg_true(

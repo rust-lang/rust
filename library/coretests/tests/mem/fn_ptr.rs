@@ -1,10 +1,11 @@
 use std::any::TypeId;
-use std::mem::type_info::{Abi, FnPtr, Type, TypeKind};
+use std::mem::type_info::{Abi, TypeKind};
 
 const STRING_TY: TypeId = const { TypeId::of::<String>() };
 const U8_TY: TypeId = const { TypeId::of::<u8>() };
 const UNIT_TY: TypeId = const { TypeId::of::<()>() };
 const TUPLE_STRING_U8_TY: TypeId = const { TypeId::of::<(String, u8)>() };
+const STATIC_REGION_UNIT_TY: TypeId = const { TypeId::of::<&'static ()>() };
 
 #[test]
 fn test_fn_ptrs() {
@@ -18,24 +19,26 @@ fn test_fn_ptrs() {
 }
 
 #[test]
-fn test_typekind() {
-    assert!(matches!(const { Type::of::<fn()>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(&u8, &u8)>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(unsafe fn())>().kind }, TypeKind::FnPtr));
-    assert!(matches!(const { Type::of::<fn(extern "system" fn())>().kind }, TypeKind::FnPtr));
-    assert!(matches!(
-        const { Type::of::<fn(#[rustc_splat] (String, u8))>().kind },
-        TypeKind::FnPtr
-    ));
+fn test_type() {
+    assert!(matches!(const { TypeKind::of::<fn()>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(&u8, &u8)>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(unsafe fn())>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(extern "system" fn())>() }, TypeKind::FnPtr));
+    assert!(matches!(const { TypeKind::of::<fn(#[rustc_splat] (String, u8))>() }, TypeKind::FnPtr));
 }
 
 #[test]
 fn test_ref() {
-    // references are tricky because the lifetimes give the references different type ids
-    // so we check the pointees instead
-    const F: FnPtr = TypeId::of::<fn(&u8, &u8)>().function_ptr().unwrap();
-    assert_eq!(const { F.inputs()[0].points_to() }, Some(U8_TY));
-    assert_eq!(const { F.inputs()[1].points_to() }, Some(U8_TY));
+    // function_ptr replaces bound regions with erased ones.
+    // So, check if TypeId of &'a () is identical to &'static ()
+    let f1 = const { TypeId::of::<for<'a> fn(&'a ()) -> &'a ()>().function_ptr().unwrap() };
+    assert_eq!(f1.inputs(), [STATIC_REGION_UNIT_TY]);
+    assert_eq!(f1.output(), STATIC_REGION_UNIT_TY);
+
+    // function_ptr() does not replace inner bound regions of a nested fn
+    let f2 =
+        const { TypeId::of::<for<'a> fn(for<'x> fn(&'x u8, &'a u8))>().function_ptr().unwrap() };
+    assert_eq!(f2.inputs(), [const { TypeId::of::<for<'x> fn(&'x u8, &'static u8)>() }]);
 }
 
 #[test]

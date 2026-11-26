@@ -1,3 +1,8 @@
+#![feature(cmp_minmax)]
+#![feature(cmp_splat)]
+#![feature(const_cmp)]
+#![feature(const_trait_impl)]
+
 use core::cmp;
 use core::cmp::Ordering::{self, *};
 

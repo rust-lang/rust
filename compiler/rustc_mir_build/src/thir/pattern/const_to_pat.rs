@@ -51,6 +51,9 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         match c.kind() {
             ty::ConstKind::Alias(_, alias_const) => convert.alias_to_pat(alias_const, ty),
             ty::ConstKind::Value(value) => convert.valtree_to_pat(value),
+            ty::ConstKind::Error(guard) => {
+                Box::new(Pat { span, ty, kind: PatKind::Error(guard), extra: None })
+            }
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
@@ -484,7 +487,14 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind, extra: None })
+        let mut pat = Box::new(Pat { span, ty, kind, extra: None });
+        if matches!(ty.kind(), ty::Array(..) | ty::Slice(_)) {
+            // Record the original constant value on array and slice nodes, so
+            // that match lowering can compare the scrutinee against the whole
+            // constant at once, rather than element by element.
+            pat.extra.get_or_insert_default().expanded_const_value = Some(value);
+        }
+        pat
     }
 }
 

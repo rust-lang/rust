@@ -45,7 +45,8 @@ use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, OptLevel};
+use rustc_session::config::OptLevel;
+use rustc_session::output::ErrorOutputType;
 use rustc_session::{EarlyDiagCtxt, EarlySession, Session};
 use rustc_structures::CrateType;
 
@@ -256,10 +257,10 @@ impl CodegenBackend for MiriCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        incr_comp_session: Option<&rustc_session::IncrCompSession>,
+        incr_comp_session: Option<&mut rustc_middle::dep_graph::IncrCompSession>,
         outputs: &rustc_session::config::OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, rustc_middle::dep_graph::WorkProductMap) {
+    ) -> CompiledModules {
         self.dummy.join_codegen(ongoing_codegen, sess, incr_comp_session, outputs, crate_info)
     }
 

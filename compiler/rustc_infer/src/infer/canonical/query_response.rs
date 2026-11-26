@@ -143,12 +143,12 @@ impl<'tcx> InferCtxt<'tcx> {
             TraitErrors::NoErrors => Certainty::Proven,
         };
 
-        let region_obligations = self.take_registered_region_obligations();
+        let type_outlives_constraints = self.take_registered_type_outlives_constraints();
         let region_assumptions = self.take_registered_region_assumptions();
-        debug!(?region_obligations);
+        debug!(?type_outlives_constraints);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                region_obligations,
+                type_outlives_constraints,
                 region_constraints,
                 region_assumptions,
             )
@@ -304,16 +304,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     obligations.extend(
-                        self.at(&cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                        self.eq_raw(&cause, param_env, DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
                     obligations.extend(
-                        self.at(&cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                        self.eq_raw(&cause, param_env, DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
                 }
@@ -526,13 +524,14 @@ impl<'tcx> InferCtxt<'tcx> {
             // variable that got constrained to the opaque type itself. In that case we want to equate
             // the generic args of the opaque with the generic params of its hidden type version.
             obligations.extend(
-                self.at(cause, param_env)
-                    .eq(
-                        DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, ty::IsRigid::No, a.def_id.to_def_id(), a.args),
-                        b,
-                    )?
-                    .obligations,
+                self.eq_raw(
+                    cause,
+                    param_env,
+                    DefineOpaqueTypes::Yes,
+                    Ty::new_opaque(self.tcx, ty::IsRigid::No, a.def_id.to_def_id(), a.args),
+                    b,
+                )?
+                .obligations,
             );
         }
 
@@ -585,8 +584,7 @@ impl<'tcx> InferCtxt<'tcx> {
             match (value1.kind(), value2.kind()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     obligations.extend(
-                        self.at(cause, param_env)
-                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                        self.eq_raw(cause, param_env, DefineOpaqueTypes::Yes, v1, v2)?
                             .into_obligations(),
                     );
                 }
@@ -604,7 +602,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
+                    let ok = self.eq_raw(cause, param_env, DefineOpaqueTypes::Yes, v1, v2)?;
                     obligations.extend(ok.into_obligations());
                 }
                 _ => {
@@ -616,10 +614,10 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// Given the region obligations and constraints scraped from the infcx,
+/// Given the type outlives constraints and region constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
-    outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
+    type_outlives_constraints: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
@@ -654,7 +652,7 @@ pub fn make_query_region_constraints<'tcx>(
                 }
             }
         })
-        .chain(outlives_obligations.into_iter().map(
+        .chain(type_outlives_constraints.into_iter().map(
             |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
                 QueryRegionConstraint {
                     constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),

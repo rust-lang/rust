@@ -16,8 +16,8 @@ use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_unicode::unicode_properties::emoji::UnicodeEmoji;
 use tracing::debug;
-use unicode_properties::emoji::UnicodeEmoji;
 
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
@@ -1301,7 +1301,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 }
 
 pub fn nfc_normalize(string: &str) -> Symbol {
-    use unicode_normalization::{IsNormalized, UnicodeNormalization, is_nfc_quick};
+    use rustc_unicode::unicode_normalization::{IsNormalized, UnicodeNormalization, is_nfc_quick};
     match is_nfc_quick(string.chars()) {
         IsNormalized::Yes => Symbol::intern(string),
         _ => {

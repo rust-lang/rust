@@ -103,17 +103,6 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - name: Install cargo in AWS CodeBuild
-        if: matrix.codebuild
-        run: |
-          # Check if cargo is installed
-          if ! command -v cargo &> /dev/null; then
-            echo "Cargo not found, installing Rust..."
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile=minimal
-            # Make cargo available in PATH
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          fi
-
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
@@ -204,10 +193,10 @@ jobs:
       - name: Remove link.exe
         run: rm $(which link.exe) || true
 
-      - name: Workaroud for \#165953
-        if: ${{ contains(matrix.name, 'aarch64-msvc') }}
+      - name: Pin MSVC
+        if: ${{ contains(matrix.name, 'msvc') }}
         shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
-        run: src\ci\scripts\aarch64-msvc-workaround.ps1
+        run: src\ci\scripts\pin-msvc.ps1
 
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available

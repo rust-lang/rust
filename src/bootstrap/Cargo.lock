@@ -55,6 +55,7 @@ dependencies = [
  "libc",
  "object",
  "opener",
+ "rustix",
  "semver",
  "serde",
  "serde_derive",

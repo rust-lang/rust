@@ -5,8 +5,10 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iterator_try_collect)]
 #![feature(option_into_flat_iter)]
+#![feature(register_tool)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use hir::ConstContext;
@@ -329,12 +331,13 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
-    // All body-owners have MIR associated with them.
+    // Most body-owners have MIR associated with them...
     let mut set: FxIndexSet<_> = tcx.hir_body_owners().collect();
-
-    // Remove the fake bodies for `global_asm!`, since they're not useful
-    // to be emitted (`--emit=mir`) or encoded (in metadata).
-    set.retain(|&def_id| !matches!(tcx.def_kind(def_id), DefKind::GlobalAsm));
+    // ... except for`global_asm!` and intrinsics without fallback bodies.
+    set.retain(|&def_id| {
+        let def_kind = tcx.def_kind(def_id);
+        !matches!(def_kind, DefKind::GlobalAsm) && !tcx.is_intrinsic_that_must_be_overridden(def_id)
+    });
 
     // Coroutine-closures (e.g. async closures) have an additional by-move MIR
     // body that isn't in the HIR.
@@ -393,6 +396,13 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 
 /// Implementation of the `mir_built` query.
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
+    if tcx.is_intrinsic_that_must_be_overridden(def) {
+        span_bug!(
+            tcx.def_span(def),
+            "this intrinsic must be overridden by the codegen backend, it has no meaningful body",
+        )
+    }
+
     // Delegate to the main MIR building code in the `rustc_mir_build` crate.
     // This is the one place that is allowed to call `build_mir_inner_impl`.
     let mut body = tcx.build_mir_inner_impl(def);

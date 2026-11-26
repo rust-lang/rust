@@ -239,7 +239,8 @@ rustc_index::newtype_index! {
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 // We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in

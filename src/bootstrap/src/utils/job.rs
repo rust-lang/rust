@@ -1,15 +1,22 @@
+#[cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))]
+pub(crate) use self::for_unix::setup;
 #[cfg(windows)]
 pub(crate) use self::for_windows::setup;
 use crate::core::session::Session;
 
 #[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
-pub(crate) unsafe fn setup(_sess: &Session) {}
+pub(crate) fn setup(_sess: &Session) {}
 
-#[cfg(all(unix, not(target_os = "haiku")))]
-pub(crate) unsafe fn setup(sess: &Session) {
-    if sess.config.low_priority {
-        unsafe {
-            libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
+#[cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))]
+mod for_unix {
+    use rustix::process::{getpriority_process, setpriority_process};
+
+    pub(crate) fn setup(sess: &super::Session) {
+        const TARGET_NICE: libc::c_int = 10;
+        // The processes that spawn the build are all descendants of the current thread. Unwrap both
+        // of those to alert users to ridiculous Seccomp-BPF setups messing up their performance.
+        if sess.config.low_priority && getpriority_process(None).unwrap() < TARGET_NICE {
+            setpriority_process(None, TARGET_NICE).unwrap();
         }
     }
 }
@@ -59,7 +66,7 @@ mod for_windows {
     use windows::Win32::System::Threading::{BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess};
     use windows::core::PCWSTR;
 
-    pub(crate) unsafe fn setup(sess: &super::Session) {
+    pub(crate) fn setup(sess: &super::Session) {
         // SAFETY: pretty much everything below is unsafe
         unsafe {
             // Enable the Windows Error Reporting dialog which msys disables,

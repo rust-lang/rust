@@ -12,12 +12,6 @@ note: the lint level is defined here
 LL | fn f6(_: impl Fn(#[forbid(keyword_idents_2024)] gen: u8)) {}
    |                           ^^^^^^^^^^^^^^^^^^^
 
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/fn-trait-use-named-params.rs:8:18
-   |
-LL | fn f4(_: impl Fn(/** */ x: u8)) {}
-   |                  ^^^^^^ doc comments are not allowed here
-
 error: the `inline` attribute cannot be used on function params
   --> $DIR/fn-trait-use-named-params.rs:4:20
    |
@@ -33,6 +27,14 @@ LL | fn f3(_: impl Fn(#[cfg_attr(true, inline)] a1: usize)) {}
    |                                   ^^^^^^
    |
    = help: the `inline` attribute can only be applied to functions
+
+error: unused doc comment
+  --> $DIR/fn-trait-use-named-params.rs:8:18
+   |
+LL | fn f4(_: impl Fn(/** */ x: u8)) {}
+   |                  ^^^^^^ rustdoc does not generate documentation for function params
+   |
+   = help: use `/* */` for a plain comment
 
 error[E0658]: the `rustc_splat` attribute is an experimental feature
   --> $DIR/fn-trait-use-named-params.rs:16:15

@@ -882,8 +882,8 @@ impl<'a> State<'a> {
                 self.word("/*DUMMY*/");
                 self.pclose();
             }
-            ast::ExprKind::GcaMacro(expr) => {
-                self.word_nbsp("core::gca!");
+            ast::ExprKind::Gca(expr) => {
+                self.word("k#gca");
                 self.popen();
                 self.print_expr(expr, FixupContext::default());
                 self.pclose()

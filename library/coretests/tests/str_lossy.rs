@@ -1,3 +1,6 @@
+#![feature(str_internals)]
+#![expect(internal_features)]
+
 #[test]
 fn chunks() {
     macro_rules! assert_chunks {

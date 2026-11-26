@@ -479,16 +479,16 @@ pub fn provide(providers: &mut Providers) {
         let node = tcx.hir_node_by_def_id(def_id);
         if let Some(body_id) = node.body_id() {
             tcx.arena.alloc_from_iter(tcx.hir_body_param_idents(body_id))
-        } else if let Node::TraitItem(&TraitItem {
-            kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
+        } else if let Node::ForeignItem(&ForeignItem {
+            kind: ForeignItemKind::Fn(_, params, _),
             ..
         })
-        | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _),
+        | Node::TraitItem(&TraitItem {
+            kind: TraitItemKind::Fn(_, TraitFn::Required(params)),
             ..
         }) = node
         {
-            idents
+            tcx.arena.alloc_from_iter(tcx.param_idents(params))
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),

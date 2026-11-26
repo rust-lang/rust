@@ -56,6 +56,7 @@ use crate::ops::Try;
 /// ```
 #[inline]
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
+#[rustc_diagnostic_item = "iter_repeat_n"]
 pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
     RepeatN { inner: RepeatNInner::new(element, count) }
 }

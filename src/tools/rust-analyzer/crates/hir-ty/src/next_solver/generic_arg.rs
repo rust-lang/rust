@@ -280,6 +280,57 @@ impl<'db> From<Term<'db>> for GenericArg<'db> {
     }
 }
 
+#[derive(PartialEq, Eq, Hash)]
+pub struct StoredTerm {
+    ptr: GenericArgImpl<'static>,
+}
+
+impl Clone for StoredTerm {
+    #[inline]
+    fn clone(&self) -> Self {
+        match self.ptr.term_kind() {
+            TermKind::Ty(it) => std::mem::forget(it.interned.to_owned()),
+            TermKind::Const(it) => std::mem::forget(it.interned.to_owned()),
+        }
+        Self { ptr: self.ptr }
+    }
+}
+
+impl Drop for StoredTerm {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            match self.ptr.term_kind() {
+                TermKind::Ty(it) => it.interned.decrement_refcount(),
+                TermKind::Const(it) => it.interned.decrement_refcount(),
+            }
+        }
+    }
+}
+
+impl StoredTerm {
+    #[inline]
+    fn new(value: Term<'_>) -> Self {
+        let result = Self { ptr: GenericArgImpl { ptr: value.ptr.ptr, _marker: PhantomData } };
+        // Increase refcount.
+        std::mem::forget(result.clone());
+        result
+    }
+
+    #[inline]
+    pub fn as_ref<'db>(&self) -> Term<'db> {
+        Term { ptr: self.ptr }
+    }
+}
+
+impl std::fmt::Debug for StoredTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl_foldable_for_stored_type!(StoredTerm);
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Term<'db> {
     ptr: GenericArgImpl<'db>,
@@ -295,6 +346,11 @@ impl<'db> std::fmt::Debug for Term<'db> {
 }
 
 impl<'db> Term<'db> {
+    #[inline]
+    pub fn store(self) -> StoredTerm {
+        StoredTerm::new(self)
+    }
+
     #[inline]
     pub fn kind(self) -> TermKind<'db> {
         self.ptr.term_kind()

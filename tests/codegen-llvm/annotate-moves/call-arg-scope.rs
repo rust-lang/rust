@@ -97,8 +97,7 @@ fn transform_large(mut s: LargeStruct) -> LargeStruct {
 // CHECK-DAG: ![[#CALL1_LOC]] = !DILocation({{.*}}scope: ![[#CALL1_SCOPE:]]
 // CHECK-DAG: ![[#CALL1_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "test_call_with_single_arg"
 
-// CHECK-DAG: ![[#CALL2_ARG1_LOC]] = !DILocation({{.*}}scope: ![[#CALL2_ARG1_SCOPE:]]
-// CHECK-DAG: ![[#CALL2_ARG1_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_copy<call_arg_scope::LargeStruct,{{ *[0-9]+}}>"
+// CHECK-DAG: ![[#CALL2_ARG1_LOC]] = !DILocation({{.*}}scope: ![[#CALL1_ARG_SCOPE]]
 // CHECK-DAG: ![[#CALL2_ARG2_LOC]] = !DILocation({{.*}}scope: ![[#CALL2_ARG2_SCOPE:]]
 // CHECK-DAG: ![[#CALL2_ARG2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_copy<call_arg_scope::MediumStruct,{{ *[0-9]+}}>"
 // CHECK-DAG: ![[#CALL2_LOC]] = !DILocation({{.*}}scope: ![[#CALL2_SCOPE:]]

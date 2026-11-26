@@ -1222,14 +1222,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
 /// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
-/// This intrinsic does not have a stable counterpart.
-/// # Safety
-///
-/// The safety requirements are consistent with [`copy_nonoverlapping`]
-/// while the read and write behaviors are volatile,
-/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
-///
-/// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
@@ -1239,20 +1232,14 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 /// The volatile parameter is set to `true`, so it will not be optimized out
 /// unless size is equal to zero.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
 /// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
-/// This intrinsic does not have a stable counterpart.
-/// # Safety
-///
-/// The safety requirements are consistent with [`write_bytes`] while the write behavior is volatile,
-/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
-///
-/// [`write_bytes`]: ptr::write_bytes
+/// This intrinsic does not have a public counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
@@ -1260,12 +1247,20 @@ pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 /// Performs a volatile load from the `src` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
+///
+/// # Safety
+///
+/// See [`crate::ptr::read_volatile`] for safety conditions.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_load<T>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
+///
+/// # Safety
+///
+/// See [`crate::ptr::write_volatile`] for safety conditions.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
@@ -1274,6 +1269,10 @@ pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
 /// The pointer is not required to be aligned.
 ///
 /// This intrinsic does not have a stable counterpart.
+///
+/// # Safety
+/// See [`crate::ptr::read_volatile`] for safety conditions,
+/// but note that `src` does not need to be aligned.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
@@ -1282,6 +1281,10 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 /// The pointer is not required to be aligned.
 ///
 /// This intrinsic does not have a stable counterpart.
+///
+/// # Safety
+/// See [`crate::ptr::write_volatile`] for safety conditions,
+/// but note that `dst` does not need to be aligned.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
@@ -1505,6 +1508,54 @@ intrinsic_dispatch_on_type! {
     f32 => { libm::fmaf(a, b, c) }
     f64 => { libm::fma(a, b, c) }
     f128 => { libm::fmaf128(a, b, c) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Calculates `x * 2.0^exp` efficiently.
+    ///
+    /// The public versions of this intrinsic are available on the float primitives via the
+    /// `scalbn` method. For example, [`f32::scalbn`](../../std/primitive.f32.html#method.scalbn).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn scalbn<T: bounds::FloatPrimitive>(x: T, exp: i32) -> T;
+
+    f16 => { libm::scalbnf16(x, exp) }
+    f32 => { libm::scalbnf(x, exp) }
+    f64 => { libm::scalbn(x, exp) }
+    f128 => { libm::scalbnf128(x, exp) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Extracts the unbiased exponent of the input value, ignoring the sign.
+    ///
+    /// When the input is an infinity, the result is [`i32::MAX`].
+    /// The intrinsic may not be called on a zero or NaN.
+    ///
+    /// The public versions of this intrinsic are available on the float primitives via the
+    /// `ilogb` method. For example, [`f32::ilogb`](../../std/primitive.f32.html#method.ilogb).
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined when the input is zero or NaN.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    // libm requirements ensure the correct result for infinities.
+    // libm implementations differ on zero and NaN, but the intrinsic may not be called for such
+    // inputs anyway.
+    #[rustc_do_not_const_check]
+    pub const unsafe fn ilogb<T: bounds::FloatPrimitive>(x: T) -> i32;
+
+    f16 => { libm::ilogbf16(x) }
+    f32 => { libm::ilogbf(x) }
+    f64 => { libm::ilogb(x) }
+    f128 => { libm::ilogbf128(x) }
 }
 
 /// Returns `a * b + c`, non-deterministically executing either a fused multiply-add or two
@@ -2400,6 +2451,7 @@ pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
 /// which is UB if any of their inputs are `undef`.)
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[lang = "raw_eq"]
 pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 
 /// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
@@ -2419,6 +2471,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[lang = "compare_bytes"]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
@@ -2701,7 +2754,7 @@ pub const fn ub_checks() -> bool {
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn overflow_checks() -> bool {
-    cfg!(debug_assertions)
+    cfg!(overflow_checks)
 }
 
 /// Allocates a block of memory at compile time.

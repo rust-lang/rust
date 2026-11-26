@@ -1,7 +1,7 @@
 use genmc_sys::{ActionKind, ExecutionStatus};
 use rustc_data_structures::either::Either;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Intrinsic, Ty};
 
 use super::GenmcCtx;
 use crate::{
@@ -87,8 +87,8 @@ fn get_function_kind<'tcx>(
         // The next step is a call to a regular Rust function.
         return interp_ok(NonAtomic);
     };
-    let intrinsic_name = intrinsic_def.name.as_str();
-    let Some(suffix) = intrinsic_name.strip_prefix("atomic_") else {
+    let name = if let Intrinsic::Rustc(name) = intrinsic_def.name { Some(name) } else { None };
+    let Some(suffix) = name.as_ref().and_then(|name| name.as_str().strip_prefix("atomic_")) else {
         return interp_ok(NonAtomic); // Non-atomic intrinsic, so guaranteed not an atomic load
     };
     // `atomic_store`, `atomic_fence` and `atomic_singlethreadfence` are not considered loads.

@@ -12,6 +12,7 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
@@ -32,12 +33,12 @@ use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
 use crate::llvm::debuginfo::{
-    DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::llvm::{self, Value};
@@ -53,11 +54,35 @@ mod utils;
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
-
     type_map: metadata::TypeMap<'ll, 'tcx>,
     adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
+
+    /// A cache that lets different functions (within this CGU) that contain the same inlined
+    /// callee share a single `DISubprogram`.
+    inlined_function_scopes: RefCell<FxHashMap<Instance<'tcx>, &'ll DIScope>>,
+
+    /// Used alongside `inlined_function_scopes` to ensure that each `(subprogram, arg_index)` pair
+    /// has just one `DILocalVariable`, which LLVM requires.
+    ///
+    /// Consider the following example.
+    /// ```ignore (incomplete)
+    /// #[inline] fn callee(x: &[u8]) { ... }
+    /// fn f1(s: &[u8]) { callee(s) }
+    /// fn f2(s: &mut [u8]) { callee(&*s) }
+    /// fn f3(p: *const [u8]) { callee(unsafe { &*p }) }
+    /// ```
+    /// The `ReferencePropagation` pass eliminates reborrows, and we end up with a MIR local in
+    /// each of `f1`, `f2`, and `f3` that `callee`'s parameter debuginfo points to. But each of
+    /// those MIR locals has a different type: `&[u8]`, `&mut [u8]`, and `*const [u8]`. Naively, we
+    /// would end up with three distinct `DILocalVariable` entries, each one claiming to be param 1
+    /// of `callee`, identical except for their type. LLVM's debug verifier doesn't like this.
+    ///
+    /// With `params_seen`, we create a `DILocalVariable` for `f1` and then `f2` and `f3` reuse it.
+    /// (Though it's not guaranteed `f1` will come first.) That means they get a slightly wrong
+    /// type in the debugger (e.g. `&[u8]` instead of `&mut [u8]` in `f2`).
+    params_seen: RefCell<FxHashMap<(&'ll DISubprogram, usize), &'ll DIVariable>>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
@@ -109,8 +134,10 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             created_files: Default::default(),
             type_map: Default::default(),
             adt_stack: Default::default(),
-            namespace_map: RefCell::new(Default::default()),
+            namespace_map: Default::default(),
             recursion_marker_type: OnceCell::new(),
+            inlined_function_scopes: Default::default(),
+            params_seen: Default::default(),
         }
     }
 
@@ -133,6 +160,14 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         maybe_definition_llfn: Option<Value<'ll>>,
     ) -> &'ll DIScope {
         let tcx = self.tcx;
+
+        // If `maybe_definition_llfn` is `None` then it's an inlined callee. Reuse the previously
+        // generated scope for that callee, if there is one.
+        if maybe_definition_llfn.is_none()
+            && let Some(scope) = debug_context(self).inlined_function_scopes.borrow().get(&instance)
+        {
+            return scope;
+        }
 
         let def_id = instance.def_id();
         let (containing_scope, is_method) = get_containing_scope(self, instance);
@@ -210,7 +245,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             )
         });
 
-        return unsafe {
+        let scope = unsafe {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
@@ -229,6 +264,10 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 decl,
             )
         };
+        if maybe_definition_llfn.is_none() {
+            debug_context(self).inlined_function_scopes.borrow_mut().insert(instance, scope);
+        }
+        return scope;
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
@@ -434,6 +473,22 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
+        let mut opt_subprogram = None;
+        match variable_kind {
+            ArgumentVariable(arg_index) => {
+                // `scope_metadata` must be a local scope. The `params_seen` key must be a
+                // `DISubprogram`.
+                let subprogram = unsafe { llvm::LLVMRustGetDISubprogram(scope_metadata) };
+                if let Some(var) =
+                    debug_context(self).params_seen.borrow().get(&(subprogram, arg_index))
+                {
+                    return var;
+                }
+                opt_subprogram = Some(subprogram);
+            }
+            LocalVariable => {}
+        }
+
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
@@ -444,20 +499,27 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = variable_name.as_str();
 
         match variable_kind {
-            ArgumentVariable(arg_index) => unsafe {
-                llvm::LLVMDIBuilderCreateParameterVariable(
-                    DIB(self),
-                    scope_metadata,
-                    name.as_ptr(),
-                    name.len(),
-                    arg_index as c_uint,
-                    file_metadata,
-                    loc.line,
-                    type_metadata,
-                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
-                    DIFlags::FlagZero,
-                )
-            },
+            ArgumentVariable(arg_index) => {
+                let var = unsafe {
+                    llvm::LLVMDIBuilderCreateParameterVariable(
+                        DIB(self),
+                        scope_metadata,
+                        name.as_ptr(),
+                        name.len(),
+                        arg_index as c_uint,
+                        file_metadata,
+                        loc.line,
+                        type_metadata,
+                        llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                        DIFlags::FlagZero,
+                    )
+                };
+                debug_context(self)
+                    .params_seen
+                    .borrow_mut()
+                    .insert((opt_subprogram.unwrap(), arg_index), var);
+                var
+            }
             LocalVariable => unsafe {
                 llvm::LLVMDIBuilderCreateAutoVariable(
                     DIB(self),

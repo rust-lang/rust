@@ -186,7 +186,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
-        let _ = infcx.process_registered_region_obligations(&outlives_env);
+        let _ = infcx.process_registered_type_outlives_constraints(&outlives_env);
 
         // FIXME(-Zassumptions-on-binders): Handle solver_data
         let region_data =
@@ -901,7 +901,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
+                            match selcx.infcx.eq_raw(
+                                &obligation.cause,
+                                obligation.param_env,
                                 DefineOpaqueTypes::Yes,
                                 c1,
                                 c2,

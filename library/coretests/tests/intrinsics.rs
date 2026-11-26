@@ -1,3 +1,8 @@
+#![feature(core_intrinsics)]
+#![feature(core_intrinsics_fallbacks)]
+#![feature(ptr_metadata)]
+#![expect(internal_features)]
+
 use core::any::TypeId;
 use core::intrinsics::assume;
 use std::fmt::Debug;

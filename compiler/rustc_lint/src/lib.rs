@@ -20,12 +20,14 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(titlecase))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
-#![feature(titlecase)]
+#![feature(register_tool)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 mod async_closures;
@@ -139,7 +141,7 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::MissingDoc;
-pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
+pub use context::{EarlyContext, LateContext, LintContext, LintStore};
 pub use early::diagnostics::DiagAndSess;
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
@@ -184,6 +186,7 @@ early_lint_methods!(
             // tidy-alphabetical-start
             AnonymousParameters: AnonymousParameters,
             DoubleNegations: DoubleNegations,
+            DuplicateParameterNames: DuplicateParameterNames,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             Expr2024: Expr2024,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
@@ -301,9 +304,9 @@ late_lint_methods!(
             BadOptAccess: BadOptAccess,
             DefaultHashTypes: DefaultHashTypes,
             DisallowedPassByRef: DisallowedPassByRef,
+            LintMustMatchExhaustively: LintMustMatchExhaustively,
             MissingGenericTypeVisitableDerive: MissingGenericTypeVisitableDerive,
             QueryStability: QueryStability,
-            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
             TyTyKind: TyTyKind,
             TypeIr: TypeIr,
@@ -724,6 +727,11 @@ fn register_builtins(store: &mut LintStore) {
         "dependency_on_unit_never_type_fallback",
         "the code warned by this lint no longer compiles",
     );
+    store.register_removed(
+        "conflicting_repr_hints",
+        "converted into a hard error, \
+         see <https://github.com/rust-lang/rust/issues/68585> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -770,8 +778,8 @@ fn register_internals(store: &mut LintStore) {
             // `warn(symbol_intern_string_literal)` is used.
             // LintId::of(SYMBOL_INTERN_STRING_LITERAL),
             //
-            // Late pass: RustcMustMatchExhaustively
-            LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
+            // Late pass: LintMustMatchExhaustively
+            LintId::of(MUST_MATCH_EXHAUSTIVELY),
             // Late pass: MissingGenericTypeVisitableDerive
             // Note: this one is not included so that it doesn't become effectively warn-by-default
             // (since `rustc::internal` is warn-by-default). Instead, it's enabled manually in

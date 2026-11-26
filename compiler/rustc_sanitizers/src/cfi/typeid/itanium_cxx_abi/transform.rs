@@ -145,7 +145,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();
-                    let typing_env = ty::TypingEnv::post_analysis(self.tcx, variant.def_id);
+                    let typing_env =
+                        ty::TypingEnv::post_analysis_no_rigid_aliases(self.tcx, variant.def_id);
                     let field = variant.fields.iter().find(|field| {
                         let ty = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         let is_zst = self
@@ -256,6 +257,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
     });
     let mut assoc_predicates: Vec<_> = traits::supertraits(tcx, poly_trait_ref)
+        .map(Unnormalized::skip_norm_wip)
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()

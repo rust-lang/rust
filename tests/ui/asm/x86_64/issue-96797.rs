@@ -1,15 +1,15 @@
-//@ add-minicore
 //@ build-pass
-//@ compile-flags: --target x86_64-unknown-linux-gnu -O
-//@ needs-llvm-components: x86
-#![crate_type = "lib"]
-#![feature(no_core)]
-#![no_core]
-
-extern crate minicore;
-use minicore::*;
+//@ compile-flags: -O
+//@ needs-asm-support
+//@ only-x86_64
+//@ only-linux
 
 // regression test for #96797
+//
+// Note that this test needs to link.  It's checking that we did not
+// merge `foobar` into `my_func`, which would cause linking to fail.
+
+use std::arch::global_asm;
 
 #[no_mangle]
 fn my_func() {}

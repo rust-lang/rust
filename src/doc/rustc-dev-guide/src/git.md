@@ -687,4 +687,4 @@ easily figure out *why* a commit is ignored.
 
 [Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`rust-lang/llvm-project`]: https://github.com/rust-lang/llvm-project
-[llvm-update]: https://github.com/rust-lang/rust/pull/99464/files
+[llvm-update]: https://github.com/rust-lang/rust/pull/99464/changes

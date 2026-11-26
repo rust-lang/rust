@@ -605,7 +605,7 @@ pub impl(self) trait ChildExt {
     ///
     /// [`Child::kill`]: process::Child::kill
     #[unstable(feature = "unix_kill_process_group", issue = "156537")]
-    fn kill_process_group(&mut self) -> io::Result<()>;
+    fn kill_process_group(&self) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
@@ -622,12 +622,12 @@ impl ChildExt for process::Child {
 
     #[cfg(not(target_os = "espidf"))]
     #[rustdoc_skip_body]
-    fn kill_process_group(&mut self) -> io::Result<()> {
+    fn kill_process_group(&self) -> io::Result<()> {
         self.handle.send_process_group_signal(libc::SIGKILL)
     }
 
     #[cfg(target_os = "espidf")]
-    fn kill_process_group(&mut self) -> io::Result<()> {
+    fn kill_process_group(&self) -> io::Result<()> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "process groups are not supported on espidf",
@@ -818,6 +818,7 @@ impl From<OwnedFd> for process::ChildStderr {
 ///
 #[cfg_attr(target_family = "unix", doc = "```")]
 #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// # if cfg!(skip_unsupported_miri_tests) { return; }
 /// use std::os::unix::process;
 /// let parent = process::parent_id();
 /// println!("The parent process has ID {}", parent);
@@ -826,4 +827,86 @@ impl From<OwnedFd> for process::ChildStderr {
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     crate::sys::process::getppid()
+}
+
+/// Returns the real user ID of the current process.
+///
+/// # Example
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// fn main() {
+///     let uid = process::uid();
+///     println!("The current process has UID {}", uid);
+/// }
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn uid() -> u32 {
+    crate::sys::process::getuid()
+}
+
+/// Returns the effective user ID of the current process.
+///
+/// # Example
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// fn main() {
+///     let euid = process::effective_uid();
+///     println!("The current process has effective UID {}", euid);
+/// }
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn effective_uid() -> u32 {
+    crate::sys::process::geteuid()
+}
+
+/// Returns the real group ID of the current process.
+///
+/// # Example
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// fn main() {
+/// #     if cfg!(skip_unsupported_miri_tests) { return; }
+///     let gid = process::gid();
+///     println!("The current process has GID {}", gid);
+/// }
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn gid() -> u32 {
+    crate::sys::process::getgid()
+}
+
+/// Returns the effective group ID of the current process.
+///
+/// # Example
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_process_user_group_ids)]
+/// use std::os::unix::process;
+///
+/// fn main() {
+/// #     if cfg!(skip_unsupported_miri_tests) { return; }
+///     let egid = process::effective_gid();
+///     println!("The current process has effective GID {}", egid);
+/// }
+/// ```
+#[must_use]
+#[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
+pub fn effective_gid() -> u32 {
+    crate::sys::process::getegid()
 }

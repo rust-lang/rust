@@ -148,6 +148,7 @@ macro_rules! early_lint_methods {
             fn check_expr_post(a: &rustc_ast::Expr);
             fn check_ty(a: &rustc_ast::Ty);
             fn check_generic_arg(a: &rustc_ast::GenericArg);
+            fn check_generic_args(a: &rustc_ast::GenericArgs);
             fn check_generic_param(a: &rustc_ast::GenericParam);
             fn check_generics(a: &rustc_ast::Generics);
             fn check_poly_trait_ref(a: &rustc_ast::PolyTraitRef);

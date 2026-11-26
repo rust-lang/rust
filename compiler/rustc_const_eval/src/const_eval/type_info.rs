@@ -1,15 +1,15 @@
 mod adt;
-
-use std::borrow::Cow;
+mod intrinsics;
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_ir::AttrItem;
 use rustc_attr_ir::Attribute::Tool;
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttrItem, Attribute, AttributeKind, HasAttrs};
 use rustc_hir::intravisit::HirTyCtxt;
 use rustc_lint_defs::{Reflectiveness, ToolOptions};
-use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
-use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::{self, AdtKind, FnHeader, FnSigKind, FnSigTys, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -50,189 +50,58 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         self.write_immediate(ptr, slice_place)
     }
 
-    /// Writes a `core::mem::type_info::TypeInfo` for a given type, `ty` to the given place.
-    pub(crate) fn write_type_info(
+    /// Writes a `core::mem::type_info::TypeKind` for a given type, `ty` to the given place.
+    pub(crate) fn write_type_kind(
         &mut self,
         ty: Ty<'tcx>,
         dest: &impl Writeable<'tcx, CtfeProvenance>,
     ) -> InterpResult<'tcx> {
-        let ty_struct = self.tcx.require_lang_item(LangItem::Type, self.tcx.span);
-        let ty_struct = self.tcx.type_of(ty_struct).no_bound_vars().unwrap();
-        assert_eq!(ty_struct, dest.layout().ty);
-        let ty_struct = ty_struct.ty_adt_def().unwrap().non_enum_variant();
-        // Fill all fields of the `TypeInfo` struct.
-        for (idx, field) in ty_struct.fields.iter_enumerated() {
-            let field_dest = self.project_field(dest, idx)?;
-            match field.name {
-                sym::kind => {
-                    let variant_index = match ty.kind() {
-                        ty::Tuple(fields) => {
-                            let (variant, variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Tuple)?;
-                            // project to the single tuple variant field of `type_info::Tuple` struct type
-                            let tuple_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            assert_eq!(
-                                1,
-                                tuple_place
-                                    .layout()
-                                    .ty
-                                    .ty_adt_def()
-                                    .unwrap()
-                                    .non_enum_variant()
-                                    .fields
-                                    .len()
-                            );
-                            self.write_tuple_type_info(tuple_place, fields, ty)?;
-                            variant
-                        }
-                        ty::Array(_, _) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Array)?;
-                            variant
-                        }
-                        ty::Slice(_) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Slice)?;
-                            variant
-                        }
-                        ty::Adt(adt_def, _) => self.write_adt_type_info(&field_dest, *adt_def)?,
-                        ty::Bool => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Bool)?;
-                            variant
-                        }
-                        ty::Char => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Char)?;
-                            variant
-                        }
-                        ty::Int(_) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Int)?;
-                            variant
-                        }
-                        ty::Uint(_) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Int)?;
-                            variant
-                        }
-                        ty::Float(_) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Float)?;
-                            variant
-                        }
-                        ty::Str => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Str)?;
-                            variant
-                        }
-                        ty::Ref(_, _, _) => {
-                            let (variant, _) =
-                                self.project_downcast_named(&field_dest, sym::Reference)?;
-                            variant
-                        }
-                        ty::RawPtr(_, _) => {
-                            let (variant, _variant_place) =
-                                self.project_downcast_named(&field_dest, sym::Pointer)?;
-                            variant
-                        }
-                        ty::Dynamic(predicates, region) => {
-                            let (variant, variant_place) =
-                                self.project_downcast_named(&field_dest, sym::DynTrait)?;
-                            let dyn_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
-                            variant
-                        }
-                        ty::FnPtr(_, _) => {
-                            let (variant, _) =
-                                self.project_downcast_named(&field_dest, sym::FnPtr)?;
-                            variant
-                        }
-                        ty::Foreign(_)
-                        | ty::Pat(_, _)
-                        | ty::FnDef(..)
-                        | ty::UnsafeBinder(..)
-                        | ty::Closure(..)
-                        | ty::CoroutineClosure(..)
-                        | ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
-                        | ty::Never
-                        | ty::Alias(..)
-                        | ty::Param(_)
-                        | ty::Bound(..)
-                        | ty::Placeholder(_)
-                        | ty::Infer(..)
-                        | ty::Error(_) => self.project_downcast_named(&field_dest, sym::Other)?.0,
+        let ty_enum = self.tcx.require_lang_item(LangItem::TypeKind, self.tcx.span);
+        let ty_enum = self.tcx.type_of(ty_enum).no_bound_vars().unwrap();
+        assert_eq!(ty_enum, dest.layout().ty);
 
-                        // FIXME(scrabsha)
-                        ty::View(..) => unimplemented!(),
-                    };
-                    self.write_discriminant(variant_index, &field_dest)?
-                }
-                other => span_bug!(self.tcx.span, "unknown `Type` field {other}"),
-            }
-        }
-
-        interp_ok(())
-    }
-
-    fn write_field(
-        &mut self,
-        field_ty: Ty<'tcx>,
-        place: MPlaceTy<'tcx>,
-        layout: TyAndLayout<'tcx>,
-        name: Option<Symbol>,
-        idx: u64,
-    ) -> InterpResult<'tcx> {
-        for (field_idx, field_ty_field) in
-            place.layout.ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-            match field_ty_field.name {
-                sym::name => {
-                    let name = match name.as_ref() {
-                        Some(name) => Cow::Borrowed(name.as_str()),
-                        None => Cow::Owned(idx.to_string()), // For tuples
-                    };
-                    let name_place = self.allocate_str_dedup(&name)?;
-                    let ptr = self.mplace_to_imm_ptr(&name_place, None)?;
-                    self.write_immediate(*ptr, &field_place)?
-                }
-                sym::ty => {
-                    let field_ty = self.tcx.erase_and_anonymize_regions(field_ty);
-                    self.write_type_id(field_ty, &field_place)?
-                }
-                sym::offset => {
-                    let offset = layout.fields.offset(idx as usize);
-                    self.write_scalar(
-                        ScalarInt::try_from_target_usize(offset.bytes(), self.tcx.tcx).unwrap(),
-                        &field_place,
-                    )?;
-                }
-                other => {
-                    span_bug!(self.tcx.def_span(field_ty_field.did), "unimplemented field {other}")
-                }
-            }
-        }
-        interp_ok(())
-    }
-
-    pub(crate) fn write_tuple_type_info(
-        &mut self,
-        tuple_place: impl Writeable<'tcx, CtfeProvenance>,
-        fields: &[Ty<'tcx>],
-        tuple_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let tuple_layout = self.layout_of(tuple_ty)?;
-        let fields_slice_place = self.project_field(&tuple_place, FieldIdx::ZERO)?;
-        self.allocate_fill_and_write_slice_ptr(
-            &fields_slice_place,
-            fields.len() as u64,
-            |this, i, place| {
-                let field_ty = fields[i as usize];
-                this.write_field(field_ty, place, tuple_layout, None, i)
+        let (variant_index, _) = self.project_downcast_named(
+            dest,
+            match ty.kind() {
+                ty::Adt(def, _) => match def.adt_kind() {
+                    AdtKind::Struct => sym::Struct,
+                    AdtKind::Union => sym::Union,
+                    AdtKind::Enum => sym::Enum,
+                },
+                ty::Tuple(_) => sym::Tuple,
+                ty::Array(_, _) => sym::Array,
+                ty::Slice(_) => sym::Slice,
+                ty::Bool => sym::Bool,
+                ty::Char => sym::Char,
+                ty::Int(_) => sym::Int,
+                ty::Uint(_) => sym::Int,
+                ty::Float(_) => sym::Float,
+                ty::Str => sym::Str,
+                ty::Ref(_, _, _) => sym::Reference,
+                ty::RawPtr(_, _) => sym::Pointer,
+                ty::Dynamic(_, _) => sym::DynTrait,
+                ty::FnPtr(_, _) => sym::FnPtr,
+                ty::Never => sym::Never,
+                ty::Foreign(_)
+                | ty::Pat(_, _)
+                | ty::FnDef(..)
+                | ty::UnsafeBinder(..)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
+                | ty::Alias(..)
+                | ty::Param(_)
+                | ty::Bound(..)
+                | ty::Placeholder(_)
+                | ty::Infer(..)
+                | ty::Error(_) => sym::Other,
+                ty::View(..) => unimplemented!(), // FIXME(scrabsha)
             },
-        )
+        )?;
+        self.write_discriminant(variant_index, dest)?;
+
+        interp_ok(())
     }
 
     pub(crate) fn write_type_id_generics(
@@ -388,6 +257,46 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 Immediate::ScalarPair(
                     Scalar::from_pointer(ptr, this),
                     Scalar::from_target_usize(attr.trim_end().len() as u64, this),
+                ),
+                &place,
+            )
+        })
+    }
+
+    pub(crate) fn write_doc_attributes(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        def_id: Option<DefId>,
+    ) -> InterpResult<'tcx> {
+        // only the doc comments of exported items are encoded in cross-crate metadata
+        // see `rustc_metadata::rmeta::encoder::EncodeContext::encode_attrs`
+        // this mirrors the check so that we return the same comments regardless of crate
+        let attrs = if let Some(d) = def_id
+            && d.as_local().map_or(true, |d| {
+                !self.tcx.needs_metadata() || self.tcx.effective_visibilities(()).is_exported(d)
+            }) {
+            d.get_attrs(&self.tcx)
+        } else {
+            &[]
+        };
+
+        let docs = attrs
+            .iter()
+            .filter_map(|x| match x {
+                Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+                _ => None,
+            })
+            .collect::<Vec<Symbol>>();
+
+        self.allocate_fill_and_write_slice_ptr(place, docs.len() as _, |this, i, place| {
+            let doc = docs[i as usize];
+
+            let ptr = this.allocate_bytes_dedup(doc.as_str().as_bytes())?;
+
+            this.write_immediate(
+                Immediate::ScalarPair(
+                    Scalar::from_pointer(ptr, this),
+                    Scalar::from_target_usize(doc.as_str().len() as u64, this),
                 ),
                 &place,
             )

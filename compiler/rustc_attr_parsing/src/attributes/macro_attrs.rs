@@ -132,7 +132,6 @@ pub(crate) struct AllowInternalUnsafeParser;
 
 impl NoArgsAttributeParser for AllowInternalUnsafeParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::MacroDef)]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);

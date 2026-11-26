@@ -37,7 +37,8 @@ use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::config::OutputFilenames;
+use rustc_session::output::OutputType;
 use rustc_span::{Span, Symbol};
 use rustc_structures::{CrateType, NativeLibKind};
 

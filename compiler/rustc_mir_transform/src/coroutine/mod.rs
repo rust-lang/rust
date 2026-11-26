@@ -130,17 +130,17 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
-        assert_ne!(*local, SELF_ARG);
+        assert_ne!(*local, ty::CAPTURE_STRUCT_LOCAL);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
-        if place.local == SELF_ARG {
+        if place.local == ty::CAPTURE_STRUCT_LOCAL {
             replace_base(place, self.new_base, self.tcx);
         }
 
         for elem in place.projection.iter() {
             if let PlaceElem::Index(local) = elem {
-                assert_ne!(local, SELF_ARG);
+                assert_ne!(local, ty::CAPTURE_STRUCT_LOCAL);
             }
         }
     }
@@ -157,7 +157,6 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     tracing::trace!(?place);
 }
 
-const SELF_ARG: Local = Local::arg(0);
 pub(crate) const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
@@ -344,7 +343,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     // Create a Place referencing a coroutine struct field
     #[tracing::instrument(level = "trace", skip(self), ret)]
     fn make_field(&self, variant_index: VariantIdx, idx: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
-        let self_place = Place::from(SELF_ARG);
+        let self_place = Place::from(ty::CAPTURE_STRUCT_LOCAL);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(idx, ty));
@@ -355,7 +354,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     // Create a statement which changes the discriminant
     #[tracing::instrument(level = "trace", skip(self))]
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
-        let self_place = Place::from(SELF_ARG);
+        let self_place = Place::from(ty::CAPTURE_STRUCT_LOCAL);
         Statement::new(
             source_info,
             StatementKind::SetDiscriminant {
@@ -372,7 +371,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 
-        let self_place = Place::from(SELF_ARG);
+        let self_place = Place::from(ty::CAPTURE_STRUCT_LOCAL);
         let assign = Statement::new(
             SourceInfo::outermost(body.span),
             StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
@@ -549,20 +548,20 @@ fn make_aggregate_adt<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls[SELF_ARG].ty = ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, tcx.mk_place_deref(SELF_ARG.into())).visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(ty::CAPTURE_STRUCT_LOCAL.into())).visit_body(body);
 }
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
@@ -572,7 +571,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls[SELF_ARG].ty = pin_ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = pin_ref_coroutine_ty;
 
     let unpinned_local = body.local_decls.push(LocalDecl::new(ref_coroutine_ty, body.span));
 
@@ -580,7 +579,8 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     SelfArgVisitor::new(tcx, tcx.mk_place_deref(unpinned_local.into())).visit_body(body);
 
     let source_info = SourceInfo::outermost(body.span);
-    let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
+    let pin_field =
+        tcx.mk_place_field(ty::CAPTURE_STRUCT_LOCAL.into(), FieldIdx::ZERO, ref_coroutine_ty);
 
     let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
     statements.insert(
@@ -761,11 +761,16 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+    let block = make_poll_ready_block(tcx, source_info);
+    body.basic_blocks_mut().push(block)
+}
+
+fn make_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> BasicBlockData<'tcx> {
+    BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
         Terminator { source_info, kind: TerminatorKind::Return },
         false,
-    ))
+    )
 }
 
 fn insert_panic_block<'tcx>(
@@ -1081,7 +1086,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         }
 
         // The first argument is the coroutine type passed by value
-        let coroutine_ty = body.local_decls.raw[1].ty;
+        let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
         let coroutine_kind = body.coroutine_kind().unwrap();
 
         // Get the discriminant type and args which typeck computed

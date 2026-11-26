@@ -94,15 +94,13 @@ pub enum FakeBoolUnsigned {
     True = 1,
 }
 
-// CHECK-LABEL: define{{.*}}i1 @bool_to_fake_bool_unsigned(i1 zeroext %b)
-// CHECK: ret i1 %b
+// CHECK-LABEL: define{{.*}}i8 @bool_to_fake_bool_unsigned(i1 zeroext %b)
 #[no_mangle]
 pub fn bool_to_fake_bool_unsigned(b: bool) -> FakeBoolUnsigned {
     unsafe { mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i1 zeroext %b)
-// CHECK: ret i1 %b
+// CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i8 %b)
 #[no_mangle]
 pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
     unsafe { mem::transmute(b) }

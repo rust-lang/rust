@@ -37,12 +37,13 @@ global_asm!("fld f0, 0(sp)");
 #[cfg(target_arch = "arm")]
 global_asm!(
     r#"
-.section .text.startup
+.pushsection .text.startup
 .global _start
 .code 32
 .align 0
 
 _start:
     vmsr fpexc, r0
+.popsection
 "#
 );

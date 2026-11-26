@@ -1,4 +1,4 @@
-// Test that core functions annotated with `#[rustc_panics_when_zero]` lint when `N` is zero
+// Test that core functions annotated with `#[lint::panics_when_zero]` lint when `N` is zero
 
 //@ build-fail
 

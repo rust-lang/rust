@@ -1468,8 +1468,8 @@ impl<'a> State<'a> {
                 self.print_view(fields);
                 self.pclose();
             }
-            ast::TyKind::GcaMacro(expr) => {
-                self.word_nbsp("core::gca!");
+            ast::TyKind::Gca(expr) => {
+                self.word("k#gca");
                 self.popen();
                 self.print_expr(expr, FixupContext::default());
                 self.pclose();

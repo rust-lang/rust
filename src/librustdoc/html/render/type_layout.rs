@@ -32,7 +32,7 @@ pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl f
         }
 
         let tcx = cx.tcx();
-        let typing_env = ty::TypingEnv::post_analysis(tcx, ty_def_id);
+        let typing_env = ty::TypingEnv::post_analysis_no_rigid_aliases(tcx, ty_def_id);
         let ty = tcx.type_of(ty_def_id).instantiate_identity().skip_norm_wip();
         let type_layout = tcx.layout_of(typing_env.as_query_input(ty));
 
@@ -45,6 +45,8 @@ pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl f
                 0
             } else if let Primitive::Int(i, _) = tag.primitive() {
                 i.size().bytes()
+            } else if let Primitive::Bool = tag.primitive() {
+                1
             } else {
                 span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
             };

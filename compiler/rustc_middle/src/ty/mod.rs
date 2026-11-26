@@ -243,6 +243,14 @@ impl Asyncness {
     pub fn is_async(self) -> bool {
         matches!(self, Asyncness::Yes)
     }
+
+    /// Returns "Async" if [`Self::Yes`], otherwise returns an empty string slice.
+    pub fn as_trait_prefix_str(&self) -> &'static str {
+        match self {
+            Asyncness::Yes => "Async",
+            Asyncness::No => "",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, StableHash)]
@@ -513,7 +521,8 @@ pub struct CReaderCacheKey {
 /// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_diagnostic_item = "Ty"]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
@@ -1240,8 +1249,8 @@ impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> 
             .size
     }
 
-    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
-        Self::post_analysis(tcx, def_id)
+    fn post_analysis_no_rigid_aliases(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis_no_rigid_aliases(tcx, def_id)
     }
 }
 
@@ -1302,8 +1311,27 @@ impl<'tcx> TypingEnv<'tcx> {
         }
     }
 
-    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+    /// Use this when you don't have types/consts from an earlier typing env.
+    /// See [`Self::with_post_analysis_normalized_invalidating_rigid_aliases`].
+    pub fn post_analysis_no_rigid_aliases(
+        tcx: TyCtxt<'tcx>,
+        def_id: impl IntoQueryKey<DefId>,
+    ) -> TypingEnv<'tcx> {
         TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
+    }
+
+    /// Use this when you have types/consts from an earlier typing env.
+    /// See [`Self::with_post_analysis_normalized_invalidating_rigid_aliases`].
+    pub fn post_analysis_invalidating_rigid_aliases<T>(
+        tcx: TyCtxt<'tcx>,
+        def_id: impl IntoQueryKey<DefId>,
+        value: T,
+    ) -> PseudoCanonicalInput<'tcx, Unnormalized<'tcx, T>>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let typing_env = TypingEnv::post_analysis_no_rigid_aliases(tcx, def_id);
+        typing_env.as_query_input(ty::set_aliases_to_non_rigid(tcx, value))
     }
 
     pub fn codegen(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {

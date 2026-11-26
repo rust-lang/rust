@@ -135,7 +135,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {
-                        items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
+                        items.push(Annotatable::Stmt(ecx.stmt_item(span, item)));
                     } else {
                         items.push(Annotatable::Item(item));
                     }

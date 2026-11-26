@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ aux-build:unsafe-binder-dep.rs
 
 #![feature(unsafe_binders)]

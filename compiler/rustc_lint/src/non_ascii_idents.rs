@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::{OrdSpan, Symbol};
+use rustc_unicode::unicode_security;
 use unicode_security::general_security_profile::IdentifierType;
 
 use crate::diagnostics::{

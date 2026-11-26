@@ -388,5 +388,29 @@ note: previous binding is here
 LL | fn tuple_unrelated((x,): (u8,)) {
    |                     ^
 
-error: aborting due to 32 previous errors
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:214:13
+   |
+LL |         let x = 1u8;
+   |             ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:213:24
+   |
+LL |     fn provided_method(x: u8) {
+   |                        ^
+
+error: `x` shadows a previous, unrelated binding
+  --> tests/ui/shadow.rs:221:14
+   |
+LL |     let f = |x: u8| {};
+   |              ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:220:9
+   |
+LL |     let x = 1u8;
+   |         ^
+
+error: aborting due to 34 previous errors
 

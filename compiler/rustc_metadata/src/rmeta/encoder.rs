@@ -34,7 +34,8 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{OptLevel, OutputType, TargetModifier};
+use rustc_session::config::{OptLevel, TargetModifier};
+use rustc_session::output::OutputType;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::{
     HygieneEncodeContext, HygieneRemapper, HygieneRemappingResults, LocalExpnIdRemapper,
@@ -42,7 +43,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, LocalExpnId, SourceFile, SpanData, SpanEncoder,
-    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug,
+    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug, sym,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -1189,6 +1190,9 @@ fn should_encode_mir(
         DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+            if tcx.is_intrinsic_that_must_be_overridden(def_id) {
+                return (false, false);
+            }
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (reachable_set.is_some_and(|reachable_set| reachable_set.contains(&def_id))
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
@@ -2620,8 +2624,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     let dep_node = tcx.metadata_dep_node();
 
     // If the metadata dep-node is green, try to reuse the saved work product.
-    if tcx.dep_graph.is_fully_enabled()
-        && let incr_comp_session = tcx.incr_comp_session.unwrap()
+    if let Some(incr_comp_session) = tcx.incr_comp_session
         && let Some(old_incr_comp_session_dir) = &incr_comp_session.old_session_directory
         && let work_product_id =
             WorkProductId::from_cgu_name(WorkProduct::METADATA_WORKPRODUCT_CGU_NAME)
@@ -2631,7 +2634,11 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         let saved_path = &work_product.saved_files[OutputType::Metadata.extension()];
         let source_file_in_incr_dir = &old_incr_comp_session_dir.join(saved_path);
         debug!("copying preexisting metadata from {source_file_in_incr_dir:?} to {path:?}");
-        match rustc_fs_util::link_or_copy(&source_file_in_incr_dir, path) {
+        match rustc_fs_util::link_or_copy(
+            &source_file_in_incr_dir,
+            path,
+            true, // allow_overwrite
+        ) {
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
@@ -2933,18 +2940,33 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
         }
     }
 
+    // For non-macro literals, we avoid invoking the pretty-printer and use the source snippet
+    // instead to preserve certain stylistic choices the user likely made for the sake of
+    // legibility, like:
+    //
+    // * hexadecimal notation
+    // * underscores
+    // * character escapes
+    //
+    // However, for certain literal-producing macros (i.e. `include_*`),
+    // emitting a source snippet is clearer.
+    //
+    // FIXME: This passes through `-/*spacer*/0` verbatim.
+    fn use_snippet_for_literal(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> bool {
+        if !expr.span.from_expansion() {
+            true
+        } else {
+            const UNEXPANDED_MACROS: &[Symbol] =
+                &[sym::include_bytes_macro, sym::include_str_macro];
+            expr.span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
+                UNEXPANDED_MACROS.iter().any(|&mac| tcx.is_diagnostic_item(mac, def_id))
+            })
+        }
+    }
+
     match classify(value) {
-        // For non-macro literals, we avoid invoking the pretty-printer and use the source snippet
-        // instead to preserve certain stylistic choices the user likely made for the sake of
-        // legibility, like:
-        //
-        // * hexadecimal notation
-        // * underscores
-        // * character escapes
-        //
-        // FIXME: This passes through `-/*spacer*/0` verbatim.
         Literal
-            if !value.span.from_expansion()
+            if use_snippet_for_literal(tcx, value)
                 && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) =>
         {
             snippet

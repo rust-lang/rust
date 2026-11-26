@@ -1,5 +1,6 @@
 //@ pretty-mode:expanded
 //@ pp-exact:gca-macro.pp
+//@ pretty-compare-only (expands to internal syntax)
 #![feature(gca_min_const_items)]
 
 use std::gca;

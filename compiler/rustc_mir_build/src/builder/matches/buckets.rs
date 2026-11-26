@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::Place;
+use rustc_middle::thir::PatRangeBoundary;
 use rustc_span::{bug, span_bug};
 use tracing::debug;
 
@@ -321,15 +322,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (
+                TestKind::ScalarEq { value: test_val, .. },
+                TestableCase::Constant { value: case_val, kind: PatConstKind::Float },
+            ) => {
+                // Compare as floats, because `0.0` and `-0.0` are equal.
+                let ordering = PatRangeBoundary::Finite(test_val.valtree).compare_with(
+                    PatRangeBoundary::Finite(case_val.valtree),
+                    test_val.ty,
+                    self.tcx,
+                )?;
+                fully_matched = ordering == Ordering::Equal;
+                Some(if fully_matched { TestBranch::Success } else { TestBranch::Failure })
+            }
+
+            (
                 TestKind::StringEq { value: test_val, .. },
                 TestableCase::Constant { value: case_val, kind: PatConstKind::String },
             )
             | (
                 TestKind::ScalarEq { value: test_val, .. },
-                TestableCase::Constant {
-                    value: case_val,
-                    kind: PatConstKind::Float | PatConstKind::Other,
-                },
+                TestableCase::Constant { value: case_val, kind: PatConstKind::Other },
+            )
+            | (
+                TestKind::AggregateEq { value: test_val, .. },
+                TestableCase::Constant { value: case_val, kind: PatConstKind::Aggregate },
             ) => {
                 if test_val == case_val {
                     fully_matched = true;
@@ -360,6 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 | TestKind::Range { .. }
                 | TestKind::StringEq { .. }
                 | TestKind::ScalarEq { .. }
+                | TestKind::AggregateEq { .. }
                 | TestKind::Deref { .. },
                 _,
             ) => {

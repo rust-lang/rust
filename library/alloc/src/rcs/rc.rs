@@ -2007,6 +2007,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
@@ -2029,6 +2031,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// following code is valid:
     ///
     /// ```
+    /// #![feature(arc_is_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let rc = Rc::new(5);
@@ -2045,7 +2049,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[stable(feature = "arc_is_unique", since = "1.101.0")]
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
@@ -2153,7 +2157,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns `true` if the two `Rc`s point to the same allocation in a vein similar to
-    /// [`ptr::eq`]. This function ignores the metadata of  `dyn Trait` pointers.
+    /// [`ptr::addr_eq`]. This function ignores the metadata of wide pointers.
     ///
     /// # Examples
     ///
@@ -3773,9 +3777,9 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::addr_eq`], or if
     /// both don't point to any allocation (because they were created with `Weak::new()`). However,
-    /// this function ignores the metadata of  `dyn Trait` pointers.
+    /// this function ignores the metadata of wide pointers.
     ///
     /// # Notes
     ///

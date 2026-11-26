@@ -993,7 +993,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."beta-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-nominated".compiler-processed]
+required_labels = ["T-compiler", "beta-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
+message_on_remove = "PR #{number}'s beta backport is in progress."
 
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
@@ -1024,7 +1036,19 @@ decline
 don't know
 """,
 ]
+
+[notify-zulip."stable-nominated".compiler-removed]
+required_labels = ["T-compiler"]
+excluded_labels = ["stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-nominated".compiler-processed]
+required_labels = ["T-compiler", "stable-accepted"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
+message_on_remove = "PR #{number}'s stable backport is in progress."
 
 [notify-zulip."stable-accepted".compiler]
 required_labels = ["T-compiler"]
@@ -1687,13 +1711,6 @@ cc = ["@Zalathar"]
 
 [mentions."src/tools/opt-dist"]
 cc = ["@kobzol"]
-
-[mentions."tests/ui-fulldeps/lexer/unicode-version.run.stdout"]
-message = """If the Unicode version changes are intentional,
-it should also be updated in the reference at
-https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
-"""
-cc = ["@rust-lang/lang-docs"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If your future PRs *only* touch the subtree, consider submitting them directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls), which is where the document is primarily maintained (and has faster CI)."

@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ compile-flags: -g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
