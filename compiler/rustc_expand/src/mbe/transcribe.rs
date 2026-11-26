@@ -87,7 +87,6 @@ struct Marker {
     // Most macro bodies have only one context. Keep that entry inline and
     // allocate the map only for additional contexts in generated macros.
     cache: Option<(SyntaxContext, SyntaxContext)>,
-    fallback_cache: FxHashMap<SyntaxContext, SyntaxContext>,
 }
 
 impl Marker {
@@ -104,10 +103,7 @@ impl Marker {
                 self.cache = Some((ctxt, marked));
                 marked
             }
-            _ => *self
-                .fallback_cache
-                .entry(ctxt)
-                .or_insert_with(|| ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency)),
+            _ => ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency),
         });
     }
 }
@@ -188,7 +184,7 @@ pub(super) fn transcribe<'a>(
     let mut tscx = TranscrCtx {
         psess,
         interp,
-        marker: Marker { expand_id, transparency, cache: None, fallback_cache: Default::default() },
+        marker: Marker { expand_id, transparency, cache: None },
         repeats: Vec::new(),
         stack: smallvec![Frame::new_delimited(
             src,
