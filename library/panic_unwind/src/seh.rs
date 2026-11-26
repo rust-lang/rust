@@ -170,6 +170,7 @@ macro_rules! define_cleanup {
             unsafe {
                 if let Exception { data: Some(b), .. } = e.read() {
                     drop(b);
+                    // Mark the panic as handled.
                     super::__rust_drop_panic();
                 }
             }

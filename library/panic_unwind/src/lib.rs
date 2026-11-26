@@ -71,6 +71,17 @@ cfg_select! {
 unsafe extern "Rust" {
     /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
+    ///
+    /// All of the exception handling implementations we support require their
+    /// users (e.g. a C++ implementation) to treat foreign exceptions as
+    /// essentially opaque. Thus our exceptions can only be re-thrown unaltered
+    /// (e.g. if the language performs some cleanup) or caught and destroyed. We
+    /// treat the latter case as indicating the end of the panic, and thus need
+    /// to reset our panic count to make sure that `std::thread::panicking`
+    /// returns the correct value. This is done in this function, which lives in
+    /// `std`. Because our exceptions must be treated as opaque by other users,
+    /// they mustn't send them to other threads, which ensures that this call
+    /// actually decrements the correct panic count.
     #[rustc_std_internal_symbol]
     safe fn __rust_drop_panic();
 

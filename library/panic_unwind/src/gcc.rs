@@ -77,6 +77,7 @@ pub(crate) fn panic(data: &mut dyn PanicPayload) -> u32 {
         exception: *mut uw::_Unwind_Exception,
     ) {
         let _: Box<Exception> = unsafe { Box::from_raw(exception as *mut Exception) };
+        // Mark the panic as handled.
         super::__rust_drop_panic();
     }
 }
