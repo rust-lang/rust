@@ -9,7 +9,7 @@ use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::UNUSED_DOC_COMMENTS;
 use rustc_span::Span;
 
-use crate::attributes::prelude::{Allow, Error};
+use crate::attributes::prelude::{Allow, Warn};
 use crate::diagnostics::{BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub};
 use crate::target_checking::{AllowedResult, AllowedTargets};
 use crate::{AttributeParser, EmitAttribute, ShouldEmit};
@@ -66,7 +66,7 @@ pub(crate) fn target_check_doc_comment(
 
 /// This set of targets is used both for the `doc` attribute and doc comments.
 pub(crate) const DOC_TARGETS: AllowedTargets<'static> = {
-    AllowedTargets::AllowListWarnRest(&[
+    AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
         Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
         Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
@@ -99,8 +99,22 @@ pub(crate) const DOC_TARGETS: AllowedTargets<'static> = {
         Allow(Target::Union),
         Allow(Target::Use),
         Allow(Target::Variant),
-        Error(Target::Param),
-        Error(Target::WherePredicate),
+        Warn(Target::Arm),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::ConstParam),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignMod),
+        Warn(Target::GlobalAsm),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::TypeParam),
+        Warn(Target::While),
         // tidy-alphabetical-end
     ])
 };

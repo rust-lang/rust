@@ -7,8 +7,9 @@ pub(crate) struct MustUseParser;
 impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
+        Allow(Target::Delegation { mac: false }),
         Allow(Target::Enum),
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -21,8 +22,44 @@ impl SingleAttributeParser for MustUseParser {
         // `#[must_use]`
         Allow(Target::Trait),
         Allow(Target::Union),
-        Error(Target::Param),
-        Error(Target::WherePredicate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Crate),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
         // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(

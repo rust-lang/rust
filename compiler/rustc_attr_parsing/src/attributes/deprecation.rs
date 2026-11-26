@@ -34,7 +34,7 @@ fn get(
 pub(crate) struct DeprecatedParser;
 impl SingleAttributeParser for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
         Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
         Allow(Target::AssocConst(AssocCtxt::Trait)),
@@ -42,6 +42,7 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::AssocTy(AssocCtxt::Trait)),
         Allow(Target::Const),
         Allow(Target::Crate),
+        Allow(Target::Delegation { mac: false }),
         Allow(Target::Enum),
         Allow(Target::Field),
         Allow(Target::Fn),
@@ -63,8 +64,29 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::Variant),
         AllowSilent(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         AllowSilent(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-        Error(Target::Param),
-        Error(Target::WherePredicate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::ConstParam),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignMod),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::TypeParam),
+        Warn(Target::While),
         // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(

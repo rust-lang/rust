@@ -123,19 +123,8 @@ LL | impl Use for () {
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: the `must_use` attribute cannot be used on trait aliases
-  --> $DIR/unused_attributes-must_use.rs:107:3
-   |
-LL | #[must_use]
-   |   ^^^^^^^^
-LL |
-LL | trait Alias = Use;
-   |
-   = help: the `must_use` attribute can be applied to data types, functions, and traits
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 error: the `must_use` attribute cannot be used on macro defs
-  --> $DIR/unused_attributes-must_use.rs:111:3
+  --> $DIR/unused_attributes-must_use.rs:108:3
    |
 LL | #[must_use]
    |   ^^^^^^^^
@@ -146,7 +135,7 @@ LL | macro_rules! cool_macro {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: the `must_use` attribute cannot be used on statements
-  --> $DIR/unused_attributes-must_use.rs:120:7
+  --> $DIR/unused_attributes-must_use.rs:117:7
    |
 LL |     #[must_use]
    |       ^^^^^^^^
@@ -157,7 +146,7 @@ LL |     let x = || {};
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: the `must_use` attribute cannot be used on closures
-  --> $DIR/unused_attributes-must_use.rs:125:15
+  --> $DIR/unused_attributes-must_use.rs:122:15
    |
 LL |     let x = #[must_use]
    |               ^^^^^^^^
@@ -168,7 +157,7 @@ LL |     || {};
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: the `must_use` attribute cannot be used on match arms
-  --> $DIR/unused_attributes-must_use.rs:148:11
+  --> $DIR/unused_attributes-must_use.rs:145:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -179,7 +168,7 @@ LL |         Some(res) => res,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: the `must_use` attribute cannot be used on struct fields
-  --> $DIR/unused_attributes-must_use.rs:157:30
+  --> $DIR/unused_attributes-must_use.rs:154:30
    |
 LL |     let s = PatternField { #[must_use]  foo: 123 };
    |                              ^^^^^^^^
@@ -188,7 +177,7 @@ LL |     let s = PatternField { #[must_use]  foo: 123 };
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: the `must_use` attribute cannot be used on pattern fields
-  --> $DIR/unused_attributes-must_use.rs:159:26
+  --> $DIR/unused_attributes-must_use.rs:156:26
    |
 LL |     let PatternField { #[must_use] foo } = s;
    |                          ^^^^^^^^
@@ -241,7 +230,7 @@ LL |     static FOREIGN_STATIC: usize;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused `X` that must be used
-  --> $DIR/unused_attributes-must_use.rs:130:5
+  --> $DIR/unused_attributes-must_use.rs:127:5
    |
 LL |     X;
    |     ^
@@ -257,7 +246,7 @@ LL |     let _ = X;
    |     +++++++
 
 error: unused `Y` that must be used
-  --> $DIR/unused_attributes-must_use.rs:131:5
+  --> $DIR/unused_attributes-must_use.rs:128:5
    |
 LL |     Y::Z;
    |     ^^^^
@@ -268,7 +257,7 @@ LL |     let _ = Y::Z;
    |     +++++++
 
 error: unused `U` that must be used
-  --> $DIR/unused_attributes-must_use.rs:132:5
+  --> $DIR/unused_attributes-must_use.rs:129:5
    |
 LL |     U { unit: () };
    |     ^^^^^^^^^^^^^^
@@ -279,7 +268,7 @@ LL |     let _ = U { unit: () };
    |     +++++++
 
 error: unused return value of `U::method` that must be used
-  --> $DIR/unused_attributes-must_use.rs:133:5
+  --> $DIR/unused_attributes-must_use.rs:130:5
    |
 LL |     U::method();
    |     ^^^^^^^^^^^
@@ -290,7 +279,7 @@ LL |     let _ = U::method();
    |     +++++++
 
 error: unused return value of `foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:134:5
+  --> $DIR/unused_attributes-must_use.rs:131:5
    |
 LL |     foo();
    |     ^^^^^
@@ -301,7 +290,7 @@ LL |     let _ = foo();
    |     +++++++
 
 error: unused return value of `foreign_foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:137:9
+  --> $DIR/unused_attributes-must_use.rs:134:9
    |
 LL |         foreign_foo();
    |         ^^^^^^^^^^^^^
@@ -312,7 +301,7 @@ LL |         let _ = foreign_foo();
    |         +++++++
 
 error: unused return value of `Use::get_four` that must be used
-  --> $DIR/unused_attributes-must_use.rs:145:5
+  --> $DIR/unused_attributes-must_use.rs:142:5
    |
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^
@@ -322,5 +311,5 @@ help: if you wish to disregard this recommendation, use `let _ = ...` to ignore 
 LL |     let _ = ().get_four();
    |     +++++++
 
-error: aborting due to 29 previous errors
+error: aborting due to 28 previous errors
 

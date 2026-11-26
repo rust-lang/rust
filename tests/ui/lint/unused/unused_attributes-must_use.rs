@@ -2,7 +2,7 @@
 
 #![allow(dead_code, path_statements, unused_features)]
 #![deny(unused_attributes, unused_must_use)]
-#![feature(asm_experimental_arch, stmt_expr_attributes, trait_alias)]
+#![feature(asm_experimental_arch, stmt_expr_attributes)]
 
 #[must_use] //~ ERROR attribute cannot be used on
 //~| WARN previously accepted
@@ -104,9 +104,6 @@ impl Use for () {
     }
 }
 
-#[must_use] //~ ERROR attribute cannot be used on
-//~| WARN previously accepted
-trait Alias = Use;
 
 #[must_use] //~ ERROR attribute cannot be used on
 //~| WARN previously accepted
