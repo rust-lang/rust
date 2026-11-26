@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ build-fail
-//@ compile-flags: --target s390x-unknown-linux-gnu -Z deduplicate-diagnostics=yes
+//@ compile-flags: --target s390x-unknown-linux-gnu -C target-feature=-vector-packed-decimal -Z deduplicate-diagnostics=yes
 //@ needs-llvm-components: systemz
 //@ min-llvm-version: 23
 
