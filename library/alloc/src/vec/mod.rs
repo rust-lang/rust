@@ -2182,6 +2182,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+        #[cfg_attr(panic = "immediate-abort", inline)]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
@@ -2263,6 +2264,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+        #[cfg_attr(panic = "immediate-abort", inline)]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2328,6 +2330,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+        #[cfg_attr(panic = "immediate-abort", inline)]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -3146,6 +3149,7 @@ impl<T, A: Allocator> Vec<T, A> {
     {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+        #[cfg_attr(panic = "immediate-abort", inline)]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {

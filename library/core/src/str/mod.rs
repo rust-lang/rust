@@ -71,11 +71,13 @@ const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
 }
 
 #[cfg(panic = "immediate-abort")]
+#[inline]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     slice_error_fail_ct(s, begin, end)
 }
 
 #[track_caller]
+#[cfg_attr(panic = "immediate-abort", inline)]
 const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
     panic!("failed to slice string");
 }

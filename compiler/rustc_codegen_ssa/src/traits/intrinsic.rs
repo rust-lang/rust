@@ -39,7 +39,12 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         is_cleanup: bool,
     ) -> Self::Value;
 
-    /// Ungracefully stop execution in the simplest way possible.
+    /// Ungracefully stop execution in the simplest way possible
+    /// that uses the fewest instructions.
+    /// Use this when [`super::BuilderMethods::unreachable`] would also work
+    /// but you want to be nice.
+    /// Prefer e.g. [`core::process::crash`] when the abort is meant to be
+    /// a user-visible guarantee.
     fn abort_immediate(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;

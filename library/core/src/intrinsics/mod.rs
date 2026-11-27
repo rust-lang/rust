@@ -621,8 +621,7 @@ pub fn rustc_peek<T>(_: T) -> T;
 
 /// Ungracefully aborts the execution of the process.
 ///
-/// This is the intrinsic for directly implementing [`core::process::crash`] which, on most
-/// platforms, will invoke an invalid instruction. On Unix, the process will probably terminate with
+/// On most platforms, this will invoke an invalid instruction. On Unix, the process will probably terminate with
 /// a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or `SIGBUS`. The precise behavior is not
 /// guaranteed and not stable.
 ///
@@ -632,7 +631,10 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// Note that, unlike most intrinsics, this is safe to call; it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`core::process::crash`].
+/// Used to implement [`core::process::crash`] on most platforms, but not Windows.
+/// Prefer that function over this one for "user-visible well-defined immediate abort";
+/// prefer this intrinsic for for contexts where [`unreachable()`]
+/// would also have been acceptable.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn abort_immediate() -> !;
