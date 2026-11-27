@@ -342,7 +342,20 @@ fn codegen_regular_intrinsic_call<'tcx>(
     match intrinsic {
         sym::abort_immediate => {
             fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
-            fx.bcx.ins().trap(TrapCode::user(2).unwrap());
+            if let Some(def_id) = fx.tcx.lang_items().crash_impl() {
+                let instance = Instance::mono(fx.tcx, def_id);
+                let func_ref = fx.get_function_ref(instance);
+                codegen_call_with_unwind_action(
+                    fx,
+                    source_info.span,
+                    CallTarget::Direct(func_ref),
+                    UnwindAction::Unreachable,
+                    &[],
+                    None,
+                );
+            } else {
+                fx.bcx.ins().trap(TrapCode::user(2).unwrap());
+            }
             return Ok(());
         }
         sym::breakpoint | sym::resumable_breakpoint => {

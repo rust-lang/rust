@@ -342,6 +342,9 @@ language_item_table! {
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
+    /// If this lang item is present, the `abort_immediate` intrinsic lowers to a call to it at runtime.
+    CrashImpl,               sym::crash_impl,          crash_impl,                 Target::Fn,             GenericRequirement::Exact(0);
+
     // Lang items needed for `format_args!()`.
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;

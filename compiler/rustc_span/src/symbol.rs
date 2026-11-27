@@ -781,6 +781,7 @@ symbols! {
         coverage,
         coverage_attribute,
         cr,
+        crash_impl,
         crate_in_paths,
         crate_local,
         crate_name,

@@ -1,4 +1,5 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_attr_ir::LangItem;
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
@@ -8,7 +9,7 @@ use rustc_target::spec::Arch;
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceValue;
 use super::{FunctionCx, IntrinsicResult};
-use crate::common::{AtomicRmwBinOp, SynchronizationScope};
+use crate::common::{AtomicRmwBinOp, SynchronizationScope, build_langcall};
 use crate::diagnostics::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
@@ -175,7 +176,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let op_val: OperandValue<_> = match name {
             sym::abort_immediate => {
-                bx.abort_immediate();
+                if bx.tcx().lang_items().crash_impl().is_some() {
+                    let (fn_abi, fn_val, instance) = build_langcall(bx, span, LangItem::CrashImpl);
+                    let fn_ty = bx.fn_decl_backend_type(fn_abi);
+                    bx.call(
+                        fn_ty,
+                        None,
+                        Some(fn_abi),
+                        fn_val,
+                        ReturnSlot::Direct,
+                        &[],
+                        None,
+                        Some(instance),
+                    );
+                } else {
+                    bx.abort_immediate();
+                }
                 OperandValue::ZeroSized
             }
 
