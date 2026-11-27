@@ -6,6 +6,7 @@ use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::infer::canonical::{
     CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
@@ -93,7 +94,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
             Self::QueryResponse,
             Option<CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>>,
             PredicateObligations<'tcx>,
-            Certainty,
         ),
         NoSolution,
     > {
@@ -102,7 +102,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
-        let InferOk { value, obligations } = infcx
+        let InferOk { value: (value, certainty), obligations } = infcx
             .instantiate_nll_query_response_and_region_obligations(
                 &ObligationCause::dummy_with_span(span),
                 old_param_env,
@@ -111,7 +111,17 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
                 output_query_region_constraints,
             )?;
 
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
+        if infcx.next_trait_solver() {
+            match certainty {
+                Certainty::Proven => {}
+                Certainty::Ambiguous => {
+                    debug!("TypeOp resulted in unexpected ambiguity: {query_key:?}");
+                    return Err(NoSolution);
+                }
+            }
+        }
+
+        Ok((value, Some(canonical_self), obligations))
     }
 }
 
@@ -150,7 +160,7 @@ where
             "fully_perform",
             span,
             |ocx| {
-                let (output, ei, obligations, _) =
+                let (output, ei, obligations) =
                     Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
                 error_info = ei;
 

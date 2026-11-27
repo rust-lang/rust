@@ -1,5 +1,9 @@
 // The WF requirements of the *unnormalized* form of type annotations
 // can guide inference.
+
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
 pub trait EqualTo {
