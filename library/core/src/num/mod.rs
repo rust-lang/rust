@@ -1,4 +1,99 @@
 //! Numeric traits and functions for the built-in numeric types.
+//!
+//! # Arithmetic
+//!
+//! The primitive integer types provide several families of methods for
+//! controlling the behavior of integer arithmetic. Integer overflow occurs when
+//! the mathematical result of an operation is outside the range of values that
+//! can be represented by the type, or when a shift amount is greater than or
+//! equal to the number of bits in the type. Integer overflow panics when overflow
+//! checks are enabled and wraps otherwise, except that signed division and
+//! remainder of the minimum value by `-1` always panic. See the
+//! [Reference's documentation on integer overflow][integer-overflow] for more
+//! information.
+//!
+//! ## Wrapping and overflowing
+//!
+//! [`wrapping_*`][u32::wrapping_add] methods perform an operation with wrapping
+//! behavior, producing the result modulo the range of the integer type.
+//! [`overflowing_*`][u32::overflowing_add] methods perform the same operation with
+//! wrapping behavior and additionally return a boolean indicating whether
+//! overflow occurred.
+//!
+//! Shift operations are an exception to this behavior: their `wrapping_*`
+//! methods mask the shift amount rather than wrapping the result.
+//!
+//! [`Wrapping<T>`] provides a type that performs arithmetic with wrapping
+//! behavior.
+//!
+//! ## Saturating
+//!
+//! [`saturating_*`][u32::saturating_add] methods perform an operation and clamp
+//! the result to the nearest bound of the integer type if the mathematical
+//! result is outside the representable range. Operations with invalid inputs,
+//! such as division by zero, still panic.
+//!
+//! [`Saturating<T>`] provides a type that performs arithmetic with saturating
+//! behavior.
+//!
+//! ## Checked
+//!
+//! [`checked_*`][u32::checked_add] methods perform an operation and return
+//! `None` if it would overflow or fail due to an invalid input, such as
+//! division by zero.
+//!
+//! ## Strict
+//!
+//! [`strict_*`][u32::strict_add] methods perform an operation and panic if it
+//! would overflow or fail due to an invalid input, such as division by zero,
+//! regardless of whether overflow checks are enabled.
+//!
+//! ## Unchecked
+//!
+//! [`unchecked_*`][u32::unchecked_add] methods are unsafe and perform an
+//! operation under the assumption that it cannot overflow. Overflow results in
+//! undefined behavior. For shifts, the caller must also ensure that the shift
+//! amount is less than the number of bits in the type.
+//!
+//! # Integer conversions
+//!
+//! Integer values can be converted between types using several stable
+//! conversion mechanisms.
+//!
+//! ## `as`
+//!
+//! The [`as` cast][numeric-cast] converts between numeric types. Its behavior
+//! depends on the source and target types; see the Reference for the details
+//! of numeric casts.
+//!
+//! ## `From` and `Into`
+//!
+//! [`From`] and [`Into`] provide conversions for which the conversion is
+//! lossless for every value of the source type on every supported platform.
+//! Integer implementations are provided for conversions that meet this
+//! requirement.
+//!
+//! ## `TryFrom`
+//!
+//! [`TryFrom`] provides checked integer conversions that can fail when the
+//! source value cannot be represented by the target type. The error type for
+//! integer conversions is [`TryFromIntError`].
+//!
+//! ## Same-size signedness conversions
+//!
+//! [`cast_signed`][u32::cast_signed] and [`cast_unsigned`][i32::cast_unsigned]
+//! convert between the signed and unsigned integer types of the same size while
+//! preserving the bit pattern.
+//!
+//! ## Additional conversion APIs
+//!
+//! Nightly-only APIs provide additional ways to control the behavior of integer
+//! conversions. These include methods for widening and truncating integers,
+//! as well as conversion methods using the same `wrapping`, `saturating`,
+//! `checked`, `strict`, and `unchecked` families described above.
+//!
+//! [integer-overflow]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#overflow
+//! [numeric-cast]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#numeric-cast
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
