@@ -2555,6 +2555,10 @@ pub struct TargetOptions {
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
     pub llvm_args: StaticCow<[StaticCow<str>]>,
 
+    /// Additional arguments to pass to LLVM when its version is at least the version specified
+    /// by the key. Like `llvm_args`, but conditional on the LLVM version.
+    pub llvm_args_by_min_version: BTreeMap<u32, StaticCow<[StaticCow<str>]>>,
+
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
     pub use_ctors_section: bool,
@@ -2840,6 +2844,7 @@ impl Default for TargetOptions {
             rustc_abi: None,
             relax_elf_relocations: false,
             llvm_args: cvs![],
+            llvm_args_by_min_version: BTreeMap::new(),
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
@@ -2893,6 +2898,13 @@ impl Target {
             self.min_atomic_width.unwrap_or(8),
             self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into()),
         ))
+    }
+
+    pub fn llvm_args_for_llvm_version<'a>(
+        &'a self,
+        major: u32,
+    ) -> impl Iterator<Item = &'a StaticCow<str>> {
+        self.llvm_args_by_min_version.range(..=major).flat_map(|(_, args)| args.iter())
     }
 
     /// Test target self-consistency and JSON encoding/decoding roundtrip.

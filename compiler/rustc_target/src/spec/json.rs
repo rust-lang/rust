@@ -204,6 +204,7 @@ impl Target {
         forward_opt!(rustc_abi);
         forward!(relax_elf_relocations);
         forward!(llvm_args);
+        forward!(llvm_args_by_min_version);
         forward!(use_ctors_section);
         forward!(eh_frame_header);
         forward!(has_thumb_interworking);
@@ -398,6 +399,7 @@ impl ToJson for Target {
         target_option_val!(rustc_abi);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
+        target_option_val!(llvm_args_by_min_version);
         target_option_val!(use_ctors_section);
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
@@ -622,6 +624,7 @@ struct TargetSpecJson {
     rustc_abi: Option<RustcAbi>,
     relax_elf_relocations: Option<bool>,
     llvm_args: Option<StaticCow<[StaticCow<str>]>>,
+    llvm_args_by_min_version: Option<BTreeMap<u32, StaticCow<[StaticCow<str>]>>>,
     use_ctors_section: Option<bool>,
     eh_frame_header: Option<bool>,
     has_thumb_interworking: Option<bool>,
