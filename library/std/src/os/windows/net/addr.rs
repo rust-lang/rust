@@ -1,4 +1,4 @@
-#![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+#![stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
 use crate::macros::rustdoc_skip_body;
@@ -9,7 +9,7 @@ use crate::sys::cvt_nz;
 use crate::{fmt, io, mem, ptr};
 
 #[cfg(not(doc))]
-pub fn sockaddr_un(path: &Path) -> io::Result<(SOCKADDR_UN, usize)> {
+pub(super) fn sockaddr_un(path: &Path) -> io::Result<(SOCKADDR_UN, usize)> {
     // SAFETY: All zeros is a valid representation for `sockaddr_un`.
     let mut addr: SOCKADDR_UN = unsafe { mem::zeroed() };
     addr.sun_family = AF_UNIX;
@@ -35,11 +35,13 @@ pub fn sockaddr_un(path: &Path) -> io::Result<(SOCKADDR_UN, usize)> {
 }
 #[cfg(not(doc))]
 const SUN_PATH_OFFSET: usize = mem::offset_of!(SOCKADDR_UN, sun_path);
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 pub struct SocketAddr {
     #[cfg(not(doc))]
     pub(super) addr: SOCKADDR_UN,
     pub(super) len: u32, // Use u32 here as same as libc::socklen_t
 }
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.address() {
@@ -82,7 +84,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     /// use std::path::Path;
     ///
@@ -93,6 +94,7 @@ impl SocketAddr {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_pathname(&self) -> Option<&Path> {
         if let AddressKind::Pathname(path) = self.address() { Some(path) } else { None }
     }
@@ -108,7 +110,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     /// use std::path::Path;
     ///
@@ -123,11 +124,11 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     #[rustdoc_skip_body]
     pub fn from_pathname<P>(path: P) -> io::Result<SocketAddr>
     where
@@ -160,7 +161,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -170,6 +170,7 @@ impl SocketAddr {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_unnamed(&self) -> bool {
         matches!(self.address(), AddressKind::Unnamed)
     }
