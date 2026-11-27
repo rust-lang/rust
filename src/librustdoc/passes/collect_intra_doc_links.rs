@@ -444,11 +444,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     && let Some(variant_def) =
                         adt_def.variants().iter().find(|v| v.name == variant_name)
                 {
-                    let variant_did = variant_def.def_id;
                     // NOTE: we use a dummy span since field_segment has a span from the anonymous
                     // sourcemap we use to parse intra-doc paths
                     let field_ident = Ident::with_dummy_span(field_name);
-                    return resolve_variant_field(tcx, root_res, variant_did, field_ident, ns)
+                    return resolve_variant_field(root_res, variant_def, field_ident, ns)
                         .into_iter()
                         .collect();
                 }
@@ -677,7 +676,15 @@ fn resolve_associated_item<'tcx>(
             resolve_assoc_on_adt(tcx, did, item_ident, ns, disambiguator, module_id)
         }
         Res::Def(DefKind::Variant, did) => {
-            resolve_variant_field(tcx, root_res, did, item_ident, ns).into_iter().collect()
+            let adt_def_id = tcx.parent(did);
+            // FIXME: this is kind of a hack but is needed to handle fields of re-exported variants
+            // since variants can appear at the start of a path but they are still not root res's
+            // (they don't have their own pages)
+            let root_res = Res::Def(tcx.def_kind(adt_def_id), adt_def_id);
+            let adt_ty = tcx.type_of(adt_def_id).instantiate_identity().skip_norm_wip();
+            let adt_def = adt_ty.ty_adt_def().expect("variant parent must be ADT");
+            let variant_def = adt_def.variant_with_id(did);
+            resolve_variant_field(root_res, variant_def, item_ident, ns).into_iter().collect()
         }
         Res::Def(DefKind::ForeignTy, did) => {
             resolve_assoc_on_simple_type(tcx, did, item_ident, ns, module_id)
@@ -729,9 +736,8 @@ fn resolve_assoc_on_primitive<'tcx>(
 }
 
 fn resolve_variant_field<'tcx>(
-    tcx: TyCtxt<'tcx>,
     root_res: Res,
-    variant_def_id: DefId,
+    variant_def: &'tcx ty::VariantDef,
     item_ident: Ident,
     ns: Namespace,
 ) -> Option<(Res, DefId)> {
@@ -739,10 +745,6 @@ fn resolve_variant_field<'tcx>(
         return None;
     }
 
-    let Res::Def(_, adt_def_id) = root_res else { unreachable!() };
-    let adt_ty = tcx.type_of(adt_def_id).instantiate_identity().skip_norm_wip();
-    let adt_def = adt_ty.ty_adt_def().expect("variant parent must be ADT");
-    let variant_def = adt_def.variant_with_id(variant_def_id);
     if let Some(def_id) = resolve_field(variant_def, item_ident.name) {
         Some((root_res, def_id))
     } else {
