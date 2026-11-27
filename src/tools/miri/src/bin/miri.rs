@@ -47,8 +47,10 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OptLevel;
 use rustc_session::output::ErrorOutputType;
-use rustc_session::{CodegenBackendInit, EarlyDiagCtxt, EarlySession, Session};
-use rustc_structures::CrateType;
+use rustc_session::{
+    CodegenBackendInit, EarlyDiagCtxt, EarlySession, Session, SupportedBackendFeatures,
+};
+use rustc_structures::{CrateType, SanitizerSet};
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -221,8 +223,17 @@ impl CodegenBackend for MiriCodegenBackend {
     }
 
     fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
-        let init = CodegenBackendInit::default();
-
+        // Pretend we support all backend features since there's no codegen anyways
+        let init = CodegenBackendInit {
+            supported_backend_features: SupportedBackendFeatures {
+                sanitizers: SanitizerSet::empty(),
+                fat_lto: false,
+                thin_lto: false,
+                split_debuginfo: true,
+                instrument_coverage: false,
+            },
+            ..Default::default()
+        };
         let (_init, native_target_config) = self.native.init(sess);
         let config = TargetConfig {
             internal_target_features: native_target_config.internal_target_features,

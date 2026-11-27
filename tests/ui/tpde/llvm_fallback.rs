@@ -7,6 +7,7 @@
 //@[try] compile-flags: -Zllvm-tpde
 //@[only] compile-flags: -Zllvm-tpde=only
 
+//~? WARN: TPDE compilation failed
 //[only]~? ERROR: could not write output to $TEST_BUILD_DIR/llvm_fallback.llvm_fallback.bef9b9dab1dfd663-cgu.0.rcgu.o: Failed to compile module llvm_fallback.bef9b9dab1dfd663-cgu.0 with TPDE
 
 // NOTE: if TPDE gains f16 support, this test will need to be adjusted

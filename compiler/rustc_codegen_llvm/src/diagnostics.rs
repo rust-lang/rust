@@ -129,14 +129,6 @@ pub(crate) struct TpdeComponentMissing {
 pub(crate) struct TpdeHighOptLevel;
 
 #[derive(Diagnostic)]
-#[diag("using -Zllvm-tpde with LTO enabled is not supported")]
-pub(crate) struct TpdeLtoUsed;
-
-#[derive(Diagnostic)]
-#[diag("using -Zllvm-tpde with split debuginfo is not supported")]
-pub(crate) struct TpdeSplitDebugInfoUsed;
-
-#[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },

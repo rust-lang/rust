@@ -11,6 +11,7 @@
 //@[thin] compile-flags: -Clto=thin
 //@[fat] compile-flags: -Clto=fat
 
-//[thin,fat]~? ERROR: using -Zllvm-tpde with LTO enabled is not supported
+//[thin]~? WARN: ThinLTO is not supported by the codegen backend, using fat LTO instead
+//[thin,fat]~? ERROR: required feature `fat LTO` not supported by codegen backend
 
 fn main() {}

@@ -41,6 +41,7 @@ use crate::config::{
     FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli, NATIVE_CPU, OutFileName,
     PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
+use crate::diagnostics::FeatureNotSupportedByBackend;
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
 use crate::output::{ErrorOutputType, OutputType};
@@ -453,8 +454,17 @@ pub struct CodegenBackendInit {
     /// See `Session::fallback_intrinsics`.
     pub fallback_rustc_intrinsics: Vec<Symbol>,
 
-    /// See `Session::thin_lto_supported`.
-    pub thin_lto_supported: bool = true,
+    /// See `Session::supported_backend_features`
+    pub supported_backend_features: SupportedBackendFeatures,
+}
+
+#[derive(Default)]
+pub struct SupportedBackendFeatures {
+    pub thin_lto: bool,
+    pub fat_lto: bool,
+    pub instrument_coverage: bool,
+    pub split_debuginfo: bool,
+    pub sanitizers: SanitizerSet,
 }
 
 /// Represents the data associated with a compilation
@@ -548,8 +558,7 @@ pub struct Session {
     /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_rustc_intrinsics: FxHashSet<Symbol>,
 
-    /// Does the codegen backend support ThinLTO?
-    pub thin_lto_supported: bool,
+    pub supported_backend_features: SupportedBackendFeatures,
 
     /// Global per-session counter for MIR optimization pass applications.
     ///
@@ -1026,7 +1035,7 @@ impl Session {
             }
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
-                if !self.thin_lto_supported {
+                if !self.supported_backend_features.thin_lto {
                     // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(diagnostics::ThinLtoNotSupportedByBackend);
                     return config::Lto::Fat;
@@ -1035,7 +1044,7 @@ impl Session {
             }
         }
 
-        if !self.thin_lto_supported {
+        if !self.supported_backend_features.thin_lto {
             return config::Lto::No;
         }
 
@@ -1507,7 +1516,7 @@ pub fn build_session(
         global_backend_features,
         replaced_rustc_intrinsics: replaced_intrinsics,
         fallback_rustc_intrinsics: fallback_intrinsics,
-        thin_lto_supported,
+        supported_backend_features,
     } = codegen_backend_init;
 
     let sess = Session {
@@ -1539,7 +1548,7 @@ pub fn build_session(
         wasm_proc_macro_filesearch,
         replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
         fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
-        thin_lto_supported,
+        supported_backend_features,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
@@ -1661,9 +1670,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(diagnostics::CannotEnableCrtStaticPointerAuth);
     }
 
+    let lto = sess.lto();
     // LLVM CFI requires LTO.
     if sess.is_sanitizer_cfi_enabled()
-        && !(sess.lto() == config::Lto::Fat || sess.opts.cg.linker_plugin_lto.enabled())
+        && !(lto == config::Lto::Fat || sess.opts.cg.linker_plugin_lto.enabled())
     {
         sess.dcx().emit_err(diagnostics::SanitizerCfiRequiresLto);
     }
@@ -1675,7 +1685,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // LLVM CFI using rustc LTO requires a single codegen unit.
     if sess.is_sanitizer_cfi_enabled()
-        && sess.lto() == config::Lto::Fat
+        && lto == config::Lto::Fat
         && (sess.codegen_units().as_usize() != 1)
     {
         sess.dcx().emit_err(diagnostics::SanitizerCfiRequiresSingleCodegenUnit);
@@ -1733,15 +1743,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // LTO unit splitting requires LTO.
     if sess.is_split_lto_unit_enabled()
-        && !(sess.lto() == config::Lto::Fat
-            || sess.lto() == config::Lto::Thin
+        && !(lto == config::Lto::Fat
+            || lto == config::Lto::Thin
             || sess.opts.cg.linker_plugin_lto.enabled())
     {
         sess.dcx().emit_err(diagnostics::SplitLtoUnitRequiresLto);
     }
 
     // VFE requires LTO.
-    if sess.lto() != config::Lto::Fat {
+    if lto != config::Lto::Fat {
         if sess.opts.unstable_opts.virtual_function_elimination {
             sess.dcx().emit_err(diagnostics::UnstableVirtualFunctionElimination);
         }
@@ -1883,6 +1893,36 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                 need_explicit_cpu: sess.target.need_explicit_cpu,
             });
         }
+    }
+
+    // Validate codegen backend supported features
+
+    let unsupported_sanitizers =
+        sess.sanitizers().difference(sess.supported_backend_features.sanitizers);
+    if !unsupported_sanitizers.is_empty() {
+        let mut diag = sess.dcx().create_fatal(FeatureNotSupportedByBackend { feat: "sanitizer" });
+        for sanitizer in unsupported_sanitizers.iter().flat_map(|sanitizer| sanitizer.as_str()) {
+            diag.note(format!("required sanitizer `{sanitizer}` not supported"));
+        }
+        diag.emit_fatal();
+    }
+
+    if sess.instrument_coverage() && !sess.supported_backend_features.instrument_coverage {
+        sess.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "instrument coverage" })
+    }
+
+    if lto == config::Lto::Fat && !sess.supported_backend_features.fat_lto {
+        sess.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "fat LTO" });
+    } else if matches!(lto, config::Lto::Thin | config::Lto::ThinLocal)
+        && !sess.supported_backend_features.thin_lto
+    {
+        sess.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "thin LTO" });
+    }
+
+    if sess.split_debuginfo() != SplitDebuginfo::Off
+        && !sess.supported_backend_features.split_debuginfo
+    {
+        sess.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "split debuginfo" });
     }
 }
 

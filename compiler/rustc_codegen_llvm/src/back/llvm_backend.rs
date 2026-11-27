@@ -24,10 +24,11 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{CodegenBackendInit, EarlySession, Session};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::{CodegenBackendInit, EarlySession, Session, SupportedBackendFeatures};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{RelocModel, SplitDebuginfo, TlsModel};
+use rustc_structures::SanitizerSet;
+use rustc_target::spec::{RelocModel, TlsModel};
 
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::write::{create_informational_target_machine, create_target_machine};
@@ -218,6 +219,14 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
         }
 
+        let mut supported_backend_features = SupportedBackendFeatures {
+            thin_lto: true,
+            fat_lto: true,
+            instrument_coverage: true,
+            split_debuginfo: true,
+            sanitizers: SanitizerSet::all(),
+        };
+
         // -Zllvm-tpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
         // we emit an early error here and abort compilation.
         {
@@ -239,19 +248,13 @@ impl CodegenBackend for LlvmCodegenBackend {
                     sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel);
                 }
 
-                if sess.target.requires_lto
-                    || !matches!(sess.early_lto(), LtoCli::No | LtoCli::Unspecified)
-                {
-                    sess.dcx().emit_fatal(crate::diagnostics::TpdeLtoUsed);
-                }
-
-                // JUSTIFICATION: the session doesn't exist at this point.
-                #[allow(rustc::bad_opt_access)]
-                if sess.opts.cg.split_debuginfo.unwrap_or(sess.target.split_debuginfo)
-                    != SplitDebuginfo::Off
-                {
-                    sess.dcx().emit_fatal(crate::diagnostics::TpdeSplitDebugInfoUsed);
-                }
+                supported_backend_features = SupportedBackendFeatures {
+                    thin_lto: false,
+                    fat_lto: false,
+                    instrument_coverage: false,
+                    split_debuginfo: false,
+                    sanitizers: SanitizerSet::empty(),
+                };
             }
         }
 
@@ -299,7 +302,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             global_backend_features,
             replaced_rustc_intrinsics: replaced_intrinsics,
             fallback_rustc_intrinsics: fallback_intrinsics,
-            thin_lto_supported: true,
+            supported_backend_features,
         };
 
         (init, config)
