@@ -18,7 +18,7 @@ pub(crate) fn detect_mixed_deref_pat_ctors<'p, Cx: PatCx>(
 
 fn detect_mixed_deref_pat_ctors_inner<'p, Cx: PatCx>(
     cx: &Cx,
-    column: &PatternColumn<'p, Cx>,
+    column: &PatternColumn<'p, '_, Cx>,
 ) -> Result<(), Cx::Error> {
     let Some(ty) = column.head_ty() else {
         return Ok(());

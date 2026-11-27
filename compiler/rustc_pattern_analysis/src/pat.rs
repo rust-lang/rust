@@ -231,12 +231,12 @@ impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(crate) fn specialize(
+    pub(crate) fn specialize<'arena>(
         &self,
         other_ctor: &Constructor<Cx>,
         ctor_arity: usize,
-        arena: &'p Bump,
-    ) -> Vec<PatOrWild<'p, Cx>, &'p Bump> {
+        arena: &'arena Bump,
+    ) -> Vec<PatOrWild<'p, Cx>, &'arena Bump> {
         match self {
             PatOrWild::Wild => {
                 let mut v = Vec::new_in(arena);

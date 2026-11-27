@@ -13,14 +13,14 @@ use crate::{MatchArm, PatCx};
 ///
 /// This is not used in the usefulness algorithm; only in lints.
 #[derive(Debug)]
-pub struct PatternColumn<'p, Cx: PatCx> {
+pub struct PatternColumn<'p, 'arena, Cx: PatCx> {
     /// This must not contain an or-pattern. `expand_and_push` takes care to expand them.
-    patterns: Vec<&'p DeconstructedPat<Cx>, &'p Bump>,
-    arena: &'p Bump,
+    patterns: Vec<&'p DeconstructedPat<Cx>, &'arena Bump>,
+    arena: &'arena Bump,
 }
 
-impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
-    pub fn new(arms: &[MatchArm<'p, Cx>], arena: &'p Bump) -> Self {
+impl<'p, 'arena, Cx: PatCx> PatternColumn<'p, 'arena, Cx> {
+    pub fn new(arms: &[MatchArm<'p, Cx>], arena: &'arena Bump) -> Self {
         let patterns = Vec::with_capacity_in(arms.len(), arena);
         let mut column = PatternColumn { patterns, arena };
         for arm in arms {
@@ -71,7 +71,7 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
         cx: &Cx,
         ty: &Cx::Ty,
         ctor: &Constructor<Cx>,
-    ) -> Vec<PatternColumn<'p, Cx>, &'p Bump> {
+    ) -> Vec<PatternColumn<'p, 'arena, Cx>, &'arena Bump> {
         let arity = ctor.arity(cx, ty);
         if arity == 0 {
             return Vec::new_in(self.arena);
