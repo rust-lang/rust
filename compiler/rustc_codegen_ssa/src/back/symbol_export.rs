@@ -840,6 +840,11 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         return name;
     }
 
+    // LLVM strips the marker and adds no decoration.
+    if let Some(name) = undecorated.strip_prefix('\x01') {
+        return name.to_string();
+    }
+
     let target = &tcx.sess.target;
     if !target.is_like_windows {
         if !needs_calling_convention_decoration(tcx, symbol) {
@@ -867,11 +872,7 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         _ => return undecorated,
     };
 
-    // LLVM treats names beginning with '\x01' as already mangled and strips that prefix.
     // Names beginning with '?' are left undecorated by LLVM; the prefix is kept.
-    if let Some(name) = undecorated.strip_prefix('\x01') {
-        return name.to_string();
-    }
     if undecorated.starts_with('?') {
         return undecorated;
     }
@@ -895,7 +896,9 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
     cnum: CrateNum,
 ) -> String {
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, cnum);
-    maybe_emutls_symbol_name(tcx, symbol, &undecorated).unwrap_or(undecorated)
+    let name = maybe_emutls_symbol_name(tcx, symbol, &undecorated).unwrap_or(undecorated);
+    // `\x01` only suppresses decoration; it is not part of the exported name.
+    name.strip_prefix('\x01').unwrap_or(&name).to_string()
 }
 
 fn strip_numeric_suffix<'a>(base: &'a str, suffix: impl AsRef<str>, fallback: &'a str) -> &'a str {

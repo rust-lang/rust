@@ -8,6 +8,11 @@ pub extern "C" fn my_add(a: i32, b: i32) -> i32 {
     a + b
 }
 
+// A leading `\x01` suppresses decoration; the object file contains the name verbatim.
+#[used]
+#[export_name = "\x01my_no_mangle_export"]
+pub static MY_NO_MANGLE_EXPORT: [u8; 4] = *b"keep";
+
 #[no_mangle]
 pub extern "C" fn my_hash_lookup(key: u64) -> u64 {
     let mut map = HashMap::new();
