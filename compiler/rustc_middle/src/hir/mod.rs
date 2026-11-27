@@ -319,7 +319,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::Stmt(_)
             | Node::Item(Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
             | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => true,
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. })
+            | Node::Pat(Pat { kind: PatKind::Guard(..), .. }) => true,
 
             Node::TyPat(_) | Node::Pat(_) => {
                 self.dcx().span_delayed_bug(expr.span, "place expr not allowed in pattern");
