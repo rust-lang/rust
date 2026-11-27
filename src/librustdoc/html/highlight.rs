@@ -797,9 +797,6 @@ impl<'a> Iterator for TokenIter<'a> {
     }
 }
 
-/// Used to know if a keyword followed by a `!` should never be treated as a macro.
-const NON_MACRO_KEYWORDS: &[&str] = &["if", "while", "match", "break", "return", "impl"];
-
 /// This iterator comes from the same idea than "Peekable" except that it allows to "peek" more than
 /// just the next item by using `peek_next`. The `peek` method always returns the next item after
 /// the current one whereas `peek_next` will return the next item after the last one peeked.
@@ -1275,22 +1272,13 @@ impl<'src> Classifier<'src> {
                     "self" | "Self" => Class::Self_(span()),
                     "Option" | "Result" => Class::PreludeTy(span()),
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
-                    _ if self.is_weak_keyword(text) || self.is_keyword(Symbol::intern(text)) => {
-                        // So if it's not a keyword which can be followed by a value (like `if` or
-                        // `return`) and the next non-whitespace token is a `!`, then we consider
-                        // it's a macro.
-                        if !NON_MACRO_KEYWORDS.contains(&text) && self.check_if_macro_call(text) {
-                            self.new_macro_span(text, sink, before, file_span);
-                            return;
-                        }
-                        Class::KeyWord
-                    }
-                    // If it's not a keyword and the next non whitespace token is a `!`, then
-                    // we consider it's a macro.
+                    _ if self.is_keyword(Symbol::intern(text)) => Class::KeyWord,
                     _ if self.check_if_macro_call(text) => {
                         self.new_macro_span(text, sink, before, file_span);
                         return;
                     }
+                    // Only treat weak keywords as keywords if they're not a macro
+                    _ if self.is_weak_keyword(text) => Class::KeyWord,
                     _ => Class::Ident(span()),
                 }
             }
@@ -1356,8 +1344,6 @@ impl<'src> Classifier<'src> {
 
     fn check_if_macro_call(&mut self, ident: &str) -> bool {
         let mut has_bang = false;
-        let is_macro_rule_ident = ident == "macro_rules";
-
         while let Some((kind, _)) = self.tokens.peek_next() {
             if let TokenKind::Whitespace
             | TokenKind::LineComment { doc_style: None }
@@ -1373,7 +1359,7 @@ impl<'src> Classifier<'src> {
                 continue;
             }
             self.tokens.stop_peeking();
-            if is_macro_rule_ident {
+            if ident == "macro_rules" {
                 return matches!(kind, TokenKind::Ident | TokenKind::RawIdent);
             }
             return matches!(
