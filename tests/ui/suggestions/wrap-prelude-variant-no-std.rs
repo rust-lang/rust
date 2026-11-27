@@ -1,0 +1,26 @@
+//@ run-rustfix
+
+#![no_std]
+#![crate_type = "lib"]
+#![allow(dead_code)]
+
+fn foo() -> Result<i32, ()> {
+    0
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping the expression in `Ok`
+}
+
+fn bar() -> Option<i32> {
+    0
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping the expression in `Some`
+}
+
+fn baz(x: Option<i32>) {
+    match x {
+        0 => {}
+        //~^ ERROR mismatched types
+        //~| HELP try wrapping the pattern in `Some`
+        _ => {}
+    }
+}

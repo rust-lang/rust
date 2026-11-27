@@ -2740,7 +2740,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.def_path_str(variant.def_id)
                         ));
                         // FIXME #56861: DRYer prelude filtering
-                        if let Some(path) = variant_path.strip_prefix("std::prelude::")
+                        if let Some(path) = variant_path
+                            .strip_prefix("std::prelude::")
+                            .or_else(|| variant_path.strip_prefix("core::prelude::"))
                             && let Some((_, path)) = path.split_once("::")
                         {
                             return Some((path.to_string(), variant.ctor_kind(), sole_field.name, note_about_variant_field_privacy));
