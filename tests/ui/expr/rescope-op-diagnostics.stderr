@@ -1,0 +1,75 @@
+error: expected a label
+  --> $DIR/rescope-op-diagnostics.rs:8:5
+   |
+LL |     scope!();
+   |     ^^^^^^^^ in this macro invocation
+
+error: expected a label
+  --> $DIR/rescope-op-diagnostics.rs:9:5
+   |
+LL |     extend!();
+   |     ^^^^^^^^^ in this macro invocation
+
+error: expected a label
+  --> $DIR/rescope-op-diagnostics.rs:10:12
+   |
+LL |     scope!(a => ());
+   |            ^
+
+error: expected a label
+  --> $DIR/rescope-op-diagnostics.rs:11:13
+   |
+LL |     extend!(a => ());
+   |             ^
+
+error: expected `=>`, found `)`
+  --> $DIR/rescope-op-diagnostics.rs:15:9
+   |
+LL |         scope!('a);
+   |         ^^^^^^^^^^
+   |         |
+   |         expected `=>`
+   |         in this macro invocation
+
+error: expected `=>`, found `)`
+  --> $DIR/rescope-op-diagnostics.rs:16:9
+   |
+LL |         extend!('a);
+   |         ^^^^^^^^^^^
+   |         |
+   |         expected `=>`
+   |         in this macro invocation
+
+error: expected expression, found `)`
+  --> $DIR/rescope-op-diagnostics.rs:17:9
+   |
+LL |         scope!('a =>);
+   |         ^^^^^^^^^^^^^
+   |         |
+   |         expected expression
+   |         in this macro invocation
+
+error: expected expression, found `)`
+  --> $DIR/rescope-op-diagnostics.rs:18:9
+   |
+LL |         extend!('a =>);
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         expected expression
+   |         in this macro invocation
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/rescope-op-diagnostics.rs:12:12
+   |
+LL |     scope!('a => ());
+   |            ^^ undeclared label `'a`
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/rescope-op-diagnostics.rs:13:13
+   |
+LL |     extend!('a => ());
+   |             ^^ undeclared label `'a`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0426`.

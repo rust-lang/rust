@@ -304,7 +304,8 @@ fn never_loop_expr<'tcx>(
         | ExprKind::AddrOf(_, _, e)
         | ExprKind::Repeat(e, _)
         | ExprKind::DropTemps(e)
-        | ExprKind::UnsafeBinderCast(_, e, _) => never_loop_expr(cx, e, local_labels, main_loop_id),
+        | ExprKind::UnsafeBinderCast(_, e, _)
+        | ExprKind::Rescope(_, _, e) => never_loop_expr(cx, e, local_labels, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(cx, let_expr.init, local_labels, main_loop_id),
         ExprKind::Array(es) | ExprKind::Tup(es) => never_loop_expr_all(cx, es.iter(), local_labels, main_loop_id),
         ExprKind::Use(expr, _) => never_loop_expr(cx, expr, local_labels, main_loop_id),
@@ -547,6 +548,7 @@ fn find_non_obvious_spans<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> 
                 | ExprKind::Repeat(..)
                 | ExprKind::Yield(..)
                 | ExprKind::UnsafeBinderCast(..)
+                | ExprKind::Rescope(..)
                 | ExprKind::Err(..) => {
                     spans.push(expr.span);
                     return ControlFlow::Continue(Descend::No);

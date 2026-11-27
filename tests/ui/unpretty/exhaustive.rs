@@ -22,6 +22,7 @@
 #![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(specialization)]
+#![feature(temporary_rescoping)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
@@ -414,6 +415,16 @@ mod expressions {
         let expr;
         format_args!("");
         format_args!("{}", expr);
+    }
+
+    /// ExprKind::Rescope
+    fn expr_rescope() {
+        use std::temporary_rescoping::{scope, extend};
+        'a: {
+            let expr;
+            scope!('a => expr);
+            extend!('a => expr);
+        }
     }
 }
 

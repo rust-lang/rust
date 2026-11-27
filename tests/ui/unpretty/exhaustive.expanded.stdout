@@ -23,6 +23,7 @@
 #![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(specialization)]
+#![feature(temporary_rescoping)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
@@ -305,6 +306,7 @@ mod expressions {
 
 
 
+
         // ...
 
 
@@ -355,6 +357,16 @@ mod expressions {
         let expr;
         format_args!("");
         format_args!("{0}", expr);
+    }
+    /// ExprKind::Rescope
+    fn expr_rescope() {
+        use std::temporary_rescoping::{scope, extend};
+        'a:
+            {
+            let expr;
+            k#rescope_scope('a => expr);
+            k#rescope_extend('a => expr);
+        }
     }
 }
 mod items {

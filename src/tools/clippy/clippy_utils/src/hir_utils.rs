@@ -606,6 +606,11 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::OffsetOf(l_container, l_fields), ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
+            (ExprKind::Rescope(l_kind, l_target, l_expr), ExprKind::Rescope(r_kind, r_target, r_expr)) => {
+                l_kind == r_kind
+                    && l_target.label.ident.name == r_target.label.ident.name
+                    && self.eq_expr(l_expr, r_expr)
+            }
             (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (ExprKind::Repeat(le, ll), ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_const_arg(ll, rl)
@@ -660,6 +665,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::Unary(..)
                 | ExprKind::Yield(..)
                 | ExprKind::UnsafeBinderCast(..)
+                | ExprKind::Rescope(..)
 
                 // --- Special cases that do not have a positive branch.
 
@@ -1405,6 +1411,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(ty) = ty {
                     self.hash_ty(ty);
                 }
+            },
+            ExprKind::Rescope(kind, target, expr) => {
+                kind.hash(&mut self.s);
+                self.hash_name(target.label.ident.name);
+                self.hash_expr(expr);
             },
             ExprKind::Err(_) => {},
         }

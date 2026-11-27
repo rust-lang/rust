@@ -251,6 +251,9 @@ mod internal_macros;
 #[unstable(feature = "gca_min_const_items", issue = "132980", implied_by = "gca_adts")]
 pub use crate::marker::gca;
 
+#[unstable(feature = "temporary_rescoping", issue = "139076")]
+pub mod temporary_rescoping;
+
 #[path = "num/shells/legacy_int_modules.rs"]
 mod legacy_int_modules;
 #[stable(feature = "rust1", since = "1.0.0")]
