@@ -1,7 +1,6 @@
 use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
-use crate::data_structures::DelayedSet;
 use crate::region_constraint::{LeafRegionConstraint, NoSpan, RegionConstraint};
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
@@ -49,29 +48,6 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     // Mutable fields.
     ambient_variance: ty::Variance,
     goals: Vec<Goal<I, I::Predicate>>,
-    /// The cache only tracks the `ambient_variance` as it's the
-    /// only field which is mutable and which meaningfully changes
-    /// the result when relating types.
-    ///
-    /// The cache does not track whether the state of the
-    /// `Infcx` has been changed or whether we've added any
-    /// goals to `self.goals`. Whether a goal is added once or multiple
-    /// times is not really meaningful.
-    ///
-    /// Changes in the inference state may delay some type inference to
-    /// the next fulfillment loop. Given that this loop is already
-    /// necessary, this is also not a meaningful change. Consider
-    /// the following three relations:
-    /// ```text
-    /// Vec<?0> sub Vec<?1>
-    /// ?0 eq u32
-    /// Vec<?0> sub Vec<?1>
-    /// ```
-    /// Without a cache, the second `Vec<?0> sub Vec<?1>` would eagerly
-    /// constrain `?1` to `u32`. When using the cache entry from the
-    /// first time we've related these types, this only happens when
-    /// later proving the `Subtype(?0, ?1)` goal from the first relation.
-    cache: DelayedSet<(ty::Variance, I::Ty, I::Ty)>,
 }
 
 impl<'infcx, Infcx, I> SolverRelating<'infcx, Infcx, I>
@@ -86,14 +62,7 @@ where
         span: I::Span,
     ) -> Self {
         debug_assert!(infcx.next_trait_solver());
-        SolverRelating {
-            infcx,
-            span,
-            ambient_variance,
-            param_env,
-            goals: vec![],
-            cache: Default::default(),
-        }
+        SolverRelating { infcx, span, ambient_variance, param_env, goals: vec![] }
     }
 }
 
@@ -153,10 +122,6 @@ where
         let infcx = self.infcx;
         let a = infcx.shallow_resolve(a);
         let b = infcx.shallow_resolve(b);
-
-        if self.cache.contains(&(self.ambient_variance, a, b)) {
-            return Ok(a);
-        }
 
         match (a.kind(), b.kind()) {
             (ty::Infer(ty::TyVar(a_id)), ty::Infer(ty::TyVar(b_id))) => {
@@ -232,8 +197,6 @@ where
                 super_combine_tys(self.infcx, self, a, b)?;
             }
         }
-
-        assert!(self.cache.insert((self.ambient_variance, a, b)));
 
         Ok(a)
     }
