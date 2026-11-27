@@ -1,17 +1,17 @@
 use derive_where::derive_where;
 
-use super::{AvailableDepth, Cx, NestedGoals, RequiredDepth};
+use super::{AvailableDepth, Cx, RequiredDepth, SharedNestedGoals};
 use crate::data_structures::HashMap;
 use crate::search_graph::EvaluationResult;
 
 struct Success<X: Cx> {
     required_depth: RequiredDepth,
-    nested_goals: NestedGoals<X>,
+    nested_goals: SharedNestedGoals<X>,
     result: X::Tracked<X::Result>,
 }
 
 struct WithOverflow<X: Cx> {
-    nested_goals: NestedGoals<X>,
+    nested_goals: SharedNestedGoals<X>,
     result: X::Tracked<X::Result>,
 }
 
@@ -31,7 +31,7 @@ pub(super) struct CacheData<'a, X: Cx> {
     pub(super) result: X::Result,
     pub(super) required_depth: RequiredDepth,
     pub(super) encountered_overflow: bool,
-    pub(super) nested_goals: &'a NestedGoals<X>,
+    pub(super) nested_goals: &'a SharedNestedGoals<X>,
 }
 #[derive_where(Default; X: Cx)]
 pub struct GlobalCache<X: Cx> {
@@ -82,7 +82,7 @@ impl<X: Cx> GlobalCache<X> {
         cx: X,
         input: X::Input,
         available_depth: AvailableDepth,
-        mut candidate_is_applicable: impl FnMut(&NestedGoals<X>) -> bool,
+        mut candidate_is_applicable: impl FnMut(&SharedNestedGoals<X>) -> bool,
     ) -> Option<CacheData<'a, X>> {
         let entry = self.map.get(&input)?;
         if let Some(Success { required_depth, ref nested_goals, ref result }) = entry.success
