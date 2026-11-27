@@ -2,6 +2,7 @@
 
 //@ add-minicore
 //@ assembly-output: emit-asm
+//@ compile-flags: -Zmerge-functions=disabled
 //@ revisions: AARCH64 ARM64EC ARM32 AVR BPF LOONGARCH32 LOONGARCH64 I686 M68K MIPS32 MIPS64 MSP430 PPC32 PPC64 RISCV32 RISCV64 S390X SPARC32 SPARC64 WASM32 WASI32 X86_64 XTENSA
 //
 //@ [AARCH64] compile-flags: --target=aarch64-unknown-linux-gnu
@@ -97,6 +98,10 @@ mod intrinsics {
     #[rustc_intrinsic]
     #[rustc_nounwind]
     pub fn breakpoint();
+
+    #[rustc_intrinsic]
+    #[rustc_nounwind]
+    pub fn resumable_breakpoint();
 }
 
 // Optional `"` since labels are quoted on arm64ec. Forbid calls by default since most platforms
@@ -164,4 +169,31 @@ pub fn do_abort() {
 #[unsafe(no_mangle)]
 pub fn do_breakpoint() {
     intrinsics::breakpoint();
+}
+
+// At runtime, `resumable_breakpoint` lowers the same as `breakpoint`.
+//
+// CHECK-LABEL: do_resumable_breakpoint{{"?}}:
+// CHECK-NOT: {{ (call|b|bl|j) }}
+//
+// AARCH64: brk #0xf000
+// X86: int3
+// ARM32: bkpt #0
+// AVR: call abort
+// BPF: call __bpf_trap
+// LOONGARCH: break 0
+// M68K: jsr (abort@PLT,%pc)
+// MIPS: break
+// MSP430: call #abort
+// PPC: trap
+// RISCV: ebreak
+// // S390x lowers to a loop
+// S390X: .Ltmp{{.*}}:
+// S390X: j .Ltmp{{.*}}
+// SPARC: ta 1
+// WASM: unreachable
+// XTENSA: break.n
+#[unsafe(no_mangle)]
+pub fn do_resumable_breakpoint() {
+    intrinsics::resumable_breakpoint();
 }
