@@ -2921,8 +2921,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// # Atomic orderings
     ///
     /// Concurrent drops to other `Arc` pointers to the same allocation will synchronize with this
-    /// call - that is, this call performs an `Acquire` operation on the underlying strong and weak
-    /// ref counts. This ensures that calling `get_mut_unchecked` is safe.
+    /// call if the `Arc` is unique - that is, this call performs an `Acquire` operation on the
+    /// underlying strong and weak ref counts if this method returns `true`. This ensures that
+    /// calling `get_mut_unchecked` is safe immediately after.
     ///
     /// Note that this operation requires locking the weak ref count, so concurrent calls to
     /// `downgrade` may spin-loop for a short period of time.
