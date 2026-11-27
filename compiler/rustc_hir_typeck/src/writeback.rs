@@ -976,6 +976,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                 universes,
             ) {
                 Ok((value, goals)) => {
+                    assert!(!value.has_non_rigid_aliases(), "unnormalized alias in writeback");
                     self.nested_goals.extend(goals);
                     value
                 }
