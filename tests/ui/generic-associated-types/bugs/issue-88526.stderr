@@ -21,7 +21,21 @@ help: consider adding an explicit lifetime bound
 LL |     type I<'a> = &'a F where F: 'a;
    |                        +++++++++++
 
-error: aborting due to 2 previous errors
+error[E0309]: the parameter type `I` may not live long enough
+  --> $DIR/issue-88526.rs:27:10
+   |
+LL | impl<'q, Q, I, F> A for TestB<Q, F>
+   |      -- the parameter type `I` must be valid for the lifetime `'q` as defined here...
+LL | where
+LL |     Q: A<I<'q> = &'q I>,
+   |          ^^^^^^^^^^^^^ ...so that the reference type `&'q I` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'q, Q, I: 'q, F> A for TestB<Q, F>
+   |              ++++
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0207, E0309.
 For more information about an error, try `rustc --explain E0207`.
