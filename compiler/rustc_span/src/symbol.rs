@@ -137,6 +137,8 @@ symbols! {
         PatternType:        "pattern_type",
         Pin:                "pin",
         Raw:                "raw",
+        RescopeExtend:      "rescope_extend",
+        RescopeScope:       "rescope_scope",
         Reuse:              "reuse",
         Safe:               "safe",
         TypeAscribe:        "type_ascribe",
