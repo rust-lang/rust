@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::common::TestSuite;
-use crate::util::{ArgFileCommand, copy_dir_all, dylib_env_var};
+use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
     pub(super) fn run_rmake_test(&self) {
@@ -138,7 +138,7 @@ impl TestCx<'_> {
             .stage0_rustc_path
             .as_ref()
             .expect("stage0 rustc is required to run run-make tests");
-        let mut rustc = ArgFileCommand::new(&stage0_rustc);
+        let mut rustc = Command::new(&stage0_rustc);
         rustc
             // `rmake.rs` **must** be buildable by a stable compiler, it may not use *any* unstable
             // library or compiler features. Here, we force the stage 0 rustc to consider itself as

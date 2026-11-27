@@ -1,5 +1,6 @@
+use std::process::Command;
+
 use super::{DocKind, TestCx, remove_and_create_dir_all};
-use crate::util::ArgFileCommand;
 
 fn has_test_flag(flags: &[String]) -> bool {
     flags.iter().any(|s| s == "--test")
@@ -30,7 +31,7 @@ impl TestCx<'_> {
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let mut cmd = ArgFileCommand::new(&self.config.python);
+            let mut cmd = Command::new(&self.config.python);
             cmd.arg(self.config.src_root.join("src/etc/htmldocck.py"))
                 .arg(&out_dir)
                 .arg(&self.testpaths.file);

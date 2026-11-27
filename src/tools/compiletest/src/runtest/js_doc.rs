@@ -1,5 +1,6 @@
+use std::process::Command;
+
 use super::{DocKind, TestCx};
-use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_js_test(&self) {
@@ -10,7 +11,7 @@ impl TestCx<'_> {
 
             let file_stem = self.testpaths.file.file_stem().expect("no file stem");
 
-            let mut cmd = ArgFileCommand::new(&nodejs);
+            let mut cmd = Command::new(&nodejs);
             cmd.arg(self.config.src_root.join("src/tools/rustdoc-js/tester.js"))
                 .arg("--doc-folder")
                 .arg(out_dir)
