@@ -16,8 +16,8 @@ use tracing::{instrument, trace};
 use super::{
     AllocInit, AllocRef, AllocRefMut, CheckAlignMsg, CheckInAllocMsg, CtfeProvenance, ImmTy,
     Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
-    Operand, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, err_ub_format,
-    interp_ok, mir_assign_valid_types, throw_ub_format,
+    Operand, Pointer, Projectable, Provenance, RetagMode, Scalar, alloc_range, err_ub,
+    err_ub_format, interp_ok, mir_assign_valid_types, throw_ub_format,
 };
 use crate::enter_trace_span;
 
@@ -885,7 +885,28 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(src, dest, /* allow_transmute */ true)
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ true, /* src_retag_mode */ None,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// The layouts of the `src` and `dest` may disagree.
+    ///
+    /// This forces the retag at `src` to be a default retag, so no protectors are
+    /// added based on the callee-side type.
+    #[inline(always)]
+    pub fn copy_op_for_fn_arg(
+        &mut self,
+        src: &impl Projectable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src,
+            dest,
+            /* allow_transmute */ true,
+            /* src_retag_mode */ Some(RetagMode::Default),
+        )
     }
 
     /// Copies the data from an operand to a place.
@@ -896,7 +917,9 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(src, dest, /* allow_transmute */ false)
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ false, /* src_retag_mode */ None,
+        )
     }
 
     /// Perform a typed copy of the data from an operand to a place.
@@ -906,6 +929,9 @@ where
     /// at `src` type from there to some intermediate storage. And then we're doing a second typed
     /// copy at `dest` type from that intermediate storage to `dest`. As an optimization, we only
     /// make a single direct copy here, but we still have to ensure the data is valid at both types.
+    ///
+    /// `src_retag_mode` is the retag mode used when validating at the `src` type, when it differs
+    /// from the `dest` type. If `None`, the current retag mode is inherited.
     #[inline(always)]
     #[instrument(skip(self), level = "trace")]
     fn copy_op_inner(
@@ -913,6 +939,7 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
+        src_retag_mode: Option<RetagMode>,
     ) -> InterpResult<'tcx> {
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
@@ -926,11 +953,18 @@ where
             // shared reference.
             // But if the types are identical, that is strictly redundant so we only do one pass.
             if src.layout().ty != dest.layout().ty {
-                self.validate_place(
-                    &dest.transmute(src.layout(), self)?,
-                    M::enforce_validity_recursively(self, src.layout()),
-                    /*reset_provenance_and_padding*/ true,
-                )?;
+                let as_src_ty = dest.transmute(src.layout(), self)?;
+                let validate_as_src = |ecx: &mut Self| {
+                    ecx.validate_place(
+                        &as_src_ty,
+                        M::enforce_validity_recursively(ecx, src.layout()),
+                        /*reset_provenance_and_padding*/ true,
+                    )
+                };
+                match src_retag_mode {
+                    Some(mode) => M::with_retag_mode(self, mode, validate_as_src)?,
+                    None => validate_as_src(self)?,
+                }
             }
             self.validate_place(
                 &dest,
