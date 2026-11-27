@@ -130,5 +130,51 @@ note: the lint level is defined here
 LL | #![warn(resolving_to_items_shadowing_supertrait_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: 7 warnings emitted
+warning: trait item `Assoc` from `D` shadows identically named item from supertrait
+  --> $DIR/common-ancestor-3.rs:77:29
+   |
+LL |     assert_eq!(size_of::<T::Assoc>(), 8);
+   |                             ^^^^^
+   |
+note: item from `D` shadows a supertrait item
+  --> $DIR/common-ancestor-3.rs:59:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+note: items from several supertraits are shadowed: `A`, `B`, and `C`
+  --> $DIR/common-ancestor-3.rs:16:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+...
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+...
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+warning: trait item `CONST` from `D` shadows identically named item from supertrait
+  --> $DIR/common-ancestor-3.rs:79:19
+   |
+LL |     assert_eq!(T::CONST, 4);
+   |                   ^^^^^
+   |
+note: item from `D` shadows a supertrait item
+  --> $DIR/common-ancestor-3.rs:62:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+note: items from several supertraits are shadowed: `C`, `B`, and `A`
+  --> $DIR/common-ancestor-3.rs:17:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+...
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+...
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+
+warning: 9 warnings emitted
 
