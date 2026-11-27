@@ -1,5 +1,5 @@
 warning: unreachable statement
-  --> $DIR/become-diverging.rs:16:5
+  --> $DIR/lint-unreachable-code-tail-calls.rs:16:5
    |
 LL |     become callee();
    |            -------- any code following this expression is unreachable
@@ -9,7 +9,7 @@ LL |     let _x = 2580;
    = note: requested on the command line with `-W unreachable-code`
 
 warning: unreachable statement
-  --> $DIR/become-diverging.rs:22:5
+  --> $DIR/lint-unreachable-code-tail-calls.rs:22:5
    |
 LL |     become callee();
    |            -------- any code following this expression is unreachable
