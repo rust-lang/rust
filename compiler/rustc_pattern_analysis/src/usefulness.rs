@@ -711,6 +711,7 @@
 use std::fmt;
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -719,6 +720,31 @@ use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{MatchArm, PatCx, PrivateUninhabitedField, checks};
+
+enum SubMatrix {
+    Known(SmallVec<[usize; 1]>),
+    Unknown,
+}
+
+impl SubMatrix {
+    fn from_sorted_rows(left: &[usize], right: &[usize]) -> Self {
+        let mut rows = SmallVec::with_capacity(left.len() + right.len());
+        let (mut left, mut right) = (left.iter().copied(), right.iter().copied());
+        let (mut next_left, mut next_right) = (left.next(), right.next());
+        while let (Some(left_row), Some(right_row)) = (next_left, next_right) {
+            if left_row < right_row {
+                rows.push(left_row);
+                next_left = left.next();
+            } else {
+                rows.push(right_row);
+                next_right = right.next();
+            }
+        }
+        rows.extend(next_left.into_iter().chain(left));
+        rows.extend(next_right.into_iter().chain(right));
+        SubMatrix::Known(rows)
+    }
+}
 
 /// A pattern is a "branch" if it is the immediate child of an or-pattern, or if it is the whole
 /// pattern of a match arm. These are the patterns that can be meaningfully considered "redundant",
@@ -925,19 +951,19 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         &self,
         cx: &Cx,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> Result<(SmallVec<[Constructor<Cx>; 1]>, Vec<Constructor<Cx>>), Cx::Error>
+    ) -> Result<(SmallVec<[(Constructor<Cx>, SubMatrix); 1]>, Vec<Constructor<Cx>>), Cx::Error>
     where
         Cx: 'a,
     {
         debug!(?self.ty);
         if self.private_uninhabited {
             // Skip the whole column
-            return Ok((smallvec![Constructor::PrivateUninhabited], vec![]));
+            return Ok((smallvec![(Constructor::PrivateUninhabited, SubMatrix::Unknown)], vec![]));
         }
 
         if ctors.clone().any(|c| matches!(c, Constructor::Or)) {
             // If any constructor is `Or`, we expand or-patterns.
-            return Ok((smallvec![Constructor::Or], vec![]));
+            return Ok((smallvec![(Constructor::Or, SubMatrix::Unknown)], vec![]));
         }
 
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
@@ -960,18 +986,50 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             || cx.is_exhaustive_patterns_feature_on();
 
         // Analyze the constructors present in this column.
-        let mut split_set = ctors_for_ty.split(ctors);
+        let mut split_set = ctors_for_ty.split(ctors.clone());
         debug!(?split_set);
         let all_missing = split_set.present.is_empty();
+
+        let enum_rows = if let ConstructorSet::Variants { variants, .. } = &ctors_for_ty {
+            let mut wildcard_rows = SmallVec::<[usize; 1]>::new();
+            let mut variant_rows =
+                IndexVec::from_elem_n(SmallVec::<[usize; 1]>::new(), variants.len());
+            for (row, ctor) in ctors.enumerate() {
+                match ctor {
+                    Constructor::Variant(idx) => variant_rows[*idx].push(row),
+                    Constructor::Wildcard => wildcard_rows.push(row),
+                    _ => {}
+                }
+            }
+            Some((wildcard_rows, variant_rows))
+        } else {
+            None
+        };
 
         // Build the set of constructors we will specialize with. It must cover the whole type, so
         // we add `Missing` to represent the missing ones. This is explained under "Constructor
         // Splitting" at the top of this file.
-        let mut split_ctors = split_set.present;
+        let mut split_ctors = split_set
+            .present
+            .into_iter()
+            .map(|ctor| {
+                let submatrix = match (&enum_rows, &ctor) {
+                    (Some((wildcard_rows, variant_rows)), Constructor::Variant(idx)) => {
+                        SubMatrix::from_sorted_rows(wildcard_rows, &variant_rows[*idx])
+                    }
+                    _ => SubMatrix::Unknown,
+                };
+                (ctor, submatrix)
+            })
+            .collect::<SmallVec<[_; 1]>>();
         if !(split_set.missing.is_empty()
             && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
         {
-            split_ctors.push(Constructor::Missing);
+            let submatrix = match &enum_rows {
+                Some((wildcard_rows, _)) => SubMatrix::Known(wildcard_rows.clone()),
+                None => SubMatrix::Unknown,
+            };
+            split_ctors.push((Constructor::Missing, submatrix));
         }
 
         // Which empty constructors are considered missing. We ensure that
@@ -1278,6 +1336,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'_, Cx>,
         ctor: &Constructor<Cx>,
+        submatrix: &SubMatrix,
         ctor_is_relevant: bool,
     ) -> Result<Matrix<'p, Cx>, Cx::Error> {
         if matches!(ctor, Constructor::Or) {
@@ -1303,11 +1362,23 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 place_info: specialized_place_info,
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
             };
-            for (i, row) in self.rows().enumerate() {
-                if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
-                    let new_row =
-                        row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
-                    matrix.push(new_row);
+            match submatrix {
+                SubMatrix::Known(rows) => {
+                    for &i in rows {
+                        let row = &self.rows[i];
+                        let new_row =
+                            row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
+                        matrix.push(new_row);
+                    }
+                }
+                SubMatrix::Unknown => {
+                    for (i, row) in self.rows().enumerate() {
+                        if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
+                            let new_row =
+                                row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
+                            matrix.push(new_row);
+                        }
+                    }
                 }
             }
             Ok(matrix)
@@ -1736,7 +1807,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
     let ty = &place.ty.clone(); // Clone it out so we can mutate `matrix` later.
     let pcx = &PlaceCtxt { cx: mcx.tycx, ty };
     let mut ret = WitnessMatrix::empty();
-    for ctor in split_ctors {
+    for (ctor, submatrix) in split_ctors {
         // Dig into rows that match `ctor`.
         debug!("specialize({:?})", ctor);
         // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
@@ -1745,7 +1816,8 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing)
             || missing_ctors.is_empty()
             || mcx.tycx.exhaustive_witnesses();
-        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant)?;
+        let mut spec_matrix =
+            matrix.specialize_constructor(pcx, &ctor, &submatrix, ctor_is_relevant)?;
         let mut witnesses = compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix)?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
