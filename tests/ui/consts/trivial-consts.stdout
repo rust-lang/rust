@@ -1,0 +1,514 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+// HINT: See also -Z dump-mir for MIR at specific points during compilation.
+const A1: u8 = const 0_u8;
+
+const A2: u8 = const 99_u8;
+
+const A3: i8 = const i8::MIN;
+
+const A4: u32 = const u32::MAX;
+
+const A5: i32 = const i32::MAX;
+
+const A6: u128 = const 123_u128;
+
+const A7: i128 = const i128::MIN;
+
+const A8: f32 = const -0f32;
+
+const A9: f64 = const 1.23E+9f64;
+
+const A10: bool = const true;
+
+const A11: char = const 'x';
+
+const A12: &[u8; 3] = const b"foo";
+
+const A12::{constant#0}: usize = const 3_usize;
+
+const A13: &str = const "foo";
+
+const A14: &CStr = const Slice { alloc_id: ALLOC$ID, meta: 4 }: &CStr;
+
+const B1: usize = const 0_usize;
+
+const B2: f32 = const 99.9000015f32;
+
+const C1: usize = const 0_usize;
+
+const C2: usize = const 0_usize;
+
+const C3: isize = const -20_isize;
+
+const C4: usize = const 100_usize;
+
+const C5: () = const ();
+
+const C6: () = const ();
+
+fn _f() -> () {
+    let mut _0: ();
+
+    bb0: {
+        _0 = const ();
+        return;
+    }
+}
+
+const E::V1::{constant#0}: isize = const 5_isize;
+
+const E::V2::{constant#0}: isize = const 6_isize;
+
+static ARR: [u8; 3] = {
+    let mut _0: [u8; 3];
+
+    bb0: {
+        _0 = [const 0_u8; 3];
+        return;
+    }
+}
+
+const ARR::{constant#0}: usize = const 3_usize;
+
+const ARR::{constant#1}: usize = const 3_usize;
+
+const D1: usize = const 0_usize;
+
+const D2: usize = const 0_usize;
+
+const D3: usize = const 0_usize;
+
+const D4: f32 = const 3.14159274f32;
+
+const D5: char = const '\u{10ffff}';
+
+const <impl at $DIR/trivial-consts.rs:77:1: 77:7>::K1: usize = const 1_usize;
+
+const <impl at $DIR/trivial-consts.rs:77:1: 77:7>::K2: usize = const 1_usize;
+
+const D6: usize = const 1_usize;
+
+const D7: usize = const 1_usize;
+
+const E1: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = BitOr(const 0_usize, const 0_usize);
+        return;
+    }
+}
+
+const E2: bool = {
+    let mut _0: bool;
+
+    bb0: {
+        _0 = Lt(const 1_i32, const 2_i32);
+        return;
+    }
+}
+
+const E3: u32 = {
+    let mut _0: u32;
+
+    bb0: {
+        _0 = Not(const 0_u32);
+        return;
+    }
+}
+
+const E4: u32 = {
+    let mut _0: u32;
+    let mut _1: u32;
+    let mut _2: bool;
+
+    bb0: {
+        _1 = const 4_i32 as u32 (IntToInt);
+        _2 = Lt(move _1, const 32_u32);
+        assert(move _2, "attempt to shift left by `{}`, which would overflow", const 4_i32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Shl(const 1_u32, const 4_i32);
+        return;
+    }
+}
+
+const E5: i8 = {
+    let mut _0: i8;
+    let mut _1: bool;
+
+    bb0: {
+        _1 = Eq(const -1_i8, const i8::MIN);
+        assert(!move _1, "attempt to negate `{}`, which would overflow", const -1_i8) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Neg(const -1_i8);
+        return;
+    }
+}
+
+const E6: i32 = {
+    let mut _0: i32;
+    let mut _1: bool;
+
+    bb0: {
+        _1 = Eq(const A5, const i32::MIN);
+        assert(!move _1, "attempt to negate `{}`, which would overflow", const A5) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Neg(const A5);
+        return;
+    }
+}
+
+const E7: i8 = {
+    let mut _0: i8;
+
+    bb0: {
+        _0 = const E5;
+        return;
+    }
+}
+
+static STATIC: u16 = {
+    let mut _0: u16;
+
+    bb0: {
+        _0 = const 0_u16;
+        return;
+    }
+}
+
+const E8: u16 = {
+    let mut _0: u16;
+    let mut _1: &u16;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const {ALLOC$ID: &u16};
+        _0 = copy (*_1);
+        StorageDead(_1);
+        return;
+    }
+}
+
+ALLOC$ID (static: STATIC)
+
+const E9: S = {
+    let mut _0: S;
+
+    bb0: {
+        _0 = S;
+        return;
+    }
+}
+
+const E10: Option<u32> = {
+    let mut _0: std::option::Option<u32>;
+
+    bb0: {
+        _0 = Option::<u32>::None;
+        return;
+    }
+}
+
+const E11: Duration = {
+    let mut _0: std::time::Duration;
+
+    bb0: {
+        _0 = const std::time::Duration::ZERO;
+        return;
+    }
+}
+
+const F1: u8 = {
+    let mut _0: u8;
+
+    bb0: {
+        _0 = const '\n' as u8 (IntToInt);
+        return;
+    }
+}
+
+const F2: u8 = {
+    let mut _0: u8;
+
+    bb0: {
+        _0 = const true as u8 (IntToInt);
+        return;
+    }
+}
+
+const F3: *const u8 = {
+    let mut _0: *const u8;
+
+    bb0: {
+        _0 = const 23_usize as *const u8 (PointerWithExposedProvenance);
+        return;
+    }
+}
+
+const F4: &str = {
+    let mut _0: &str;
+    let mut _1: &str;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const "blah";
+        _0 = copy _1;
+        StorageDead(_1);
+        return;
+    }
+}
+
+ALLOC$ID (size: 4, align: 1) {
+    62 6c 61 68                                     │ blah
+}
+
+const G1: &[u8] = {
+    let mut _0: &[u8];
+    let mut _1: &[u8; 3];
+    let _2: &[u8; 3];
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const b"foo";
+        _1 = &(*_2);
+        _0 = move _1 as &[u8] (PointerCoercion(Unsize, Implicit));
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}
+
+ALLOC$ID (size: 3, align: 1) {
+    66 6f 6f                                        │ foo
+}
+
+const G2: &[u8] = {
+    let mut _0: &[u8];
+    let _1: &[u8];
+    let mut _2: &[u8; 3];
+    let _3: &[u8; 3];
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = const b"bar";
+        _2 = &(*_3);
+        _1 = move _2 as &[u8] (PointerCoercion(Unsize, AsCast));
+        StorageDead(_2);
+        _0 = &(*_1);
+        StorageDead(_3);
+        StorageDead(_1);
+        return;
+    }
+}
+
+ALLOC$ID (size: 3, align: 1) {
+    62 61 72                                        │ bar
+}
+
+const G3: &str = {
+    let mut _0: &str;
+    let _1: &str;
+    let _2: &str;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const "foo";
+        _1 = &(*_2);
+        _0 = &(*_1);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}
+
+ALLOC$ID (size: 3, align: 1) {
+    66 6f 6f                                        │ foo
+}
+
+const H1: usize = {
+    let mut _0: usize;
+    let _1: i32;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 1_i32;
+        StorageDead(_1);
+        _0 = const 2_usize;
+        return;
+    }
+}
+
+const H2: () = {
+    let mut _0: ();
+    let _1: ();
+
+    bb0: {
+        StorageLive(_1);
+        _1 = ();
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+}
+
+const H3: () = {
+    let mut _0: ();
+    let _1: i32;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 0_i32;
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+}
+
+const H4: u32 = {
+    let mut _0: u32;
+    let mut _1: i32;
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 3_i32;
+        StorageDead(_1);
+        _0 = const 0_u32;
+        return;
+    }
+}
+
+const H5: u32 = {
+    let mut _0: u32;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = const 0_u32;
+        return;
+    }
+}
+
+const H6: u8 = {
+    let mut _0: u8;
+
+    bb0: {
+        _0 = const 0_u8;
+        return;
+    }
+}
+
+const H7: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const 0_usize;
+        return;
+    }
+}
+
+fn inline_const() -> usize {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const inline_const::{constant#0};
+        return;
+    }
+}
+
+inline_const::{constant#0}: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const 0_usize;
+        return;
+    }
+}
+
+const <impl at $DIR/trivial-consts.rs:134:1: 134:7>::K3: S = {
+    let mut _0: S;
+
+    bb0: {
+        _0 = const S;
+        return;
+    }
+}
+
+const I1: i32 = {
+    let mut _0: i32;
+
+    bb0: {
+        _0 = const 5_i32;
+        return;
+    }
+}
+
+const Tr::B: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const <Self as Tr>::A;
+        return;
+    }
+}
+
+const <impl at $DIR/trivial-consts.rs:148:1: 148:14>::A: usize = const 0_usize;
+
+const <impl at $DIR/trivial-consts.rs:152:1: 152:17>::C: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const <T as Tr>::A;
+        return;
+    }
+}
+
+const <impl at $DIR/trivial-consts.rs:155:1: 155:13>::K: usize = const 0_usize;
+
+const J1: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const <S as Tr>::A;
+        return;
+    }
+}
+
+const J2: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const <S as Tr>::A;
+        return;
+    }
+}
+
+const J3: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const W::<u8>::K;
+        return;
+    }
+}
+
+fn main() -> () {
+    let mut _0: ();
+
+    bb0: {
+        _0 = const ();
+        return;
+    }
+}

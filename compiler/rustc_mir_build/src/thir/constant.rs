@@ -1,11 +1,10 @@
 use rustc_abi::Size;
 use rustc_ast::{self as ast, UintTy};
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_middle::ty::consts::parse_float_into_scalar;
 use rustc_middle::ty::{self, LitToConstInput, ScalarInt, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::bug;
 use tracing::trace;
-
-use crate::builder::parse_float_into_scalar;
 
 pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,

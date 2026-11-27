@@ -1195,13 +1195,14 @@ fn run_required_analyses(tcx: TyCtxt<'_>, (): ()) {
             if tcx.is_intrinsic_that_must_be_overridden(def_id) {
                 return; // there is no MIR body that we can check
             }
+            // Trivial consts cannot contain `unsafe` so we can check this before `check_unsafety`.
+            if tcx.is_trivial_const(def_id) {
+                return; // we will never look at the MIR for trivial consts, so avoid building it
+            }
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
-            }
-            if tcx.is_trivial_const(def_id) {
-                return; // we will never look at the MIR for trivial consts, so avoid building it
             }
             if not_typeck_child {
                 tcx.ensure_ok().mir_borrowck(def_id);

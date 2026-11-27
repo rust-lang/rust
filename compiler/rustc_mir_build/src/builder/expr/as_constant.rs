@@ -1,20 +1,17 @@
 //! See docs in builder/expr/mod.rs
 
-use rustc_abi::Size;
-use rustc_ast as ast;
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::consts::lit_to_mir_constant;
 use rustc_middle::ty::{
-    self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt,
-    TypeVisitableExt as _, UserTypeAnnotationIndex,
+    self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, TyCtxt,
+    UserTypeAnnotationIndex,
 };
-use rustc_span::{bug, span_bug};
-use tracing::{instrument, trace};
+use rustc_span::span_bug;
 
-use crate::builder::{Builder, parse_float_into_constval};
+use crate::builder::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -96,82 +93,4 @@ pub(crate) fn as_constant_inner<'tcx>(
         }
         _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
     }
-}
-
-#[instrument(skip(tcx, lit_input))]
-fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>) -> Const<'tcx> {
-    let LitToConstInput { lit, ty, neg } = lit_input;
-
-    let ty = ty.expect("type of literal must be known at this point");
-
-    if let Err(guar) = ty.error_reported() {
-        return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
-    }
-
-    let lit_ty = match *ty.kind() {
-        ty::Pat(base, _) => base,
-        _ => ty,
-    };
-
-    let trunc = |n| {
-        let width = lit_ty.primitive_size(tcx);
-        trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
-        let result = width.truncate(n);
-        trace!("trunc result: {}", result);
-        ConstValue::Scalar(Scalar::from_uint(result, width))
-    };
-
-    let value = match (lit, lit_ty.kind()) {
-        (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
-            let s = s.as_str().as_bytes();
-            let len = s.len();
-            let allocation = tcx.allocate_bytes_dedup(s, CTFE_ALLOC_SALT);
-            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
-        }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
-            if matches!(inner_ty.kind(), ty::Slice(_)) =>
-        {
-            let data = byte_sym.as_byte_str();
-            let len = data.len();
-            let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
-            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
-        }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
-            let id = tcx.allocate_bytes_dedup(byte_sym.as_byte_str(), CTFE_ALLOC_SALT);
-            ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
-        }
-        (ast::LitKind::CStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
-        {
-            let data = byte_sym.as_byte_str();
-            let len = data.len();
-            let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
-            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
-        }
-        (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
-            ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1)))
-        }
-        // Only reachable through a user `impl Neg` for an unsigned type, which violates the
-        // orphan rules and has already been reported.
-        (ast::LitKind::Int(..), ty::Uint(_)) if neg => {
-            let guar = tcx.dcx().delayed_bug("negated unsigned literal without a prior error");
-            return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
-        }
-        (ast::LitKind::Int(n, _), ty::Uint(_)) => trunc(n.get()),
-        (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            // Unsigned "negation" has the same bitwise effect as signed negation,
-            // which gets the result we want without additional casts.
-            trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() })
-        }
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            parse_float_into_constval(n, *fty, neg).unwrap()
-        }
-        (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(b)),
-        (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(c)),
-        (ast::LitKind::Err(guar), _) => {
-            return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
-        }
-        _ => bug!("invalid lit/ty combination in `lit_to_mir_constant`: {lit:?}: {ty:?}"),
-    };
-
-    Const::Val(value, ty)
 }
