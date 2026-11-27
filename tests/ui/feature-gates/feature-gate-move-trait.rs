@@ -1,4 +1,3 @@
-//@ run-pass
 #![feature(move_trait)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
@@ -15,4 +14,5 @@ fn main() {
 
     let b = B;
     let _new_b = b;
+    //~^ ERROR values of type `B` may not be movable [E0277]
 }
