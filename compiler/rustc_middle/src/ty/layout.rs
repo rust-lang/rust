@@ -991,7 +991,9 @@ where
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
                             && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
-                            && let ty::Dynamic(data, _) = args.type_at(0).kind()
+                            // An unsafe binder can wrap the dyn tail in ManuallyDrop.
+                            && let tail = tcx.struct_tail_for_codegen(args.type_at(0), cx.typing_env())
+                            && let ty::Dynamic(data, _) = tail.kind()
                         {
                             mk_dyn_vtable(data.principal())
                         } else {

@@ -1503,10 +1503,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     unsize_to: None,
                                 },
                             );
-                        } else if let ty::Dynamic(src_tty, src_lt) =
-                            *self.struct_tail(src.ty, location).kind()
+                        } else if let ty::Dynamic(src_tty, src_lt) = *self
+                            .struct_tail(src.ty, location, || {
+                                Some(UniverseInfo::relate(*ty, ty_from))
+                            })
+                            .kind()
                             && let ty::Dynamic(dst_tty, dst_lt) =
-                                *self.struct_tail(dst.ty, location).kind()
+                                *self.struct_tail(dst.ty, location, || None).kind()
                         {
                             match (src_tty.principal(), dst_tty.principal()) {
                                 (Some(_), Some(_)) => {
@@ -2192,7 +2195,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Erase the regions from `ty` to get a global type. The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let erased_ty = tcx.erase_and_anonymize_regions(ty);
+        let erased_ty = tcx.normalize_erasing_regions(
+            self.infcx.typing_env(self.infcx.param_env),
+            ty::set_aliases_to_non_rigid(tcx, ty),
+        );
         // FIXME(#132279): Using `Ty::is_sized` causes us to incorrectly handle opaques here.
         if !erased_ty.is_sized(tcx, self.infcx.typing_env(self.infcx.param_env)) {
             // in current MIR construction, all non-control-flow rvalue
