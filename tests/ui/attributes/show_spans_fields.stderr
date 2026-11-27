@@ -1,0 +1,62 @@
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:9:17
+   |
+LL | macro_rules! field {
+LL |     ($a:tt, $f:tt) => {
+LL |         let _ = $a.$f;
+   |                 ^^^^^
+...
+LL |     field!(T, 0);
+   |     ------------ in this macro invocation
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:17:12
+   |
+LL |     field!(T, 0);
+   |            ^
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:9:17
+   |
+LL | macro_rules! field {
+LL |     ($a:tt, $f:tt) => {
+LL |         let _ = $a.$f;
+   |                 ^^^^^
+...
+LL |     field!(U, x);
+   |     ------------ in this macro invocation
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:28:12
+   |
+LL |     field!(U, x);
+   |            ^
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:9:17
+   |
+LL | macro_rules! field {
+LL |     ($a:tt, $f:tt) => {
+LL |         let _ = $a.$f;
+   |                 ^^^^^
+...
+LL |     field!(V, 0.0);
+   |     -------------- in this macro invocation
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:9:17
+   |
+LL | macro_rules! field {
+LL |     ($a:tt, $f:tt) => {
+LL |         let _ = $a.$f;
+   |                 ^^^
+...
+LL |     field!(V, 0.0);
+   |     -------------- in this macro invocation
+
+note: showing the spans of the expr
+  --> $DIR/show_spans_fields.rs:35:12
+   |
+LL |     field!(V, 0.0);
+   |            ^
+

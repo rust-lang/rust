@@ -31,15 +31,3 @@ LL |         let _ = $lt u8 as Default>::$f;
 LL |     qpath!(<, default);
    |     ------------------ in this macro invocation
 
-note: showing the spans of the expr
-  --> $DIR/show_spans_macros.rs:51:12
-   |
-LL |     field!(T, 0);
-   |            ^^^^
-
-note: showing the spans of the expr
-  --> $DIR/show_spans_macros.rs:51:12
-   |
-LL |     field!(T, 0);
-   |            ^
-
