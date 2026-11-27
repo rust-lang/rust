@@ -14,7 +14,7 @@ use crate::sync::Arc;
 pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
-use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
+use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s};
 use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
 use crate::sys::{Align8, AsInner, FromInner, IntoInner, c, cvt};
@@ -53,19 +53,20 @@ pub struct FileType {
 }
 
 pub struct ReadDir {
-    handle: Option<FindNextFileHandle>,
+    handle: Handle,
     root: Arc<PathBuf>,
-    first: Option<c::WIN32_FIND_DATAW>,
+    /// If `None`, there are no more entries.
+    buf: Option<DirBuff>,
+    /// Index of the next entry in `buf`. If `None`, all entries in `buf` have been yielded
+    /// already and we need to request the next set of entries.
+    next_entry: Option<usize>,
 }
-
-struct FindNextFileHandle(c::HANDLE);
-
-unsafe impl Send for FindNextFileHandle {}
-unsafe impl Sync for FindNextFileHandle {}
 
 pub struct DirEntry {
     root: Arc<PathBuf>,
-    data: c::WIN32_FIND_DATAW,
+    data: c::FILE_ID_BOTH_DIR_INFO,
+    // We need to store an owned copy of the filename as it has a variable size.
+    name: Box<[u16]>,
 }
 
 unsafe impl Send for OpenOptions {}
@@ -115,10 +116,16 @@ pub struct DirBuilder;
 
 impl ReadDir {
     pub fn dir(&self) -> io::Result<Dir> {
+        let handle = self.handle.as_raw_handle();
+        // SAFETY: the handle is valid and we are not dropping it.
+        let dir_handle = mem::ManuallyDrop::new(dir::Dir::from_inner(unsafe {
+            Handle::from_raw_handle(handle)
+        }));
+        // We don't want to expose the handle or any duplicate of it as the directory stream has
+        // state attached to it. So we open a completely new handle based on this one.
         let mut options = OpenOptions::new();
         options.read(true);
-        // FIXME: use race-free handle-based approach instead.
-        Dir::open(&self.root, &options)
+        dir_handle.open_dir(Path::new(""), &options)
     }
 }
 
@@ -130,73 +137,17 @@ impl fmt::Debug for ReadDir {
     }
 }
 
-impl Iterator for ReadDir {
-    type Item = io::Result<DirEntry>;
-    fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        let Some(handle) = self.handle.as_ref() else {
-            // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
-            // Simply return `None` because this is only the case when `FindFirstFileExW` in
-            // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
-            // no matchhing files can be found.
-            return None;
-        };
-        if let Some(first) = self.first.take() {
-            if let Some(e) = DirEntry::new(&self.root, &first) {
-                return Some(Ok(e));
-            }
-        }
-        unsafe {
-            let mut wfd = mem::zeroed();
-            loop {
-                if c::FindNextFileW(handle.0, &mut wfd) == 0 {
-                    self.handle = None;
-                    match api::get_last_error() {
-                        WinError::NO_MORE_FILES => return None,
-                        WinError { code } => {
-                            return Some(Err(Error::from_raw_os_error(code as i32)));
-                        }
-                    }
-                }
-                if let Some(e) = DirEntry::new(&self.root, &wfd) {
-                    return Some(Ok(e));
-                }
-            }
-        }
-    }
-}
-
-impl Drop for FindNextFileHandle {
-    fn drop(&mut self) {
-        let r = unsafe { c::FindClose(self.0) };
-        debug_assert!(r != 0);
-    }
-}
-
 impl DirEntry {
-    fn new(root: &Arc<PathBuf>, wfd: &c::WIN32_FIND_DATAW) -> Option<DirEntry> {
-        match &wfd.cFileName[0..3] {
-            // check for '.' and '..'
-            &[46, 0, ..] | &[46, 46, 0, ..] => return None,
-            _ => {}
-        }
-
-        Some(DirEntry { root: root.clone(), data: *wfd })
-    }
-
     pub fn path(&self) -> PathBuf {
         self.root.join(self.file_name())
     }
 
     pub fn file_name(&self) -> OsString {
-        let filename = truncate_utf16_at_nul(&self.data.cFileName);
-        OsString::from_wide(filename)
+        OsString::from_wide(&self.name)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType::new(
-            self.data.dwFileAttributes,
-            /* reparse_tag = */ self.data.dwReserved0,
-        ))
+        Ok(FileType::new(self.data.FileAttributes, /* reparse_tag = */ self.data.EaSize))
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -876,43 +827,6 @@ impl File {
         let info = c::FILE_DISPOSITION_INFO { DeleteFile: true };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info)
     }
-
-    /// Fill the given buffer with as many directory entries as will fit.
-    /// This will remember its position and continue from the last call unless
-    /// `restart` is set to `true`.
-    ///
-    /// The returned bool indicates if there are more entries or not.
-    /// You must only iterate the buffer if this returned `true`!
-    /// It is an error if `self` is not a directory.
-    ///
-    /// # Symlinks and other reparse points
-    ///
-    /// On Windows a file is either a directory or a non-directory.
-    /// A symlink directory is simply an empty directory with some "reparse" metadata attached.
-    /// So if you open a link (not its target) and iterate the directory,
-    /// you will always iterate an empty directory regardless of the target.
-    #[allow(unused)]
-    fn fill_dir_buff(&self, buffer: &mut DirBuff, restart: bool) -> Result<bool, WinError> {
-        let class =
-            if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
-
-        unsafe {
-            let result = c::GetFileInformationByHandleEx(
-                self.as_raw_handle(),
-                class,
-                buffer.as_mut_ptr().cast(),
-                buffer.capacity() as _,
-            );
-            if result == 0 {
-                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
-                // unchanged. FIXME: find docs that say this.
-                let err = api::get_last_error();
-                if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
-            } else {
-                Ok(true)
-            }
-        }
-    }
 }
 
 /// A buffer for holding directory entries.
@@ -937,6 +851,45 @@ impl DirBuff {
     /// Returns a `DirBuffIter`.
     fn iter(&self) -> DirBuffIter<'_> {
         DirBuffIter::new(self)
+    }
+
+    /// Fill the given buffer with as many directory entries as will fit.
+    /// This will remember its position and continue from the last call unless
+    /// `restart` is set to `true`.
+    ///
+    /// The returned bool indicates if there are more entries or not.
+    /// If this returns `false`, no new entries have been written to the buffer.
+    /// You must only iterate the buffer if this returned `true`!
+    ///
+    /// It is an error if `self` is not a directory.
+    ///
+    /// # Symlinks and other reparse points
+    ///
+    /// On Windows a file is either a directory or a non-directory.
+    /// A symlink directory is simply an empty directory with some "reparse" metadata attached.
+    /// So if you open a link (not its target) and iterate the directory,
+    /// you will always iterate an empty directory regardless of the target.
+    #[allow(unused)]
+    fn fill(&mut self, handle: &Handle, restart: bool) -> Result<bool, WinError> {
+        let class =
+            if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
+
+        unsafe {
+            let result = c::GetFileInformationByHandleEx(
+                handle.as_raw_handle(),
+                class,
+                self.as_mut_ptr().cast(),
+                self.capacity() as _,
+            );
+            if result == 0 {
+                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
+                // unchanged. FIXME: find docs that say this.
+                let err = api::get_last_error();
+                if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
+            } else {
+                Ok(true)
+            }
+        }
     }
 }
 impl AsRef<[MaybeUninit<u8>]> for DirBuff {
@@ -1158,9 +1111,36 @@ impl From<c::WIN32_FIND_DATAW> for FileAttr {
         }
     }
 }
+impl From<c::FILE_ID_BOTH_DIR_INFO> for FileAttr {
+    fn from(info: c::FILE_ID_BOTH_DIR_INFO) -> Self {
+        FileAttr {
+            attributes: info.FileAttributes,
+            creation_time: filetime_from_i64(info.CreationTime),
+            last_access_time: filetime_from_i64(info.LastAccessTime),
+            last_write_time: filetime_from_i64(info.LastWriteTime),
+            change_time: Some(filetime_from_i64(info.ChangeTime)),
+            // We use the EOF marker as file size, i.e., the actual number of bytes that
+            // can be read -- rather than the allocation size.
+            file_size: info.EndOfFile as u64,
+            reparse_tag: if info.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                // reparse tag is stored in `EaSize`
+                info.EaSize
+            } else {
+                0
+            },
+            volume_serial_number: None,
+            number_of_links: None,
+            // There is a FileIndex field, but it is "undefined for file systems such as NTFS".
+            file_index: None,
+        }
+    }
+}
 
 fn to_u64(ft: &c::FILETIME) -> u64 {
     (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
+}
+fn filetime_from_i64(val: i64) -> c::FILETIME {
+    c::FILETIME { dwLowDateTime: val as u32, dwHighDateTime: (val >> 32) as u32 }
 }
 
 impl FilePermissions {
@@ -1241,65 +1221,90 @@ impl DirBuilder {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
-    // We push a `*` to the end of the path which cause the empty path to be
-    // treated as the current directory. So, for consistency with other platforms,
-    // we explicitly error on the empty path.
-    if p.as_os_str().is_empty() {
-        // Return an error code consistent with other ways of opening files.
-        // E.g. fs::metadata or File::open.
-        return Err(io::Error::from_raw_os_error(c::ERROR_PATH_NOT_FOUND as i32));
+    // Open a file or directory without following symlinks.
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::FILE_LIST_DIRECTORY);
+    // `FILE_FLAG_BACKUP_SEMANTICS` allows opening directories.
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = File::open(p, &opts)?;
+
+    // Test if the file is not a directory.
+    if (file.basic_info()?.FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
+        return Err(io::Error::from_raw_os_error(c::ERROR_DIRECTORY as _));
     }
-    let root = p.to_path_buf();
-    let star = p.join("*");
-    let path = maybe_verbatim(&star)?;
 
-    unsafe {
-        let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
-        // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
-        // but with FindExInfoBasic it should skip filling WIN32_FIND_DATAW.cAlternateFileName
-        // (see https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw)
-        // (which will be always null string value and currently unused) and should be faster.
-        //
-        // We can pass FIND_FIRST_EX_LARGE_FETCH to dwAdditionalFlags to speed up things more,
-        // but as we don't know user's use profile of this function, lets be conservative.
-        let find_handle = c::FindFirstFileExW(
-            path.as_ptr(),
-            c::FindExInfoBasic,
-            &mut wfd as *mut _ as _,
-            c::FindExSearchNameMatch,
-            ptr::null(),
-            0,
-        );
+    Ok(ReadDir {
+        handle: file.into_inner(),
+        root: Arc::new(p.to_path_buf()),
+        buf: Some(DirBuff::new()),
+        next_entry: None, // causes entries to be fetched on first `next`
+    })
+}
 
-        if find_handle != c::INVALID_HANDLE_VALUE {
-            Ok(ReadDir {
-                handle: Some(FindNextFileHandle(find_handle)),
-                root: Arc::new(root),
-                first: Some(wfd),
-            })
-        } else {
-            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
-            // if no matching files can be found, but not necessarily that the path to find the
-            // files in does not exist.
-            //
-            // Hence, a check for whether the path to search in exists is added when the last
-            // os error returned by Windows is `ERROR_FILE_NOT_FOUND` to handle this scenario.
-            // If that is the case, an empty `ReadDir` iterator is returned as it returns `None`
-            // in the initial `.next()` invocation because `ERROR_NO_MORE_FILES` would have been
-            // returned by the `FindNextFileW` function.
-            //
-            // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
-            let last_error = api::get_last_error();
-            if last_error == WinError::FILE_NOT_FOUND {
-                return Ok(ReadDir { handle: None, root: Arc::new(root), first: None });
+impl Iterator for ReadDir {
+    type Item = io::Result<DirEntry>;
+    fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        let Some(buf) = &mut self.buf else {
+            return None;
+        };
+
+        let next_entry = match self.next_entry {
+            Some(next_entry) => next_entry,
+            None => {
+                // Fetch next batch of entries.
+                let more_entries = match buf.fill(&self.handle, /* restart */ false).io_result() {
+                    Ok(more_entries) => more_entries,
+                    Err(err) => return Some(Err(err)),
+                };
+
+                if !more_entries {
+                    // Directory is done!
+                    self.buf = None;
+                    return None;
+                }
+
+                // Next entry (to be yielded now) is at offset 0.
+                0
             }
+        };
 
-            // Just return the error constructed from the raw OS error if the above is not the case.
-            //
-            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileExW` function
-            // when the path to search in does not exist in the first place.
-            Err(Error::from_raw_os_error(last_error.code as i32))
+        // Get the data of the next entry from the buffer.
+        let info = buf.as_ref()[next_entry..].as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
+        // SAFETY:
+        // - The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the last
+        //   field (the file name) is unsized. So an offset has to be used to
+        //   get the file name slice.
+        // - The OS has guaranteed initialization of the fields of
+        //   `FILE_ID_BOTH_DIR_INFO` and the trailing filename (for at least
+        //   `FileNameLength` bytes)
+        // While this is guaranteed to be aligned in documentation for
+        // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
+        // it does not seem that reality is so kind, and assuming this
+        // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
+        // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+        let entry = unsafe { info.read_unaligned() };
+        // SAFETY: the OS promises to store a name of the given length at this offset.
+        let name = unsafe {
+            from_maybe_unaligned(
+                (&raw const (*info).FileName).cast::<u16>(),
+                (entry.FileNameLength as usize) / size_of::<u16>(),
+            )
+        };
+
+        // Update offset for the next entry after this one.
+        if entry.NextEntryOffset == 0 {
+            self.next_entry = None;
+        } else {
+            self.next_entry = Some(next_entry + (entry.NextEntryOffset as usize));
         }
+
+        // Check if this is an entry we skip (`.` and `..`).
+        const DOT: u16 = b'.' as u16;
+        if matches!(*name, [DOT] | [DOT, DOT]) {
+            return self.next();
+        }
+
+        Some(Ok(DirEntry { data: entry, name: Box::from(name), root: self.root.clone() }))
     }
 }
 
