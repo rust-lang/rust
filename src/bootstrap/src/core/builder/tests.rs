@@ -2958,3 +2958,84 @@ fn flags_env_prefers_plain_form_without_spaces() {
         ("CARGO_ENCODED_RUSTFLAGS", "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo".to_string()),
     );
 }
+
+/// Regression test for <https://github.com/rust-lang/rust/issues/165957>.
+///
+/// `Sysroot` must not symlink `builder.src` into `stage0-sysroot/lib/rustlib/{src,rustc-src}/rust`:
+/// `StdLink` recursively copies `initial_sysroot/lib` into `stage0-sysroot/lib`, so symlinks to
+/// `builder.src` would cause files from a stage 0 toolchain with `rust-src` or `rustc-src`
+/// (`rustc-dev`) installed to overwrite the source tree.
+#[test]
+fn stage0_sysroot_does_not_overwrite_src_tree() {
+    let ctx = TestCtx::new();
+    let fake_src = ctx.dir().join("fake-src");
+    let fake_initial_sysroot = ctx.dir().join("fake-initial-sysroot");
+
+    let src_compiler_file = fake_src.join("compiler/rustc/src/main.rs");
+    let src_library_file = fake_src.join("library/core/src/lib.rs");
+    std::fs::create_dir_all(src_compiler_file.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(src_library_file.parent().unwrap()).unwrap();
+    std::fs::write(&src_compiler_file, "current compiler source").unwrap();
+    std::fs::write(&src_library_file, "current library source").unwrap();
+
+    let stage0_compiler_file =
+        fake_initial_sysroot.join("lib/rustlib/rustc-src/rust/compiler/rustc/src/main.rs");
+    let stage0_library_file =
+        fake_initial_sysroot.join("lib/rustlib/src/rust/library/core/src/lib.rs");
+    std::fs::create_dir_all(stage0_compiler_file.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(stage0_library_file.parent().unwrap()).unwrap();
+    std::fs::write(&stage0_compiler_file, "stage0 compiler source").unwrap();
+    std::fs::write(&stage0_library_file, "stage0 library source").unwrap();
+
+    let config = ctx
+        .config("check")
+        .args(&["--set", "rust.codegen-backends=['cranelift']"])
+        .no_dry_run()
+        .create_config();
+    let host = config.host_target;
+    let mut sess = Session::new(config);
+    sess.config.src = fake_src.clone();
+    sess.initial_sysroot = fake_initial_sysroot.clone();
+    sess.initial_rustc = fake_initial_sysroot.join("bin/rustc");
+
+    let builder = Builder::new(&sess);
+    let stage0 = Compiler::new(0, host);
+    builder.ensure(compile::StdLink::from_std(compile::Std::new(stage0, host), stage0));
+
+    assert_eq!(
+        std::fs::read_to_string(&src_compiler_file).unwrap(),
+        "current compiler source",
+        "stage0 StdLink must not overwrite compiler sources in the source tree"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&src_library_file).unwrap(),
+        "current library source",
+        "stage0 StdLink must not overwrite library sources in the source tree"
+    );
+
+    let stage0_sysroot = builder.sysroot(stage0);
+    assert!(
+        !stage0_sysroot
+            .join("lib/rustlib/rustc-src/rust")
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    assert!(
+        !stage0_sysroot
+            .join("lib/rustlib/src/rust")
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+
+    // Stage 1+ sysroots should still symlink both `rust-src` and `rustc-src` to `builder.src`.
+    let stage1_sysroot = builder.ensure(compile::Sysroot::new(Compiler::new(1, host)));
+    assert_eq!(std::fs::read_link(stage1_sysroot.join("lib/rustlib/src/rust")).unwrap(), fake_src);
+    assert_eq!(
+        std::fs::read_link(stage1_sysroot.join("lib/rustlib/rustc-src/rust")).unwrap(),
+        fake_src
+    );
+}
