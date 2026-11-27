@@ -183,6 +183,19 @@ where
                 arg.cast_to(cast_target);
             }
         }
+    } else if arg.is_ignore() {
+        if pad_i32 > 0 {
+            // Use pointer indirection as padding for over-aligned ZSTs.
+            //
+            // ZSTs are not passed (they have no data), but may be over-aligned, and when they
+            // are aligned to 16 or more, that still matters for register alignment. So, add padding
+            // to have the ZST argument start in an even-numbered register.
+            //
+            // This is (ab)using a mechanism that some other calling conventions use where
+            // ZSTs are passed as pointers (to uninitialized memory). This is the least
+            // awkward way to fit padding on a ZST into our logic.
+            arg.make_indirect_from_ignore();
+        }
     } else {
         match arg.layout.fields {
             FieldsShape::Primitive => unreachable!(),
@@ -250,8 +263,16 @@ where
         Self { offset: Size::ZERO }
     }
 
+    // Use pointer indirection as padding for over-aligned ZSTs in arguments.
+    fn passes_zsts(&self) -> bool {
+        true
+    }
+
     fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
-        classify_ret(cx, ret, &mut self.offset);
+        // argument handling doesn't ignore ZSTs but return handling does
+        if !ret.is_ignore() && ret.layout.is_sized() {
+            classify_ret(cx, ret, &mut self.offset);
+        }
     }
 
     fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
