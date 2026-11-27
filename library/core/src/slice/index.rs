@@ -105,6 +105,8 @@ const unsafe fn get_offset_len_mut_noubcheck<T>(
 
 /// A helper trait used for indexing operations.
 ///
+/// # Safety
+///
 /// Implementations of this trait have to promise that if the argument
 /// to `get_unchecked(_mut)` is a safe reference, then so is the result.
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
@@ -141,8 +143,10 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
     ///
     /// # Safety
     ///
-    /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
-    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - Calling this method with an out-of-bounds index or a dangling `slice` pointer
+    ///   is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - Calling this method with an index for which `get` would return `None`
+    ///   on the same slice is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
@@ -153,8 +157,10 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
     ///
     /// # Safety
     ///
-    /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
-    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - Calling this method with an out-of-bounds index or a dangling `slice` pointer
+    ///   is *[undefined behavior]* even if the resulting pointer is not used.
+    /// - Calling this method with an index for which `get_mut` would return `None`
+    ///   on the same slice is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
