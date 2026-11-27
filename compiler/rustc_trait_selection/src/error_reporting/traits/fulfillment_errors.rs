@@ -540,6 +540,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             &mut err,
                             leaf_trait_predicate,
                         );
+                        suggested |= self.suggest_binop_char_cast(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        );
                         suggested |=
                             self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate)
                                 || self.suggest_remove_reference(
