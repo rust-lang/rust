@@ -449,9 +449,14 @@ impl LinkSelfContained {
             return Ok(());
         }
 
-        // `-C link-self-contained=-linker` is only stable on x64 linux.
+        // `-C link-self-contained=-linker` is only stable on x64 and loongarch64 linux.
         let has_minus_linker = self.disabled_components.is_linker_enabled();
-        if has_minus_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+        if has_minus_linker
+            && !matches!(
+                target_tuple.tuple(),
+                "x86_64-unknown-linux-gnu" | "loongarch64-unknown-linux-gnu"
+            )
+        {
             return Err(format!(
                 "`-C link-self-contained=-linker` is unstable on the `{target_tuple}` \
                     target. The `-Z unstable-options` flag must also be passed to use it on this target",
@@ -542,9 +547,14 @@ impl LinkerFeaturesCli {
     /// The caller should ensure that e.g. [`nightly_options::unstable_options_enabled`]
     /// returns false.
     pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
-        // `-C linker-features=-lld` is only stable on x64 linux.
+        // `-C linker-features=-lld` is only stable on x64 and loongarch64 linux.
         let has_minus_lld = self.disabled.is_lld_enabled();
-        if has_minus_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+        if has_minus_lld
+            && !matches!(
+                target_tuple.tuple(),
+                "x86_64-unknown-linux-gnu" | "loongarch64-unknown-linux-gnu"
+            )
+        {
             return Err(format!(
                 "`-C linker-features=-lld` is unstable on the `{target_tuple}` \
                     target. The `-Z unstable-options` flag must also be passed to use it on this target",
