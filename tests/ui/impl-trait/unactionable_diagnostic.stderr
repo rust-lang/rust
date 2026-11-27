@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/unactionable_diagnostic.rs:21:5
+  --> $DIR/unactionable_diagnostic.rs:23:5
    |
 LL | pub fn bar<'t, T>(
    |            -- the parameter type `T` must be valid for the lifetime `'t` as defined here...
@@ -12,6 +12,36 @@ help: consider adding an explicit lifetime bound
 LL | pub fn bar<'t, T: 't>(
    |                 ++++
 
-error: aborting due to 1 previous error
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/unactionable_diagnostic.rs:23:5
+   |
+LL | pub fn bar<'t, T>(
+   |            -- the parameter type `T` must be valid for the lifetime `'t` as defined here...
+...
+LL |     foo(post, x)
+   |     ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | pub fn bar<'t, T: 't>(
+   |                 ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/unactionable_diagnostic.rs:23:5
+   |
+LL | pub fn bar<'t, T>(
+   |            -- the parameter type `T` must be valid for the lifetime `'t` as defined here...
+...
+LL |     foo(post, x)
+   |     ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | pub fn bar<'t, T: 't>(
+   |                 ++++
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

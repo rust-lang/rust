@@ -38,6 +38,7 @@ fn extend<T: Display>(x: T) -> Box<dyn Display + 'static> {
         let _ =
             Outer::<T, Inner<T>> { input: Some(x), output: storage.clone(), _phantom: PhantomData };
         //~^ ERROR: the parameter type `T` may not live long enough
+        //~| ERROR: the parameter type `T` may not live long enough
     }
     Rc::into_inner(storage).unwrap().into_inner().unwrap()
 }
