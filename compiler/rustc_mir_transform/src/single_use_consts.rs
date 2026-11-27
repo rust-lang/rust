@@ -1,5 +1,4 @@
 use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -31,23 +30,25 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut finder = SingleUseConstsFinder {
-            ineligible_locals: DenseBitSet::new_empty(body.local_decls.len()),
-            locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
-            locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
+            candidates: IndexVec::from_fn_n(
+                |_| Status::Prospect { init_loc: None, use_loc: None },
+                body.local_decls.len(),
+            ),
         };
-
-        finder.ineligible_locals.insert_range(..Local::arg(body.arg_count));
-
         finder.visit_body(body);
+        let mut candidates = finder.candidates;
 
-        for (local, locations) in finder.locations.iter_enumerated() {
-            if finder.ineligible_locals.contains(local) {
+        let mut changed = false;
+        for (local, status) in candidates.iter_enumerated_mut() {
+            if let LocalKind::ReturnPointer | LocalKind::Arg = body.local_kind(local) {
+                status.reject();
                 continue;
             }
-
-            let Some(init_loc) = locations.init_loc else {
+            let Status::Prospect { init_loc: Some(init_loc), use_loc } = *status else {
+                status.reject();
                 continue;
             };
+            changed = true;
 
             // We're only changing an operand, not the terminator kinds or successors
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
@@ -60,28 +61,34 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             };
             let (place, rvalue) = *place_and_rvalue;
             assert_eq!(place.as_local(), Some(local));
-            let Rvalue::Use(operand, _) = rvalue else { bug!("No longer a use?") };
+            let Rvalue::Use(Operand::Constant(const_op), _) = rvalue else {
+                bug!("No longer a use?")
+            };
+            *status = Status::Replaced { const_op: Some(const_op), use_loc };
+        }
 
-            let mut replacer = LocalReplacer { tcx, local, operand: Some(operand) };
+        if !changed {
+            return;
+        }
 
-            if finder.locals_in_debug_info.contains(local) {
-                for var_debug_info in &mut body.var_debug_info {
-                    replacer.visit_var_debug_info(var_debug_info);
-                }
-            }
-
-            let Some(use_loc) = locations.use_loc else { continue };
-
+        let mut replacer = LocalReplacer { tcx, candidates };
+        for var_debug_info in &mut body.var_debug_info {
+            replacer.visit_var_debug_info(var_debug_info);
+        }
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
+        for local in body.local_decls.indices() {
+            let Status::Replaced { use_loc: Some(use_loc), .. } = replacer.candidates[local] else {
+                continue;
+            };
             let use_block = &mut basic_blocks[use_loc.block];
             if let Some(use_statement) = use_block.statements.get_mut(use_loc.statement_index) {
                 replacer.visit_statement(use_statement, use_loc);
             } else {
                 replacer.visit_terminator(&mut use_block.terminator, use_loc);
             }
-
-            if replacer.operand.is_some() {
+            if replacer.candidates[local].take_const().is_some() {
                 bug!(
-                    "operand wasn't used replacing local {local:?} with locations {locations:?} in body {body:#?}"
+                    "operand wasn't used replacing local {local:?} with location {use_loc:?} in body {body:#?}"
                 );
             }
         }
@@ -90,36 +97,70 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-struct LocationPair {
-    init_loc: Option<Location>,
-    use_loc: Option<Location>,
+#[derive(Debug)]
+enum Status<'tcx> {
+    /// Local is illegible for the optimization.
+    Rejected,
+    /// Local is a potential candidate for the optimization.
+    Prospect { init_loc: Option<Location>, use_loc: Option<Location> },
+    /// Local has been replaced with a constant.
+    Replaced { const_op: Option<Box<ConstOperand<'tcx>>>, use_loc: Option<Location> },
 }
 
-impl LocationPair {
-    fn new() -> Self {
-        Self { init_loc: None, use_loc: None }
+impl<'tcx> Status<'tcx> {
+    #[inline]
+    fn insert_init_location(&mut self, location: Location) {
+        match self {
+            Status::Prospect { init_loc: init_loc @ None, .. } => {
+                *init_loc = Some(location);
+            }
+            _ => *self = Status::Rejected,
+        }
+    }
+
+    #[inline]
+    fn insert_use_location(&mut self, location: Location) {
+        match self {
+            Status::Prospect { use_loc: use_loc @ None, .. } => {
+                *use_loc = Some(location);
+            }
+            _ => *self = Status::Rejected,
+        }
+    }
+
+    #[inline]
+    fn reject(&mut self) {
+        *self = Status::Rejected;
+    }
+
+    #[inline]
+    fn as_const(&self) -> Option<&ConstOperand<'tcx>> {
+        match self {
+            Status::Replaced { const_op, .. } => const_op.as_deref(),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn take_const(&mut self) -> Option<Box<ConstOperand<'tcx>>> {
+        match self {
+            Status::Replaced { const_op, .. } => const_op.take(),
+            _ => None,
+        }
     }
 }
 
-struct SingleUseConstsFinder {
-    ineligible_locals: DenseBitSet<Local>,
-    locations: IndexVec<Local, LocationPair>,
-    locals_in_debug_info: DenseBitSet<Local>,
+struct SingleUseConstsFinder<'tcx> {
+    candidates: IndexVec<Local, Status<'tcx>>,
 }
 
-impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
+impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder<'tcx> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Some(local) = place.as_local()
             && let Rvalue::Use(operand, _) = rvalue
             && let Operand::Constant(_) = operand
         {
-            let locations = &mut self.locations[local];
-            if locations.init_loc.is_some() {
-                self.ineligible_locals.insert(local);
-            } else {
-                locations.init_loc = Some(location);
-            }
+            self.candidates[local].insert_init_location(location);
         } else {
             self.super_assign(place, rvalue, location);
         }
@@ -129,12 +170,7 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
         if let Some(place) = operand.place()
             && let Some(local) = place.as_local()
         {
-            let locations = &mut self.locations[local];
-            if locations.use_loc.is_some() {
-                self.ineligible_locals.insert(local);
-            } else {
-                locations.use_loc = Some(location);
-            }
+            self.candidates[local].insert_use_location(location);
         } else {
             self.super_operand(operand, location);
         }
@@ -143,16 +179,18 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
             // Storage markers are irrelevant to this.
-            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {}
+            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
+                // Accepted.
+            }
             _ => self.super_statement(statement, location),
         }
     }
 
     fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
         if let VarDebugInfoContents::Place(place) = &var_debug_info.value
-            && let Some(local) = place.as_local()
+            && let Some(_) = place.as_local()
         {
-            self.locals_in_debug_info.insert(local);
+            // Accepted.
         } else {
             self.super_var_debug_info(var_debug_info);
         }
@@ -161,17 +199,17 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
     fn visit_local(&mut self, local: Local, _context: PlaceContext, _location: Location) {
         // If there's any path that gets here, rather than being understood elsewhere,
         // then we'd better not do anything with this local.
-        self.ineligible_locals.insert(local);
+        self.candidates[local].reject();
     }
 }
 
 struct LocalReplacer<'tcx> {
     tcx: TyCtxt<'tcx>,
-    local: Local,
-    operand: Option<Operand<'tcx>>,
+    candidates: IndexVec<Local, Status<'tcx>>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalReplacer<'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -179,28 +217,18 @@ impl<'tcx> MutVisitor<'tcx> for LocalReplacer<'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _location: Location) {
         if let Operand::Copy(place) | Operand::Move(place) = operand
             && let Some(local) = place.as_local()
-            && local == self.local
+            && let Some(const_op) = self.candidates[local].take_const()
         {
-            *operand = self.operand.take().unwrap_or_else(|| {
-                bug!("there was a second use of the operand");
-            });
+            *operand = Operand::Constant(const_op);
         }
     }
 
     fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
         if let VarDebugInfoContents::Place(place) = &var_debug_info.value
             && let Some(local) = place.as_local()
-            && local == self.local
+            && let Some(const_op) = self.candidates[local].as_const()
         {
-            let const_op = *self
-                .operand
-                .as_ref()
-                .unwrap_or_else(|| {
-                    bug!("the operand was already stolen");
-                })
-                .constant()
-                .unwrap();
-            var_debug_info.value = VarDebugInfoContents::Const(const_op);
+            var_debug_info.value = VarDebugInfoContents::Const(*const_op);
         }
     }
 }
