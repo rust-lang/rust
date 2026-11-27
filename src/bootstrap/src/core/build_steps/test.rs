@@ -898,6 +898,10 @@ impl CommandLineStep for Priroda {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.sess.host_target;
         let target = self.target;
+        if target != host {
+            builder.info(&format!("skipping Priroda tests for non-host target {target}"));
+            return;
+        }
         let stage = builder.top_stage;
 
         // Priroda tests run under Miri, so reuse the Miri binary and sysroot.
@@ -927,7 +931,8 @@ impl CommandLineStep for Priroda {
 
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+        // Keep `MIRI_TEST_TARGET` unset so the harness doesn't invoke `rustc` from `PATH`.
+        cargo.env_remove("MIRI_TEST_TARGET");
 
         {
             let _guard = builder.msg_test("priroda", target, target_compiler.stage);
