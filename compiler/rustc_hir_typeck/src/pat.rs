@@ -1470,8 +1470,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
+                    let sugg_span =
+                        (|| {
+                            let snippet = tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(pat.span.until(inner.span))
+                                .ok()?;
+                            let rest = snippet.strip_prefix('&')?;
+                            let rest = rest.trim_start().strip_prefix(pin_and_mut)?;
+                            if rest.trim().is_empty() {
+                                Some(pat.span.until(inner.span))
+                            } else {
+                                let prefix_len = snippet.len() - rest.len();
+                                Some(pat.span.shrink_to_lo().with_hi(
+                                    pat.span.lo() + rustc_span::BytePos(prefix_len as u32),
+                                ))
+                            }
+                        })()
+                        .unwrap_or(pat.span.until(inner.span));
                     err.span_suggestion_verbose(
-                        pat.span.until(inner.span),
+                        sugg_span,
                         format!("consider removing `&{pin_and_mut}` from the pattern"),
                         "",
                         Applicability::MaybeIncorrect,

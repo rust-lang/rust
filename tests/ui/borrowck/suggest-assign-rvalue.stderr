@@ -86,8 +86,8 @@ LL |     println!("my_string: {}", my_string);
    |
 help: consider assigning a value
    |
-LL |     let my_string: String = Default::default();
-   |                           ++++++++++++++++++++
+LL |     let my_string: String = String::new();
+   |                           +++++++++++++++
 
 error[E0381]: used binding `my_int` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:44:28

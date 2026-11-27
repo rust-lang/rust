@@ -1189,9 +1189,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             let (_, body) =
                 tcx.hir_node_by_def_id(def_id).expect_item().expect_test_binder_constraints();
             let icx = ItemCtxt::new(tcx, def_id);
-            let lowered = icx.lower_test_binder_body(body);
+            let lowered = icx.lower_test_binder_constraints(def_id, body);
             res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                wfcx.check_test_binder_body(lowered);
+                wfcx.check_test_binder_constraints(lowered);
                 Ok(())
             }));
             return res;

@@ -25,7 +25,7 @@ LL |         let mut value = false;
    |                         ^^^^^ this value is reassigned later and never used
 ...
 LL |                 value = true;
-   |                 ------------ `value` is overwritten here before the previous value is read
+   |                 ------------ `value` is overwritten here before the previous value is used
    |
    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
 

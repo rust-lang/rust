@@ -1,6 +1,6 @@
 //@ revisions: DEBUG RELEASE
-//@[RELEASE] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3 -Clto=fat
-//@[DEBUG] compile-flags: -Zautodiff=Enable,NoTT -Copt-level=0 -Clto=fat -Cdebuginfo=2 -Ccodegen-units=8
+//@[RELEASE] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=fat
+//@[DEBUG] compile-flags: -Zautodiff=Enable -Copt-level=0 -Clto=fat -Cdebuginfo=2 -Ccodegen-units=8
 //@ needs-enzyme
 //@ incremental
 //@ no-prefer-dynamic

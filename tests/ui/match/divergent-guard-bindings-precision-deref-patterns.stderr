@@ -1,0 +1,40 @@
+error[E0502]: cannot borrow `*v` as mutable because it is also borrowed as immutable
+  --> $DIR/divergent-guard-bindings-precision-deref-patterns.rs:19:29
+   |
+LL |     match v {
+   |           - immutable borrow occurs here
+...
+LL |         &mut [[ref x]] if { v[0][0] = true; true } || return => {}
+   |                             ^ mutable borrow occurs here   - immutable borrow later used here
+
+error[E0510]: cannot assign `v` in match guard
+  --> $DIR/divergent-guard-bindings-precision-deref-patterns.rs:23:29
+   |
+LL |     match v {
+   |           - value is immutable in match guard
+...
+LL |         &mut [[ref x]] if { v = empty; true } || return => { *x; }
+   |                             ^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `***b` in match guard
+  --> $DIR/divergent-guard-bindings-precision-deref-patterns.rs:36:41
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+...
+LL |         &mut deref!(deref!(ref x)) if { ***b = true; true } || return => {}
+   |                                         ^^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `b` in match guard
+  --> $DIR/divergent-guard-bindings-precision-deref-patterns.rs:40:41
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+...
+LL |         &mut deref!(deref!(ref x)) if { b = t; true } || return => { *x; }
+   |                                         ^^^^^ cannot assign
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0502, E0510.
+For more information about an error, try `rustc --explain E0502`.

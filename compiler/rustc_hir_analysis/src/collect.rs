@@ -323,11 +323,21 @@ impl<'tcx> ItemCtxt<'tcx> {
         diag.emit_err()
     }
 
+    // The return value of this is not a normal binder. See docs on `check_test_binder_constraints`.
     #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn lower_test_binder_body(
+    pub(super) fn lower_test_binder_constraints(
         &self,
+        def_id: LocalDefId,
         body: &hir::TestBinderBody<'tcx>,
-    ) -> TestBinderBody<'tcx> {
+    ) -> ty::Binder<'tcx, TestBinderBody<'tcx>> {
+        let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
+        let bound_vars = self.tcx.late_bound_vars(hir_id);
+        let body = self.lower_test_binder_body(body);
+        ty::Binder::bind_with_vars(body, bound_vars)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn lower_test_binder_body(&self, body: &hir::TestBinderBody<'tcx>) -> TestBinderBody<'tcx> {
         let hir::TestBinderBody { span, items: hir_items } = body;
         let mut items: Vec<TestBinderItem<'_>> = vec![];
         for hir_item in *hir_items {
@@ -371,20 +381,25 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         forall: &hir::TestBinderForall<'tcx>,
     ) -> TestBinderForall<'tcx> {
-        let bound_vars = self.tcx.late_bound_vars(forall.hir_id);
-        let value = self.lower_test_binder_body(forall.body);
+        let params = forall.generics.params.iter().map(|p| p.span).collect();
+        let body = self.lower_test_binder_body(forall.body);
         let mut type_outlives = vec![];
         let mut region_outlives = vec![];
         for predicate in forall.generics.predicates {
             self.lower_test_binder_assumptions(predicate, &mut type_outlives, &mut region_outlives);
         }
-        let body =
-            crate::check::wfcheck::WithWhereClauses { value, type_outlives, region_outlives };
-        let binder = ty::Binder::bind_with_vars(body, bound_vars);
         let assert_on_exit = forall
             .assert_on_exit
             .map(|assert_on_exit| self.lower_test_binder_constraint(assert_on_exit));
-        TestBinderForall { span: forall.span, binder, assert_on_exit }
+        TestBinderForall {
+            span: forall.span,
+            universe: None,
+            params,
+            type_outlives,
+            region_outlives,
+            body,
+            assert_on_exit,
+        }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -392,10 +407,9 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         exists: &hir::TestBinderExists<'tcx>,
     ) -> TestBinderExists<'tcx> {
-        let bound_vars = self.tcx.late_bound_vars(exists.hir_id);
+        let params = exists.params.iter().map(|p| p.span).collect();
         let body = self.lower_test_binder_body(exists.body);
-        let binder = ty::Binder::bind_with_vars(body, bound_vars);
-        TestBinderExists { span: exists.span, binder }
+        TestBinderExists { span: exists.span, params, body }
     }
 
     fn lower_test_binder_assumptions(

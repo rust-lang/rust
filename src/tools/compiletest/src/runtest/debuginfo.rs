@@ -8,7 +8,6 @@ use tracing::debug;
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
 use crate::debuggers::extract_gdb_version;
-use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -491,7 +490,7 @@ impl TestCx<'_> {
             get_target_file_name(&self.config.target)
         ));
 
-        let mut cmd = ArgFileCommand::new(lldb);
+        let mut cmd = Command::new(lldb);
         cmd.arg("--batch") // --batch executes our script from --one-line and kills lldb afterwards
             .arg("--one-line")
             .arg("script --language python -- import debugger_tester; debugger_tester.main()")

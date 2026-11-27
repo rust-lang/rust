@@ -16,7 +16,8 @@ use crate::directives::directive_names::{
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
-use crate::directives::line::DirectiveLine;
+use crate::directives::line::{DirectiveLine, DirectivePayload};
+pub(crate) use crate::directives::location::{LineNumber, Location};
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -29,10 +30,8 @@ mod cfg;
 mod directive_names;
 mod file;
 mod handlers;
-mod line;
-pub(crate) use line::line_directive;
-mod line_number;
-pub(crate) use line_number::LineNumber;
+pub(crate) mod line;
+mod location;
 mod needs;
 #[cfg(test)]
 mod tests;
@@ -56,27 +55,26 @@ impl DirectivesCache {
 /// Properties which must be known very early, before actually running
 /// the test.
 #[derive(Default)]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub(crate) struct EarlyProps {
     pub(crate) revisions: Vec<String>,
 }
 
 impl EarlyProps {
-    pub(crate) fn from_file_directives(
+    pub(crate) fn from_file_directives<'a>(
         config: &Config,
-        file_directives: &FileDirectives<'_>,
-    ) -> Self {
+        file_directives: &FileDirectives<'a>,
+    ) -> Result<Self, RevisionsParseError<'a>> {
         let mut props = EarlyProps::default();
 
         iter_directives(
             config,
             file_directives,
             // (dummy comment to force args into vertical layout)
-            &mut |ln: &DirectiveLine<'_>| {
-                config.parse_and_update_revisions(ln, &mut props.revisions);
-            },
-        );
+            |ln| config.parse_and_update_revisions(ln, &mut props.revisions),
+        )?;
 
-        props
+        Ok(props)
     }
 }
 
@@ -370,14 +368,16 @@ impl TestProps {
                 config,
                 &file_directives,
                 // (dummy comment to force args into vertical layout)
-                &mut |ln: &DirectiveLine<'_>| {
+                |ln| -> Result<(), !> {
                     if !ln.applies_to_test_revision(test_revision) {
-                        return;
+                        return Ok(());
                     }
 
                     if let Some(handler) = DIRECTIVE_HANDLERS_MAP.get(ln.name) {
                         handler.handle(config, ln, self);
                     }
+
+                    Ok(())
                 },
             );
         }
@@ -443,170 +443,161 @@ impl TestProps {
     }
 }
 
-pub(crate) fn do_early_directives_check(
+pub(crate) fn do_early_directives_check<'a>(
     mode: TestMode,
-    file_directives: &FileDirectives<'_>,
-) -> Result<(), String> {
-    let testfile = file_directives.path;
+    file_directives: &FileDirectives<'a>,
+) -> Result<(), EarlyValidationError<'a>> {
+    use EarlyValidationError as Error;
+    use EarlyValidationErrorKind as ErrorKind;
 
-    for directive_line @ DirectiveLine { line_number, .. } in &file_directives.lines {
-        let CheckDirectiveResult { is_known_directive, trailing_directive } =
-            check_directive(directive_line, mode);
+    for line @ &DirectiveLine { location, name, .. } in &file_directives.lines {
+        let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(name)
+            || match mode {
+                TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&name),
+                TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&name),
+                _ => false,
+            };
 
         if !is_known_directive {
-            return Err(format!(
-                "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
-                directive = directive_line.display(),
-            ));
+            return Err(Error { kind: ErrorKind::UnknownDirective { name }, location });
         }
 
-        if let Some(trailing_directive) = &trailing_directive {
-            return Err(format!(
-                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {testfile}:{line_number}\n\
-                HELP: put the directive on its own line: `//@ {trailing_directive}`"
-            ));
+        // If it looks like the user tried to put two directives on the same line
+        // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
+        // second "directive" would actually be ignored with no effect.
+        if let Some(line::DirectivePayload::Remark(remark)) = line.payload {
+            let token = remark.split(|c: char| c == ':' || c.is_whitespace()).next().unwrap();
+            if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
+                return Err(Error {
+                    kind: ErrorKind::TrailingDirective {
+                        leading_directive: name,
+                        trailing_directive: remark,
+                    },
+                    location,
+                });
+            }
         }
     }
 
     Ok(())
 }
 
-pub(crate) struct CheckDirectiveResult<'ln> {
-    is_known_directive: bool,
-    trailing_directive: Option<&'ln str>,
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct EarlyValidationError<'a> {
+    kind: EarlyValidationErrorKind<'a>,
+    location: Location<'a>,
 }
 
-fn check_directive<'a>(
-    directive_ln: &DirectiveLine<'a>,
-    mode: TestMode,
-) -> CheckDirectiveResult<'a> {
-    let &DirectiveLine { name: directive_name, .. } = directive_ln;
-
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
-        || match mode {
-            TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            _ => false,
-        };
-
-    // If it looks like the user tried to put two directives on the same line
-    // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
-    // second "directive" would actually be ignored with no effect.
-    let trailing_directive = directive_ln
-        .remark_after_space()
-        .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
-
-    // FIXME(Zalathar): Consider emitting specialized error/help messages for
-    // bogus directive names that are similar to real ones, e.g.:
-    // - *`compiler-flags` => `compile-flags`
-    // - *`compile-fail` => `check-fail` or `build-fail`
-
-    CheckDirectiveResult { is_known_directive, trailing_directive }
+#[cfg_attr(test, derive(Debug))]
+enum EarlyValidationErrorKind<'a> {
+    UnknownDirective { name: &'a str },
+    TrailingDirective { leading_directive: &'a str, trailing_directive: &'a str },
 }
 
-fn iter_directives(
+impl EarlyValidationError<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let title = |message| crate::error!("{message} at {}", self.location);
+
+        match self.kind {
+            EarlyValidationErrorKind::UnknownDirective { name } => {
+                title(format!("unknown directive `{name}`"));
+                // FIXME: Look for typo'ed names / suggest directives with a similar name. E.g,
+                // - *`compiler-flags` => `compile-flags`
+                // - *`compile-fail` => `check-fail` or `build-fail`
+            }
+            EarlyValidationErrorKind::TrailingDirective {
+                leading_directive,
+                trailing_directive,
+            } => {
+                title(format!(
+                    "directive `{leading_directive}` is followed by another directive (`{trailing_directive}`) on the same line"
+                ));
+                help!("put the directive on its own line: `//@ {trailing_directive}`");
+            }
+        }
+
+        panic!("fatal error")
+    }
+}
+
+fn iter_directives<'a, E>(
     config: &Config,
-    file_directives: &FileDirectives<'_>,
-    it: &mut dyn FnMut(&DirectiveLine<'_>),
-) {
-    let testfile = file_directives.path;
-
-    let extra_directives = match config.mode {
+    file_directives: &FileDirectives<'a>,
+    mut it: impl FnMut(&DirectiveLine<'a>) -> Result<(), E>,
+) -> Result<(), E> {
+    // Inject certain directives depending on the test mode, so test writers don't need to specify
+    // them manually in every test file.
+    let synthetic = |name| DirectiveLine::synthetic(name, file_directives.path);
+    match config.mode {
         TestMode::CoverageRun => {
-            // Coverage tests in coverage-run mode always have these extra directives, without needing to
-            // specify them manually in every test file.
-            //
             // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
-            vec![
-                "//@ needs-profiler-runtime",
-                // FIXME(pietroalbini): this test currently does not work on cross-compiled targets
-                // because remote-test is not capable of sending back the *.profraw files generated by
-                // the LLVM instrumentation.
-                "//@ ignore-cross-compile",
-            ]
+            it(&synthetic("needs-profiler-runtime"))?;
+            // FIXME(pietroalbini): These tests currently do not work on cross-compiled targets
+            // because remote-test is not capable of sending back the *.profraw files generated by
+            // the LLVM instrumentation.
+            it(&synthetic("ignore-cross-compile"))?;
         }
         TestMode::Codegen if !file_directives.has_explicit_no_std_core_attribute => {
-            // Note: affects all codegen test suites under test mode `codegen`, e.g. `codegen-llvm`.
-            //
-            // Codegen tests automatically receive implied `//@ needs-target-std`, unless
-            // `#![no_std]`/`#![no_core]` attribute was explicitly seen. The rationale is basically to avoid
-            // having to manually maintain a bunch of `//@ needs-target-std` directives esp. for targets
-            // tested/built out-of-tree.
-            vec!["//@ needs-target-std"]
+            it(&synthetic("needs-target-std"))?;
         }
         TestMode::Ui if config.parallel_frontend_enabled() => {
-            // UI tests in parallel-frontend mode always have this extra directive, without needing to
-            // specify it manually in every test file.
-            vec!["//@ compare-output-by-lines"]
+            it(&synthetic("compare-output-by-lines"))?;
         }
-
-        _ => {
-            // No extra directives for other test modes.
-            vec![]
-        }
-    };
-
-    for directive_str in extra_directives {
-        if let Some(Ok(directive_line)) = line_directive(testfile, LineNumber::ZERO, directive_str)
-        {
-            it(&directive_line);
-        } else {
-            panic!("bad extra-directive line: {directive_str:?}")
-        }
+        _ => {}
     }
 
-    for directive_line in &file_directives.lines {
-        it(directive_line);
-    }
+    file_directives.lines.iter().try_for_each(it)
 }
 
 impl Config {
-    fn parse_and_update_revisions(&self, line: &DirectiveLine<'_>, existing: &mut Vec<String>) {
-        const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
-            // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
-            // weird for the test, since if the test writer wants a cfg of the same revision name
-            // they'd have to use `cfg(r#true)` and `cfg(r#false)`.
-            "true", "false",
-        ];
-
+    fn parse_and_update_revisions<'a>(
+        &self,
+        line: &DirectiveLine<'a>,
+        existing: &mut Vec<String>,
+    ) -> Result<(), RevisionsParseError<'a>> {
         const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
-        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
-            let &DirectiveLine { file_path: testfile, .. } = line;
+        use RevisionsParseError as Error;
+        use RevisionsParseErrorKind as ErrorKind;
 
-            if self.mode == TestMode::RunMake {
-                panic!("`run-make` mode tests do not support revisions: {}", testfile);
-            }
+        let error = |kind| Err(Error { kind, location: line.location });
 
-            let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
-            for revision in raw.split_whitespace() {
-                if !duplicates.insert(revision.to_string()) {
-                    panic!("duplicate revision: `{}` in line `{}`: {}", revision, raw, testfile);
-                }
+        let Some(value) = self.parse_name_value_directive(line, "revisions") else { return Ok(()) };
 
-                if FORBIDDEN_REVISION_NAMES.contains(&revision) {
-                    panic!(
-                        "revision name `{revision}` is not permitted: `{}` in line `{}`: {}",
-                        revision, raw, testfile
-                    );
-                }
-
-                if matches!(self.mode, TestMode::Assembly | TestMode::Codegen | TestMode::MirOpt)
-                    && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
-                {
-                    panic!(
-                        "revision name `{revision}` is not permitted in a test suite that uses \
-                        `FileCheck` annotations as it is confusing when used as custom `FileCheck` \
-                        prefix: `{revision}` in line `{}`: {}",
-                        raw, testfile
-                    );
-                }
-
-                existing.push(revision.to_string());
-            }
+        if self.mode == TestMode::RunMake {
+            return error(ErrorKind::UnsupportedByRunMakeMode);
         }
+
+        if let Some(revision) = line.revision {
+            return error(ErrorKind::Conditional(revision));
+        }
+
+        if value.contains(',') {
+            return error(ErrorKind::CommaSeparated(value));
+        }
+
+        let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
+        for revision in value.split_whitespace() {
+            if !is_valid_revision_name(revision) {
+                return error(ErrorKind::InvalidRevisionName(revision.to_owned()));
+            }
+
+            if !duplicates.insert(revision.to_string()) {
+                return error(ErrorKind::DuplicateRevisions(revision.to_owned()));
+            }
+
+            if matches!(self.mode, TestMode::Assembly | TestMode::Codegen | TestMode::MirOpt)
+                && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
+            {
+                return error(ErrorKind::ForbiddenFileCheckRevisionName(revision.to_owned()));
+            }
+
+            existing.push(revision.to_string());
+        }
+
+        Ok(())
     }
 
     fn parse_env(nv: String) -> (String, String) {
@@ -623,12 +614,12 @@ impl Config {
     fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
         // Unusually, `//@ pp-exact` can be used with or without a colon, so to avoid a panic
         // in the parse method we need to make sure there is a colon before calling it.
-        if line.value_after_colon().is_some()
+        if let Some(DirectivePayload::Value(_)) = line.payload
             && let Some(s) = self.parse_name_value_directive(line, "pp-exact")
         {
             Some(Utf8PathBuf::from(&s))
         } else if self.parse_name_directive(line, "pp-exact") {
-            line.file_path.file_name().map(Utf8PathBuf::from)
+            line.location.file_path.file_name().map(Utf8PathBuf::from)
         } else {
             None
         }
@@ -645,8 +636,11 @@ impl Config {
             _ => return None,
         };
 
-        let Some((regex, replacement)) = line.value_after_colon().and_then(parse_normalize_rule)
-        else {
+        let rule = match line.payload {
+            Some(DirectivePayload::Value(rule)) => parse_normalize_rule(rule),
+            _ => None,
+        };
+        let Some((regex, replacement)) = rule else {
             error!("couldn't parse custom normalization rule: `{}`", line.display());
             help!("expected syntax is: `{name}: \"REGEX\" -> \"REPLACEMENT\"`");
             panic!("invalid normalization rule detected");
@@ -659,12 +653,10 @@ impl Config {
             return false;
         }
 
-        if line.value_after_colon().is_some() {
-            let &DirectiveLine { file_path, line_number, .. } = line;
-            panic!(
-                "{file_path}:{line_number}: directive `{directive}` must not be followed by a colon"
-            );
+        if let Some(DirectivePayload::Value(_)) = line.payload {
+            panic!("directive `{directive}` must not be followed by a colon at {}", line.location);
         }
+
         true
     }
 
@@ -673,20 +665,21 @@ impl Config {
         line: &DirectiveLine<'_>,
         directive: &str,
     ) -> Option<String> {
-        let &DirectiveLine { file_path, line_number, .. } = line;
-
         if line.name != directive {
             return None;
         };
 
-        let value = line.value_after_colon().unwrap_or_else(|| {
-            panic!("{file_path}:{line_number}: directive `{directive}` must be followed by a colon and value");
-        });
+        let Some(DirectivePayload::Value(value)) = line.payload else {
+            panic!(
+                "directive `{directive}` must be followed by a colon and value at {}",
+                line.location
+            );
+        };
         debug!("{}: {}", directive, value);
         let value = expand_variables(value.to_owned(), self);
 
         if value.is_empty() {
-            error!("{file_path}:{line_number}: empty value for directive `{directive}`");
+            error!("empty value for directive `{directive}` at {}", line.location);
             help!("expected syntax is: `{directive}: value`");
             panic!("empty directive value detected");
         }
@@ -699,15 +692,14 @@ impl Config {
         *value = *value || self.parse_name_directive(line, directive);
     }
 
-    fn set_name_value_directive<T>(
+    fn set_name_value_directive(
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        value: &mut Option<T>,
-        parse: impl FnOnce(String) -> T,
+        value: &mut Option<String>,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive).map(parse);
+            *value = self.parse_name_value_directive(line, directive);
         }
     }
 
@@ -721,6 +713,78 @@ impl Config {
         if let Some(value) = self.parse_name_value_directive(line, directive).map(parse) {
             values.push(value);
         }
+    }
+}
+
+fn is_valid_revision_name(name: &str) -> bool {
+    // `true` and `false` are banned since they would imply `--cfg=true` and `--cfg=false`,
+    // respectively, which would need to be written as `r#true` and `r#false`, respectively,
+    // in `cfg` conditions which would be quite weird.
+
+    name.chars().all(|char| char == '-' || char == '_' || char.is_ascii_alphanumeric())
+        && !matches!(name, "" | "false" | "true")
+}
+
+const DESCR_OF_VALID_REVISION_NAMES: &str =
+    "a non-empty string of alphanumeric characters, `_` and `-` except `false` and `true`";
+
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+pub(crate) struct RevisionsParseError<'a> {
+    kind: RevisionsParseErrorKind<'a>,
+    location: Location<'a>,
+}
+
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+enum RevisionsParseErrorKind<'a> {
+    Conditional(&'a str),
+    UnsupportedByRunMakeMode,
+    CommaSeparated(String),
+    InvalidRevisionName(String),
+    ForbiddenFileCheckRevisionName(String),
+    DuplicateRevisions(String),
+}
+
+impl RevisionsParseError<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let title = |message: &str| crate::error!("{message} at {}", self.location);
+
+        match self.kind {
+            RevisionsParseErrorKind::Conditional(revision) => {
+                title(&format!(
+                    "the `revisions` directive itself cannot be dependent on revisions"
+                ));
+                help!("remove the revision condition `[{revision}]` from the directive");
+            }
+            RevisionsParseErrorKind::UnsupportedByRunMakeMode => {
+                title("`run-make` mode tests do not support revisions");
+            }
+            RevisionsParseErrorKind::CommaSeparated(value) => {
+                title("found commas in the list of declared revisions");
+                help!("the revisions have to be separated by whitespace, not by commas");
+                let list: Vec<_> = value.split(',').map(|revision| revision.trim()).collect();
+                if list.iter().all(|revision| is_valid_revision_name(revision)) {
+                    let list = list.join(" ");
+                    help!("rewrite the directive to `//@ revisions: {list}`");
+                }
+            }
+            RevisionsParseErrorKind::InvalidRevisionName(revision) => {
+                title(&format!("`{revision}` is not a valid revision name"));
+                help!("the name has to be {DESCR_OF_VALID_REVISION_NAMES}");
+            }
+            RevisionsParseErrorKind::DuplicateRevisions(revision) => {
+                title(&format!("duplicate revision `{revision}`"));
+            }
+            RevisionsParseErrorKind::ForbiddenFileCheckRevisionName(revision) => {
+                title(&format!(
+                    "revision name `{revision}` is not permitted in a test suite that uses \
+                    `FileCheck` annotations as it is confusing when used as custom `FileCheck` \
+                    prefix"
+                ));
+            }
+        }
+
+        panic!("fatal error")
     }
 }
 
@@ -791,7 +855,6 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
@@ -892,7 +955,6 @@ pub(crate) fn make_test_description(
     config: &Config,
     cache: &DirectivesCache,
     name: String,
-    path: &Utf8Path,
     filterable_path: &Utf8Path,
     file_directives: &FileDirectives<'_>,
     variant: &TestVariant,
@@ -928,56 +990,54 @@ pub(crate) fn make_test_description(
 
     if ignore_message.is_none() {
         // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
-        iter_directives(
-            config,
-            file_directives,
-            &mut |ln @ &DirectiveLine { line_number, .. }| {
-                if !ln.applies_to_test_revision(variant.revision()) {
-                    return;
-                }
+        iter_directives(config, file_directives, |ln| -> Result<(), !> {
+            if !ln.applies_to_test_revision(variant.revision()) {
+                return Ok(());
+            }
 
-                // Parse `aux-*` directives, for use by up-to-date checks.
-                parse_and_update_aux(config, ln, aux_props);
+            // Parse `aux-*` directives, for use by up-to-date checks.
+            parse_and_update_aux(config, ln, aux_props);
 
-                macro_rules! decision {
-                    ($e:expr) => {
-                        match $e {
-                            IgnoreDecision::Ignore { reason } => {
-                                ignore_message = Some(reason.into());
-                            }
-                            IgnoreDecision::Error { message } => {
-                                error!("{path}:{line_number}: {message}");
-                                *poisoned = true;
-                                return;
-                            }
-                            IgnoreDecision::Continue => {}
+            macro_rules! decision {
+                ($e:expr) => {
+                    match $e {
+                        IgnoreDecision::Ignore { reason } => {
+                            ignore_message = Some(reason.into());
                         }
-                    };
-                }
+                        IgnoreDecision::Error { message } => {
+                            error!("{message} at {}", ln.location);
+                            *poisoned = true;
+                            return Ok(());
+                        }
+                        IgnoreDecision::Continue => {}
+                    }
+                };
+            }
 
-                decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
-                decision!(cfg::handle_only(&cache.cfg_conditions, ln));
-                decision!(needs::handle_needs(&cache.needs, config, ln));
-                decision!(ignore_llvm(config, ln));
-                decision!(ignore_backends(config, ln));
-                decision!(needs_backends(config, ln));
-                decision!(ignore_unsupported_backend_target(config, ln));
-                decision!(ignore_cdb(config, variant, ln));
-                decision!(ignore_gdb(config, variant, ln));
-                decision!(ignore_lldb(config, variant, ln));
-                decision!(ignore_parallel_frontend(config, ln));
+            decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
+            decision!(cfg::handle_only(&cache.cfg_conditions, ln));
+            decision!(needs::handle_needs(&cache.needs, config, ln));
+            decision!(ignore_llvm(config, ln));
+            decision!(ignore_backends(config, ln));
+            decision!(needs_backends(config, ln));
+            decision!(ignore_unsupported_backend_target(config, ln));
+            decision!(ignore_cdb(config, variant, ln));
+            decision!(ignore_gdb(config, variant, ln));
+            decision!(ignore_lldb(config, variant, ln));
+            decision!(ignore_parallel_frontend(config, ln));
 
-                if config.target == "wasm32-unknown-unknown"
-                    && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
-                {
-                    decision!(IgnoreDecision::Ignore {
-                        reason: "ignored on WASM as the run results cannot be checked there".into(),
-                    });
-                }
+            if config.target == "wasm32-unknown-unknown"
+                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+            {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored on WASM as the run results cannot be checked there".into(),
+                });
+            }
 
-                should_fail |= config.parse_name_directive(ln, "should-fail");
-            },
-        );
+            should_fail |= config.parse_name_directive(ln, "should-fail");
+
+            Ok(())
+        });
     }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
@@ -1038,7 +1098,7 @@ fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.cdb_version {
         if line.name == "min-cdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
                 panic!("couldn't parse version range: {:?}", rest);
@@ -1071,7 +1131,7 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.gdb_version {
         if line.name == "min-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1089,7 +1149,7 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
                 };
             }
         } else if line.name == "ignore-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1132,7 +1192,7 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
     if let Some(actual_version) = &config.lldb_version {
         match (line.name, actual_version) {
             ("min-apple-lldb-version", LldbVersion::Apple(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
 
@@ -1150,7 +1210,7 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
                 }
             }
             ("min-llvm-lldb-version", LldbVersion::Llvm(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
 
@@ -1174,12 +1234,11 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
 }
 
 fn ignore_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let path = line.file_path;
     if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
         for backend in backends_to_ignore.split_whitespace().map(|backend| match backend.parse() {
             Ok(backend) => backend,
             Err(error) => {
-                panic!("Invalid ignore-backends value `{backend}` in `{path}`: {error}")
+                panic!("invalid ignore-backends value `{backend}`: {error} at {}", line.location)
             }
         }) {
             if !config.bypass_ignore_backends && config.default_codegen_backend == backend {
@@ -1193,14 +1252,13 @@ fn ignore_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision 
 }
 
 fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let path = line.file_path;
     if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
         if !needed_backends
             .split_whitespace()
             .map(|backend| match backend.parse() {
                 Ok(backend) => backend,
                 Err(error) => {
-                    panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
+                    panic!("invalid needs-backends value `{backend}`: {error} at {}", line.location)
                 }
             })
             .any(|backend| config.default_codegen_backend == backend)
@@ -1247,7 +1305,6 @@ fn ignore_unsupported_backend_target(config: &Config, line: &DirectiveLine<'_>) 
 }
 
 fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let path = line.file_path;
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
     {
@@ -1259,7 +1316,8 @@ fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
                     "missing LLVM component {missing_component}, \
-                    and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {path}",
+                    and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
+                    line.location
                 );
             }
             return IgnoreDecision::Ignore {
@@ -1370,14 +1428,15 @@ enum IgnoreDecision {
 
 fn parse_edition_range(config: &Config, line: &DirectiveLine<'_>) -> Option<EditionRange> {
     let raw = config.parse_name_value_directive(line, "edition")?;
-    let &DirectiveLine { file_path: testfile, line_number, .. } = line;
 
     // Edition range is half-open: `[lower_bound, upper_bound)`
     if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
         Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
             (Some(lower_bound), Some(upper_bound)) if upper_bound <= lower_bound => {
                 fatal!(
-                    "{testfile}:{line_number}: the left side of `//@ edition` cannot be greater than or equal to the right side"
+                    "the left side of `//@ edition` cannot be greater than or equal to \
+                    the right side at {}",
+                    line.location
                 );
             }
             (Some(lower_bound), Some(upper_bound)) => {
@@ -1386,19 +1445,18 @@ fn parse_edition_range(config: &Config, line: &DirectiveLine<'_>) -> Option<Edit
             (Some(lower_bound), None) => EditionRange::RangeFrom(lower_bound),
             (None, Some(_)) => {
                 fatal!(
-                    "{testfile}:{line_number}: `..edition` is not a supported range in `//@ edition`"
+                    "`..edition` is not a supported range in `//@ edition` at {}",
+                    line.location
                 );
             }
             (None, None) => {
-                fatal!("{testfile}:{line_number}: `..` is not a supported range in `//@ edition`");
+                fatal!("`..` is not a supported range in `//@ edition` at {}", line.location);
             }
         })
     } else {
         match maybe_parse_edition(&raw) {
             Some(edition) => Some(EditionRange::Exact(edition)),
-            None => {
-                fatal!("{testfile}:{line_number}: empty value for `//@ edition`");
-            }
+            None => fatal!("empty value for `//@ edition` at {}", line.location),
         }
     }
 }

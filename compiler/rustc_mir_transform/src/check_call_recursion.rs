@@ -138,17 +138,40 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx, '_> {
         if args.len() != body.arg_count {
             return false;
         }
-        let caller = body.source.def_id();
-        let typing_env = body.typing_env(tcx);
 
         let func_ty = func.ty(body, tcx);
         if let ty::FnDef(callee, args) = *func_ty.kind() {
+            // Another check to avoid resolving if we can: to be recursive either the callee is the
+            // caller itself, or the callee is the trait method the caller implements. The second
+            // part of the check works because `try_resolve` can only return the trait item or an
+            // impl's item for that trait item.
+            let caller = body.source.def_id();
+            if callee != caller && tcx.trait_item_of(caller) != Some(callee) {
+                return false;
+            }
+
+            let typing_env = body.typing_env(tcx);
             let args = args.no_bound_vars().unwrap();
             let Ok(normalized_args) =
                 tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(args))
             else {
                 return false;
             };
+
+            // Another check to avoid resolving if we can: this time whether the args can unify.
+            // This is the same `relate_rigid_infer` fast reject done by both trait solvers.
+            // The `callee != caller` guard means the check is skipped for trait default methods.
+            if callee != caller {
+                let call_trait_args =
+                    ty::TraitRef::from_assoc(tcx, tcx.parent(callee), normalized_args).args;
+                let impl_trait_args = tcx.impl_trait_ref(tcx.parent(caller)).skip_binder().args;
+                if !ty::DeepRejectCtxt::relate_rigid_infer(tcx)
+                    .args_may_unify(call_trait_args, impl_trait_args)
+                {
+                    return false;
+                }
+            }
+
             let (callee, call_args) = if let Ok(Some(instance)) =
                 Instance::try_resolve(tcx, typing_env, callee, normalized_args)
             {

@@ -16,8 +16,8 @@ core::test_binder_constraints! {
         where
             for<'b> <T as Trait<'a, 'b>>::Assoc: 'c,
         {
-            forall<'b> {
-                predicates <T as Trait<'a, 'b>>::Assoc: 'c
+            forall<'d> {
+                predicates <T as Trait<'a, 'd>>::Assoc: 'c
             } expect {
                 for<'b> <T as Trait<'a, 'b>>::Assoc: 'c
             }
@@ -28,11 +28,11 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<'c, T>
     where
-        for<'a, 'b> T: Trait<'a, 'b>,
+        for<'a, 'd> T: Trait<'a, 'd>,
     {
         forall<'a>
         where
-            for<'b> <T as Trait<'a, 'b>>::Assoc: 'c,
+            for<'d> <T as Trait<'a, 'd>>::Assoc: 'c,
         {
             forall<'b> {
                 exists<'a2, 'b2, 'c2> {
@@ -45,7 +45,7 @@ core::test_binder_constraints! {
                     }
                 }
             } expect {
-                for<'b> <T as Trait<'a, 'b>>::Assoc: 'c
+                for<'d> <T as Trait<'a, 'd>>::Assoc: 'c
             }
         } expect { }
     }
@@ -54,11 +54,11 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<'c, T>
     where
-        for<'a, 'b> T: Trait<'a, 'b>,
+        for<'a, 'd> T: Trait<'a, 'd>,
     {
         forall<'a>
         where
-            for<'b> <T as Trait<'a, 'b>>::Assoc: 'c,
+            for<'d> <T as Trait<'a, 'd>>::Assoc: 'c,
         {
             forall<'b> {
                 exists<'a2, 'b2, 'c2> {
@@ -73,7 +73,7 @@ core::test_binder_constraints! {
                     }
                 }
             } expect {
-                for<'b> <T as Trait<'a, 'b>>::Assoc: 'c
+                for<'d> <T as Trait<'a, 'd>>::Assoc: 'c
             }
         } expect { }
     }

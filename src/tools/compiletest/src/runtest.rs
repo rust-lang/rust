@@ -25,7 +25,7 @@ use crate::executor::TestVariant;
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
-use crate::util::{ArgFileCommand, Utf8PathBufExt, add_dylib_path, static_regex};
+use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{discovery, json};
 
 // Helper modules that implement test running logic for each test suite.
@@ -413,7 +413,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Runs a [`ArgFileCommand`] and waits for it to finish, then converts its exit
+    /// Runs a [`Command`] and waits for it to finish, then converts its exit
     /// status and output streams into a [`ProcRes`].
     ///
     /// The command might have succeeded or failed; it is the caller's
@@ -423,8 +423,7 @@ impl<'test> TestCx<'test> {
     /// Panics if the command couldn't be executed at all
     /// (e.g. because the executable could not be found).
     #[must_use = "caller should check whether the command succeeded"]
-    fn run_command_to_procres(&self, cmd: ArgFileCommand) -> ProcRes {
-        let (mut cmd, _arg_file) = cmd.build().unwrap();
+    fn run_command_to_procres(&self, mut cmd: Command) -> ProcRes {
         let output = cmd
             .output()
             .unwrap_or_else(|e| self.fatal(&format!("failed to exec `{cmd:?}` because: {e}")));
@@ -619,7 +618,7 @@ impl<'test> TestCx<'test> {
 
     /// Check `error-pattern` and `regex-error-pattern` directives.
     fn check_all_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
-        let mut missing_patterns: Vec<String> = Vec::new();
+        let mut missing_patterns: Vec<&str> = Vec::new();
         self.check_error_patterns(output_to_check, &mut missing_patterns);
         self.check_regex_error_patterns(output_to_check, proc_res, &mut missing_patterns);
 
@@ -644,27 +643,30 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_error_patterns(&self, output_to_check: &str, missing_patterns: &mut Vec<String>) {
+    fn check_error_patterns<'this>(
+        &'this self,
+        output_to_check: &str,
+        missing_patterns: &mut Vec<&'this str>,
+    ) {
         debug!("check_error_patterns");
         for pattern in &self.props.error_patterns {
-            if output_to_check.contains(pattern.trim()) {
+            if output_to_check.contains(pattern) {
                 debug!("found error pattern {}", pattern);
             } else {
-                missing_patterns.push(pattern.to_string());
+                missing_patterns.push(pattern);
             }
         }
     }
 
-    fn check_regex_error_patterns(
-        &self,
+    fn check_regex_error_patterns<'this>(
+        &'this self,
         output_to_check: &str,
         proc_res: &ProcRes,
-        missing_patterns: &mut Vec<String>,
+        missing_patterns: &mut Vec<&'this str>,
     ) {
         debug!("check_regex_error_patterns");
 
         for pattern in &self.props.regex_error_patterns {
-            let pattern = pattern.trim();
             let re = match Regex::new(pattern) {
                 Ok(re) => re,
                 Err(err) => {
@@ -677,7 +679,7 @@ impl<'test> TestCx<'test> {
             if re.is_match(output_to_check) {
                 debug!("found regex error pattern {}", pattern);
             } else {
-                missing_patterns.push(pattern.to_string());
+                missing_patterns.push(pattern);
             }
         }
     }
@@ -739,7 +741,6 @@ impl<'test> TestCx<'test> {
         let mut found = vec![false; expected_errors.len()];
         for actual_error in actual_errors {
             for pattern in &self.props.error_patterns {
-                let pattern = pattern.trim();
                 if actual_error.msg.contains(pattern) {
                     let q = if actual_error.line_num.is_none() { "?" } else { "" };
                     self.fatal(&format!(

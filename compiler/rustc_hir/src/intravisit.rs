@@ -1612,8 +1612,7 @@ pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
     visitor: &mut V,
     forall: &'v TestBinderForall<'v>,
 ) -> V::Result {
-    let TestBinderForall { span: _, hir_id, generics, body, assert_on_exit } = forall;
-    try_visit!(visitor.visit_id(*hir_id));
+    let TestBinderForall { span: _, generics, body, assert_on_exit } = forall;
     try_visit!(visitor.visit_generics(generics));
     try_visit!(visitor.visit_test_binder_body(body));
     if let Some(assert_on_exit) = &assert_on_exit {
@@ -1651,8 +1650,7 @@ pub fn walk_test_binder_exists<'v, V: Visitor<'v>>(
     visitor: &mut V,
     exists: &'v TestBinderExists<'v>,
 ) -> V::Result {
-    let TestBinderExists { span: _, hir_id, params, body } = exists;
-    try_visit!(visitor.visit_id(*hir_id));
+    let TestBinderExists { span: _, params, body } = exists;
     walk_list!(visitor, visit_generic_param, *params);
     try_visit!(visitor.visit_test_binder_body(body));
     V::Result::output()

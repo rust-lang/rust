@@ -1,0 +1,26 @@
+error: expected a trait, found type
+  --> $DIR/inner_error_no_closure_brace_suggestion.rs:6:34
+   |
+LL |     || Box::new(42) as Box::<dyn _>;
+   |                                  ^
+
+error: expected a trait, found type
+  --> $DIR/inner_error_no_closure_brace_suggestion.rs:12:34
+   |
+LL |     || Box::new(42) as Box::<dyn _>;
+   |                                  ^
+
+error: expected a trait, found type
+  --> $DIR/inner_error_no_closure_brace_suggestion.rs:17:43
+   |
+LL |     let _x = || Box::new(42) as Box::<dyn _>;
+   |                                           ^
+
+error: expected a trait, found type
+  --> $DIR/inner_error_no_closure_brace_suggestion.rs:23:38
+   |
+LL |     foo(|| Box::new(42) as Box::<dyn _>);
+   |                                      ^
+
+error: aborting due to 4 previous errors
+

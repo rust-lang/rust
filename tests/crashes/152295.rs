@@ -3,9 +3,8 @@
 type Tait = impl Sized;
 trait Foo: Bar<Tait> {}
 trait Bar<T> {
-    fn bar(&self);
-}
-fn test_correct2(x: &dyn Foo) {
-    x.bar();
+    fn bar(&self, x: &dyn Foo) {
+        x.bar(x);
+    }
 }
 fn main() {}

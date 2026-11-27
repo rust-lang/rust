@@ -1,0 +1,54 @@
+error[E0308]: mismatched types
+  --> $DIR/remove-ref-paren-issue-166198.rs:3:31
+   |
+LL |     nums.iter_mut().for_each(|&(mut num)| {});
+   |                               ^^^^^^^^^^
+   |                               |
+   |                               types differ in mutability
+   |                               expected due to this
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     nums.iter_mut().for_each(|&(mut num)| {});
+LL +     nums.iter_mut().for_each(|(mut num)| {});
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/remove-ref-paren-issue-166198.rs:4:31
+   |
+LL |     nums.iter_mut().for_each(|& /* ( */ num| {});
+   |                               ^^^^^^^^^^^^^
+   |                               |
+   |                               types differ in mutability
+   |                               expected due to this
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     nums.iter_mut().for_each(|& /* ( */ num| {});
+LL +     nums.iter_mut().for_each(|/* ( */ num| {});
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/remove-ref-paren-issue-166198.rs:5:31
+   |
+LL |     nums.iter_mut().for_each(|& /* ok */ (mut num)| {});
+   |                               ^^^^^^^^^^^^^^^^^^^^
+   |                               |
+   |                               types differ in mutability
+   |                               expected due to this
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     nums.iter_mut().for_each(|& /* ok */ (mut num)| {});
+LL +     nums.iter_mut().for_each(|/* ok */ (mut num)| {});
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
