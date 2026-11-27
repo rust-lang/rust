@@ -62,7 +62,7 @@ pub(super) fn has_async_drops<'tcx>(body: &mut Body<'tcx>) -> bool {
             continue;
         }
 
-        if let TerminatorKind::Yield { drop, .. } = data.terminator().kind {
+        if let TerminatorKind::Yield { drop, .. } = data.terminator.kind {
             if dropline.contains(bb) {
                 has_async_drops = true
             }
@@ -72,7 +72,7 @@ pub(super) fn has_async_drops<'tcx>(body: &mut Body<'tcx>) -> bool {
         }
 
         if dropline.contains(bb) {
-            data.terminator().successors().for_each(|v| {
+            data.terminator.successors().for_each(|v| {
                 dropline.insert(v);
             });
         }
@@ -104,7 +104,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
-        let (target, unwind, source_info, dropline) = match block_data.terminator() {
+        let (target, unwind, source_info, dropline) = match block_data.terminator {
             Terminator {
                 source_info,
                 kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop },
@@ -113,7 +113,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
                 if let Some(local) = place.as_local()
                     && local == ty::CAPTURE_STRUCT_LOCAL
                 {
-                    (target, unwind, source_info, *drop)
+                    (target, unwind, source_info, drop)
                 } else {
                     continue;
                 }
@@ -123,7 +123,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         let unwind = if block_data.is_cleanup {
             Unwind::InCleanup
         } else {
-            Unwind::To(match *unwind {
+            Unwind::To(match unwind {
                 UnwindAction::Cleanup(tgt) => tgt,
                 UnwindAction::Continue => elaborator.patch.resume_block(),
                 UnwindAction::Unreachable => elaborator.patch.unreachable_cleanup_block(),
@@ -132,10 +132,10 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         };
         elaborate_drop(
             &mut elaborator,
-            *source_info,
+            source_info,
             Place::from(ty::CAPTURE_STRUCT_LOCAL),
             (),
-            *target,
+            target,
             unwind,
             block,
             dropline,
@@ -202,7 +202,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     insert_switch(&mut body, cases, transform, default_block);
 
     for block in body.basic_blocks_mut() {
-        let kind = &mut block.terminator_mut().kind;
+        let kind = &mut block.terminator.kind;
         if let TerminatorKind::CoroutineDrop = *kind {
             *kind = TerminatorKind::Return;
         }
@@ -302,7 +302,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     insert_switch(&mut body, cases, transform, default_block);
 
     for block in body.basic_blocks_mut() {
-        let kind = &mut block.terminator_mut().kind;
+        let kind = &mut block.terminator.kind;
         if let TerminatorKind::CoroutineDrop = *kind {
             *kind = TerminatorKind::Return;
             block.statements.push(return_poll_ready_assign(tcx, source_info));

@@ -48,7 +48,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let mut patch = Vec::new();
 
     for (bb, bb_data) in traversal::preorder(body) {
-        if let TerminatorKind::Call { ref args, ref destination, .. } = bb_data.terminator().kind {
+        if let TerminatorKind::Call { ref args, ref destination, .. } = bb_data.terminator.kind {
             let loc = Location { block: bb, statement_index: bb_data.statements.len() };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
@@ -124,9 +124,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         bbs[block].statements[statement_index].make_nop(drop_debuginfo);
     }
     for (block, argument_index) in call_operands_to_move {
-        let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {
-            bug!()
-        };
+        let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator.kind else { bug!() };
         let arg = &mut args[argument_index].node;
         let Operand::Copy(place) = *arg else { bug!() };
         *arg = Operand::Move(place);

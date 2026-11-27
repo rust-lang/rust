@@ -45,7 +45,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
 
         for (bb, data) in body.basic_blocks.iter_enumerated() {
             let loc = Location { block: bb, statement_index: data.statements.len() };
-            let terminator = data.terminator();
+            let terminator = &data.terminator;
 
             match terminator.kind {
                 TerminatorKind::Drop { place, .. }

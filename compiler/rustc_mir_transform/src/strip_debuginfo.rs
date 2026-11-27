@@ -22,7 +22,7 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
             MirStripDebugInfo::AllLocals => {}
             MirStripDebugInfo::LocalsInTinyFunctions
                 if let TerminatorKind::Return { .. } =
-                    body.basic_blocks[START_BLOCK].terminator().kind => {}
+                    body.basic_blocks[START_BLOCK].terminator.kind => {}
             MirStripDebugInfo::LocalsInTinyFunctions => return,
         }
 

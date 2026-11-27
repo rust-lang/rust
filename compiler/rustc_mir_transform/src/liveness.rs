@@ -118,9 +118,9 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             for bbdata in body_mem.basic_blocks_mut() {
                 // We can call a closure again, either after a normal return or an unwind.
                 if let TerminatorKind::Return | TerminatorKind::UnwindResume =
-                    bbdata.terminator().kind
+                    bbdata.terminator.kind
                 {
-                    bbdata.terminator_mut().kind = TerminatorKind::goto(START_BLOCK);
+                    bbdata.terminator.kind = TerminatorKind::goto(START_BLOCK);
                 }
             }
             body = &body_mem;
@@ -389,7 +389,7 @@ fn find_self_assignments<'tcx>(
 
                     let TerminatorKind::Assert {
                         cond, target, msg: AssertKind::Overflow(..), ..
-                    } = &bb_data.terminator().kind
+                    } = &bb_data.terminator.kind
                     else {
                         continue;
                     };
@@ -461,7 +461,7 @@ fn find_self_assignments<'tcx>(
                         && statement_index == 0
                         && let &[pred] = body.basic_blocks.predecessors()[bb].as_slice()
                         && let TerminatorKind::Assert { msg, .. } =
-                            &body.basic_blocks[pred].terminator().kind
+                            &body.basic_blocks[pred].terminator.kind
                         && let AssertKind::Overflow(..) = **msg
                         && let len = body.basic_blocks[pred].statements.len()
                         && len >= 2
@@ -689,7 +689,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             let live = cursor.get();
             ever_live.union(live);
 
-            let terminator = bb_data.terminator();
+            let terminator = &bb_data.terminator;
             match &terminator.kind {
                 TerminatorKind::Call { destination: place, .. }
                 | TerminatorKind::Yield { resume_arg: place, .. } => {

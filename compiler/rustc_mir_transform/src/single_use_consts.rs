@@ -76,7 +76,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             if let Some(use_statement) = use_block.statements.get_mut(use_loc.statement_index) {
                 replacer.visit_statement(use_statement, use_loc);
             } else {
-                replacer.visit_terminator(use_block.terminator_mut(), use_loc);
+                replacer.visit_terminator(&mut use_block.terminator, use_loc);
             }
 
             if replacer.operand.is_some() {

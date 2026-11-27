@@ -14,7 +14,7 @@ impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
         for bb in body.basic_blocks.iter() {
-            checker.check_terminator(bb.terminator())
+            checker.check_terminator(&bb.terminator)
         }
     }
 }

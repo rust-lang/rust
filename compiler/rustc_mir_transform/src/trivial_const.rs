@@ -85,7 +85,7 @@ where
         return None;
     }
 
-    if block.terminator().kind != TerminatorKind::Return {
+    if block.terminator.kind != TerminatorKind::Return {
         return None;
     }
 

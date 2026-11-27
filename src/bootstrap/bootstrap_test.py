@@ -257,6 +257,59 @@ class GetTomlDottedKeys(unittest.TestCase):
         self.assertIsNone(build.get_toml("cargo", "build"))
 
 
+class BuildDirOverride(unittest.TestCase):
+    def check_build_dir(self, args, expected, config=""):
+        build = bootstrap.RustBuild(config, bootstrap.parse_args(args))
+        self.assertEqual(build.build_dir, os.path.abspath(expected))
+
+    def test_default(self):
+        self.check_build_dir([], "build")
+
+    def test_config(self):
+        self.check_build_dir([], "configured", 'build.build-dir = "configured"')
+
+    def test_set_override(self):
+        self.check_build_dir(["--set", "build.build-dir=custom"], "custom")
+
+    def test_set_equals_syntax(self):
+        self.check_build_dir(["--set=build.build-dir=custom"], "custom")
+
+    def test_quoted_path(self):
+        self.check_build_dir(["--set", 'build.build-dir="custom path"'], "custom path")
+
+    def test_unquoted_path_with_spaces(self):
+        self.check_build_dir(["--set", "build.build-dir=custom path"], "custom path")
+
+    def test_override_precedence(self):
+        self.check_build_dir(
+            ["--set", "build.build-dir=custom"],
+            "custom",
+            'build.build-dir = "configured"',
+        )
+
+    def test_flag_precedence(self):
+        self.check_build_dir(
+            ["--build-dir", "explicit", "--set", "build.build-dir=custom"],
+            "explicit",
+            'build.build-dir = "configured"',
+        )
+
+    def test_unrelated_override(self):
+        self.check_build_dir(["--set", "rust.remap-debuginfo=true"], "build")
+
+    def test_path_with_equals(self):
+        self.check_build_dir(["--set", "build.build-dir=a=b"], "a=b")
+
+    def test_duplicate_override(self):
+        with self.assertRaisesRegex(ValueError, "Duplicate build.build-dir"):
+            bootstrap.RustBuild(
+                "",
+                bootstrap.parse_args(
+                    ["--set", "build.build-dir=a", "--set", "build.build-dir=b"]
+                ),
+            )
+
+
 class BuildBootstrap(unittest.TestCase):
     """Test that we generate the appropriate arguments when building bootstrap"""
 

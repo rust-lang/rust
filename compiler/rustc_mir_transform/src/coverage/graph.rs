@@ -45,7 +45,7 @@ impl CoverageGraph {
         let successors = IndexVec::<BasicCoverageBlock, _>::from_fn_n(
             |bcb| {
                 let mut seen_bcbs = FxHashSet::default();
-                let terminator = mir_body[bcbs[bcb].last_bb()].terminator();
+                let terminator = &mir_body[bcbs[bcb].last_bb()].terminator;
                 bcb_filtered_successors(terminator)
                     .into_iter()
                     .filter_map(|successor_bb| bb_to_bcb[successor_bb])
@@ -136,7 +136,7 @@ impl CoverageGraph {
             }
 
             let is_out_summable = basic_blocks.last().is_some_and(|&bb| {
-                bcb_filtered_successors(mir_body[bb].terminator()).is_out_summable()
+                bcb_filtered_successors(&mir_body[bb].terminator).is_out_summable()
             });
             let bcb_data = BasicCoverageBlockData { basic_blocks, is_out_summable };
             debug!("adding {bcb:?}: {bcb_data:?}");
@@ -153,7 +153,7 @@ impl CoverageGraph {
 
         let subgraph = CoverageRelevantSubgraph::new(&mir_body.basic_blocks);
         for bb in graph::depth_first_search(subgraph, mir::START_BLOCK)
-            .filter(|&bb| mir_body[bb].terminator().kind != TerminatorKind::Unreachable)
+            .filter(|&bb| mir_body[bb].terminator.kind != TerminatorKind::Unreachable)
         {
             if let Some(&prev) = current_chain.last() {
                 // Adding a block to a non-empty chain is allowed if the
@@ -416,7 +416,7 @@ impl<'a, 'tcx> CoverageRelevantSubgraph<'a, 'tcx> {
     }
 
     fn coverage_successors(&self, bb: BasicBlock) -> CoverageSuccessors<'_> {
-        bcb_filtered_successors(self.basic_blocks[bb].terminator())
+        bcb_filtered_successors(&self.basic_blocks[bb].terminator)
     }
 }
 impl<'a, 'tcx> graph::DirectedGraph for CoverageRelevantSubgraph<'a, 'tcx> {

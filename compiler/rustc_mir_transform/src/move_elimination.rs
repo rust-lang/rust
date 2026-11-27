@@ -247,7 +247,7 @@ fn find_rust_call_tuples<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> DenseBit
     let mut rust_call_tuples = DenseBitSet::new_empty(body.local_decls.len());
 
     for block in body.basic_blocks.iter() {
-        let terminator = block.terminator();
+        let terminator = &block.terminator;
         let (func, args) = match &terminator.kind {
             TerminatorKind::Call { func, args, .. }
             | TerminatorKind::TailCall { func, args, .. } => (func, args),
@@ -740,7 +740,7 @@ fn get_or_split_edge<'tcx>(
     if let Some(&split_bb) = split_edges.get(&(pred, succ)) {
         return split_bb;
     }
-    let source_info = body.basic_blocks[pred].terminator().source_info;
+    let source_info = body.basic_blocks[pred].terminator.source_info;
     let split_bb = patcher.new_block(BasicBlockData::new(
         Terminator { source_info, kind: TerminatorKind::goto(succ) },
         body.basic_blocks[succ].is_cleanup,
@@ -861,7 +861,7 @@ fn reconstruct_storage<'tcx>(
                         // we need to split the critical edge before inserting
                         // StorageLive, otherwise the local would end up live on
                         // paths where it is supposed to be dead.
-                        let loc = if body.basic_blocks[pred].terminator().successors().count() > 1 {
+                        let loc = if body.basic_blocks[pred].terminator.successors().count() > 1 {
                             get_or_split_edge(patcher, body, &mut split_edges, pred, block)
                                 .start_location()
                         } else {
@@ -876,7 +876,7 @@ fn reconstruct_storage<'tcx>(
              patcher: &mut MirPatch<'tcx>,
              local: Local,
              block: BasicBlock| {
-                for succ in body.basic_blocks[block].terminator().successors() {
+                for succ in body.basic_blocks[block].terminator.successors() {
                     if !row.contains(SplitPointIndex::new(
                         points.entry_point(succ),
                         SplitPointEffect::Early,

@@ -813,9 +813,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
             if visited.insert(block) {
                 let data = &self.body.basic_blocks[block];
-                for successor in data.terminator().successors() {
-                    stack.push(successor);
-                }
+                stack.extend(data.terminator.successors());
             }
         }
         false
@@ -4475,7 +4473,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             // Check the terminator if we didn't find anything in the statements.
-            let terminator = &self.body[location.block].terminator();
+            let terminator = &self.body[location.block].terminator;
             debug!(
                 "annotate_argument_and_return_for_borrow: target={:?} terminator={:?}",
                 target, terminator

@@ -105,6 +105,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 AlignFromBytesError::NotPowerOfTwo(_) => {
                     throw_ub_format!("creating allocation with non-power-of-two alignment {align}");
                 }
+                AlignFromBytesError::NotWholeNumberOfBytes(_) => unreachable!(),
             }
         }
 

@@ -212,7 +212,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         }
 
         // The borrow is not dead. Add successor BBs to the work list, if necessary.
-        for succ_bb in first_bb_data.terminator().successors() {
+        for succ_bb in first_bb_data.terminator.successors() {
             if self.visited.insert(succ_bb) {
                 self.visit_stack.push(succ_bb);
             }
@@ -241,7 +241,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             }
 
             // Add successor BBs to the work list, if necessary.
-            for succ_bb in bb_data.terminator().successors() {
+            for succ_bb in bb_data.terminator.successors() {
                 if self.visited.insert(succ_bb) {
                     self.visit_stack.push(succ_bb);
                 }
@@ -316,7 +316,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         }
 
         // The loan is not dead. Add successor BBs to the work list, if necessary.
-        for succ_bb in first_bb_data.terminator().successors() {
+        for succ_bb in first_bb_data.terminator.successors() {
             if self.visited.insert(succ_bb) {
                 self.visit_stack.push(succ_bb);
             }
@@ -342,7 +342,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             }
 
             // Add successor BBs to the work list, if necessary.
-            for succ_bb in bb_data.terminator().successors() {
+            for succ_bb in bb_data.terminator.successors() {
                 if self.visited.insert(succ_bb) {
                     self.visit_stack.push(succ_bb);
                 }

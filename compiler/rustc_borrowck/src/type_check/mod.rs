@@ -597,7 +597,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.visit_terminator(block_data.terminator(), location);
+            self.visit_terminator(&block_data.terminator, location);
             self.check_iscleanup(block_data);
         }
     }
@@ -2080,7 +2080,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
-        match block_data.terminator().kind {
+        match block_data.terminator.kind {
             TerminatorKind::Goto { target, .. } => {
                 self.assert_iscleanup(block_data, target, is_cleanup)
             }

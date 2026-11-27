@@ -248,7 +248,7 @@ fn split_block(
 
         // replace the old terminator with a goto to the new block
         let new_terminator = Terminator { source_info, kind: TerminatorKind::goto(new_block_idx) };
-        let old_terminator = std::mem::replace(block_data.terminator_mut(), new_terminator);
+        let old_terminator = std::mem::replace(&mut block_data.terminator, new_terminator);
 
         // move the old terminator to the new basic block
         BasicBlockData::new_stmts(remaining_stmts, old_terminator, block_data.is_cleanup)

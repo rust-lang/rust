@@ -393,6 +393,7 @@ impl Default for TargetDataLayout {
 pub enum TargetDataLayoutError<'a> {
     InvalidAddressSpace { addr_space: &'a str, cause: &'a str, err: ParseIntError },
     InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
+    InvalidSize { cause: &'a str, bits: u64 },
     MissingAlignment { cause: &'a str },
     InvalidAlignment { cause: &'a str, err: AlignFromBytesError },
     AlignmentTooLargeForType { cause: &'a str, align: Align },
@@ -418,6 +419,11 @@ impl Diagnostic<'_> for TargetDataLayoutError<'_> {
                     .with_arg("bit", bit)
                     .with_arg("cause", cause)
                     .with_arg("err", err)
+            }
+            TargetDataLayoutError::InvalidSize { cause, bits } => {
+                Diag::new(dcx, level, msg!("size {$bits} bits for `{$cause}` in \"data-layout\" is not a multiple of 8"))
+                    .with_arg("bits", bits)
+                    .with_arg("cause", cause)
             }
             TargetDataLayoutError::MissingAlignment { cause } => {
                 Diag::new(dcx, level, msg!("missing alignment for `{$cause}` in \"data-layout\""))
@@ -478,8 +484,12 @@ impl TargetDataLayout {
         };
 
         // Parse a size string.
-        let parse_size =
-            |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
+        let parse_size = |s: &'a str, cause: &'a str| {
+            parse_bits(s, "size", cause).and_then(|size| {
+                Size::try_from_bits(size)
+                    .ok_or(TargetDataLayoutError::InvalidSize { cause, bits: size })
+            })
+        };
 
         // Parse an alignment string.
         let parse_align_str = |s: &'a str, cause: &'a str, size_bits: u64| {
@@ -900,11 +910,17 @@ impl fmt::Debug for Size {
 impl Size {
     pub const ZERO: Size = Size { raw: 0 };
 
-    /// Rounds `bits` up to the next-higher byte boundary, if `bits` is
-    /// not a multiple of 8.
+    pub fn try_from_bits(bits: u64) -> Option<Self> {
+        // FIXME: Use `div_exact` once it is stable.
+        bits.is_multiple_of(8).then_some(Size { raw: bits / 8 })
+    }
+
+    /// Create a `Size` from a number of bits. Will panic if `bits` is not a multiple of 8, or if
+    /// `bits` cannot be converted to a `u64`.
     pub fn from_bits(bits: impl TryInto<u64>) -> Size {
         let bits = bits.try_into().ok().unwrap();
-        Size { raw: bits.div_ceil(8) }
+        Self::try_from_bits(bits)
+            .unwrap_or_else(|| panic!("{bits} bits is not a whole number of bytes"))
     }
 
     #[inline]
@@ -1129,6 +1145,7 @@ impl fmt::Debug for Align {
 pub enum AlignFromBytesError {
     NotPowerOfTwo(u64),
     TooLarge(u64),
+    NotWholeNumberOfBytes(u64),
 }
 
 impl fmt::Debug for AlignFromBytesError {
@@ -1142,6 +1159,9 @@ impl fmt::Display for AlignFromBytesError {
         match self {
             AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "{align} is not a power of 2"),
             AlignFromBytesError::TooLarge(align) => write!(f, "{align} is too large"),
+            AlignFromBytesError::NotWholeNumberOfBytes(bits) => {
+                write!(f, "{bits} bits is not a whole number of bytes")
+            }
         }
     }
 }
@@ -1162,7 +1182,11 @@ impl Align {
 
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, AlignFromBytesError> {
-        Align::from_bytes(Size::from_bits(bits).bytes())
+        Align::from_bytes(
+            Size::try_from_bits(bits)
+                .ok_or(AlignFromBytesError::NotWholeNumberOfBytes(bits))?
+                .bytes(),
+        )
     }
 
     #[inline]
@@ -1551,7 +1575,7 @@ impl Primitive {
         let dl = cx.data_layout();
 
         match self {
-            Bool => Size::from_bits(1),
+            Bool => Size::from_bytes(1),
             Int(i, _) => i.size(),
             Float(f) => f.size(),
             Pointer(a) => dl.pointer_size_in(a),
@@ -1602,7 +1626,7 @@ impl fmt::Debug for Scalar {
         match self {
             Scalar::Initialized { value, valid_range } => {
                 let (size, is_signed) = match *value {
-                    Primitive::Bool => (Size::from_bits(1), false),
+                    Primitive::Bool => (Size::from_bytes(1), false),
                     Primitive::Int(integer, is_signed) => (integer.size(), is_signed),
                     Primitive::Float(float) => (float.size(), false),
                     Primitive::Pointer(_) => (Size::from_bits(128), false),

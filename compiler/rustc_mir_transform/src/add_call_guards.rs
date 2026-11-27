@@ -33,7 +33,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut pred_count = IndexVec::from_elem(0u8, &body.basic_blocks);
         for (_, data) in body.basic_blocks.iter_enumerated() {
-            for succ in data.terminator().successors() {
+            for succ in data.terminator.successors() {
                 pred_count[succ] = pred_count[succ].saturating_add(1);
             }
         }
@@ -45,7 +45,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
 
         let mut work = Vec::with_capacity(body.basic_blocks.len());
         for (bb, block) in body.basic_blocks.iter_enumerated() {
-            let term = block.terminator();
+            let term = &block.terminator;
             match term.kind {
                 TerminatorKind::Call { target: Some(destination), unwind, .. }
                     if pred_count[destination] > 1
@@ -100,7 +100,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         for (source, action) in work {
             let block = &mut basic_blocks[source];
             let is_cleanup = block.is_cleanup;
-            let term = block.terminator_mut();
+            let term = &mut block.terminator;
             let source_info = term.source_info;
             let destination = match action {
                 Action::Call => {

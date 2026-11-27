@@ -120,7 +120,7 @@ pub(crate) fn check_pointers<'tcx, F>(
 
                     // Terminate the split block with the new terminator
                     // and return the original terminator
-                    std::mem::replace(block_data.terminator_mut(), new_terminator)
+                    std::mem::replace(&mut block_data.terminator, new_terminator)
                 };
 
                 basic_blocks.push_with(|new_block_idx, basic_blocks| {

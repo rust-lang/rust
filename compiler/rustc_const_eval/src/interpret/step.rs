@@ -64,7 +64,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         M::before_terminator(self)?;
 
-        let terminator = basic_block.terminator();
+        let terminator = &basic_block.terminator;
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
             if let Either::Left(loc) = self.frame().loc {

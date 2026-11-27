@@ -197,7 +197,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 continue;
             }
             let bb = get_post_contract_node(bb);
-            for s in bb_data.terminator().successors() {
+            for s in bb_data.terminator.successors() {
                 let s = get_post_contract_node(s);
                 if s == bb {
                     continue;
@@ -1607,7 +1607,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ty::Uint(uint) => uint.normalize(target_width).bit_width().unwrap(),
                     ty::Int(int) => int.normalize(target_width).bit_width().unwrap(),
                     ty::Char => 32,
-                    ty::Bool => 1,
+                    ty::Bool => 8,
                     other => bug!("unhandled type: {:?}", other),
                 });
 

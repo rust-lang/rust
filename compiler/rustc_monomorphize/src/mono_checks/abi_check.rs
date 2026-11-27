@@ -328,7 +328,7 @@ fn check_call_site_abi<'tcx>(
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
     // Check all function call terminators.
     for (bb, _data) in traversal::mono_reachable(body, tcx, instance) {
-        let terminator = body.basic_blocks[bb].terminator();
+        let terminator = &body.basic_blocks[bb].terminator;
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {

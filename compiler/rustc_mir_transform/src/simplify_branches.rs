@@ -74,7 +74,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                 }
             }
 
-            let terminator = block.terminator();
+            let terminator = &block.terminator;
             let terminator = match terminator.kind {
                 TerminatorKind::SwitchInt { ref discr, ref targets, .. }
                     if let Some(c) = try_get_const(discr, pre_place_const.take())

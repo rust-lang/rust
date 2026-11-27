@@ -51,7 +51,7 @@ impl CfgCache {
         self.predecessors.get_or_init(|| {
             let mut preds = IndexVec::from_elem(SmallVec::new(), &bbs.basic_blocks);
             for (bb, data) in bbs.basic_blocks.iter_enumerated() {
-                for succ in data.terminator().successors() {
+                for succ in data.terminator.successors() {
                     preds[succ].push(bb);
                 }
             }
@@ -160,7 +160,7 @@ impl<'tcx> graph::StartNode for BasicBlocks<'tcx> {
 impl<'tcx> graph::Successors for BasicBlocks<'tcx> {
     #[inline]
     fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
-        self.basic_blocks[node].terminator().successors()
+        self.basic_blocks[node].terminator.successors()
     }
 }
 

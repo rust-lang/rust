@@ -119,7 +119,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
                 // support unwinding at all, then there's no need for it
                 // to have a landing pad. This means that we can remove any cleanup
                 // registered for it (and turn it into `UnwindAction::Unreachable`).
-                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                let cleanup = block.terminator.unwind_mut().unwrap();
                 *cleanup = UnwindAction::Unreachable;
             } else if !body_can_unwind
                 && matches!(terminator.unwind(), Some(UnwindAction::Continue))
@@ -130,7 +130,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
                 // is replaced with terminate. For those with `UnwindAction::Cleanup`,
                 // cleanup will still happen, and terminate will happen afterwards handled by
                 // the `UnwindResume` -> `UnwindTerminate` terminator replacement.
-                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                let cleanup = block.terminator.unwind_mut().unwrap();
                 *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
             }
         }

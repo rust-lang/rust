@@ -28,7 +28,7 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 .basic_blocks
                 .iter()
                 .map(|block| crate::mir::BasicBlock {
-                    terminator: block.terminator().stable(tables, cx),
+                    terminator: block.terminator.stable(tables, cx),
                     statements: block
                         .statements
                         .iter()

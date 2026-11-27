@@ -104,7 +104,7 @@ fn compute_dead_unwinds<'a, 'tcx>(
     let mut dead_unwinds = DenseBitSet::new_empty(body.basic_blocks.len());
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } =
-            bb_data.terminator().kind
+            bb_data.terminator.kind
         else {
             continue;
         };
@@ -289,7 +289,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
 
     fn collect_drop_flags(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            let terminator = data.terminator();
+            let terminator = &data.terminator;
             let TerminatorKind::Drop { ref place, .. } = terminator.kind else { continue };
 
             let path = self.move_data().rev_lookup.find(place.as_ref());
@@ -336,7 +336,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
     fn elaborate_drops(&mut self) {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            let terminator = data.terminator();
+            let terminator = &data.terminator;
             let TerminatorKind::Drop { place, target, unwind, replace, drop } = terminator.kind
             else {
                 continue;
@@ -437,7 +437,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 target: Some(tgt),
                 unwind: UnwindAction::Cleanup(_),
                 ..
-            } = data.terminator().kind
+            } = data.terminator.kind
             {
                 assert!(!self.patch.is_term_patched(bb));
 
@@ -473,7 +473,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
             for i in 0..(data.statements.len() + 1) {
                 debug!("drop_flag_for_locs: stmt {}", i);
                 if i == data.statements.len() {
-                    match data.terminator().kind {
+                    match data.terminator.kind {
                         TerminatorKind::Drop { .. } => {
                             // drop elaboration should handle that by itself
                             continue;
@@ -506,7 +506,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 unwind:
                     UnwindAction::Continue | UnwindAction::Unreachable | UnwindAction::Terminate(_),
                 ..
-            } = data.terminator().kind
+            } = data.terminator.kind
             {
                 assert!(!self.patch.is_term_patched(bb));
 

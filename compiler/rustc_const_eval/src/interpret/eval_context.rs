@@ -403,7 +403,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // If this is a `Call` terminator, use the `fn_span` instead.
         let block = &frame.body.basic_blocks[loc.block];
         if loc.statement_index == block.statements.len()
-            && let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind
+            && let mir::TerminatorKind::Call { fn_span, .. } = block.terminator.kind
         {
             source_info.span = fn_span;
         }

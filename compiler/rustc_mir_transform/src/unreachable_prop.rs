@@ -25,7 +25,7 @@ impl crate::MirPass<'_> for UnreachablePropagation {
         let mut unreachable_blocks = FxHashSet::default();
 
         for (bb, bb_data) in traversal::postorder(body) {
-            let terminator = bb_data.terminator();
+            let terminator = &bb_data.terminator;
             let is_unreachable = match &terminator.kind {
                 TerminatorKind::Unreachable => true,
                 // This will unconditionally run into an unreachable and is therefore unreachable
@@ -66,7 +66,7 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
     patch: &mut MirPatch<'tcx>,
     is_unreachable_block: impl Fn(BasicBlock) -> bool,
 ) -> bool {
-    let terminator = body.basic_blocks[bb].terminator();
+    let terminator = &body.basic_blocks[bb].terminator;
     let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind else { bug!() };
     let source_info = terminator.source_info;
     let location = body.terminator_loc(bb);
@@ -94,7 +94,7 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
         ty::Uint(uint) => uint.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
         ty::Int(int) => int.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
         ty::Char => 32,
-        ty::Bool => 1,
+        ty::Bool => 8,
         other => bug!("unhandled type: {:?}", other),
     });
 

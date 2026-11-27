@@ -16,6 +16,10 @@
 // Check that the assembly that rustc generates matches what clang emits.
 
 extern crate minicore;
+#[cfg(target_arch = "x86")]
+use minicore::arch::x86::x87_f80;
+#[cfg(target_arch = "x86_64")]
+use minicore::arch::x86_64::x87_f80;
 use minicore::ffi::VaList;
 use minicore::*;
 
@@ -41,21 +45,21 @@ unsafe fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // X86_64-NEXT: movsd   xmm0, qword ptr [rax]
     // X86_64-NEXT: ret
 
-    // X86_64-NEXT_GNUX32: mov     ecx, dword ptr [edi + 4]
-    // X86_64-NEXT_GNUX32-NEXT: cmp     ecx, 160
-    // X86_64-NEXT_GNUX32-NEXT: ja      .LBB0_2
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
-    // X86_64-NEXT_GNUX32-NEXT: add     eax, ecx
-    // X86_64-NEXT_GNUX32-NEXT: add     ecx, 16
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi + 4], ecx
-    // X86_64-NEXT_GNUX32-NEXT: movsd   xmm0, qword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
-    // X86_64-NEXT_GNUX32-NEXT: .LBB0_2:
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
-    // X86_64-NEXT_GNUX32-NEXT: lea     ecx, [rax + 8]
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
-    // X86_64-NEXT_GNUX32-NEXT: movsd   xmm0, qword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
+    // X86_64_GNUX32: mov     ecx, dword ptr [edi + 4]
+    // X86_64_GNUX32-NEXT: cmp     ecx, 160
+    // X86_64_GNUX32-NEXT: ja      .LBB0_2
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
+    // X86_64_GNUX32-NEXT: add     eax, ecx
+    // X86_64_GNUX32-NEXT: add     ecx, 16
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi + 4], ecx
+    // X86_64_GNUX32-NEXT: movsd   xmm0, qword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
+    // X86_64_GNUX32-NEXT: .LBB0_2:
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: lea     ecx, [rax + 8]
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
+    // X86_64_GNUX32-NEXT: movsd   xmm0, qword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
 
     // I686: mov eax, dword ptr [esp + 4]
     // I686-NEXT: mov ecx, dword ptr [eax]
@@ -121,21 +125,21 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // X86_64-NEXT: mov     eax, dword ptr [rax]
     // X86_64-NEXT: ret
 
-    // X86_64-NEXT_GNUX32: mov     ecx, dword ptr [edi]
-    // X86_64-NEXT_GNUX32-NEXT: cmp     ecx, 40
-    // X86_64-NEXT_GNUX32-NEXT: ja      .LBB2_2
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
-    // X86_64-NEXT_GNUX32-NEXT: add     eax, ecx
-    // X86_64-NEXT_GNUX32-NEXT: add     ecx, 8
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi], ecx
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
-    // X86_64-NEXT_GNUX32-NEXT: .LBB2_2:
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
-    // X86_64-NEXT_GNUX32-NEXT: lea     ecx, [rax + 8]
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
+    // X86_64_GNUX32: mov     ecx, dword ptr [edi]
+    // X86_64_GNUX32-NEXT: cmp     ecx, 40
+    // X86_64_GNUX32-NEXT: ja      .LBB2_2
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
+    // X86_64_GNUX32-NEXT: add     eax, ecx
+    // X86_64_GNUX32-NEXT: add     ecx, 8
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi], ecx
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
+    // X86_64_GNUX32-NEXT: .LBB2_2:
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: lea     ecx, [rax + 8]
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
 
     // I686: mov eax, dword ptr [esp + 4]
     // I686-NEXT: mov ecx, dword ptr [eax]
@@ -166,21 +170,21 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // X86_64-NEXT: mov     rax, qword ptr [rax]
     // X86_64-NEXT: ret
 
-    // X86_64-NEXT_GNUX32: mov     ecx, dword ptr [edi]
-    // X86_64-NEXT_GNUX32-NEXT: cmp     ecx, 40
-    // X86_64-NEXT_GNUX32-NEXT: ja      .LBB3_2
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
-    // X86_64-NEXT_GNUX32-NEXT: add     eax, ecx
-    // X86_64-NEXT_GNUX32-NEXT: add     ecx, 8
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi], ecx
-    // X86_64-NEXT_GNUX32-NEXT: mov     rax, qword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
-    // X86_64-NEXT_GNUX32-NEXT: .LBB2_2:
-    // X86_64-NEXT_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
-    // X86_64-NEXT_GNUX32-NEXT: lea     ecx, [rax + 8]
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
-    // X86_64-NEXT_GNUX32-NEXT: mov     rax, qword ptr [eax]
-    // X86_64-NEXT_GNUX32-NEXT: ret
+    // X86_64_GNUX32: mov     ecx, dword ptr [edi]
+    // X86_64_GNUX32-NEXT: cmp     ecx, 40
+    // X86_64_GNUX32-NEXT: ja      .LBB3_2
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 12]
+    // X86_64_GNUX32-NEXT: add     eax, ecx
+    // X86_64_GNUX32-NEXT: add     ecx, 8
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi], ecx
+    // X86_64_GNUX32-NEXT: mov     rax, qword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
+    // X86_64_GNUX32-NEXT: .LBB3_2:
+    // X86_64_GNUX32-NEXT: mov     eax, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: lea     ecx, [rax + 8]
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi + 8], ecx
+    // X86_64_GNUX32-NEXT: mov     rax, qword ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
 
     // I686: mov eax, dword ptr [esp + 4]
     // I686-NEXT: mov ecx, dword ptr [eax]
@@ -193,7 +197,7 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
 }
 
 #[unsafe(no_mangle)]
-#[cfg(target_pointer_width = "64")]
+#[cfg(target_arch = "x86_64")]
 unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // X86_64-LABEL: read_i128
     //
@@ -216,25 +220,54 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // X86_64-NEXT: mov     rdx, qword ptr [rcx + 8]
     // X86_64-NEXT: ret
 
-    // X86_64-NEXT_GNUX32: mov     ecx, dword ptr [edi]
-    // X86_64-NEXT_GNUX32-NEXT: cmp     ecx, 32
-    // X86_64-NEXT_GNUX32-NEXT: ja      .LBB4_2
-    // X86_64-NEXT_GNUX32-NEXT: mov     edx, dword ptr [edi + 12]
-    // X86_64-NEXT_GNUX32-NEXT: mov     rax, qword ptr [edx + ecx]
-    // X86_64-NEXT_GNUX32-NEXT: mov     rdx, qword ptr [edx + ecx + 8]
-    // X86_64-NEXT_GNUX32-NEXT: add     ecx, 16
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi], ecx
-    // X86_64-NEXT_GNUX32-NEXT: ret
-    // X86_64-NEXT_GNUX32-NEXT: .LBB3_2:
-    // X86_64-NEXT_GNUX32-NEXT: mov     ecx, dword ptr [edi + 8]
-    // X86_64-NEXT_GNUX32-NEXT: add     ecx, 15
-    // X86_64-NEXT_GNUX32-NEXT: and     ecx, -16
-    // X86_64-NEXT_GNUX32-NEXT: lea     eax, [rcx + 16]
-    // X86_64-NEXT_GNUX32-NEXT: mov     dword ptr [edi + 8], eax
-    // X86_64-NEXT_GNUX32-NEXT: mov     rax, qword ptr [ecx]
-    // X86_64-NEXT_GNUX32-NEXT: mov     rdx, qword ptr [ecx + 8]
-    // X86_64-NEXT_GNUX32-NEXT: ret
+    // X86_64_GNUX32: mov     ecx, dword ptr [edi]
+    // X86_64_GNUX32-NEXT: cmp     ecx, 32
+    // X86_64_GNUX32-NEXT: ja      .LBB4_2
+    // X86_64_GNUX32-NEXT: mov     edx, dword ptr [edi + 12]
+    // X86_64_GNUX32-NEXT: mov     rax, qword ptr [edx + ecx]
+    // X86_64_GNUX32-NEXT: mov     rdx, qword ptr [edx + ecx + 8]
+    // X86_64_GNUX32-NEXT: add     ecx, 16
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi], ecx
+    // X86_64_GNUX32-NEXT: ret
+    // X86_64_GNUX32-NEXT: .LBB4_2:
+    // X86_64_GNUX32-NEXT: mov     ecx, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: add     ecx, 15
+    // X86_64_GNUX32-NEXT: and     ecx, -16
+    // X86_64_GNUX32-NEXT: lea     eax, [rcx + 16]
+    // X86_64_GNUX32-NEXT: mov     dword ptr [edi + 8], eax
+    // X86_64_GNUX32-NEXT: mov     rax, qword ptr [ecx]
+    // X86_64_GNUX32-NEXT: mov     rdx, qword ptr [ecx + 8]
+    // X86_64_GNUX32-NEXT: ret
 
+    ap.next_arg()
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn read_x87_f80(ap: &mut VaList<'_>) -> x87_f80 {
+    // CHECK-LABEL: read_x87_f80
+
+    // X86_64:      mov rax, qword ptr [rdi + 8]
+    // X86_64-NEXT: add rax, 15
+    // X86_64-NEXT: and rax, -16
+    // X86_64-NEXT: lea rcx, [rax + 16]
+    // X86_64-NEXT: mov qword ptr [rdi + 8], rcx
+    // X86_64-NEXT: fld tbyte ptr [rax]
+    // X86_64-NEXT: ret
+
+    // X86_64_GNUX32:      mov eax, dword ptr [edi + 8]
+    // X86_64_GNUX32-NEXT: add eax, 15
+    // X86_64_GNUX32-NEXT: and eax, -16
+    // X86_64_GNUX32-NEXT: lea ecx, [rax + 16]
+    // X86_64_GNUX32-NEXT: mov dword ptr [edi + 8], ecx
+    // X86_64_GNUX32-NEXT: fld tbyte ptr [eax]
+    // X86_64_GNUX32-NEXT: ret
+
+    // I686:      mov eax, dword ptr [esp + 4]
+    // I686-NEXT: mov ecx, dword ptr [eax]
+    // I686-NEXT: lea edx, [ecx + 12]
+    // I686-NEXT: mov dword ptr [eax], edx
+    // I686-NEXT: fld tbyte ptr [ecx]
+    // I686-NEXT: ret
     ap.next_arg()
 }
 

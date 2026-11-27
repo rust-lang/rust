@@ -27,7 +27,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
         let has_resume = body
             .basic_blocks
             .iter_enumerated()
-            .any(|(_bb, block)| matches!(block.terminator().kind, TerminatorKind::UnwindResume));
+            .any(|(_bb, block)| matches!(block.terminator.kind, TerminatorKind::UnwindResume));
         if !has_resume {
             debug!("no resume block in MIR");
             return;
@@ -53,7 +53,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
         for (bb, bbdata) in basic_blocks.iter_enumerated_mut() {
             debug!("processing {:?}", bb);
 
-            if let Some(unwind) = bbdata.terminator_mut().unwind_mut()
+            if let Some(unwind) = bbdata.terminator.unwind_mut()
                 && let UnwindAction::Cleanup(unwind_bb) = *unwind
                 && nop_landing_pads.contains(unwind_bb)
             {
@@ -61,7 +61,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
                 *unwind = UnwindAction::Continue;
             }
 
-            bbdata.terminator_mut().successors_mut(|target| {
+            bbdata.terminator.successors_mut(|target| {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
@@ -112,7 +112,7 @@ impl RemoveNoopLandingPads {
             }
         }
 
-        let terminator = bbdata.terminator();
+        let terminator = &bbdata.terminator;
         match terminator.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume

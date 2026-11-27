@@ -260,7 +260,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 let call = loc.block;
                 let TerminatorKind::Call { target, .. } =
-                    self.body.basic_blocks[call].terminator().kind
+                    self.body.basic_blocks[call].terminator.kind
                 else {
                     bug!()
                 };

@@ -26,7 +26,7 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
 
         let mut lints = vec![];
         for bbdata in body.basic_blocks.as_mut() {
-            let term = bbdata.terminator_mut();
+            let term = &mut bbdata.terminator;
             let TerminatorKind::Call { ref mut target, destination, .. } = term.kind else {
                 continue;
             };
@@ -122,7 +122,7 @@ fn find_unreachable_code_from<'tcx>(
         }
     }
 
-    let term = bbdata.terminator();
+    let term = &bbdata.terminator;
     match term.kind {
         // The user does not care for `goto` and compiler-generated drops. If the target block is
         // only reachable through those terminators, continue searching there.

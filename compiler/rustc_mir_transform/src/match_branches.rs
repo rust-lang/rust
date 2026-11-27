@@ -52,7 +52,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
     fn discr_local(&mut self) -> Local {
         *self.discr_local.get_or_insert_with(|| {
             // Introduce a temporary for the discriminant value.
-            let source_info = self.body.basic_blocks[self.switch_bb].terminator().source_info;
+            let source_info = self.body.basic_blocks[self.switch_bb].terminator.source_info;
             self.patch.new_temp(self.discr_ty, source_info.span)
         })
     }
@@ -358,7 +358,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
 /// Returns the first case target if all targets have an equal number of statements and identical destination.
 fn candidate_match<'tcx>(body: &Body<'tcx>, switch_bb: BasicBlock) -> bool {
     use itertools::Itertools;
-    let targets = match &body.basic_blocks[switch_bb].terminator().kind {
+    let targets = match &body.basic_blocks[switch_bb].terminator.kind {
         TerminatorKind::SwitchInt {
             discr: Operand::Copy(_) | Operand::Move(_), targets, ..
         } => targets,
@@ -379,7 +379,7 @@ fn candidate_match<'tcx>(body: &Body<'tcx>, switch_bb: BasicBlock) -> bool {
         .iter()
         .map(|&bb| &body.basic_blocks[bb])
         .filter(|bb| !bb.is_empty_unreachable())
-        .map(|bb| (bb.statements.len(), &bb.terminator().kind))
+        .map(|bb| (bb.statements.len(), &bb.terminator.kind))
         .all_equal()
 }
 
@@ -389,7 +389,7 @@ fn simplify_match<'tcx>(
     body: &mut Body<'tcx>,
     switch_bb: BasicBlock,
 ) -> bool {
-    let (discr, targets) = match &body.basic_blocks[switch_bb].terminator().kind {
+    let (discr, targets) = match &body.basic_blocks[switch_bb].terminator.kind {
         TerminatorKind::SwitchInt { discr, targets, .. } => (discr, targets),
         _ => unreachable!(),
     };
@@ -457,7 +457,7 @@ fn simplify_match<'tcx>(
     if let Some(discr_local) = simplify_match.discr_local {
         patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
     }
-    patch.patch_terminator(switch_bb, body.basic_blocks[first_case_bb].terminator().kind.clone());
+    patch.patch_terminator(switch_bb, body.basic_blocks[first_case_bb].terminator.kind.clone());
     patch.apply(body);
     true
 }
