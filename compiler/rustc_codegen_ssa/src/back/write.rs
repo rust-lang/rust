@@ -2133,7 +2133,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
         match maybe_lto_modules {
-            MaybeLtoModules::NoLto(compiled_modules) => {
+            MaybeLtoModules::NoLto(mut compiled_modules) => {
                 if let Some(incr_comp_session) = incr_comp_session {
                     copy_all_cgu_workproducts_to_incr_comp_cache_dir(
                         sess,
@@ -2141,6 +2141,13 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         &compiled_modules,
                     );
                 }
+
+                // Regardless of what order these modules completed in, report them to
+                // the backend in the same order every time to ensure that we're handing
+                // out deterministic results.
+                compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
+
+                produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
                 Box::new(compiled_modules) as Box<dyn Any>
             }
