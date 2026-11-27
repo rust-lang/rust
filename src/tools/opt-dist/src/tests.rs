@@ -178,3 +178,35 @@ fn version_to_channel(version_str: &str) -> &'static str {
         _ => "stable",
     }
 }
+
+#[cfg(test)]
+mod cli {
+    use clap::Parser;
+
+    use crate::{Args, EnvironmentCmd};
+
+    #[test]
+    fn windows_ci_accepts_cranelift_opt_out() {
+        let args = Args::try_parse_from([
+            "opt-dist",
+            "windows-ci",
+            "--optimize-cranelift",
+            "false",
+            "--",
+            "python",
+            "x.py",
+            "dist",
+        ])
+        .unwrap();
+        let EnvironmentCmd::WindowsCi { shared, optimize_cranelift } = args.env else { panic!() };
+        assert!(!optimize_cranelift);
+        assert_eq!(shared.build_args, ["python", "x.py", "dist"]);
+    }
+
+    #[test]
+    fn windows_ci_keeps_cranelift_enabled_by_default() {
+        let args = Args::try_parse_from(["opt-dist", "windows-ci"]).unwrap();
+        let EnvironmentCmd::WindowsCi { optimize_cranelift, .. } = args.env else { panic!() };
+        assert!(optimize_cranelift);
+    }
+}
