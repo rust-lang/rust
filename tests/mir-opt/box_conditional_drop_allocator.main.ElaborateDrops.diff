@@ -28,9 +28,9 @@
 +         _9 = const false;
           StorageLive(_1);
           StorageLive(_2);
-          _2 = HasDrop;
+          _2 = const HasDrop;
           StorageLive(_3);
-          _3 = DropAllocator;
+          _3 = const DropAllocator;
           _1 = Box::<HasDrop, DropAllocator>::new_in(move _2, move _3) -> [return: bb1, unwind: bb11];
       }
   

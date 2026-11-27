@@ -34,7 +34,7 @@
   
       bb0: {
 -         StorageLive(_3);
--         _3 = HasDrop;
+-         _3 = const HasDrop;
 -         goto -> bb1;
 +         _10 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13});
 +         _9 = discriminant((*_10));
@@ -85,7 +85,7 @@
       bb6: {
 -         coroutine_drop;
 +         nop;
-+         (((*_10) as variant#3).0: HasDrop) = HasDrop;
++         (((*_10) as variant#3).0: HasDrop) = const HasDrop;
 +         goto -> bb1;
       }
   }
