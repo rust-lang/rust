@@ -146,7 +146,7 @@ pub(super) fn meta_encodable_derive(
         s.add_impl_generic(parse_quote! { 'tcx });
     }
     s.add_impl_generic(parse_quote! { '__a });
-    let encoder_ty = quote! { EncodeContext<'__a, 'tcx> };
+    let encoder_ty = quote! { EncodeContext<'tcx> };
     s.add_bounds(synstructure::AddBounds::Generics);
 
     encodable_body(s, encoder_ty, true)

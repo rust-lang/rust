@@ -107,7 +107,7 @@ pub(super) fn save_work_product_index(sess: &Session, incr_comp_session: &IncrCo
     });
 }
 
-fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder<'_>) {
+fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder) {
     let serialized_products: Vec<_> = work_products
         .to_sorted_stable_ord()
         .into_iter()

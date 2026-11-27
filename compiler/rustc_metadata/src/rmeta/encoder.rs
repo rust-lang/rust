@@ -54,8 +54,8 @@ use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
-pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: FileEncoder<'a>,
+pub(super) struct EncodeContext<'tcx> {
+    opaque: FileEncoder,
     metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
@@ -107,7 +107,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+impl<'tcx> Encoder for EncodeContext<'tcx> {
     const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
 
     encoder_methods! {
@@ -128,14 +128,14 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx, T> Encodable<EncodeContext<'tcx>> for LazyValue<T> {
+    fn encode(&self, e: &mut EncodeContext<'tcx>) {
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx, T> Encodable<EncodeContext<'tcx>> for LazyArray<T> {
+    fn encode(&self, e: &mut EncodeContext<'tcx>) {
         e.emit_usize(self.num_elems);
         if self.num_elems > 0 {
             e.emit_lazy_distance(self.position)
@@ -143,21 +143,21 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     }
 }
 
-impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx, Ie, Id, T> Encodable<EncodeContext<'tcx>> for LazyTable<Ie, Id, T> {
+    fn encode(&self, e: &mut EncodeContext<'tcx>) {
         e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx> Encodable<EncodeContext<'tcx>> for ExpnIndex {
+    fn encode(&self, s: &mut EncodeContext<'tcx>) {
         s.emit_u32(self.as_u32());
     }
 }
 
-impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpanEncoder for EncodeContext<'tcx> {
     fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
         self.tcx.prelocked_def_path_hasher()
     }
@@ -277,8 +277,8 @@ fn bytes_needed(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()).div_ceil(u8::BITS) as usize
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx> Encodable<EncodeContext<'tcx>> for SpanData {
+    fn encode(&self, s: &mut EncodeContext<'tcx>) {
         // Don't serialize any `SyntaxContext`s from a proc-macro crate,
         // since we don't load proc-macro dependencies during serialization.
         // This means that any hygiene information from macros used *within*
@@ -420,14 +420,14 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx> Encodable<EncodeContext<'tcx>> for [u8] {
+    fn encode(&self, e: &mut EncodeContext<'tcx>) {
         Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'tcx> TyEncoder<'tcx> for EncodeContext<'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {
@@ -449,7 +449,7 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl<'tcx> EncodeContext<'tcx> {
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
@@ -477,7 +477,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         value: B,
     ) -> LazyValue<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'tcx>>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -500,7 +500,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         values: I,
     ) -> LazyArray<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'tcx>>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -1456,7 +1456,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl<'tcx> EncodeContext<'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
         let mut state = AnalyzeAttrState {
@@ -1483,7 +1483,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Writing to a field of `tables` should be as simple as
     /// `self.table_writer().field(index, tcx.get_field_value(index))`, even for complex structs
     /// that require encoding as `LazyValue`/`LazyArray` first.
-    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, '_> {
+    fn table_writer(&mut self) -> super::TableWriter<'tcx, '_> {
         super::TableWriter { encoder: self }
     }
 
@@ -2727,7 +2727,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
-    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize),
+    f: impl FnOnce(&mut EncodeContext<'_>) -> (usize, usize),
 ) {
     // By default the crate hash (SVH) is computed from the bytes of the encoded metadata,
     // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
@@ -2753,14 +2753,11 @@ fn with_encode_metadata_header(
         metadata_hasher.lock().unwrap().write(&supplement.to_le_bytes());
     }
 
-    // Feed every flushed byte into `metadata_hasher` so the SVH covers the entire encoded metadata.
-    let mut flush_strategy = {
-        let metadata_hasher = Arc::clone(&metadata_hasher);
-        move |bytes: &[u8]| metadata_hasher.lock().unwrap().write(bytes)
-    };
-
     let mut encoder = if metadata_crate_hash {
-        FileEncoder::with_flush_strategy(path, &mut flush_strategy)
+        // Feed every flushed byte into `metadata_hasher` so the SVH covers the entire encoded metadata.
+        let metadata_hasher = Arc::clone(&metadata_hasher);
+        let flush_strategy = move |bytes: &[u8]| metadata_hasher.lock().unwrap().write(bytes);
+        FileEncoder::with_flush_strategy(path, Box::new(flush_strategy))
     } else {
         FileEncoder::new(path)
     }

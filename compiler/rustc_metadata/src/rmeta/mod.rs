@@ -577,7 +577,7 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTables {
+            fn encode(&self, buf: &mut FileEncoder) -> LazyTables {
                 LazyTables {
                     $($name1: self.$name1.encode(buf),)+
                     $($name2: self.$name2.encode(buf),)+
@@ -585,7 +585,7 @@ macro_rules! define_tables {
             }
         }
 
-        impl<'a, 'tcx, 'b> TableWriter<'a, 'tcx, 'b> {
+        impl<'tcx, 'b> TableWriter<'tcx, 'b> {
             $(
                 /// Records a value into the corresponding `TableBuilders` field, encoding it in
                 /// the process when necessary
@@ -616,8 +616,8 @@ macro_rules! define_tables {
 
 /// Helper struct for writing values into [`TableBuilders`].
 #[must_use]
-struct TableWriter<'a, 'tcx, 'b> {
-    encoder: &'b mut EncodeContext<'a, 'tcx>,
+struct TableWriter<'tcx, 'b> {
+    encoder: &'b mut EncodeContext<'tcx>,
 }
 
 define_tables! {
