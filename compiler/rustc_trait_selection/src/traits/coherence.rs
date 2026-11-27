@@ -332,10 +332,10 @@ fn impl_intersection_has_impossible_obligation<'a, 'tcx>(
     // A fast path optimization, try evaluating all goals with
     // a very low recursion depth and bail if any of them don't
     // hold.
-    if !obligations.iter().all(|o| {
-        <&SolverDelegate<'tcx>>::from(infcx)
-            .root_goal_may_hold_with_depth(8, Goal::new(infcx.tcx, o.param_env, o.predicate))
-    }) {
+    if !<&SolverDelegate<'tcx>>::from(infcx).root_goals_may_hold_with_depth(
+        8,
+        obligations.iter().map(|o| Goal::new(infcx.tcx, o.param_env, o.predicate)),
+    ) {
         return IntersectionHasImpossibleObligations::Yes;
     }
 

@@ -191,17 +191,17 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool;
 
-    /// Check whether evaluating `goal` with a depth of `root_depth` may
-    /// succeed. This only returns `false` if the goal is guaranteed to
+    /// Check whether evaluating `goals` with a depth of `root_depth` may
+    /// succeed. This only returns `false` if any of the goals is guaranteed to
     /// not hold. In case evaluation overflows and fails with ambiguity this
     /// returns `true`.
     ///
     /// This is only intended to be used as a performance optimization
     /// in coherence checking.
-    fn root_goal_may_hold_with_depth(
+    fn root_goals_may_hold_with_depth(
         &self,
         root_depth: usize,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goals: impl IntoIterator<Item = Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
     ) -> bool;
 
     // FIXME: This is only exposed because we need to use it in `analyse.rs`
@@ -292,17 +292,53 @@ where
         })
     }
 
-    fn root_goal_may_hold_with_depth(
+    fn root_goals_may_hold_with_depth(
         &self,
         root_depth: usize,
-        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        goals: impl IntoIterator<Item = Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalSource::Misc, goal, None)
-            })
+            let mut goals: Vec<_> = goals.into_iter().map(|g| (g, None)).collect();
+
+            const FIXPOINT_STEP_LIMIT: usize = 8;
+            for _ in 0..FIXPOINT_STEP_LIMIT {
+                let mut has_any_err = false;
+                let mut has_any_changed = false;
+                goals.retain_mut(|(goal, stalled_on)| {
+                    if has_any_err {
+                        return true;
+                    }
+
+                    match EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
+                        ecx.evaluate_goal(GoalSource::Misc, *goal, stalled_on.take())
+                    }) {
+                        Ok(GoalEvaluation { goal: g, certainty, has_changed, stalled_on: s }) => {
+                            has_any_changed |= has_changed == HasChanged::Yes;
+                            if let Certainty::Yes = certainty {
+                                false
+                            } else {
+                                *goal = g;
+                                *stalled_on = s;
+                                true
+                            }
+                        }
+                        Err(_) => {
+                            has_any_err = true;
+                            true
+                        }
+                    }
+                });
+
+                if has_any_err {
+                    return false;
+                }
+                if !has_any_changed {
+                    break;
+                }
+            }
+
+            true
         })
-        .is_ok()
     }
 
     #[instrument(level = "debug", skip(self))]
