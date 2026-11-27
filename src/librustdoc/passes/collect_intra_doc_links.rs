@@ -482,6 +482,7 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
 }
 
 fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
+    psess.dcx().make_silent();
     let file_name = FileName::intra_doc_link_source_code(path_str);
     let mut parser = match rustc_parse::new_parser_from_source_str(
         psess,
@@ -489,7 +490,7 @@ fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
         path_str.to_owned(),
         StripTokens::Nothing,
     ) {
-        Ok(parser) => parser,
+        Ok(parser) => parser.recovery(rustc_attr_parsing::Recovery::Forbidden),
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
             return Err(());
