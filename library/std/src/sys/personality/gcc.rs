@@ -167,6 +167,11 @@ cfg_select! {
                         EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => {
                             return continue_unwind(exception_object, context);
                         }
+                        EHAction::Catch(_) if state & uw::_UA_FORCE_UNWIND != 0 => {
+                            // See the documentation below as for why this is
+                            // required.
+                            rtabort!("attempted to catch a forced unwind");
+                        }
                         EHAction::Cleanup(lpad)
                         | EHAction::Catch(lpad)
                         | EHAction::Filter(lpad) => {
@@ -266,6 +271,18 @@ cfg_select! {
                         // Forced unwinding hits a terminate action.
                         EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => {
                             uw::_URC_CONTINUE_UNWIND
+                        }
+                        EHAction::Catch(_) if actions & uw::_UA_FORCE_UNWIND != 0 => {
+                            // `catch_unwind` is the only construct that results
+                            // in `EHAction::Catch`. Handlers called during
+                            // forced unwinding must call `_Unwind_Resume`, but
+                            // since `catch_unwind` is unaware of the forced
+                            // nature of the unwind it will try to destroy the
+                            // exception object instead, which results in a
+                            // cryptic abort message (e.g. "FATAL: exception not
+                            // rethrown") at best and undefined behaviour at
+                            // worst. Abort with a nice message instead.
+                            rtabort!("attempted to catch a forced unwind");
                         }
                         EHAction::Cleanup(lpad)
                         | EHAction::Catch(lpad)
