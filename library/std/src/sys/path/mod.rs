@@ -28,8 +28,8 @@ cfg_select! {
         pub use sgx::*;
     }
     target_os = "solid_asp3" => {
-        mod unsupported_backslash;
-        pub use unsupported_backslash::*;
+        mod solid;
+        pub use solid::*;
     }
     target_os = "uefi" => {
         mod uefi;
@@ -41,7 +41,7 @@ cfg_select! {
         pub use cygwin::*;
     }
     _ => {
-        mod unix;
-        pub use unix::*;
+        mod unix_like;
+        pub use unix_like::*;
     }
 }
