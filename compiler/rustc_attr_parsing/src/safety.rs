@@ -17,7 +17,7 @@ impl<'sess> AttributeParser<'sess> {
         expected_safety: AttributeSafety,
         emit_lint: &mut impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) {
-        if matches!(self.should_emit, ShouldEmit::Nothing) {
+        if matches!(self.should_emit, ShouldEmit::Nothing { .. }) {
             return;
         }
 

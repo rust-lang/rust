@@ -22,7 +22,7 @@ pub(crate) fn target_check_doc_comment(
     emit_lint: &mut impl FnMut(LintId, MultiSpan, EmitAttribute),
     has_target_checked_doc_comment: &mut bool,
 ) {
-    if matches!(parser.should_emit, ShouldEmit::Nothing) {
+    if matches!(parser.should_emit, ShouldEmit::Nothing { .. }) {
         return;
     }
     if mem::replace(has_target_checked_doc_comment, true) {

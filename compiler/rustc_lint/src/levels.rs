@@ -6,7 +6,7 @@ use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{Attribute, DocAttribute, find_attr};
 use rustc_attr_parsing::{
-    AttributeParser, Recovery, RenamedLintSuggestion, ShouldEmit, UnknownLintSuggestion,
+    AttributeParser, RenamedLintSuggestion, ShouldEmit, UnknownLintSuggestion,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
@@ -674,36 +674,17 @@ where
             self.sess,
             attrs,
             Some(&|attr| {
-                // This is ...complicated. Sometimes we need to parse lint check
-                // attributes pre-expansion, but of course things are allowed to
-                // be invalid if they're removed by a macro/cfg attribute before
-                // we do attribute parsing, which happens (mostly) post-expansion.
-                //
-                // Unfortunately we're somewhat inconsistent - sometimes we just
-                // give up and sometimes we error. Take for example:
-                //
-                // #[expect] // OK
-                // #[expect[wut]] // OK
-                // #[expect(expect)] // OK
-                // #[expect(expect(expect))] //~ ERROR malformed lint attribute input
-                // #[deny(({!}))] // OK
-                // #[expect[helix::<ub>]] // OK
-                // #[cfg(false)]
-                // const _: () = ();
-                //
-                // FIXME: just allow everything?
-                (attr.path_matches(&[sym::allow])
+                attr.path_matches(&[sym::allow])
                     || attr.path_matches(&[sym::warn])
                     || attr.path_matches(&[sym::deny])
                     || attr.path_matches(&[sym::forbid])
-                    || attr.path_matches(&[sym::expect]))
-                    && attr.meta_item_list().is_some()
+                    || attr.path_matches(&[sym::expect])
             }),
             AstTarget::None(Target::Crate),
             DUMMY_SP,
             CRATE_NODE_ID,
             Some(self.features),
-            ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+            ShouldEmit::Nothing { no_bug: true },
             None,
             Some(self.registered_lint_tools),
         );

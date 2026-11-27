@@ -425,7 +425,9 @@ fn expr_to_lit<'sess>(
             Err(err) => Err(create_lit_error(psess, err, token_lit, expr.span)),
         }
     } else {
-        if matches!(should_emit, ShouldEmit::Nothing) || matches!(expr.kind, ExprKind::Err(_)) {
+        if matches!(should_emit, ShouldEmit::Nothing { .. })
+            || matches!(expr.kind, ExprKind::Err(_))
+        {
             return Ok(None);
         }
 
@@ -683,7 +685,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             let mut found_comma = false;
             while self.parser.token != token::Eof {
                 let span = self.parser.prev_token.span.shrink_to_hi();
-                self.should_emit = ShouldEmit::Nothing;
+                self.should_emit = ShouldEmit::Nothing { no_bug: false };
                 match self.parse_meta_item_inner() {
                     Ok(_) => {
                         if !found_comma {

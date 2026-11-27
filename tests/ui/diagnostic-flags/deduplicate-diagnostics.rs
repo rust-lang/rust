@@ -8,6 +8,4 @@
 struct S;
 
 #[deny("literal")] //~ ERROR malformed
-                   //[duplicate]~| ERROR malformed
-                   //[duplicate]~| ERROR malformed
 fn main() {}

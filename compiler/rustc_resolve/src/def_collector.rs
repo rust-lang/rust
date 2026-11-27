@@ -178,7 +178,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     i.span,
                     i.id,
                     Some(self.r.features),
-                    ShouldEmit::Nothing,
+                    ShouldEmit::Nothing { no_bug: false },
                     Some(self.r.tcx().registered_attr_tools(())),
                     Some(self.r.tcx().registered_lint_tools(())),
                 );

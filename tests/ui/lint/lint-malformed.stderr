@@ -1,28 +1,3 @@
-error: malformed `allow` attribute input
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
-   |
-help: to provide a reason, use `reason = ""`
-   |
-LL - #![allow(bar = "baz")]
-LL + #![allow(reason = "baz")]
-   |
-
-error: malformed `allow` attribute input
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: to provide a reason, use `reason = ""`
-   |
-LL - #![allow(bar = "baz")]
-LL + #![allow(reason = "baz")]
-   |
-
 error[E0539]: malformed `deny` attribute input
   --> $DIR/lint-malformed.rs:1:4
    |
@@ -50,13 +25,12 @@ error: malformed `allow` attribute input
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ not the name of a lint
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: to provide a reason, use `reason = ""`
    |
 LL - #![allow(bar = "baz")]
 LL + #![allow(reason = "baz")]
    |
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

@@ -25,7 +25,7 @@ impl<'sess> AttributeParser<'sess> {
         attr_span: Span,
         expected_stability: AttributeStability,
     ) {
-        if matches!(self.should_emit, ShouldEmit::Nothing) {
+        if matches!(self.should_emit, ShouldEmit::Nothing { .. }) {
             return;
         }
 

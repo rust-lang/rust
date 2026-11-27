@@ -6,14 +6,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{self as ast, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_attr_ir::target::{AstTarget, Target};
-use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
+use rustc_attr_ir::{
+    AttrArgs, AttrErrorGuaranteed, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId,
+};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
 use rustc_lint_defs::Reflectiveness::NonReflective;
 use rustc_lint_defs::{LintId, RegisteredTools, ToolOptions};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::attributes::doc_comment::target_check_doc_comment;
@@ -82,7 +84,7 @@ impl<'sess> AttributeParser<'sess> {
             // Because we're not emitting warnings/errors, the target should not matter
             DUMMY_SP,
             None,
-            ShouldEmit::Nothing,
+            ShouldEmit::Nothing { no_bug: false },
         )
     }
 
@@ -335,7 +337,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     #[track_caller]
-    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> AttrErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
 
@@ -523,7 +525,7 @@ impl<'sess> AttributeParser<'sess> {
                             span: attr_span,
                         };
 
-                        if !matches!(self.should_emit, ShouldEmit::Nothing)
+                        if !matches!(self.should_emit, ShouldEmit::Nothing { .. })
                             && Target::from_ast_target(&ast_target) == Target::Crate
                         {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
@@ -596,7 +598,7 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+        if !matches!(self.should_emit, ShouldEmit::Nothing { .. }) {
             for (check, attr_span) in deferred_checks {
                 check(
                     &mut FinalizeCheckContext {
@@ -617,7 +619,7 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        if !matches!(self.should_emit, ShouldEmit::Nothing)
+        if !matches!(self.should_emit, ShouldEmit::Nothing { .. })
             && Target::from_ast_target(&ast_target) == Target::WherePredicate
         {
             self.check_invalid_where_predicate_attrs(attributes.iter());
@@ -634,10 +636,12 @@ impl<'sess> AttributeParser<'sess> {
             for item in items.mixed() {
                 if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
                     if !item.are_args_checked() {
-                        self.dcx().span_delayed_bug(
+                        let mut diag = self.dcx().struct_span_err(
                             item.span(),
                             "attribute args were not properly checked",
                         );
+                        diag.downgrade_to_delayed_bug();
+                        self.should_emit.emit_err(diag);
                         return;
                     }
                     self.check_args_used(attr, item.args());
