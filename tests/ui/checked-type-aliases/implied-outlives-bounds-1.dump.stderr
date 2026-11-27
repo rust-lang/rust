@@ -1,0 +1,21 @@
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-1.rs:14:1
+   |
+LL | struct Type0<'a, K, V>(&'a mut Alias0<K, V>);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: K: 'a
+   = note: V: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-1.rs:27:1
+   |
+LL | struct Type1<'a, 'b, T>(&'a Alias1<'b, T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: 'b: 'a
+   = note: T: 'a
+   = note: T: 'b
+
+error: aborting due to 2 previous errors
+
