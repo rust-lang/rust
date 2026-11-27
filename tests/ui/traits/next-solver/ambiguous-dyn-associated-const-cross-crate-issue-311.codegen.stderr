@@ -1,5 +1,5 @@
 error[E0080]: unable to normalize `fn() -> usize {std::mem::size_of::<<dyn Project<Item = u16> as Project>::Item>}` during evaluation
-  --> $DIR/auxiliary/dyn-associated-const-cross-crate-aux-issue-311.rs:18:29
+  --> $DIR/auxiliary/dyn-associated-const-cross-crate-aux-issue-311.rs:22:29
    |
 LL | impl<T: ?Sized + Project> Adapter<T> {
 LL |     pub const SIZE: usize = size_of::<T::Item>();

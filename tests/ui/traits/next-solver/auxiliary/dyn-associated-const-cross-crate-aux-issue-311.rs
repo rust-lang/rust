@@ -1,3 +1,7 @@
+//@ no-prefer-dynamic
+
+#![crate_type = "rlib"]
+
 use std::marker::PhantomData;
 use std::mem::size_of;
 
