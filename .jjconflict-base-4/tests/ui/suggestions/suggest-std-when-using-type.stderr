@@ -1,0 +1,14 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/suggest-std-when-using-type.rs:3:14
+   |
+LL |     let pi = f32::consts::PI;
+   |              ^^^^^^^^^^^
+   |
+help: you are looking for the module in `std`, not the primitive type
+   |
+LL |     let pi = std::f32::consts::PI;
+   |              +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

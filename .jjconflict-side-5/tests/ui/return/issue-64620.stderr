@@ -1,0 +1,9 @@
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-64620.rs:2:10
+   |
+LL |     V1 = return [0][0],
+   |          ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0572`.

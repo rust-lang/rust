@@ -1,0 +1,235 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/variance.rs:14:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/variance.rs:14:36
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                    ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/variance.rs:18:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/variance.rs:18:29
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                             ^^
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:8:29
+   |
+LL | type NotCapturedEarly<'a> = impl Sized;
+   |                             ^^^^^^^^^^
+   |
+   = note: `NotCapturedEarly` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:11:26
+   |
+LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `CapturedEarly` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:14:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^
+   |
+   = note: `NotCapturedLate` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:18:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Captured` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:22:27
+   |
+LL | type Bar<'a, 'b: 'b, T> = impl Sized;
+   |                           ^^^^^^^^^^
+   |
+   = note: `Bar` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:34:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+   |
+   = note: `ImplicitCapture` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:37:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ExplicitCaptureFromHeader` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:40:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ExplicitCaptureFromGat` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:45:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+   |
+   = note: `ImplicitCapture` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:48:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ExplicitCaptureFromHeader` must be used in combination with a concrete type within the same impl
+
+error: unconstrained opaque type
+  --> $DIR/variance.rs:51:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ExplicitCaptureFromGat` must be used in combination with a concrete type within the same impl
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:8:29
+   |
+LL | type NotCapturedEarly<'a> = impl Sized;
+   |                             ^^^^^^^^^^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:11:26
+   |
+LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: *, 'a: o, 'b: o]
+  --> $DIR/variance.rs:14:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^
+
+error: ['a: *, 'a: o, 'b: o]
+  --> $DIR/variance.rs:18:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: *, 'b: *, T: o, 'a: o, 'b: o]
+  --> $DIR/variance.rs:22:27
+   |
+LL | type Bar<'a, 'b: 'b, T> = impl Sized;
+   |                           ^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:34:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:37:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:40:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:45:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:48:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['i: *, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:51:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:62:5
+   |
+LL | /     impl Nesting<
+LL | |         'a,
+LL | |         Output = impl Nesting<
+LL | |             'a,
+...  |
+LL | |         >,
+LL | |     >;
+   | |_____^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:64:18
+   |
+LL |           Output = impl Nesting<
+   |  __________________^
+LL | |             'a,
+LL | |             Output = impl Nesting<
+LL | |                 'a,
+...  |
+LL | |             >,
+LL | |         >,
+   | |_________^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:66:22
+   |
+LL |               Output = impl Nesting<
+   |  ______________________^
+LL | |                 'a,
+LL | |                 Output = impl Nesting<
+LL | |                     'a,
+LL | |                     Output = impl Nesting<'a>
+LL | |                 >
+LL | |             >,
+   | |_____________^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:68:26
+   |
+LL |                   Output = impl Nesting<
+   |  __________________________^
+LL | |                     'a,
+LL | |                     Output = impl Nesting<'a>
+LL | |                 >
+   | |_________________^
+
+error: ['a: *, 'a: o]
+  --> $DIR/variance.rs:70:30
+   |
+LL |                     Output = impl Nesting<'a>
+   |                              ^^^^^^^^^^^^^^^^
+
+error: aborting due to 29 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

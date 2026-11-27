@@ -1,0 +1,18 @@
+error: invalid unicode character escape
+  --> $DIR/literals-are-validated-before-expansion.rs:6:20
+   |
+LL |     black_hole! { '\u{FFFFFF}' }
+   |                    ^^^^^^^^^^ invalid escape
+   |
+   = help: unicode escape must be at most 10FFFF
+
+error: invalid unicode character escape
+  --> $DIR/literals-are-validated-before-expansion.rs:8:39
+   |
+LL |     black_hole! { "this is surrogate: \u{DAAA}" }
+   |                                       ^^^^^^^^ invalid escape
+   |
+   = help: unicode escape must not be a surrogate
+
+error: aborting due to 2 previous errors
+

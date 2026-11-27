@@ -1,0 +1,10 @@
+// MIR for `raw_pointer_offset` after built
+
+fn raw_pointer_offset(_1: *const i32) -> *const i32 {
+    let mut _0: *const i32;
+
+    bb0: {
+        _0 = Offset(copy _1, const 1_isize);
+        return;
+    }
+}

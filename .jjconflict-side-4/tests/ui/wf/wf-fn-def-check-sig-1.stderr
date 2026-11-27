@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-fn-def-check-sig-1.rs:11:5
+   |
+LL | fn extend_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {
+   |                    --  -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+LL |     let f = foo::<'b, 'a>;
+LL |     f.baz(x)
+   |     ^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

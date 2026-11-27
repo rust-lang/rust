@@ -1,0 +1,20 @@
+error: cannot find attribute `foo` in this scope
+  --> $DIR/attr_unknown_custom_attr.rs:5:3
+   |
+LL | #[foo]
+   |   ^^^
+
+error: cannot find attribute `foo` in this scope
+  --> $DIR/attr_unknown_custom_attr.rs:7:7
+   |
+LL |     #[foo]
+   |       ^^^
+
+error: cannot find attribute `foo` in this scope
+  --> $DIR/attr_unknown_custom_attr.rs:9:7
+   |
+LL |     #[foo]
+   |       ^^^
+
+error: aborting due to 3 previous errors
+

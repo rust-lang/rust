@@ -1,0 +1,30 @@
+Function name: module::off::on (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 0d, 05, 00, 0c, 00, 00, 0e, 00, 0f]
+Number of files: 1
+- file 0 => $DIR/module.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 13, 5) to (start + 0, 12)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 15)
+Highest counter ID seen: (none)
+
+Function name: module::on::inherit (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 15, 05, 00, 11, 00, 00, 13, 00, 14]
+Number of files: 1
+- file 0 => $DIR/module.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 21, 5) to (start + 0, 17)
+- Code(Zero) at (prev + 0, 19) to (start + 0, 20)
+Highest counter ID seen: (none)
+
+Function name: module::on::on (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 18, 05, 00, 0c, 00, 00, 0e, 00, 0f]
+Number of files: 1
+- file 0 => $DIR/module.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 24, 5) to (start + 0, 12)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 15)
+Highest counter ID seen: (none)
+

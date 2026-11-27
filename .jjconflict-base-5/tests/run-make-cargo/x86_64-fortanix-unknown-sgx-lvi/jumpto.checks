@@ -1,0 +1,24 @@
+CHECK: __libunwind_Registers_x86_64_jumpto
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

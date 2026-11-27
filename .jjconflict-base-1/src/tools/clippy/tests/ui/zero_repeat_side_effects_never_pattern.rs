@@ -1,0 +1,8 @@
+#![warn(clippy::zero_repeat_side_effects)]
+#![allow(clippy::diverging_sub_expression)]
+
+fn issue_14998() {
+    // nameable type thanks to `never_type` being enabled, suggest
+    let _data = [panic!(); 0];
+    //~^ zero_repeat_side_effects
+}

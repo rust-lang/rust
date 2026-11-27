@@ -1,0 +1,38 @@
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/allow.rs:9:28
+   |
+LL |         dbg!(String::new().as_ptr());
+   |              ------------- ^^^^^^ pointer created here
+   |              |
+   |              this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/allow.rs:7:12
+   |
+LL |     #[deny(dangling_pointers_from_temporaries)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/allow.rs:20:28
+   |
+LL |         dbg!(String::new().as_ptr());
+   |              ------------- ^^^^^^ pointer created here
+   |              |
+   |              this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/allow.rs:18:12
+   |
+LL |     #[warn(dangling_pointers_from_temporaries)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

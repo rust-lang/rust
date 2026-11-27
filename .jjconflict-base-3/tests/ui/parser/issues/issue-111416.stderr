@@ -1,0 +1,19 @@
+error: invalid `struct` delimiters or `fn` call arguments
+  --> $DIR/issue-111416.rs:2:14
+   |
+LL |     let my = monad_bind(mx, T: Try);
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if `monad_bind` is a struct, use braces as delimiters
+   |
+LL -     let my = monad_bind(mx, T: Try);
+LL +     let my = monad_bind { mx, T: Try };
+   |
+help: if `monad_bind` is a function, use the arguments directly
+   |
+LL -     let my = monad_bind(mx, T: Try);
+LL +     let my = monad_bind(mx, Try);
+   |
+
+error: aborting due to 1 previous error
+

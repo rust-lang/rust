@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-44454-3.rs:17:15
+   |
+LL | fn make_static<'a, T>(t: &'a T) -> &'static T {
+   |                -- lifetime `'a` defined here
+LL |     let x: <dyn Animal<&'a T> as Projector>::Foo = t;
+LL |     let any = generic::<dyn Animal<&'a T>, &'a T>(x);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 1 previous error
+

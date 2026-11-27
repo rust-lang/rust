@@ -1,0 +1,10 @@
+error: `impl Trait for .. {}` is an obsolete syntax
+  --> $DIR/obsolete-syntax-impl-for-dotdot.rs:7:1
+   |
+LL | impl Trait2 for .. {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `auto trait Trait {}` instead
+
+error: aborting due to 1 previous error
+

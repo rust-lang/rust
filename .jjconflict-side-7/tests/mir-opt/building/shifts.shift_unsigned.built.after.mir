@@ -1,0 +1,135 @@
+// MIR for `shift_unsigned` after built
+
+fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i128; 3]) {
+    debug small => _1;
+    debug big => _2;
+    debug a => _3;
+    debug b => _4;
+    debug c => _5;
+    let mut _0: ([u8; 3], [i128; 3]);
+    let mut _6: [u8; 3];
+    let mut _7: u8;
+    let mut _8: u8;
+    let mut _9: u8;
+    let mut _10: bool;
+    let mut _11: u8;
+    let mut _12: u8;
+    let mut _13: u32;
+    let mut _14: bool;
+    let mut _15: u8;
+    let mut _16: u8;
+    let mut _17: u128;
+    let mut _18: bool;
+    let mut _19: [i128; 3];
+    let mut _20: i128;
+    let mut _21: i128;
+    let mut _22: u8;
+    let mut _23: bool;
+    let mut _24: i128;
+    let mut _25: i128;
+    let mut _26: u32;
+    let mut _27: bool;
+    let mut _28: i128;
+    let mut _29: i128;
+    let mut _30: u128;
+    let mut _31: bool;
+
+    bb0: {
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = copy _1;
+        StorageLive(_9);
+        _9 = copy _3;
+        _10 = Lt(copy _9, const 8_u8);
+        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb7];
+    }
+
+    bb1: {
+        _7 = Shr(move _8, move _9);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = copy _1;
+        StorageLive(_13);
+        _13 = copy _4;
+        _14 = Lt(copy _13, const 8_u32);
+        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb2, unwind: bb7];
+    }
+
+    bb2: {
+        _11 = Shr(move _12, move _13);
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageLive(_15);
+        StorageLive(_16);
+        _16 = copy _1;
+        StorageLive(_17);
+        _17 = copy _5;
+        _18 = Lt(copy _17, const 8_u128);
+        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb3, unwind: bb7];
+    }
+
+    bb3: {
+        _15 = Shr(move _16, move _17);
+        StorageDead(_17);
+        StorageDead(_16);
+        _6 = [move _7, move _11, move _15];
+        StorageDead(_15);
+        StorageDead(_11);
+        StorageDead(_7);
+        StorageLive(_19);
+        StorageLive(_20);
+        StorageLive(_21);
+        _21 = copy _2;
+        StorageLive(_22);
+        _22 = copy _3;
+        _23 = Lt(copy _22, const 128_u8);
+        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb4, unwind: bb7];
+    }
+
+    bb4: {
+        _20 = Shl(move _21, move _22);
+        StorageDead(_22);
+        StorageDead(_21);
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = copy _2;
+        StorageLive(_26);
+        _26 = copy _4;
+        _27 = Lt(copy _26, const 128_u32);
+        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb5, unwind: bb7];
+    }
+
+    bb5: {
+        _24 = Shl(move _25, move _26);
+        StorageDead(_26);
+        StorageDead(_25);
+        StorageLive(_28);
+        StorageLive(_29);
+        _29 = copy _2;
+        StorageLive(_30);
+        _30 = copy _5;
+        _31 = Lt(copy _30, const 128_u128);
+        assert(move _31, "attempt to shift left by `{}`, which would overflow", copy _30) -> [success: bb6, unwind: bb7];
+    }
+
+    bb6: {
+        _28 = Shl(move _29, move _30);
+        StorageDead(_30);
+        StorageDead(_29);
+        _19 = [move _20, move _24, move _28];
+        StorageDead(_28);
+        StorageDead(_24);
+        StorageDead(_20);
+        _0 = (move _6, move _19);
+        StorageDead(_19);
+        StorageDead(_6);
+        return;
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+}

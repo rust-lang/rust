@@ -1,0 +1,4 @@
+LIBRARY exporter
+EXPORTS
+    _exported_function_stdcall@4 @15 NONAME
+    @exported_function_fastcall@4 @18 NONAME

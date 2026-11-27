@@ -1,0 +1,40 @@
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:6:18
+   |
+LL | fn pin_mut_param(&pin mut x: i32) {}
+   |                  ^^^^^^^^^^  --- expected due to this
+   |                  |
+   |                  expected `i32`, found `Pin<&mut _>`
+   |
+   = note: expected type `i32`
+            found struct `Pin<&mut _>`
+note: to declare a mutable parameter use: `mut x`
+  --> $DIR/ref-pat-suggestions.rs:6:18
+   |
+LL | fn pin_mut_param(&pin mut x: i32) {}
+   |                  ^^^^^^^^^^
+help: to take parameter `x` by reference, move `&pin mut` to the type
+   |
+LL - fn pin_mut_param(&pin mut x: i32) {}
+LL + fn pin_mut_param(x: &pin mut i32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:9:20
+   |
+LL | fn pin_const_param(&pin const x: i32) {}
+   |                    ^^^^^^^^^^^^  --- expected due to this
+   |                    |
+   |                    expected `i32`, found `Pin<&_>`
+   |
+   = note: expected type `i32`
+            found struct `Pin<&_>`
+help: to take parameter `x` by reference, move `&pin const` to the type
+   |
+LL - fn pin_const_param(&pin const x: i32) {}
+LL + fn pin_const_param(x: &pin const i32) {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

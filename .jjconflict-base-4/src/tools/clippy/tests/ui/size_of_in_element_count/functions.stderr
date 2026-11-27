@@ -1,0 +1,156 @@
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:18:69
+   |
+LL |     unsafe { copy_nonoverlapping::<u16>(x.as_ptr(), y.as_mut_ptr(), size_of::<u16>()) };
+   |                                                                     ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+   = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::size_of_in_element_count)]`
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:21:62
+   |
+LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
+   |                                                              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:24:49
+   |
+LL |     unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u16>()) };
+   |                                                 ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:27:64
+   |
+LL |     unsafe { x.as_ptr().copy_to_nonoverlapping(y.as_mut_ptr(), size_of::<u16>()) };
+   |                                                                ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:30:51
+   |
+LL |     unsafe { y.as_mut_ptr().copy_from(x.as_ptr(), size_of::<u16>()) };
+   |                                                   ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:33:66
+   |
+LL |     unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<u16>()) };
+   |                                                                  ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:36:47
+   |
+LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u16>()) };
+   |                                               ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:39:47
+   |
+LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
+   |                                               ^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:42:66
+   |
+LL |     unsafe { swap_nonoverlapping(y.as_mut_ptr(), x.as_mut_ptr(), size_of::<u16>() * SIZE) };
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:45:46
+   |
+LL |     slice_from_raw_parts_mut(y.as_mut_ptr(), size_of::<u16>() * SIZE);
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:48:38
+   |
+LL |     slice_from_raw_parts(y.as_ptr(), size_of::<u16>() * SIZE);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:51:49
+   |
+LL |     unsafe { from_raw_parts_mut(y.as_mut_ptr(), size_of::<u16>() * SIZE) };
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:54:41
+   |
+LL |     unsafe { from_raw_parts(y.as_ptr(), size_of::<u16>() * SIZE) };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:57:33
+   |
+LL |     unsafe { y.as_mut_ptr().sub(size_of::<u16>()) };
+   |                                 ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:60:29
+   |
+LL |     y.as_ptr().wrapping_sub(size_of::<u16>());
+   |                             ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:63:29
+   |
+LL |     unsafe { y.as_ptr().add(size_of::<u16>()) };
+   |                             ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:66:33
+   |
+LL |     y.as_mut_ptr().wrapping_add(size_of::<u16>());
+   |                                 ^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:69:32
+   |
+LL |     unsafe { y.as_ptr().offset(size_of::<u16>() as isize) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/functions.rs:72:36
+   |
+LL |     y.as_mut_ptr().wrapping_offset(size_of::<u16>() as isize);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: aborting due to 19 previous errors
+

@@ -1,0 +1,20 @@
+error: `#![doc(auto_cfg(any(...)))]` only accepts identifiers or `values(...)`
+  --> $DIR/doc-cfg-4.rs:6:40
+   |
+LL | #![doc(auto_cfg(hide(target_os, values(any("linux")))))]
+   |                                        ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/doc-cfg-4.rs:3:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#![doc(auto_cfg(none(...)))]` only accepts identifiers or `values(...)`
+  --> $DIR/doc-cfg-4.rs:7:40
+   |
+LL | #![doc(auto_cfg(hide(target_os, values(none("linux")))))]
+   |                                        ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

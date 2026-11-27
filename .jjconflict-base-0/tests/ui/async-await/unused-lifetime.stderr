@@ -1,0 +1,48 @@
+error: lifetime parameter `'a` never used
+  --> $DIR/unused-lifetime.rs:8:35
+   |
+LL | async fn async_wrong_without_args<'a>() {}
+   |                                  -^^- help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/unused-lifetime.rs:6:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: lifetime parameter `'a` never used
+  --> $DIR/unused-lifetime.rs:10:33
+   |
+LL | async fn async_wrong_1_lifetime<'a>(_: &i32) {}
+   |                                -^^- help: elide the unused lifetime
+
+error: lifetime parameter `'b` never used
+  --> $DIR/unused-lifetime.rs:12:38
+   |
+LL | async fn async_wrong_2_lifetimes<'a, 'b>(_: &'a i32, _: &i32) {}
+   |                                    --^^
+   |                                    |
+   |                                    help: elide the unused lifetime
+
+error: lifetime parameter `'a` never used
+  --> $DIR/unused-lifetime.rs:23:23
+   |
+LL | fn wrong_without_args<'a>() {}
+   |                      -^^- help: elide the unused lifetime
+
+error: lifetime parameter `'a` never used
+  --> $DIR/unused-lifetime.rs:25:21
+   |
+LL | fn wrong_1_lifetime<'a>(_: &i32) {}
+   |                    -^^- help: elide the unused lifetime
+
+error: lifetime parameter `'b` never used
+  --> $DIR/unused-lifetime.rs:27:26
+   |
+LL | fn wrong_2_lifetimes<'a, 'b>(_: &'a i32, _: &i32) {}
+   |                        --^^
+   |                        |
+   |                        help: elide the unused lifetime
+
+error: aborting due to 6 previous errors
+

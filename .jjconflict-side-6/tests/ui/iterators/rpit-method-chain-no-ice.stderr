@@ -1,0 +1,22 @@
+error[E0271]: expected `IterMut<'_, u8>` to be an iterator that yields `&mut str`, but it yields `&mut u8`
+  --> $DIR/rpit-method-chain-no-ice.rs:6:31
+   |
+LL |     fn has_lifetime(&self) -> impl Iterator<Item = &mut str> {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&mut str`, found `&mut u8`
+LL |
+LL |         self.0.iter_mut()
+   |         ----------------- return type was inferred to be `std::slice::IterMut<'_, u8>` here
+   |
+   = note: expected mutable reference `&mut str`
+              found mutable reference `&mut u8`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/rpit-method-chain-no-ice.rs:8:16
+   |
+LL |         self.0.iter_mut()
+   |         ------ ^^^^^^^^^^ `Iterator::Item` is `&mut u8` here
+   |         |
+   |         this expression has type `Box<[u8]>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

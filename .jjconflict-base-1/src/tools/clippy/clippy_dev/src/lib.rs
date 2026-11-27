@@ -1,0 +1,43 @@
+#![feature(
+    exit_status_error,
+    macro_metavar_expr_concat,
+    new_range,
+    os_str_slice,
+    os_string_truncate,
+    pattern,
+    rustc_private
+)]
+#![warn(
+    rust_2018_idioms,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_qualifications
+)]
+#![expect(clippy::missing_panics_doc)]
+
+extern crate rustc_arena;
+extern crate rustc_data_structures;
+#[expect(unused_extern_crates, reason = "required to link to rustc crates")]
+extern crate rustc_driver;
+extern crate rustc_lexer;
+extern crate termize;
+
+pub mod dogfood;
+pub mod edit_lints;
+pub mod fmt;
+pub mod lint;
+pub mod new_lint;
+pub mod release;
+pub mod serve;
+pub mod setup;
+pub mod sync;
+
+mod diag;
+mod generate;
+mod parse;
+mod utils;
+
+pub use self::diag::DiagCx;
+pub use self::parse::{ParseCx, new_parse_cx};
+pub use self::utils::{ClippyInfo, SourceFile, Span, UpdateMode};

@@ -1,0 +1,51 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/suggest-array-length.rs:5:22
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |                      ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const Foo: [i32; _] = [1, 2, 3];
+LL +     const Foo: [i32; 3] = [1, 2, 3];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/suggest-array-length.rs:7:26
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |                          ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     const REF_FOO: &[u8; _] = &[1];
+LL +     const REF_FOO: &[u8; 1] = &[1];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/suggest-array-length.rs:9:26
+   |
+LL |     static Statik: [i32; _] = [1, 2, 3];
+   |                          ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     static Statik: [i32; _] = [1, 2, 3];
+LL +     static Statik: [i32; 3] = [1, 2, 3];
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/suggest-array-length.rs:11:30
+   |
+LL |     static REF_STATIK: &[u8; _] = &[1];
+   |                              ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL -     static REF_STATIK: &[u8; _] = &[1];
+LL +     static REF_STATIK: &[u8; 1] = &[1];
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

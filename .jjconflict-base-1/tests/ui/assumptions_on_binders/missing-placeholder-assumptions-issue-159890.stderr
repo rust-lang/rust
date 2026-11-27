@@ -1,0 +1,30 @@
+error[E0195]: lifetime parameters or bounds on associated function `call_2` do not match the trait declaration
+  --> $DIR/missing-placeholder-assumptions-issue-159890.rs:26:14
+   |
+LL |       fn call_2() {}
+   |                - lifetimes in impl do not match this associated function in trait
+...
+LL |       fn call_2<'s, 'cx>() -> Self::Future2<'cx>
+   |                ^^^^^^^^^ lifetimes do not match associated function in trait
+LL |
+LL | /     where
+LL | |         's: 'cx,
+   | |________________- this `where` clause might not match the one in the trait
+
+error[E0046]: not all trait items implemented, missing: `Future2`
+  --> $DIR/missing-placeholder-assumptions-issue-159890.rs:20:1
+   |
+LL |       type Future2<'cx>: Future + 'cx;
+   |       ------------------------------- `Future2` from trait
+...
+LL | / impl<FI1, FI2: 'static> IterCaller for UseIter<FI1, FI2>
+LL | |
+LL | | where
+LL | |     FI1: FutureIterator + 'static + Send,
+LL | |     for<'s, 'cx> FI1::Future<'s, 'cx>: Send,
+   | |____________________________________________^ missing `Future2` in implementation
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0195.
+For more information about an error, try `rustc --explain E0046`.

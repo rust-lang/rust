@@ -1,0 +1,27 @@
+error: the associated type `Yield` exists for `Container<[u8]>`, but its trait bounds were not satisfied
+  --> $DIR/not-found-unsatisfied-bounds-0.rs:19:29
+   |
+LL | struct Container<T: ?Sized>(T);
+   | --------------------------- associated type `Yield` not found for this struct
+...
+LL |     let _: Container<[u8]>::Yield = 1;
+   |                             ^^^^^ associated type cannot be referenced on `Container<[u8]>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `[u8]: Sized`
+
+error: the associated type `Combination` exists for `Duple<String, Rc<str>>`, but its trait bounds were not satisfied
+  --> $DIR/not-found-unsatisfied-bounds-0.rs:20:45
+   |
+LL | struct Duple<T, U>(T, U);
+   | ------------------ associated type `Combination` not found for this struct
+...
+LL |     let _: Duple<String, std::rc::Rc<str>>::Combination;
+   |                                             ^^^^^^^^^^^ associated type cannot be referenced on `Duple<String, Rc<str>>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `Rc<str>: Send`
+           `String: Copy`
+
+error: aborting due to 2 previous errors
+

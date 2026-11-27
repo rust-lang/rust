@@ -1,0 +1,16 @@
+warning: constant evaluation is taking a long time
+  --> $DIR/ctfe-simple-loop.rs:10:5
+   |
+LL | /     while index < n {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/ctfe-simple-loop.rs:20:1
+   |
+LL | const Y: u32 = simple_loop(35);
+   | ^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

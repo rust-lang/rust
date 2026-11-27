@@ -1,0 +1,574 @@
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:8:5
+   |
+LL |     foo.x = 1;
+   |     ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:5:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:10:5
+   |
+LL |     bar.x = 1;
+   |     ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:25:13
+   |
+LL |         pub mut(self) x: i32,
+   |             --------- field restricted here
+
+error: field `0` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:21:13
+   |
+LL |             x,
+   |             ^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:14:9
+   |
+LL |     Tup(mut(crate) i32, i32),
+   |         ---------- field restricted here
+
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:17:13
+   |
+LL |             x,
+   |             ^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:11:9
+   |
+LL |         mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: field `0` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:31:13
+   |
+LL |             x,
+   |             ^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:34:13
+   |
+LL |         Tup(mut(self) i32, i32),
+   |             --------- field restricted here
+
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:27:13
+   |
+LL |             x,
+   |             ^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:31:13
+   |
+LL |             mut(self) x: i32,
+   |             --------- field restricted here
+
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:39:9
+   |
+LL |         foo.x = 1;
+   |         ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:18:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: field `x` cannot be mutated outside `external`
+  --> $DIR/mut-restriction-check.rs:41:9
+   |
+LL |         bar.x = 1;
+   |         ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:38:13
+   |
+LL |         pub mut(self) x: i32,
+   |             --------- field restricted here
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:134:13
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |             self.alpha = 1;
+   |             ^^^^^^^^^^^^^^
+
+error: field `0` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:154:21
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                 ----------------------- field restricted here
+...
+LL |                     alpha,
+   |                     ^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:145:21
+   |
+LL |                 mut(in crate::foo::bar) alpha: u8,
+   |                 ----------------------- field restricted here
+...
+LL |                     alpha,
+   |                     ^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:169:17
+   |
+LL |             pub mut(in self) alpha: u8,
+   |                 ------------ field restricted here
+...
+LL |                 self.alpha = 1;
+   |                 ^^^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:178:5
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |     foo.alpha = 1;
+   |     ^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:179:5
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |     foo.beta = 1;
+   |     ^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:185:5
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |     foo.alpha = 1;
+   |     ^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:187:5
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |     foo.beta = 1;
+   |     ^^^^^^^^^^^^
+
+error[E0594]: cannot assign to `foo.alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:185:5
+   |
+LL |     foo.alpha = 1;
+   |     ^^^^^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn change_foos_immut(foo: &mut foo::bar::FooS) {
+   |                            +++
+
+error[E0594]: cannot assign to `foo.beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:187:5
+   |
+LL |     foo.beta = 1;
+   |     ^^^^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn change_foos_immut(foo: &mut foo::bar::FooS) {
+   |                            +++
+
+error[E0594]: cannot assign to `foo.gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:189:5
+   |
+LL |     foo.gamma = 1;
+   |     ^^^^^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn change_foos_immut(foo: &mut foo::bar::FooS) {
+   |                            +++
+
+error: field `0` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:205:13
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                 ----------------------- field restricted here
+...
+LL |             alpha,
+   |             ^^^^^
+
+error: field `1` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:206:13
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                                             ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:196:13
+   |
+LL |                 mut(in crate::foo::bar) alpha: u8,
+   |                 ----------------------- field restricted here
+...
+LL |             alpha,
+   |             ^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:197:13
+   |
+LL |                 mut(in crate::foo) beta: u8,
+   |                 ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error: field `1` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:275:13
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                                             ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:266:13
+   |
+LL |                 mut(in crate::foo) beta: u8,
+   |                 ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error: field `1` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:297:13
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                                             ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:289:13
+   |
+LL |                 mut(in crate::foo) beta: u8,
+   |                 ------------------ field restricted here
+...
+LL |             beta,
+   |             ^^^^
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:223:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:224:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:225:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:232:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:233:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:234:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:246:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut alpha,
+   |                 +++
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:247:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut beta,
+   |                 +++
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:248:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut gamma,
+   |                 +++
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:255:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut alpha,
+   |                 +++
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:256:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut beta,
+   |                 +++
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:257:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut gamma,
+   |                 +++
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:269:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut alpha,
+   |                 +++
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:278:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |             ref mut alpha,
+   |                 +++
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:314:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:315:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:316:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*alpha`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:323:13
+   |
+LL |             *alpha = 1;
+   |             ^^^^^^^^^^ `alpha` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*beta`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:324:13
+   |
+LL |             *beta = 1;
+   |             ^^^^^^^^^ `beta` is a `&` reference, so it cannot be written to
+
+error[E0594]: cannot assign to `*gamma`, which is behind a `&` reference
+  --> $DIR/mut-restriction-check.rs:325:13
+   |
+LL |             *gamma = 1;
+   |             ^^^^^^^^^^ `gamma` is a `&` reference, so it cannot be written to
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:332:9
+   |
+LL |             pub mut(in self) alpha: u8,
+   |                 ------------ field restricted here
+...
+LL |         foo.alpha = 1;
+   |         ^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:333:9
+   |
+LL |             pub mut(in super) beta: u8,
+   |                 ------------- field restricted here
+...
+LL |         foo.beta = 1;
+   |         ^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:341:9
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |         (*foo).alpha = 1;
+   |         ^^^^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:342:9
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |         (*foo).beta = 1;
+   |         ^^^^^^^^^^^^^^^
+
+error: field `0` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:348:5
+   |
+LL |             pub mut(self) u8,
+   |                 --------- field restricted here
+...
+LL |     bar.0 = 1;
+   |     ^^^^^^^^^
+
+error: field `1` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:349:5
+   |
+LL |             pub mut(super) u8,
+   |                 ---------- field restricted here
+...
+LL |     bar.1 = 1;
+   |     ^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:355:5
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |     foos.alpha = 1;
+   |     ^^^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:356:5
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |     std::ptr::addr_of_mut!(foos.alpha);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:358:17
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |     let _beta = &mut foos.beta;
+   |                 ^^^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:390:5
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |     ls[0].alpha = 1;
+   |     ^^^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:391:5
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |     ls[0].beta = 1;
+   |     ^^^^^^^^^^^^^^
+
+error: field `array` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:396:5
+   |
+LL |             pub mut(self) array: [u8; 2],
+   |                 --------- field restricted here
+...
+LL |     baz.array[0] = 1;
+   |     ^^^^^^^^^^^^^^^^
+
+error: field `vector` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:397:5
+   |
+LL |             pub mut(self) vector: Vec<u8>,
+   |                 --------- field restricted here
+...
+LL |     baz.vector[0] = 1;
+   |     ^^^^^^^^^^
+
+error: field `slice` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:398:5
+   |
+LL |             pub mut(self) slice: &'a mut [u8],
+   |                 --------- field restricted here
+...
+LL |     baz.slice[0] = 1;
+   |     ^^^^^^^^^^^^^^^^
+
+error: field `alpha` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check.rs:362:9
+   |
+LL |             pub mut(self) alpha: u8,
+   |                 --------- field restricted here
+...
+LL |         foos.alpha = 1;
+   |         ^^^^^^^^^^^^^^
+
+error: field `beta` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check.rs:363:9
+   |
+LL |             pub mut(super) beta: u8,
+   |                 ---------- field restricted here
+...
+LL |         foos.beta = 1;
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 63 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

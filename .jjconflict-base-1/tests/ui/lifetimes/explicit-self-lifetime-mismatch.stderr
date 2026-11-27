@@ -1,0 +1,79 @@
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/explicit-self-lifetime-mismatch.rs:11:15
+   |
+LL |         self: Foo<'b, 'a>,
+   |               ^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected struct `Foo<'a, 'b>`
+              found struct `Foo<'b, 'a>`
+note: the lifetime `'b` as defined here...
+  --> $DIR/explicit-self-lifetime-mismatch.rs:9:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b> {
+   |          ^^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/explicit-self-lifetime-mismatch.rs:9:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b> {
+   |      ^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/explicit-self-lifetime-mismatch.rs:11:15
+   |
+LL |         self: Foo<'b, 'a>,
+   |               ^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected struct `Foo<'a, 'b>`
+              found struct `Foo<'b, 'a>`
+note: the lifetime `'a` as defined here...
+  --> $DIR/explicit-self-lifetime-mismatch.rs:9:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b> {
+   |      ^^
+note: ...does not necessarily outlive the lifetime `'b` as defined here
+  --> $DIR/explicit-self-lifetime-mismatch.rs:9:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b> {
+   |          ^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/explicit-self-lifetime-mismatch.rs:29:18
+   |
+LL |     fn bar(self: &mut Bar) {
+   |                  ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected struct `Bar<'a>`
+              found struct `Bar<'_>`
+note: the anonymous lifetime defined here...
+  --> $DIR/explicit-self-lifetime-mismatch.rs:29:23
+   |
+LL |     fn bar(self: &mut Bar) {
+   |                       ^^^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/explicit-self-lifetime-mismatch.rs:28:6
+   |
+LL | impl<'a> Bar<'a> {
+   |      ^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/explicit-self-lifetime-mismatch.rs:29:18
+   |
+LL |     fn bar(self: &mut Bar) {
+   |                  ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected struct `Bar<'a>`
+              found struct `Bar<'_>`
+note: the lifetime `'a` as defined here...
+  --> $DIR/explicit-self-lifetime-mismatch.rs:28:6
+   |
+LL | impl<'a> Bar<'a> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime defined here
+  --> $DIR/explicit-self-lifetime-mismatch.rs:29:23
+   |
+LL |     fn bar(self: &mut Bar) {
+   |                       ^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

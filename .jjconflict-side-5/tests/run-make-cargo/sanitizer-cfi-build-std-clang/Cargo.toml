@@ -1,0 +1,13 @@
+# Workspace mirroring the examples in <https://github.com/rcvalle/rust-cfi-examples>.
+[workspace]
+resolver = "2"
+members = [
+    "invalid-branch-target-abort",
+    "indirect-arity-mismatch-abort",
+    "indirect-pointee-type-mismatch-abort",
+    "indirect-return-type-mismatch-abort",
+    "indirect-type-qualifier-mismatch-abort",
+    "indirect-type-mismatch-abort",
+    "cross-lang-cfi-types-crate-abort",
+    "cross-lang-cfi-types-crate-not-abort",
+]

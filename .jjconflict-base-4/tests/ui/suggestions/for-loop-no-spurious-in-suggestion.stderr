@@ -1,0 +1,14 @@
+error: missing `in` in `for` loop
+  --> $DIR/for-loop-no-spurious-in-suggestion.rs:6:10
+   |
+LL |     for i i in 0..10 {}
+   |          ^
+
+error: expected `{`, found keyword `in`
+  --> $DIR/for-loop-no-spurious-in-suggestion.rs:6:13
+   |
+LL |     for i i in 0..10 {}
+   |             ^^ expected `{`
+
+error: aborting due to 2 previous errors
+

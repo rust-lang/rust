@@ -1,0 +1,11 @@
+error[E0605]: non-primitive cast: `Kind2` as `u8`
+  --> $DIR/issue-88621.rs:9:13
+   |
+LL |     let _ = Kind2::Foo() as u8;
+   |             ^^^^^^^^^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
+   |
+   = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

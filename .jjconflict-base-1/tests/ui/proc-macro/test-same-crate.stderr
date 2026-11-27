@@ -1,0 +1,10 @@
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/test-same-crate.rs:13:14
+   |
+LL |     fn t() { crate::mac!(A) }
+   |              ^^^^^^^^^^
+   |
+   = help: you can define integration tests in a directory named `tests`
+
+error: aborting due to 1 previous error
+

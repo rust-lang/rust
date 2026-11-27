@@ -1,0 +1,13 @@
+//@ edition:2024
+//@ run-rustfix
+
+#![allow(unused_unsafe)]
+
+use std::sync::Mutex;
+
+static STDINOUT_MUTEX: Mutex<bool> = Mutex::new(false);
+
+fn main() {
+    let _lock = unsafe { STDINOUT_MUTEX.lock().unwrap() };
+    //~^ ERROR creating a shared reference to mutable static [static_mut_refs]
+}

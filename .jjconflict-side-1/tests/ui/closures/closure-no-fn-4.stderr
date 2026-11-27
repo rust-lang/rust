@@ -1,0 +1,24 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/closure-no-fn-4.rs:5:18
+   |
+LL |       let _: fn(usize) -> usize = match true {
+   |  _________________________________-
+LL | |         true => |a| a + 1,
+   | |                 --------- this is found to be of type `fn(usize) -> usize`
+LL | |         false => |a| a - b,
+   | |                  ^^^^^^^^^ expected fn pointer, found closure
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected fn pointer `fn(usize) -> usize`
+                 found closure `{closure@$DIR/closure-no-fn-4.rs:5:18: 5:21}`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/closure-no-fn-4.rs:5:26
+   |
+LL |         false => |a| a - b,
+   |                          ^ `b` captured here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

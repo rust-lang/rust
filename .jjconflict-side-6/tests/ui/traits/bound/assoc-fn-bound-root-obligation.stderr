@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `u8: Pattern` is not satisfied
+  --> $DIR/assoc-fn-bound-root-obligation.rs:2:20
+   |
+LL |     s.strip_suffix(b'\n').unwrap_or(s)
+   |       ------------ ^^^^^ the trait `FnMut(char)` is not implemented for `u8`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Pattern`:
+             &'b String
+             &'b [char; N]
+             &'b [char]
+             &'b str
+             &'c &'b str
+             [char; N]
+             char
+   = note: required for `u8` to implement `Pattern`
+note: required by a bound in `core::str::<impl str>::strip_suffix`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

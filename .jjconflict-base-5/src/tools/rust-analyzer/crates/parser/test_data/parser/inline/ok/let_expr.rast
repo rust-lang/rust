@@ -1,0 +1,90 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          IF_EXPR
+            IF_KW "if"
+            WHITESPACE " "
+            BIN_EXPR
+              LET_EXPR
+                LET_KW "let"
+                WHITESPACE " "
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  WILDCARD_PAT
+                    UNDERSCORE "_"
+                  R_PAREN ")"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "None"
+              WHITESPACE " "
+              AMP2 "&&"
+              WHITESPACE " "
+              LITERAL
+                TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        WHILE_EXPR
+          WHILE_KW "while"
+          WHITESPACE " "
+          BIN_EXPR
+            BIN_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              WHITESPACE " "
+              EQ2 "=="
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "5"
+            WHITESPACE " "
+            AMP2 "&&"
+            WHITESPACE " "
+            PAREN_EXPR
+              L_PAREN "("
+              LET_EXPR
+                LET_KW "let"
+                WHITESPACE " "
+                IDENT_PAT
+                  NAME
+                    IDENT "None"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "None"
+              R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

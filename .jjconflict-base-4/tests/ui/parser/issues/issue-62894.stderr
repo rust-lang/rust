@@ -1,0 +1,14 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62894.rs:6:14
+   |
+LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
+   |        -           -                   - unclosed delimiter
+   |        |           |
+   |        |           unclosed delimiter
+   |        unclosed delimiter
+LL |
+LL | fn main() {}
+   |             ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,10 @@
+warning: lint `undefined_naked_function_abi` has been removed: converted into hard error, see PR #139001 <https://github.com/rust-lang/rust/issues/139001> for more information
+  --> $DIR/undefined_naked_function_abi.rs:3:9
+   |
+LL | #![deny(undefined_naked_function_abi)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+warning: 1 warning emitted
+

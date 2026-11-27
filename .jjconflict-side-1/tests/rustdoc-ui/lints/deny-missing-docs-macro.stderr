@@ -1,0 +1,14 @@
+error: missing documentation for a macro
+  --> $DIR/deny-missing-docs-macro.rs:6:1
+   |
+LL | macro_rules! foo {
+   | ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deny-missing-docs-macro.rs:3:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,51 @@
+error[E0425]: cannot find type `Inner` in this scope
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:13:56
+   |
+LL |     impl<const A: &'static str, const B: &'static str> Inner<A, B>
+   |                                                        ^^^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:8:27
+   |
+LL | const fn concat_strs() -> &'static str {
+   |          -----------      ^^^^^^^^^^^^ expected `&str`, found `()`
+   |          |
+   |          implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:10:84
+   |
+LL |     const fn concat_arr<const M: usize, const N: usize>(a: [u8; M], b: [u8; N]) -> [u8; M + N] {}
+   |              ----------                                                            ^^^^^^^^^^^ expected `[u8; M + N]`, found `()`
+   |              |
+   |              implicitly returns `()` as its body has no tail or `return` expression
+   |
+note: consider returning one of these bindings
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:10:57
+   |
+LL |     const fn concat_arr<const M: usize, const N: usize>(a: [u8; M], b: [u8; N]) -> [u8; M + N] {}
+   |                                                         ^           ^
+
+warning: type annotations needed
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:22:35
+   |
+LL |                 A.as_ptr().cast().read(),
+   |                                   ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/tyvar-behind-raw-pointer.html>
+   = note: `#[warn(tyvar_behind_raw_pointer)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+warning: type annotations needed
+  --> $DIR/cannot-convert-erased-region-vid-ice-125564.rs:25:35
+   |
+LL |                 B.as_ptr().cast().read(),
+   |                                   ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/tyvar-behind-raw-pointer.html>
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

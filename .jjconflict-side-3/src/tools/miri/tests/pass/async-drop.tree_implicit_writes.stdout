@@ -1,0 +1,23 @@
+AsyncInt::async_drop: 0
+AsyncInt::async_drop: 1
+AsyncInt::async_drop: 2
+AsyncInt::async_drop: 3
+AsyncInt::async_drop: 4
+AsyncStruct::async_drop: 6
+AsyncInt::async_drop: 7
+AsyncInt::async_drop: 8
+AsyncReference::async_drop: 10
+AsyncInt::async_drop: 11
+AsyncEnum(A)::async_drop: 12
+SyncInt::drop: 12
+AsyncEnum(B)::async_drop: 13
+AsyncInt::async_drop: 13
+SyncInt::drop: 14
+SyncThenAsync::drop: 15
+AsyncInt::async_drop: 16
+SyncInt::drop: 17
+AsyncInt::async_drop: 18
+AsyncInt::async_drop: 19
+AsyncInt::async_drop: 20
+AsyncUnion::async_drop: 21, 21
+AsyncInt::async_drop: 10

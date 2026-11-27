@@ -1,0 +1,18 @@
+warning: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/issue-71348.rs:18:56
+   |
+LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
+   |                                        --           -- ^^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                                        |            |
+   |                                        |            the same lifetime is named here
+   |                                        the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: consistently use `'a`
+   |
+LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<'a, N>>::Target
+   |                                                                     +++
+
+warning: 1 warning emitted
+

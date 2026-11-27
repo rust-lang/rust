@@ -1,0 +1,59 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/avoid-ice-on-warning-3.rs:14:19
+   |
+LL | trait A { fn g(b: B) -> B; }
+   |                   ^
+   |
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `B`
+   |
+LL - trait A { fn g(b: B) -> B; }
+LL + trait A { fn g<T: B>(b: T) -> B; }
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | trait A { fn g(b: impl B) -> B; }
+   |                   ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/avoid-ice-on-warning-3.rs:14:25
+   |
+LL | trait A { fn g(b: B) -> B; }
+   |                         ^
+   |
+help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL | trait A { fn g(b: B) -> impl B; }
+   |                         ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/avoid-ice-on-warning-3.rs:4:19
+   |
+LL | trait B { fn f(a: A) -> A; }
+   |                   ^
+   |
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `A`
+   |
+LL - trait B { fn f(a: A) -> A; }
+LL + trait B { fn f<T: A>(a: T) -> A; }
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | trait B { fn f(a: impl A) -> A; }
+   |                   ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/avoid-ice-on-warning-3.rs:4:25
+   |
+LL | trait B { fn f(a: A) -> A; }
+   |                         ^
+   |
+help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as you return a single underlying type
+   |
+LL | trait B { fn f(a: A) -> impl A; }
+   |                         ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

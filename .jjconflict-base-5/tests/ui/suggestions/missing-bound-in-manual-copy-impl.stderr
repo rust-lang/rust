@@ -1,0 +1,17 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/missing-bound-in-manual-copy-impl.rs:7:18
+   |
+LL | struct Wrapper<T>(T);
+   |                   - this field does not implement `Copy`
+LL |
+LL | impl<S> Copy for Wrapper<S> {}
+   |                  ^^^^^^^^^^
+   |
+help: consider restricting type parameter `S` with trait `Copy`
+   |
+LL | impl<S: Copy> Copy for Wrapper<S> {}
+   |       ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/unsized-fn-arg.rs:5:20
+   |
+LL | fn f<T: ?Sized>(t: T) {}
+   |      -             ^ doesn't have a size known at compile-time
+   |      |
+   |      this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f<T: ?Sized>(t: T) {}
+LL + fn f<T>(t: T) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn f<T: ?Sized>(t: &T) {}
+   |                    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,40 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/match-range-fail.rs:3:9
+   |
+LL |         "bar" ..= "foo" => { }
+   |         -----^^^^^-----
+   |         |         |
+   |         |         this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `&'static str` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/match-range-fail.rs:8:16
+   |
+LL |         10 ..= "what" => ()
+   |         --     ^^^^^^ this is of type `&'static str` but it should be `char` or numeric
+   |         |
+   |         this is of type `{integer}`
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/match-range-fail.rs:13:9
+   |
+LL |         true ..= "what" => {}
+   |         ----^^^^^------
+   |         |        |
+   |         |        this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `bool` but it should be `char` or numeric
+
+error[E0308]: mismatched types
+  --> $DIR/match-range-fail.rs:18:9
+   |
+LL |     match 5 {
+   |           - this expression has type `{integer}`
+LL |         'c' ..= 100 => { }
+   |         ^^^     --- this is of type `{integer}`
+   |         |
+   |         expected integer, found `char`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0029, E0308.
+For more information about an error, try `rustc --explain E0029`.

@@ -1,0 +1,18 @@
+error[E0573]: expected type, found variant `Ok`
+  --> $DIR/issue-106062.rs:15:64
+   |
+LL |     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io::Error> {
+   |                                                                ^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL -     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io::Error> {
+LL +     async fn connection_handler(handler: impl Sized) -> Result<core::result::Result, std::io::Error> {
+   |
+LL -     async fn connection_handler(handler: impl Sized) -> Result<Ok, std::io::Error> {
+LL +     async fn connection_handler(handler: impl Sized) -> Result<std::result::Result, std::io::Error> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0573`.

@@ -1,0 +1,10 @@
+warning: lint `rustdoc` has been removed: use `rustdoc::all` instead
+  --> $DIR/rustdoc-group.rs:3:9
+   |
+LL | #![deny(rustdoc)]
+   |         ^^^^^^^
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+warning: 1 warning emitted
+

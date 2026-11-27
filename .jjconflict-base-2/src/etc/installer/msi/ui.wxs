@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Based on WixUI_Advanced
+-->
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <WixVariable Id="WixUISupportPerUser" Value="1" Overridable="yes" />
+        <WixVariable Id="WixUISupportPerMachine" Value="1" Overridable="yes" />
+        <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
+        <WixVariable Id="WixUIDialogBmp" Value="dialogbg.bmp" />
+        <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+
+        <UI Id="RustUI">
+            <TextStyle Id="WixUI_Font_Normal" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Normal_Size)" />
+            <TextStyle Id="WixUI_Font_Bigger" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Bigger_Size)" />
+            <TextStyle Id="WixUI_Font_Title" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Title_Size)" Bold="yes" />
+            <TextStyle Id="WixUI_Font_Emphasized" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Emphasized_Size)" Bold="yes" />
+
+            <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+            <Property Id="WixUI_Mode" Value="Advanced" />
+
+            <DialogRef Id="BrowseDlg" />
+            <DialogRef Id="DiskCostDlg" />
+            <DialogRef Id="ErrorDlg" />
+            <DialogRef Id="FatalError" />
+            <DialogRef Id="FilesInUse" />
+            <DialogRef Id="MsiRMFilesInUse" />
+            <DialogRef Id="PrepareDlg" />
+            <DialogRef Id="ProgressDlg" />
+            <DialogRef Id="ResumeDlg" />
+            <DialogRef Id="UserExit" />
+            <DialogRef Id="WelcomeDlg"/>
+
+            <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999">1</Publish>
+
+            <Publish Dialog="BrowseDlg" Control="OK" Event="DoAction" Value="WixUIValidatePath" Order="1">1</Publish>
+            <Publish Dialog="BrowseDlg" Control="OK" Event="SpawnDialog" Value="InvalidDirDlg" Order="2"><![CDATA[WIXUI_INSTALLDIR_VALID<>"1"]]></Publish>
+
+            <Publish Dialog="RustWelcomeDlg" Control="Advanced" Event="NewDialog" Value="InstallScopeDlg" Order="1" />
+
+            <Publish Dialog="InstallScopeDlg" Control="Back" Event="NewDialog" Value="RustWelcomeDlg">1</Publish>
+            <!-- override default WixAppFolder of WixPerMachineFolder as standard user won't be shown the radio group to set WixAppFolder -->
+            <Publish Dialog="InstallScopeDlg" Control="Next" Property="WixAppFolder" Value="WixPerUserFolder" Order="1">!(wix.WixUISupportPerUser) AND NOT Privileged</Publish>
+            <Publish Dialog="InstallScopeDlg" Control="Next" Property="ALLUSERS" Value="{}" Order="2">WixAppFolder = "WixPerUserFolder"</Publish>
+            <Publish Dialog="InstallScopeDlg" Control="Next" Property="ALLUSERS" Value="1" Order="3">WixAppFolder = "WixPerMachineFolder"</Publish>
+            <Publish Dialog="InstallScopeDlg" Control="Next" Property="INSTALLDIR" Value="[INSTALLDIR_USER]" Order="4">WixAppFolder = "WixPerUserFolder"</Publish>
+            <Publish Dialog="InstallScopeDlg" Control="Next" Property="INSTALLDIR" Value="[INSTALLDIR_MACHINE]" Order="5">WixAppFolder = "WixPerMachineFolder"</Publish>
+            <Publish Dialog="InstallScopeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="6">1</Publish>
+
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="InstallScopeDlg" />
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="SetTargetPath" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="DoAction" Value="WixUIValidatePath" Order="2">NOT WIXUI_DONTVALIDATEPATH</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="SpawnDialog" Value="InvalidDirDlg" Order="3"><![CDATA[NOT WIXUI_DONTVALIDATEPATH AND WIXUI_INSTALLDIR_VALID<>"1"]]></Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="FeaturesDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+
+            <Publish Dialog="FeaturesDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg">NOT Installed AND WixAppFolder = "WixPerUserFolder"</Publish>
+            <Publish Dialog="FeaturesDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg">NOT Installed AND WixAppFolder = "WixPerMachineFolder"</Publish>
+            <Publish Dialog="FeaturesDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg">Installed</Publish>
+
+            <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
+
+            <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="FeaturesDlg">1</Publish>
+            <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+            <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+            <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
+
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2">Installed AND NOT PATCH</Publish>
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3">Installed AND PATCH</Publish>
+
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">Installed AND PATCH</Publish>
+        </UI>
+
+        <InstallUISequence>
+            <Show Dialog="WelcomeDlg" Before="RustWelcomeDlg" >Installed AND PATCH</Show>
+        </InstallUISequence>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+        <UIRef Id="WixUI_Common" />
+    </Fragment>
+</Wix>

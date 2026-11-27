@@ -1,0 +1,22 @@
+error: the feature `foo` has been partially stabilized since 1.62.0 and is succeeded by the feature `foobar`
+  --> $DIR/stability-attribute-implies-using-stable.rs:3:12
+   |
+LL | #![feature(foo)]
+   |            ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/stability-attribute-implies-using-stable.rs:2:9
+   |
+LL | #![deny(stable_features)]
+   |         ^^^^^^^^^^^^^^^
+help: if you are using features which are still unstable, change to using `foobar`
+   |
+LL | #![feature(foobar)]
+   |               +++
+help: if you are using features which are now stable, remove this line
+   |
+LL - #![feature(foo)]
+   |
+
+error: aborting due to 1 previous error
+

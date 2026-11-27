@@ -1,0 +1,976 @@
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:32:9
+   |
+LL |     if (let 0 = 1) {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:32:9
+   |
+LL |     if (let 0 = 1) {}
+   |         ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:35:11
+   |
+LL |     if (((let 0 = 1))) {}
+   |           ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:35:11
+   |
+LL |     if (((let 0 = 1))) {}
+   |           ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:38:9
+   |
+LL |     if (let 0 = 1) && true {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:38:9
+   |
+LL |     if (let 0 = 1) && true {}
+   |         ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:41:17
+   |
+LL |     if true && (let 0 = 1) {}
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:41:17
+   |
+LL |     if true && (let 0 = 1) {}
+   |                 ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:44:9
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:44:9
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |         ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:44:24
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |                        ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:44:24
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |                        ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:48:35
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                   ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:48:35
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:48:48
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:48:35
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:48:61
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                             ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:48:35
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:58:12
+   |
+LL |     while (let 0 = 1) {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:58:12
+   |
+LL |     while (let 0 = 1) {}
+   |            ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:61:14
+   |
+LL |     while (((let 0 = 1))) {}
+   |              ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:61:14
+   |
+LL |     while (((let 0 = 1))) {}
+   |              ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:64:12
+   |
+LL |     while (let 0 = 1) && true {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:64:12
+   |
+LL |     while (let 0 = 1) && true {}
+   |            ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:67:20
+   |
+LL |     while true && (let 0 = 1) {}
+   |                    ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:67:20
+   |
+LL |     while true && (let 0 = 1) {}
+   |                    ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:70:12
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:70:12
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |            ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:70:27
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |                           ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:70:27
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |                           ^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:74:38
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:74:38
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:74:51
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                   ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:74:38
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:74:64
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:74:38
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:102:9
+   |
+LL |     if &let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:105:9
+   |
+LL |     if !let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:107:9
+   |
+LL |     if *let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:109:9
+   |
+LL |     if -let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:117:9
+   |
+LL |     if (let 0 = 0)? {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/disallowed-positions.rs:120:13
+   |
+LL |     if true || let 0 = 0 {}
+   |             ^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:122:17
+   |
+LL |     if (true || let 0 = 0) {}
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:124:25
+   |
+LL |     if true && (true || let 0 = 0) {}
+   |                         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:126:25
+   |
+LL |     if true || (true && let 0 = 0) {}
+   |                         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:130:12
+   |
+LL |     if x = let 0 = 0 {}
+   |            ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:133:15
+   |
+LL |     if true..(let 0 = 0) {}
+   |               ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:136:11
+   |
+LL |     if ..(let 0 = 0) {}
+   |           ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:138:9
+   |
+LL |     if (let 0 = 0).. {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:142:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:145:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true || false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:151:8
+   |
+LL |     if let Range { start: F, end } = F..|| true {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:157:8
+   |
+LL |     if let Range { start: true, end } = t..&&false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:161:19
+   |
+LL |     if let true = let true = true {}
+   |                   ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:164:15
+   |
+LL |     if return let 0 = 0 {}
+   |               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:167:21
+   |
+LL |     loop { if break let 0 = 0 {} }
+   |                     ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:170:15
+   |
+LL |     if (match let 0 = 0 { _ => { false } }) {}
+   |               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:173:9
+   |
+LL |     if (let 0 = 0, false).1 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:176:9
+   |
+LL |     if (let 0 = 0,) {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:180:13
+   |
+LL |         if (let 0 = 0).await {}
+   |             ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:184:12
+   |
+LL |     if (|| let 0 = 0) {}
+   |            ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:187:9
+   |
+LL |     if (let 0 = 0)() {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:193:12
+   |
+LL |     while &let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:196:12
+   |
+LL |     while !let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:198:12
+   |
+LL |     while *let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:200:12
+   |
+LL |     while -let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:208:12
+   |
+LL |     while (let 0 = 0)? {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/disallowed-positions.rs:211:16
+   |
+LL |     while true || let 0 = 0 {}
+   |                ^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:213:20
+   |
+LL |     while (true || let 0 = 0) {}
+   |                    ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:215:28
+   |
+LL |     while true && (true || let 0 = 0) {}
+   |                            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:217:28
+   |
+LL |     while true || (true && let 0 = 0) {}
+   |                            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:221:15
+   |
+LL |     while x = let 0 = 0 {}
+   |               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:224:18
+   |
+LL |     while true..(let 0 = 0) {}
+   |                  ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:227:14
+   |
+LL |     while ..(let 0 = 0) {}
+   |              ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:229:12
+   |
+LL |     while (let 0 = 0).. {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:233:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:236:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true || false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:242:11
+   |
+LL |     while let Range { start: F, end } = F..|| true {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:248:11
+   |
+LL |     while let Range { start: true, end } = t..&&false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:252:22
+   |
+LL |     while let true = let true = true {}
+   |                      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:255:18
+   |
+LL |     while return let 0 = 0 {}
+   |                  ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:258:39
+   |
+LL |     'outer: loop { while break 'outer let 0 = 0 {} }
+   |                                       ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:261:18
+   |
+LL |     while (match let 0 = 0 { _ => { false } }) {}
+   |                  ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:264:12
+   |
+LL |     while (let 0 = 0, false).1 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:267:12
+   |
+LL |     while (let 0 = 0,) {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:271:16
+   |
+LL |         while (let 0 = 0).await {}
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:275:15
+   |
+LL |     while (|| let 0 = 0) {}
+   |               ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:278:12
+   |
+LL |     while (let 0 = 0)() {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:295:6
+   |
+LL |     &let 0 = 0;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:298:6
+   |
+LL |     !let 0 = 0;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:300:6
+   |
+LL |     *let 0 = 0;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:302:6
+   |
+LL |     -let 0 = 0;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:304:13
+   |
+LL |     let _ = let _ = 3;
+   |             ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:312:6
+   |
+LL |     (let 0 = 0)?;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:315:13
+   |
+LL |     true || let 0 = 0;
+   |             ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:317:14
+   |
+LL |     (true || let 0 = 0);
+   |              ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:319:22
+   |
+LL |     true && (true || let 0 = 0);
+   |                      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:323:9
+   |
+LL |     x = let 0 = 0;
+   |         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:326:12
+   |
+LL |     true..(let 0 = 0);
+   |            ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:328:8
+   |
+LL |     ..(let 0 = 0);
+   |        ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:330:6
+   |
+LL |     (let 0 = 0)..;
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:333:6
+   |
+LL |     (let Range { start: _, end: _ } = true..true || false);
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:337:6
+   |
+LL |     (let true = let true = true);
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:337:17
+   |
+LL |     (let true = let true = true);
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:343:25
+   |
+LL |         let x = true && let y = 1;
+   |                         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:349:19
+   |
+LL |         [1, 2, 3][let _ = ()]
+   |                   ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:354:6
+   |
+LL |     &let 0 = 0
+   |      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:365:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:370:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:375:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:386:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/disallowed-positions.rs:386:9
+   |
+LL |         true && let 1 = 1
+   |         ^^^^^^^^^^^^^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |         { true && let 1 = 1 }
+   |         +                   +
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:396:9
+   |
+LL |     if (let Some(a) = opt && true) {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:396:9
+   |
+LL |     if (let Some(a) = opt && true) {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:400:9
+   |
+LL |     if (let Some(a) = opt) && true {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:400:9
+   |
+LL |     if (let Some(a) = opt) && true {
+   |         ^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:403:9
+   |
+LL |     if (let Some(a) = opt) && (let Some(b) = a) {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:403:9
+   |
+LL |     if (let Some(a) = opt) && (let Some(b) = a) {
+   |         ^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:403:32
+   |
+LL |     if (let Some(a) = opt) && (let Some(b) = a) {
+   |                                ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:403:32
+   |
+LL |     if (let Some(a) = opt) && (let Some(b) = a) {
+   |                                ^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:411:9
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:411:9
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:411:31
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
+   |                               ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:411:31
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
+   |                               ^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:415:9
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && true {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:415:9
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && true {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:415:31
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && true {
+   |                               ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:415:31
+   |
+LL |     if (let Some(a) = opt && (let Some(b) = a)) && true {
+   |                               ^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:419:9
+   |
+LL |     if (let Some(a) = opt && (true)) && true {
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+note: `let`s wrapped in parentheses are not supported in a context with let chains
+  --> $DIR/disallowed-positions.rs:419:9
+   |
+LL |     if (let Some(a) = opt && (true)) && true {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:439:22
+   |
+LL |     let x = (true && let y = 1);
+   |                      ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/disallowed-positions.rs:444:20
+   |
+LL |         ([1, 2, 3][let _ = ()])
+   |                    ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: aborting due to 105 previous errors
+

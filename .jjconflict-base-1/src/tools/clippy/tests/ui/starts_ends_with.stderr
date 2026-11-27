@@ -1,0 +1,104 @@
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:7:5
+   |
+LL |     "".chars().next() == Some(' ');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
+   |
+   = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chars_next_cmp)]`
+
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:9:5
+   |
+LL |     Some(' ') != "".chars().next();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
+
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:13:5
+   |
+LL |     "".chars().next() == Some('\n');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with('\n')`
+
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:15:5
+   |
+LL |     Some('\n') != "".chars().next();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with('\n')`
+
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:21:8
+   |
+LL |     if s.chars().next().unwrap() == 'f' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:26:8
+   |
+LL |     if s.chars().next_back().unwrap() == 'o' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
+   |
+   = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chars_last_cmp)]`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:31:8
+   |
+LL |     if s.chars().last().unwrap() == 'o' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
+
+error: you should use the `starts_with` method
+  --> tests/ui/starts_ends_with.rs:36:8
+   |
+LL |     if s.chars().next().unwrap() != 'f' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:41:8
+   |
+LL |     if s.chars().next_back().unwrap() != 'o' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:46:8
+   |
+LL |     if s.chars().last().unwrap() != '\n' {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('\n')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:55:5
+   |
+LL |     "".chars().last() == Some(' ');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:57:5
+   |
+LL |     Some(' ') != "".chars().last();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:59:5
+   |
+LL |     "".chars().next_back() == Some(' ');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:61:5
+   |
+LL |     Some(' ') != "".chars().next_back();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:65:5
+   |
+LL |     "".chars().last() == Some('\n');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with('\n')`
+
+error: you should use the `ends_with` method
+  --> tests/ui/starts_ends_with.rs:67:5
+   |
+LL |     Some('\n') != "".chars().last();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with('\n')`
+
+error: aborting due to 16 previous errors
+

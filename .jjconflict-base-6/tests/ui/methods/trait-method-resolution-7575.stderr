@@ -1,0 +1,10 @@
+warning: trait `Foo` is never used
+  --> $DIR/trait-method-resolution-7575.rs:4:7
+   |
+LL | trait Foo {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

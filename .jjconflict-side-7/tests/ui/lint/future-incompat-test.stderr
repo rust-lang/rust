@@ -1,0 +1,7 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: unused variable: `x`
+  --> $DIR/future-incompat-test.rs:9:9
+   |
+LL |     let x = 1;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+

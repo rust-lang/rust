@@ -1,0 +1,2 @@
+error: the `--test` flag and the `--emit` flag are not supported together
+

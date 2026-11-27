@@ -1,0 +1,41 @@
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/macro_rules.rs:10:5
+   |
+LL |     macro_rules! m0 { () => { } };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant `B`
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+   = note: `#[warn(non_local_definitions)]` on by default
+
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/macro_rules.rs:16:1
+   |
+LL | non_local_macro::non_local_macro_rules!(my_macro);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant `_MACRO_EXPORT`
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+   = note: the macro `non_local_macro::non_local_macro_rules` may come from an old version of the `non_local_macro` crate, try updating your dependency with `cargo update -p non_local_macro`
+   = note: this warning originates in the macro `non_local_macro::non_local_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/macro_rules.rs:21:5
+   |
+LL |     macro_rules! m { () => { } };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current function `main`
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/macro_rules.rs:29:13
+   |
+LL |             macro_rules! m2 { () => { } };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current associated function `bar` and up 2 bodies
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+
+warning: 4 warnings emitted
+

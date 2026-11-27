@@ -1,0 +1,31 @@
+- // MIR for `if_const` before SingleUseConsts
++ // MIR for `if_const` after SingleUseConsts
+  
+  fn if_const() -> i32 {
+      let mut _0: i32;
+      let mut _1: bool;
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const <T as MyTrait>::ASSOC_BOOL;
+-         switchInt(move _1) -> [0: bb2, otherwise: bb1];
++         nop;
++         switchInt(const <T as MyTrait>::ASSOC_BOOL) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 7_i32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = const 42_i32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  

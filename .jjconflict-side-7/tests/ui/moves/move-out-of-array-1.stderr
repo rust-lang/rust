@@ -1,0 +1,21 @@
+error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
+  --> $DIR/move-out-of-array-1.rs:17:5
+   |
+LL |     a[i]
+   |     ^^^^
+   |     |
+   |     cannot move out of here
+   |     move occurs because `a[_]` has type `D`, which does not implement the `Copy` trait
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/move-out-of-array-1.rs:5:1
+   |
+LL | struct D { _x: u8 }
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     a[i]
+   |     ---- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0508`.

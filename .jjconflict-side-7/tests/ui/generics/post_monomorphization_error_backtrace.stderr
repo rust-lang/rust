@@ -1,0 +1,41 @@
+error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
+  --> $DIR/post_monomorphization_error_backtrace.rs:6:23
+   |
+LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<u32>::V` failed here
+
+note: erroneous constant encountered
+  --> $DIR/post_monomorphization_error_backtrace.rs:14:5
+   |
+LL |     F::<T>::V;
+   |     ^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn assert_zst::<u32>`
+  --> $DIR/post_monomorphization_error_backtrace.rs:21:5
+   |
+LL |     assert_zst::<U>()
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
+  --> $DIR/post_monomorphization_error_backtrace.rs:6:23
+   |
+LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<i32>::V` failed here
+
+note: erroneous constant encountered
+  --> $DIR/post_monomorphization_error_backtrace.rs:14:5
+   |
+LL |     F::<T>::V;
+   |     ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn assert_zst::<i32>`
+  --> $DIR/post_monomorphization_error_backtrace.rs:21:5
+   |
+LL |     assert_zst::<U>()
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

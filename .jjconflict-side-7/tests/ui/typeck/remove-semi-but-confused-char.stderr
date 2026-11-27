@@ -1,0 +1,26 @@
+error: unknown start of token: \u{37e}
+  --> $DIR/remove-semi-but-confused-char.rs:7:14
+   |
+LL |     num * num;
+   |              ^
+   |
+help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
+   |
+LL -     num * num;
+LL +     num * num;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/remove-semi-but-confused-char.rs:5:28
+   |
+LL | pub fn square(num: i32) -> i32 {
+   |        ------              ^^^ expected `i32`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+LL |
+LL |     num * num;
+   |              - help: remove this semicolon to return this value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

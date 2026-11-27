@@ -1,0 +1,59 @@
+error: bounds on `type`s in this context have no effect
+  --> $DIR/issue-83479.rs:3:24
+   |
+LL |   type PairCoupledTypes: Trait<
+   |  ________________________^
+LL | |
+LL | |
+LL | |     [u32; {
+LL | |         static FOO: usize;
+LL | |     }],
+LL | | > = impl Trait<
+   | |_^
+
+error: free static item without body
+  --> $DIR/issue-83479.rs:7:9
+   |
+LL |         static FOO: usize;
+   |         ^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the static: `= <expr>;`
+
+error: free static item without body
+  --> $DIR/issue-83479.rs:13:9
+   |
+LL |         static FOO: usize;
+   |         ^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the static: `= <expr>;`
+
+error[E0405]: cannot find trait `Trait` in this scope
+  --> $DIR/issue-83479.rs:3:24
+   |
+LL | type PairCoupledTypes: Trait<
+   |                        ^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `Trait` in this scope
+  --> $DIR/issue-83479.rs:9:10
+   |
+LL | > = impl Trait<
+   |          ^^^^^ not found in this scope
+
+error: unconstrained opaque type
+  --> $DIR/issue-83479.rs:9:5
+   |
+LL |   > = impl Trait<
+   |  _____^
+LL | |
+LL | |
+LL | |     [u32; {
+LL | |         static FOO: usize;
+LL | |     }],
+LL | | >;
+   | |_^
+   |
+   = note: `PairCoupledTypes` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

@@ -1,0 +1,12 @@
+error: unsupported operation: extern static `_dispatch_queue_attr_concurrent` is not supported by Miri
+  --> tests/fail/issue-miri-3288-ice-symbolic-alignment-extern-static.rs:LL:CC
+   |
+LL |     let _val = *DISPATCH_QUEUE_CONCURRENT;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

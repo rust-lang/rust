@@ -1,0 +1,17 @@
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux"))']
+'F32Array::conv_c'.busted = "check"
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "macos"))']
+'SingleVariantUnion::conv_c::repr_c'.busted = "check"
+'OptionU128::conv_rust::repr_c::rustc_caller'.busted = "run"
+'OptionU128::conv_rust::repr_c::cgclif_caller'.busted = "check"
+
+[target.'cfg(all(target_arch = "x86_64", windows))']
+'simple::conv_rust'.busted = "check"
+'simple::conv_rust::rustc_caller'.busted = "run"
+
+[target.'*'.'f16']
+run = "skip"
+
+[target.'*'.'f128']
+run = "skip"

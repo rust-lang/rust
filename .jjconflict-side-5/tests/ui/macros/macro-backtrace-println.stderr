@@ -1,0 +1,13 @@
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/macro-backtrace-println.rs:14:30
+   |
+LL |     ($fmt:expr) => (myprint!(concat!($fmt, "\n")));
+   |                              ^^^^^^^^^^^^^^^^^^^
+...
+LL |     myprintln!("{}");
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `concat` which comes from the expansion of the macro `myprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

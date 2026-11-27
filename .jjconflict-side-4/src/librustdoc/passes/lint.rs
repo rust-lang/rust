@@ -1,0 +1,58 @@
+//! Runs several rustdoc lints, consolidating them into a single pass for efficiency and simplicity.
+
+mod bare_urls;
+mod check_code_block_syntax;
+mod footnotes;
+mod html_tags;
+mod invalid_markdown_table;
+mod redundant_explicit_links;
+mod unescaped_backticks;
+
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::visit::DocVisitor;
+
+struct Linter<'a, 'tcx> {
+    cx: &'a mut DocContext<'tcx>,
+}
+
+pub(super) fn lint(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    Linter { cx }.visit_crate(&krate);
+    krate
+}
+
+impl DocVisitor<'_> for Linter<'_, '_> {
+    fn visit_item(&mut self, item: &Item) {
+        let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.item_id) else {
+            // If non-local, no need to check anything.
+            return;
+        };
+        let dox = item.doc_value();
+        if !dox.is_empty() {
+            let may_have_link = dox.contains(&[':', '['][..]);
+            let may_have_block_comment_or_html = dox.contains(['<', '>']);
+            let may_have_table = dox.contains(&['|'][..]);
+            // ~~~rust
+            // // This is a real, supported commonmark syntax for block code
+            // ~~~
+            let may_have_code = dox.contains(&['~', '`', '\t'][..]) || dox.contains("    ");
+            if may_have_link {
+                bare_urls::visit_item(self.cx, item, hir_id, &dox);
+                redundant_explicit_links::visit_item(self.cx, item, hir_id);
+                footnotes::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if may_have_code {
+                check_code_block_syntax::visit_item(self.cx, item, &dox);
+                unescaped_backticks::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if may_have_block_comment_or_html {
+                html_tags::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if may_have_table {
+                invalid_markdown_table::visit_item(self.cx, item, hir_id, &dox);
+            }
+        }
+
+        self.visit_item_recur(item)
+    }
+}

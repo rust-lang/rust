@@ -1,0 +1,10 @@
+error: extern mutable statics are incompatible with the `linkage` attribute
+  --> $DIR/linkage-attr-mutable-static.rs:11:9
+   |
+LL |         #[linkage = "extern_weak"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `linkage` attribute on extern statics generates a symbol that contains the address of another static. Making the extern static mutable would allow changing the address, rather than the static the address is pointing to
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,14 @@
+error: requires `va_list` lang_item
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:26:39
+   |
+LL | pub unsafe extern "C" fn test(_: i32, ap: ...) {}
+   |                                       ^^^^^^^
+
+error: requires `va_list` lang_item
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:30:45
+   |
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
+   |                                             ^^^^^^^
+
+error: aborting due to 2 previous errors
+

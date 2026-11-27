@@ -1,0 +1,26 @@
+error: First Pass analysis includes:
+  --> $DIR/filter-on-struct-member.rs:24:13
+   |
+LL |             |v| self.filter.allowed(*v),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Capturing self[Deref,(0, 0)] -> Immutable
+  --> $DIR/filter-on-struct-member.rs:24:17
+   |
+LL |             |v| self.filter.allowed(*v),
+   |                 ^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/filter-on-struct-member.rs:24:13
+   |
+LL |             |v| self.filter.allowed(*v),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Min Capture self[Deref,(0, 0)] -> Immutable
+  --> $DIR/filter-on-struct-member.rs:24:17
+   |
+LL |             |v| self.filter.allowed(*v),
+   |                 ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,33 @@
+error[E0277]: `Arguments<'_>` cannot be sent between threads safely
+  --> $DIR/send-sync.rs:8:10
+   |
+LL |     send(format_args!("{:?}", c));
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `Arguments<'_>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Send` is not implemented for `Arguments<'_>`
+note: required by a bound in `send`
+  --> $DIR/send-sync.rs:1:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
+
+error[E0277]: `Arguments<'_>` cannot be shared between threads safely
+  --> $DIR/send-sync.rs:9:10
+   |
+LL |     sync(format_args!("{:?}", c));
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `Arguments<'_>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Sync` is not implemented for `Arguments<'_>`
+note: required by a bound in `sync`
+  --> $DIR/send-sync.rs:2:12
+   |
+LL | fn sync<T: Sync>(_: T) {}
+   |            ^^^^ required by this bound in `sync`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,43 @@
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `/// Like where people drink`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:10:5
+   |
+LL |     Bar
+   |        -
+   |        |
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
+   |        help: missing `,`
+LL |     /// Like where people drink
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:12:8
+   |
+LL |     Baa///xxxxxx
+   |        -^^^^^^^^
+   |        |
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
+   |        help: missing `,`
+
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:14:8
+   |
+LL |     Baz///xxxxxx
+   |        ^^^^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error: expected one of `,`, `.`, `;`, `?`, `]`, or an operator, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:20:10
+   |
+LL |         1///xxxxxx
+   |          ^^^^^^^^^ expected one of `,`, `.`, `;`, `?`, `]`, or an operator
+
+error: expected one of `,`, `.`, `?`, `]`, or an operator, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:29:10
+   |
+LL |         2///xxxxxx
+   |          ^^^^^^^^^ expected one of `,`, `.`, `?`, `]`, or an operator
+
+error: aborting due to 5 previous errors
+

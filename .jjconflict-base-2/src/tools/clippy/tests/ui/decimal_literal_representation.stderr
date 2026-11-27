@@ -1,0 +1,47 @@
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:16:9
+   |
+LL |         32_773,        // 0x8005
+   |         ^^^^^^ help: consider: `0x8005`
+   |
+   = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::decimal_literal_representation)]`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:18:9
+   |
+LL |         65_280,        // 0xFF00
+   |         ^^^^^^ help: consider: `0xFF00`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:20:9
+   |
+LL |         2_131_750_927, // 0x7F0F_F00F
+   |         ^^^^^^^^^^^^^ help: consider: `0x7F0F_F00F`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:22:9
+   |
+LL |         2_147_483_647, // 0x7FFF_FFFF
+   |         ^^^^^^^^^^^^^ help: consider: `0x7FFF_FFFF`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:25:9
+   |
+LL |         4_042_322_160, // 0xF0F0_F0F0
+   |         ^^^^^^^^^^^^^ help: consider: `0xF0F0_F0F0`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:27:9
+   |
+LL |         32_773usize,   // 0x8005_usize
+   |         ^^^^^^^^^^^ help: consider: `0x8005_usize`
+
+error: integer literal has a better hexadecimal representation
+  --> tests/ui/decimal_literal_representation.rs:29:9
+   |
+LL |         2_131_750_927isize, // 0x7F0F_F00F_isize
+   |         ^^^^^^^^^^^^^^^^^^ help: consider: `0x7F0F_F00F_isize`
+
+error: aborting due to 7 previous errors
+

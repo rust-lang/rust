@@ -1,0 +1,15 @@
+error[E0614]: type `{integer}` cannot be dereferenced
+  --> $DIR/nested-binding-modes-ref.rs:4:5
+   |
+LL |     *is_val;
+   |     ^^^^^^^ can't be dereferenced
+
+error[E0614]: type `{integer}` cannot be dereferenced
+  --> $DIR/nested-binding-modes-ref.rs:9:5
+   |
+LL |     *is_val;
+   |     ^^^^^^^ can't be dereferenced
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0614`.

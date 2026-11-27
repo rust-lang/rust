@@ -1,0 +1,11 @@
+error[E0005]: refutable pattern in `for` loop binding
+  --> $DIR/refutable-pattern-for-loop-15381.rs:6:9
+   |
+LL |     for &[x,y,z] in values.chunks(3).filter(|&xs| xs.len() == 3) {
+   |         ^^^^^^^^ patterns `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
+   |
+   = note: the matched value is of type `&[u8]`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

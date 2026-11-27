@@ -1,0 +1,9 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
+  --> $DIR/issue-83621-placeholder-static-in-extern.rs:4:15
+   |
+LL |     static x: _;
+   |               ^ not allowed in type signatures
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0121`.

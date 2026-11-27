@@ -1,0 +1,95 @@
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:11:10
+   |
+LL |     let p = &mut x;
+   |             ------ `x` is borrowed here
+LL |     drop(x);
+   |          ^ use of borrowed `x`
+LL |     *p = 2;
+   |     ------ borrow later used here
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:18:10
+   |
+LL |     let p = &mut x.a;
+   |             -------- `x.a` is borrowed here
+LL |     drop(x);
+   |          ^ use of borrowed `x.a`
+LL |     *p = 3;
+   |     ------ borrow later used here
+
+error[E0503]: cannot use `x.a` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:25:10
+   |
+LL |     let p = &mut x;
+   |             ------ `x` is borrowed here
+LL |     drop(x.a);
+   |          ^^^ use of borrowed `x`
+LL |     p.a = 3;
+   |     ------- borrow later used here
+
+error[E0503]: cannot use `x.a` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:32:10
+   |
+LL |     let p = &mut x.a;
+   |             -------- `x.a` is borrowed here
+LL |     drop(x.a);
+   |          ^^^ use of borrowed `x.a`
+LL |     *p = 3;
+   |     ------ borrow later used here
+
+error[E0503]: cannot use `x.a` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:39:13
+   |
+LL |     let p = &mut x;
+   |             ------ `x` is borrowed here
+LL |     let y = A { b: 3, .. x };
+   |             ^^^^^^^^^^^^^^^^ use of borrowed `x`
+LL |     drop(y);
+LL |     p.a = 4;
+   |     ------- borrow later used here
+
+error[E0503]: cannot use `x.a` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:47:13
+   |
+LL |     let p = &mut x.a;
+   |             -------- `x.a` is borrowed here
+LL |     let y = A { b: 3, .. x };
+   |             ^^^^^^^^^^^^^^^^ use of borrowed `x.a`
+LL |     drop(y);
+LL |     *p = 4;
+   |     ------ borrow later used here
+
+error[E0503]: cannot use `*x` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:55:10
+   |
+LL |     let p = &mut x;
+   |             ------ `x` is borrowed here
+LL |     drop(*x);
+   |          ^^ use of borrowed `x`
+LL |     **p = 2;
+   |     ------- borrow later used here
+
+error[E0503]: cannot use `*x.b` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:62:10
+   |
+LL |     let p = &mut x;
+   |             ------ `x` is borrowed here
+LL |     drop(*x.b);
+   |          ^^^^ use of borrowed `x`
+LL |     p.a = 3;
+   |     ------- borrow later used here
+
+error[E0503]: cannot use `*x.b` because it was mutably borrowed
+  --> $DIR/borrowck-use-mut-borrow.rs:69:10
+   |
+LL |     let p = &mut x.b;
+   |             -------- `x.b` is borrowed here
+LL |     drop(*x.b);
+   |          ^^^^ use of borrowed `x.b`
+LL |     **p = 3;
+   |     ------- borrow later used here
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0503`.

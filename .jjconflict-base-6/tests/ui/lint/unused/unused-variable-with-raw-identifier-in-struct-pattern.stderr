@@ -1,0 +1,15 @@
+warning: unused variable: `r#move`
+  --> $DIR/unused-variable-with-raw-identifier-in-struct-pattern.rs:15:16
+   |
+LL |          Foo { r#move } => 0
+   |                ^^^^^^ help: try ignoring the field: `r#move: _`
+   |
+note: the lint level is defined here
+  --> $DIR/unused-variable-with-raw-identifier-in-struct-pattern.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: 1 warning emitted
+

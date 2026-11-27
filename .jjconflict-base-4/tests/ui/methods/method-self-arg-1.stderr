@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/method-self-arg-1.rs:13:14
+   |
+LL |     Foo::bar(x);
+   |     -------- ^ expected `&Foo`, found `Foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: method defined here
+  --> $DIR/method-self-arg-1.rs:8:8
+   |
+LL |     fn bar(&self) {}
+   |        ^^^ -----
+help: consider borrowing here
+   |
+LL |     Foo::bar(&x);
+   |              +
+
+error[E0308]: mismatched types
+  --> $DIR/method-self-arg-1.rs:15:14
+   |
+LL |     Foo::bar(&42);
+   |     -------- ^^^ expected `&Foo`, found `&{integer}`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo`
+              found reference `&{integer}`
+note: method defined here
+  --> $DIR/method-self-arg-1.rs:8:8
+   |
+LL |     fn bar(&self) {}
+   |        ^^^ -----
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

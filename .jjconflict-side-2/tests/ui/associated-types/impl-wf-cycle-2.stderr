@@ -1,0 +1,29 @@
+error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
+  --> $DIR/impl-wf-cycle-2.rs:7:1
+   |
+LL | / impl<T: Grault> Grault for (T,)
+LL | |
+LL | | where
+LL | |     Self::A: Copy,
+   | |__________________^
+LL |   {
+LL |       type A = ();
+   |       ------ associated type `<(T,) as Grault>::A` is specified here
+   |
+note: required for `(T,)` to implement `Grault`
+  --> $DIR/impl-wf-cycle-2.rs:7:17
+   |
+LL | impl<T: Grault> Grault for (T,)
+   |                 ^^^^^^     ^^^^
+...
+LL |     Self::A: Copy,
+   |              ---- unsatisfied trait bound introduced here
+help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
+   |
+LL - where
+LL -     Self::A: Copy,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

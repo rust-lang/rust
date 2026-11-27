@@ -1,0 +1,31 @@
+// Check that the various shortcuts are working.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// We first check that the search input isn't already focused.
+assert-false: "input.search-input:focus"
+press-key: "s"
+assert: "input.search-input:focus"
+press-key: "Escape"
+assert-false: "input.search-input:focus"
+// We now check for the help popup.
+press-key: "?"
+assert-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+press-key: "Escape"
+assert-false: "rustdoc-toolbar .help-menu .popover"
+// Checking doc collapse and expand.
+// It should be displaying a "-":
+assert-text: ("#toggle-all-docs", "Summary")
+press-key: "-"
+wait-for-text: ("#toggle-all-docs", "Show all")
+assert-attribute: ("#toggle-all-docs", {"class": "will-expand"})
+// Pressing it again shouldn't do anything.
+press-key: "-"
+assert-text: ("#toggle-all-docs", "Show all")
+assert-attribute: ("#toggle-all-docs", {"class": "will-expand"})
+// Expanding now.
+press-key: "+"
+wait-for-text: ("#toggle-all-docs", "Summary")
+assert-attribute: ("#toggle-all-docs", {"class": ""})
+// Pressing it again shouldn't do anything.
+press-key: "+"
+assert-text: ("#toggle-all-docs", "Summary")
+assert-attribute: ("#toggle-all-docs", {"class": ""})

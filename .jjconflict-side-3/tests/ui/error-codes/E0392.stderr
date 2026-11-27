@@ -1,0 +1,12 @@
+error[E0392]: type parameter `T` is never used
+  --> $DIR/E0392.rs:1:10
+   |
+LL | enum Foo<T> { Bar }
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0392`.

@@ -1,0 +1,36 @@
+error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
+  --> $DIR/assoc_const.rs:19:31
+   |
+LL |     const F: u32 = (U::X, 42).1;
+   |                               ^ evaluation of `<NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F` failed inside this call
+   |
+note: inside `std::ptr::drop_glue::<(NotConstDestruct, u32)> - shim(Some((NotConstDestruct, u32)))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_glue::<NotConstDestruct> - shim(Some(NotConstDestruct))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+
+note: erroneous constant encountered
+  --> $DIR/assoc_const.rs:36:13
+   |
+LL |     let y = <NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/assoc_const.rs:36:13
+   |
+LL |     let y = <NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/assoc_const.rs:19:20
+   |
+LL |     const F: u32 = (U::X, 42).1;
+   |                    ^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

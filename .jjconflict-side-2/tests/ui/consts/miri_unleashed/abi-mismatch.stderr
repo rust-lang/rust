@@ -1,0 +1,23 @@
+error[E0080]: calling a function with calling convention "C" using calling convention "Rust"
+  --> $DIR/abi-mismatch.rs:11:18
+   |
+LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `VAL` failed inside this call
+   |
+note: inside `call_rust_fn`
+  --> $DIR/abi-mismatch.rs:7:5
+   |
+LL |     my_fn();
+   |     ^^^^^^^ the failure occurred here
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/abi-mismatch.rs:7:5
+   |
+LL |     my_fn();
+   |     ^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

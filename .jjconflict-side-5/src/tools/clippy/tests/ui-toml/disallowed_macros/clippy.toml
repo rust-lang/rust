@@ -1,0 +1,14 @@
+disallowed-macros = [
+    "std::println",
+    "std::vec",
+    { path = "std::cfg" },
+    { path = "serde::Serialize", reason = "no serializing" },
+    "macros::expr",
+    "macros::stmt",
+    "macros::ty",
+    "macros::pat",
+    "macros::item",
+    "macros::binop",
+    "macros::attr",
+    "proc_macros::Derive",
+]

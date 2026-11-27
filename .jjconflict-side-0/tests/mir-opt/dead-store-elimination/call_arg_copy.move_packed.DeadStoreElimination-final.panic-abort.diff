@@ -1,0 +1,15 @@
+- // MIR for `move_packed` before DeadStoreElimination-final
++ // MIR for `move_packed` after DeadStoreElimination-final
+  
+  fn move_packed(_1: Packed) -> () {
+      let mut _0: ();
+  
+      bb0: {
+          _0 = use_both(const 0_i32, copy (_1.1: i32)) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

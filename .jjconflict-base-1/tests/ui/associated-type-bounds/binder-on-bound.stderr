@@ -1,0 +1,8 @@
+error: `for<...>` is not allowed on associated type bounds
+  --> $DIR/binder-on-bound.rs:5:22
+   |
+LL | fn foo() where Trait<for<'a> Bound<'a> = &'a ()> {
+   |                      ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

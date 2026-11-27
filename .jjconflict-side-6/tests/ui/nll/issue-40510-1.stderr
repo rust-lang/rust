@@ -1,0 +1,19 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-40510-1.rs:7:9
+   |
+LL |     let mut x: Box<()> = Box::new(());
+   |         ----- variable defined here
+LL |
+LL |     || {
+   |      - inferred to be a `FnMut` closure
+LL |         &mut x
+   |         ^^^^^-
+   |         |    |
+   |         |    variable captured here
+   |         returns a reference to a captured variable which escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+
+error: aborting due to 1 previous error
+

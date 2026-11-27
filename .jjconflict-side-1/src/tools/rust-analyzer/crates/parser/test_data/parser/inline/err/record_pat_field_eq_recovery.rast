@@ -1,0 +1,43 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                NAME_REF
+                  IDENT "field"
+                WHITESPACE " "
+                ERROR
+                  EQ "="
+                WHITESPACE " "
+                IDENT_PAT
+                  NAME
+                    IDENT "foo"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 30: expected `:`

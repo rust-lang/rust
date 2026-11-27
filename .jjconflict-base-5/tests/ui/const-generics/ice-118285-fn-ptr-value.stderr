@@ -1,0 +1,10 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/ice-118285-fn-ptr-value.rs:1:25
+   |
+LL | struct Checked<const F: fn(usize) -> bool>;
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,14 @@
+error: the item `aux_issue_121915` is imported redundantly
+  --> $DIR/redundant-import-extern-prelude.rs:15:9
+   |
+LL |     use aux_issue_121915;
+   |         ^^^^^^^^^^^^^^^^ the item `aux_issue_121915` is already defined by the extern prelude
+   |
+note: the lint level is defined here
+  --> $DIR/redundant-import-extern-prelude.rs:12:8
+   |
+LL | #[deny(redundant_imports)]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

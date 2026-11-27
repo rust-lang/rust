@@ -1,0 +1,16 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/pointee-type-with-error-issue-159560.rs:4:8
+   |
+LL |     f: _,
+   |        ^ not allowed in type signatures
+
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/pointee-type-with-error-issue-159560.rs:8:16
+   |
+LL | static B: &A = B;
+   |                ^ evaluation of `B` failed here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0121.
+For more information about an error, try `rustc --explain E0080`.

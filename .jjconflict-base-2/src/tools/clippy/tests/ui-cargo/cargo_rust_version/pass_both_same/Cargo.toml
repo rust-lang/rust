@@ -1,0 +1,9 @@
+[package]
+name = "pass-both-same"
+version = "0.1.0"
+rust-version = "1.13.0"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

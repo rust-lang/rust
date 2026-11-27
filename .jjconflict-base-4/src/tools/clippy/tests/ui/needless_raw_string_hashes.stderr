@@ -1,0 +1,228 @@
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:5:5
+   |
+LL |     r#"\aaa"#;
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
+help: remove all the hashes around the string literal
+   |
+LL -     r#"\aaa"#;
+LL +     r"\aaa";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:7:5
+   |
+LL |     r##"Hello "world"!"##;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     r##"Hello "world"!"##;
+LL +     r#"Hello "world"!"#;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:9:5
+   |
+LL |     r######" "### "## "# "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 2 hashes from both sides of the string literal
+   |
+LL -     r######" "### "## "# "######;
+LL +     r####" "### "## "# "####;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:11:5
+   |
+LL |     r######" "aa" "# "## "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 3 hashes from both sides of the string literal
+   |
+LL -     r######" "aa" "# "## "######;
+LL +     r###" "aa" "# "## "###;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:13:5
+   |
+LL |     br#"\aaa"#;
+   |     ^^^^^^^^^^
+   |
+help: remove all the hashes around the byte string literal
+   |
+LL -     br#"\aaa"#;
+LL +     br"\aaa";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:15:5
+   |
+LL |     br##"Hello "world"!"##;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the byte string literal
+   |
+LL -     br##"Hello "world"!"##;
+LL +     br#"Hello "world"!"#;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:17:5
+   |
+LL |     br######" "### "## "# "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 2 hashes from both sides of the byte string literal
+   |
+LL -     br######" "### "## "# "######;
+LL +     br####" "### "## "# "####;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:19:5
+   |
+LL |     br######" "aa" "# "## "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 3 hashes from both sides of the byte string literal
+   |
+LL -     br######" "aa" "# "## "######;
+LL +     br###" "aa" "# "## "###;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:21:5
+   |
+LL |     cr#"\aaa"#;
+   |     ^^^^^^^^^^
+   |
+help: remove all the hashes around the C string literal
+   |
+LL -     cr#"\aaa"#;
+LL +     cr"\aaa";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:23:5
+   |
+LL |     cr##"Hello "world"!"##;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the C string literal
+   |
+LL -     cr##"Hello "world"!"##;
+LL +     cr#"Hello "world"!"#;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:25:5
+   |
+LL |     cr######" "### "## "# "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 2 hashes from both sides of the C string literal
+   |
+LL -     cr######" "### "## "# "######;
+LL +     cr####" "### "## "# "####;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:27:5
+   |
+LL |     cr######" "aa" "# "## "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 3 hashes from both sides of the C string literal
+   |
+LL -     cr######" "aa" "# "## "######;
+LL +     cr###" "aa" "# "## "###;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:30:5
+   |
+LL | /     r#"
+LL | |
+LL | |         \a
+LL | |         multiline
+LL | |         string
+LL | |     "#;
+   | |______^
+   |
+help: remove all the hashes around the string literal
+   |
+LL ~     r"
+LL |
+...
+LL |         string
+LL ~     ";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:37:5
+   |
+LL |     r###"rust"###;
+   |     ^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the string literal
+   |
+LL -     r###"rust"###;
+LL +     r"rust";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:39:5
+   |
+LL |     r#"hello world"#;
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the string literal
+   |
+LL -     r#"hello world"#;
+LL +     r"hello world";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:45:14
+   |
+LL |     println!(r#"SELECT * FROM posts"#);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the string literal
+   |
+LL -     println!(r#"SELECT * FROM posts"#);
+LL +     println!(r"SELECT * FROM posts");
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:47:14
+   |
+LL |     println!(r##"SELECT * FROM "posts""##);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     println!(r##"SELECT * FROM "posts""##);
+LL +     println!(r#"SELECT * FROM "posts""#);
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui/needless_raw_string_hashes.rs:49:14
+   |
+LL |     println!(r##"SELECT * FROM "posts""##);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     println!(r##"SELECT * FROM "posts""##);
+LL +     println!(r#"SELECT * FROM "posts""#);
+   |
+
+error: aborting due to 18 previous errors
+

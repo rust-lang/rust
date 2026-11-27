@@ -1,0 +1,22 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rust CI Test Dashboard</title>
+  <style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #F5F5F5;
+    }
+    {% block styles %}{% endblock %}
+  </style>
+</head>
+
+<body>
+{% block content %}{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,14 @@
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/reserved-attr-on-macro.rs:1:3
+   |
+LL | #[rustc_attribute_should_be_reserved]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `rustc_attribute_should_be_reserved` in this scope
+  --> $DIR/reserved-attr-on-macro.rs:1:3
+   |
+LL | #[rustc_attribute_should_be_reserved]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

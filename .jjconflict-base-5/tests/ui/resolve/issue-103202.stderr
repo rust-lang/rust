@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-103202.rs:4:17
+   |
+LL |     fn f(self: &S::x) {}
+   |                 ^^^^
+   |
+help: if there were a trait named `Example` with associated type `x` implemented for `S`, you could use the fully-qualified path
+   |
+LL -     fn f(self: &S::x) {}
+LL +     fn f(self: &<S as Example>::x) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

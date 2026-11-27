@@ -1,0 +1,25 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:4
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:8
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:12
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_source_slices.rs:4
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: slice, Id: _1, Ty: [u8], Value: []
+Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
+Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
+(priroda) Id: _1, Ty: [u8], Value: []
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_source_slices.rs:8
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: slice, Id: _1, Ty: [u8], Value: [[1a]]
+Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
+Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
+(priroda) Id: _1, Ty: [u8], Value: [[1a]]
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_source_slices.rs:12
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: slice, Id: _1, Ty: [u8], Value: [[1b], [1c]]
+Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
+Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
+(priroda) Id: _1, Ty: [u8], Value: [[1b], [1c]]
+(priroda) quitting

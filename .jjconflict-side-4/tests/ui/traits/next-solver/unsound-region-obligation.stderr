@@ -1,0 +1,11 @@
+error[E0477]: the type `&'a ()` does not fulfill the required lifetime
+  --> $DIR/unsound-region-obligation.rs:9:21
+   |
+LL |     type Item<'a> = &'a ();
+   |                     ^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0477`.

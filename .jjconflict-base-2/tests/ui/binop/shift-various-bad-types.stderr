@@ -1,0 +1,71 @@
+error[E0277]: no implementation for `{integer} >> char`
+  --> $DIR/shift-various-bad-types.rs:11:8
+   |
+LL |     22 >> p.char;
+   |        ^^ no implementation for `{integer} >> char`
+   |
+   = help: the trait `Shr<char>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Shr<Rhs>`:
+             `&i128` implements `Shr<&i16>`
+             `&i128` implements `Shr<&i32>`
+             `&i128` implements `Shr<&i64>`
+             `&i128` implements `Shr<&i8>`
+             `&i128` implements `Shr<&isize>`
+             `&i128` implements `Shr<&u128>`
+             `&i128` implements `Shr<&u16>`
+             `&i128` implements `Shr<&u32>`
+           and 568 others
+
+error[E0277]: no implementation for `{integer} >> &str`
+  --> $DIR/shift-various-bad-types.rs:14:8
+   |
+LL |     22 >> p.str;
+   |        ^^ no implementation for `{integer} >> &str`
+   |
+   = help: the trait `Shr<&str>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Shr<Rhs>`:
+             `&i128` implements `Shr<&i16>`
+             `&i128` implements `Shr<&i32>`
+             `&i128` implements `Shr<&i64>`
+             `&i128` implements `Shr<&i8>`
+             `&i128` implements `Shr<&isize>`
+             `&i128` implements `Shr<&u128>`
+             `&i128` implements `Shr<&u16>`
+             `&i128` implements `Shr<&u32>`
+           and 568 others
+
+error[E0277]: no implementation for `{integer} >> &Panolpy`
+  --> $DIR/shift-various-bad-types.rs:17:8
+   |
+LL |     22 >> p;
+   |        ^^ no implementation for `{integer} >> &Panolpy`
+   |
+   = help: the trait `Shr<&Panolpy>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Shr<Rhs>`:
+             `&i128` implements `Shr<&i16>`
+             `&i128` implements `Shr<&i32>`
+             `&i128` implements `Shr<&i64>`
+             `&i128` implements `Shr<&i8>`
+             `&i128` implements `Shr<&isize>`
+             `&i128` implements `Shr<&u128>`
+             `&i128` implements `Shr<&u16>`
+             `&i128` implements `Shr<&u32>`
+           and 568 others
+
+error[E0308]: mismatched types
+  --> $DIR/shift-various-bad-types.rs:27:18
+   |
+LL |     let _: i32 = 22_i64 >> 1_i32;
+   |            ---   ^^^^^^^^^^^^^^^ expected `i32`, found `i64`
+   |            |
+   |            expected due to this
+   |
+help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
+   |
+LL |     let _: i32 = (22_i64 >> 1_i32).try_into().unwrap();
+   |                  +               +++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

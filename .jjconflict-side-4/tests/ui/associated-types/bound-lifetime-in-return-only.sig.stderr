@@ -1,0 +1,15 @@
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/bound-lifetime-in-return-only.rs:12:28
+   |
+LL | fn sig1(_: for<'a> fn() -> &'a i32) {
+   |                            ^^^^^^^
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/bound-lifetime-in-return-only.rs:17:39
+   |
+LL | fn sig2(_: for<'a, 'b> fn(&'b i32) -> &'a i32) {
+   |                                       ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0581`.

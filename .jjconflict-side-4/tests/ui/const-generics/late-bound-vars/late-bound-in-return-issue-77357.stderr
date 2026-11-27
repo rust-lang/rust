@@ -1,0 +1,8 @@
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/late-bound-in-return-issue-77357.rs:9:53
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |        -- lifetime defined here                     ^^
+
+error: aborting due to 1 previous error
+

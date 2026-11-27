@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `static`
+  --> $DIR/keyword-static-as-identifier.rs:4:9
+   |
+LL |     let static = "foo";
+   |         ^^^^^^ expected identifier, found keyword
+   |
+help: escape `static` to use it as an identifier
+   |
+LL |     let r#static = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

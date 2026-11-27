@@ -1,0 +1,15 @@
+// MIR for `array` after built
+
+fn array() -> [i32; 2] {
+    let mut _0: [i32; 2];
+    let mut _1: [i32; 2];
+    let mut _2: i32;
+
+    bb0: {
+        _1 = [const 42_i32, const 43_i32];
+        _2 = const 1_i32;
+        _1 = [copy _2, const 2_i32];
+        _0 = move _1;
+        return;
+    }
+}

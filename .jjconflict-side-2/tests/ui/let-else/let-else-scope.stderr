@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/let-else-scope.rs:3:22
+   |
+LL |         panic!("{}", x);
+   |                      ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

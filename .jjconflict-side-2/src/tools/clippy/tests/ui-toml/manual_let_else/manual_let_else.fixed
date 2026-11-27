@@ -1,0 +1,10 @@
+#![warn(clippy::manual_let_else)]
+
+enum Foo {
+    A(u8),
+    B,
+}
+
+fn main() {
+    let Foo::A(x) = Foo::A(1) else { return };
+}

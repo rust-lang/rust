@@ -1,0 +1,16 @@
+error: generic arguments must come before the first constraint
+  --> $DIR/issue-32214.rs:3:34
+   |
+LL | pub fn test<W, I: Trait<Item=(), W> >() {}
+   |                         -------  ^ generic argument
+   |                         |
+   |                         constraint
+   |
+help: move the constraint after the generic argument
+   |
+LL - pub fn test<W, I: Trait<Item=(), W> >() {}
+LL + pub fn test<W, I: Trait<W, Item = ()> >() {}
+   |
+
+error: aborting due to 1 previous error
+

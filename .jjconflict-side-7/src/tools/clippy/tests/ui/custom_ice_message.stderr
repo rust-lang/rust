@@ -1,0 +1,24 @@
+note: no errors encountered even though delayed bugs were created
+
+note: those delayed bugs will now be shown as internal compiler errors
+
+error: internal compiler error: delayed bug triggered by #[rustc_delayed_bug_from_inside_query]
+  --> tests/ui/custom_ice_message.rs
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+   |
+note: delayed at <location>
+  --> tests/ui/custom_ice_message.rs
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+
+note: rustc <version> running on <target>
+
+note: compiler flags: <flags>
+
+note: Clippy version: foo
+

@@ -1,0 +1,20 @@
+[package]
+name = "rustc_index_macros"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# tidy-alphabetical-start
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2.0.9", features = ["full", "extra-traits"] }
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+nightly = []
+# tidy-alphabetical-end
+

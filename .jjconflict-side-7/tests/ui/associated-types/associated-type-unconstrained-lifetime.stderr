@@ -1,0 +1,16 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/associated-type-unconstrained-lifetime.rs:24:6
+   |
+LL | impl<'a> Iterator for Newtype {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: use the lifetime parameter `'a` in the `Newtype` type and use it in the type definition
+   |
+LL ~ struct Newtype<'a>(Option<Box<usize>>);
+LL |
+LL ~ impl<'a> Iterator for Newtype<'a> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

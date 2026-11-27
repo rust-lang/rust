@@ -1,0 +1,10 @@
+error: unused variable: `x`
+  --> $DIR/forbid-always-trumps-cli.rs:15:9
+   |
+LL |     let x = 1;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `-F unused-variables` implied by `-F unused`
+
+error: aborting due to 1 previous error
+

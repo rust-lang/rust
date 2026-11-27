@@ -1,0 +1,20 @@
+[package]
+name = "rustc_expand_queries"
+version = "0.0.0"
+edition = "2024"
+build = false
+
+[lib]
+doctest = false
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_ast = { path = "../rustc_ast" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_middle = { path = "../rustc_middle" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
+rustc_span = { path = "../rustc_span" }
+scoped-tls = "1.0"
+# tidy-alphabetical-end

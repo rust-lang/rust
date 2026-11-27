@@ -1,0 +1,374 @@
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:22:13
+   |
+LL |       let _ = if ty.is_diag_item(cx, sym::Option) {
+   |               ^  -------------------------------- called here
+   |  _____________|
+   | |
+LL | |
+LL | |         "Option"
+LL | |     } else if ty.is_diag_item(cx, sym::Result) {
+   | |               -------------------------------- called here
+...  |
+LL | |         return;
+LL | |     };
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+   = note: `-D clippy::repeated-is-diagnostic-item` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeated_is_diagnostic_item)]`
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~     let /* name */ = ty.opt_diag_name(cx);
+LL ~     let _ = if /* name */ == Some(sym::Option) {
+LL |
+LL |         "Option"
+LL ~     } else if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:44:5
+   |
+LL |       if ty.is_diag_item(cx, sym::Option) {
+   |       ^  -------------------------------- called here
+   |  _____|
+   | |
+LL | |
+LL | |         eprintln!("Option");
+LL | |     } else if ty.is_diag_item(cx, sym::Result) {
+   | |               -------------------------------- called here
+LL | |         eprintln!("Result");
+LL | |     }
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~     let /* name */ = ty.opt_diag_name(cx);
+LL ~     if /* name */ == Some(sym::Option) {
+LL |
+LL |         eprintln!("Option");
+LL ~     } else if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:62:13
+   |
+LL |       let _ = if ty.is_diag_item(cx, sym::Option) && 4 == 5 {
+   |               ^  -------------------------------- called here
+   |  _____________|
+   | |
+LL | |
+LL | |         "Option"
+LL | |     } else if ty.is_diag_item(cx, sym::Result) && 4 == 5 {
+   | |               -------------------------------- called here
+...  |
+LL | |         return;
+LL | |     };
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~     let /* name */ = ty.opt_diag_name(cx);
+LL ~     let _ = if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |         "Option"
+LL ~     } else if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:71:13
+   |
+LL |       let _ = if cx.tcx.is_diagnostic_item(sym::Option, did) {
+   |               ^  ------------------------------------------- called here
+   |  _____________|
+   | |
+LL | |
+LL | |         "Option"
+LL | |     } else if cx.tcx.is_diagnostic_item(sym::Result, did) {
+   | |               ------------------------------------------- called here
+...  |
+LL | |         return;
+LL | |     };
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~     let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~     let _ = if /* name */ == Some(sym::Option) {
+LL |
+LL |         "Option"
+LL ~     } else if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:93:5
+   |
+LL |       if cx.tcx.is_diagnostic_item(sym::Option, did) {
+   |       ^  ------------------------------------------- called here
+   |  _____|
+   | |
+LL | |
+LL | |         eprintln!("Option");
+LL | |     } else if cx.tcx.is_diagnostic_item(sym::Result, did) {
+   | |               ------------------------------------------- called here
+LL | |         eprintln!("Result");
+LL | |     }
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~     let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~     if /* name */ == Some(sym::Option) {
+LL |
+LL |         eprintln!("Option");
+LL ~     } else if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:111:13
+   |
+LL |       let _ = if cx.tcx.is_diagnostic_item(sym::Option, did) && 4 == 5 {
+   |               ^  ------------------------------------------- called here
+   |  _____________|
+   | |
+LL | |
+LL | |         "Option"
+LL | |     } else if cx.tcx.is_diagnostic_item(sym::Result, did) && 4 == 5 {
+   | |               ------------------------------------------- called here
+...  |
+LL | |         return;
+LL | |     };
+   | |_____^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~     let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~     let _ = if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |         "Option"
+LL ~     } else if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:126:9
+   |
+LL |           if ty.is_diag_item(cx, sym::Option) {
+   |           ^  -------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if ty.is_diag_item(cx, sym::Result) {
+   | |            -------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~         let /* name */ = ty.opt_diag_name(cx);
+LL ~         if /* name */ == Some(sym::Option) {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:138:9
+   |
+LL |           if ty.is_diag_item(cx, sym::Option) && 4 == 5 {
+   |           ^  -------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if ty.is_diag_item(cx, sym::Result) && 4 == 5 {
+   | |            -------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~         let /* name */ = ty.opt_diag_name(cx);
+LL ~         if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:149:9
+   |
+LL |           if cx.tcx.is_diagnostic_item(sym::Option, did) {
+   |           ^  ------------------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if cx.tcx.is_diagnostic_item(sym::Result, did) {
+   | |            ------------------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~         let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~         if /* name */ == Some(sym::Option) {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:161:9
+   |
+LL |           if cx.tcx.is_diagnostic_item(sym::Option, did) && 4 == 5 {
+   |           ^  ------------------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if cx.tcx.is_diagnostic_item(sym::Result, did) && 4 == 5 {
+   | |            ------------------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~         let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~         if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:173:9
+   |
+LL |           if ty.is_diag_item(cx, sym::Option) {
+   |           ^  -------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if ty.is_diag_item(cx, sym::Result) {
+   | |            -------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~         let /* name */ = ty.opt_diag_name(cx);
+LL ~         if /* name */ == Some(sym::Option) {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `Ty::is_diag_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:184:9
+   |
+LL |           if ty.is_diag_item(cx, sym::Option) && 4 == 5 {
+   |           ^  -------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if ty.is_diag_item(cx, sym::Result) && 4 == 5 {
+   | |            -------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `Ty::opt_diag_name`, and reuse the results
+   |
+LL ~         let /* name */ = ty.opt_diag_name(cx);
+LL ~         if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:194:9
+   |
+LL |           if cx.tcx.is_diagnostic_item(sym::Option, did) {
+   |           ^  ------------------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if cx.tcx.is_diagnostic_item(sym::Result, did) {
+   | |            ------------------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~         let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~         if /* name */ == Some(sym::Option) {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) {
+   |
+
+error: repeated calls to `TyCtxt::is_diagnostic_item`
+  --> tests/ui-internal/repeated_is_diagnostic_item_unfixable.rs:205:9
+   |
+LL |           if cx.tcx.is_diagnostic_item(sym::Option, did) && 4 == 5 {
+   |           ^  ------------------------------------------- called here
+   |  _________|
+   | |
+LL | |
+LL | |             println!("Option");
+LL | |         }
+LL | |         if cx.tcx.is_diagnostic_item(sym::Result, did) && 4 == 5 {
+   | |            ------------------------------------------- called here
+LL | |             println!("Result");
+LL | |         }
+   | |_________^
+   |
+   = note: each call performs the same compiler query -- it's faster to query once, and reuse the results
+help: call `TyCtxt::get_diagnostic_name`, and reuse the results
+   |
+LL ~         let /* name */ = cx.tcx.get_diagnostic_name(did);
+LL ~         if /* name */ == Some(sym::Option) && 4 == 5 {
+LL |
+LL |             println!("Option");
+LL |         }
+LL ~         if /* name */ == Some(sym::Result) && 4 == 5 {
+   |
+
+error: aborting due to 14 previous errors
+

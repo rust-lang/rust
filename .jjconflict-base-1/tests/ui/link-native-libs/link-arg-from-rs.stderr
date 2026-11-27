@@ -1,0 +1,8 @@
+error: linking modifier `bundle` is only compatible with `static` linking kind
+  --> $DIR/link-arg-from-rs.rs:3:53
+   |
+LL | #[link(kind = "link-arg", name = "arg", modifiers = "+bundle")]
+   |                                                     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

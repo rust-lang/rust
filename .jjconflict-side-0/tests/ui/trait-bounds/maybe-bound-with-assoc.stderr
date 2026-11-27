@@ -1,0 +1,21 @@
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/maybe-bound-with-assoc.rs:4:16
+   |
+LL | fn hasassoc<T: ?HasAssoc<Assoc = ()>>() {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/maybe-bound-with-assoc.rs:8:15
+   |
+LL | fn noassoc<T: ?NoAssoc<Missing = ()>>() {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0220]: associated type `Missing` not found for `NoAssoc`
+  --> $DIR/maybe-bound-with-assoc.rs:8:24
+   |
+LL | fn noassoc<T: ?NoAssoc<Missing = ()>>() {}
+   |                        ^^^^^^^ associated type `Missing` not found
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

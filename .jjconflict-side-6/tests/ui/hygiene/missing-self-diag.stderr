@@ -1,0 +1,19 @@
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/missing-self-diag.rs:10:9
+   |
+LL |   macro_rules! call_bar {
+LL |       () => {
+LL |           self.bar();
+   |           ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+...
+LL | /     pub fn foo(&self) {
+LL | |         call_bar!();
+   | |         ----------- in this macro invocation
+LL | |     }
+   | |_____- this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
+   |
+   = note: a module named `self` exists in another namespace
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0424`.

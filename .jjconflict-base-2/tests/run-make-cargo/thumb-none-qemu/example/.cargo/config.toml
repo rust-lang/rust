@@ -1,0 +1,44 @@
+[target.thumbv6m-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m0 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv7m-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv7em-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv7em-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.base-none-eabi]
+# FIXME: Should be the Cortex-M23, but Qemu does not currently support it
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.main-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.thumbv8m.main-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# uncomment ONE of these three option to make `cargo run` start a GDB session
+# which option to pick depends on your system
+# runner = "arm-none-eabi-gdb -q -x openocd.gdb"
+# runner = "gdb-multiarch -q -x openocd.gdb"
+# runner = "gdb -q -x openocd.gdb"
+
+rustflags = [
+  # LLD (shipped with the Rust toolchain) is used as the default linker
+  "-C", "link-arg=-Tlink.x",
+
+  # if you run into problems with LLD switch to the GNU linker by commenting out
+  # this line
+  # "-C", "linker=arm-none-eabi-ld",
+
+  # if you need to link to pre-compiled C libraries provided by a C toolchain
+  # use GCC as the linker by commenting out both lines above and then
+  # uncommenting the three lines below
+  # "-C", "linker=arm-none-eabi-gcc",
+  # "-C", "link-arg=-Wl,-Tlink.x",
+  # "-C", "link-arg=-nostartfiles",
+]

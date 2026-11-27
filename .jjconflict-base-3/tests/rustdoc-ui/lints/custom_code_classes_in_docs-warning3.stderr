@@ -1,0 +1,33 @@
+error: unclosed quote string `"`
+  --> $DIR/custom_code_classes_in_docs-warning3.rs:17:1
+   |
+LL | / /// ```{class="}
+LL | | /// main;
+LL | | /// ```
+...  |
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+   |
+note: the lint level is defined here
+  --> $DIR/custom_code_classes_in_docs-warning3.rs:4:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
+
+error: unclosed quote string `"`
+  --> $DIR/custom_code_classes_in_docs-warning3.rs:17:1
+   |
+LL | / /// ```{class="}
+LL | | /// main;
+LL | | /// ```
+...  |
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

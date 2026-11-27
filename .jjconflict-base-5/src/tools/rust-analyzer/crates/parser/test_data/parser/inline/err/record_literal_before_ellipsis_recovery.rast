@@ -1,0 +1,126 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "field"
+              WHITESPACE " "
+              DOT2 ".."
+              CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "S"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "default"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  INT_NUMBER "0"
+              WHITESPACE " "
+              DOT2 ".."
+              CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "S"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "default"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "field"
+              WHITESPACE " "
+              DOT2 ".."
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        RECORD_EXPR
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+          WHITESPACE " "
+          RECORD_EXPR_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD
+              NAME_REF
+                INT_NUMBER "0"
+            WHITESPACE " "
+            DOT2 ".."
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 25: expected `:`
+error 25: expected COMMA
+error 42: expected SEMICOLON
+error 52: expected `:`
+error 52: expected COMMA
+error 69: expected SEMICOLON
+error 83: expected `:`
+error 83: expected COMMA
+error 88: expected SEMICOLON
+error 98: expected `:`
+error 98: expected COMMA

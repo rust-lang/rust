@@ -1,0 +1,72 @@
+error[E0599]: no method named `new` found for struct `A` in the current scope
+  --> $DIR/disambiguate-associated-function-first-arg.rs:5:8
+   |
+LL | struct A {}
+   | -------- method `new` not found for this struct
+...
+LL |     _a.new(1);
+   |        ^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: candidate #1 is defined in the trait `M`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:10:5
+   |
+LL |     fn new(_a: i32);
+   |     ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `N`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:17:5
+   |
+LL |     fn new(_a: Self, _b: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #3 is defined in the trait `O`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:24:5
+   |
+LL |     fn new(_a: Self, _b: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the associated function for candidate #1
+   |
+LL -     _a.new(1);
+LL +     <A as M>::new(1);
+   |
+help: disambiguate the associated function for candidate #2
+   |
+LL -     _a.new(1);
+LL +     <A as N>::new(_a, 1);
+   |
+help: disambiguate the associated function for candidate #3
+   |
+LL -     _a.new(1);
+LL +     <A as O>::new(_a, 1);
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/disambiguate-associated-function-first-arg.rs:47:7
+   |
+LL |     S.f();
+   |       ^ multiple `f` found
+   |
+note: candidate #1 is defined in an impl of the trait `TraitA` for the type `T`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:40:5
+   |
+LL |     fn f(self) {}
+   |     ^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `TraitB` for the type `T`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:43:5
+   |
+LL |     fn f(self) {}
+   |     ^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     S.f();
+LL +     TraitA::f(S);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     S.f();
+LL +     TraitB::f(S);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0034, E0599.
+For more information about an error, try `rustc --explain E0034`.

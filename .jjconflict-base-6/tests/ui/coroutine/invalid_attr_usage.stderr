@@ -1,0 +1,18 @@
+error: the `coroutine` attribute cannot be used on structs
+  --> $DIR/invalid_attr_usage.rs:5:3
+   |
+LL | #[coroutine]
+   |   ^^^^^^^^^
+   |
+   = help: the `coroutine` attribute can only be applied to closures
+
+error: the `coroutine` attribute cannot be used on functions
+  --> $DIR/invalid_attr_usage.rs:9:3
+   |
+LL | #[coroutine]
+   |   ^^^^^^^^^
+   |
+   = help: the `coroutine` attribute can only be applied to closures
+
+error: aborting due to 2 previous errors
+

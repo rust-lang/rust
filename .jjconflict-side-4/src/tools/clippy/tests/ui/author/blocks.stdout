@@ -1,0 +1,52 @@
+if let ExprKind::Block(block, None) = expr.kind
+    && block.stmts.len() == 3
+    && let StmtKind::Let(local) = block.stmts[0].kind
+    && let Some(init) = local.init
+    && let ExprKind::Lit(ref lit) = init.kind
+    && let LitKind::Int(42, LitIntType::Signed(IntTy::I32)) = lit.node
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
+    && name.as_str() == "x"
+    && let StmtKind::Let(local1) = block.stmts[1].kind
+    && let Some(init1) = local1.init
+    && let ExprKind::Lit(ref lit1) = init1.kind
+    && let LitKind::Float(_, LitFloatType::Suffixed(FloatTy::F32)) = lit1.node
+    && let PatKind::Binding(BindingMode::NONE, _, name1, None) = local1.pat.kind
+    && name1.as_str() == "_t"
+    && let StmtKind::Semi(e) = block.stmts[2].kind
+    && let ExprKind::Unary(UnOp::Neg, inner) = e.kind
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let ExprKind::Block(block, None) = expr.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Let(local) = block.stmts[0].kind
+    && let Some(init) = local.init
+    && let ExprKind::Call(func, args) = init.kind
+    && func.res(cx).is_diag_item(cx, sym::string_new)
+    && args.is_empty()
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
+    && name.as_str() == "expr"
+    && let Some(trailing_expr) = block.expr
+    && let ExprKind::Call(func1, args1) = trailing_expr.kind
+    && func1.res(cx).is_diag_item(cx, sym::mem_drop)
+    && args1.len() == 1
+{
+    // report your lint here
+}
+if let ExprKind::Closure { capture_clause: CaptureBy::Value { .. }, fn_decl: fn_decl, body: body_id, closure_kind: ClosureKind::CoroutineClosure(CoroutineDesugaring::Async), .. } = expr.kind
+    && let FnRetTy::DefaultReturn(_) = fn_decl.output
+    && expr1 = &cx.tcx.hir_body(body_id).value
+    && let ExprKind::Closure { capture_clause: CaptureBy::Ref, fn_decl: fn_decl1, body: body_id1, closure_kind: ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)), .. } = expr1.kind
+    && let FnRetTy::DefaultReturn(_) = fn_decl1.output
+    && expr2 = &cx.tcx.hir_body(body_id1).value
+    && let ExprKind::Block(block, None) = expr2.kind
+    && block.stmts.is_empty()
+    && let Some(trailing_expr) = block.expr
+    && let ExprKind::DropTemps(expr3) = trailing_expr.kind
+    && let ExprKind::Block(block1, None) = expr3.kind
+    && block1.stmts.is_empty()
+    && block1.expr.is_none()
+{
+    // report your lint here
+}

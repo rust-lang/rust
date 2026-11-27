@@ -1,0 +1,10 @@
+error: implementing `CoerceShared` requires source and target to use the same reborrow lifetime argument
+  --> $DIR/coerce-shared-lifetime-mismatch.rs:17:10
+   |
+LL | impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^                  -- source reborrow lifetime
+   |                                       |
+   |                                       target reborrow lifetime
+
+error: aborting due to 1 previous error
+

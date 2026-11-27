@@ -1,0 +1,52 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/not-on-bare-trait.rs:8:12
+   |
+LL | fn foo(_x: Foo + Send) {
+   |            ^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn foo(_x: dyn Foo + Send) {
+   |            +++
+
+error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
+  --> $DIR/not-on-bare-trait.rs:8:12
+   |
+LL | fn foo(_x: Foo + Send) {
+   |            ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn foo(_x: impl Foo + Send) {
+   |            ++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo(_x: &(dyn Foo + Send)) {
+   |            +++++           +
+
+error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
+  --> $DIR/not-on-bare-trait.rs:13:12
+   |
+LL | fn bar(_x: (dyn Foo + Send)) {
+   |            ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL - fn bar(_x: (dyn Foo + Send)) {
+LL + fn bar(_x: (impl Foo + Send)) {
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bar(_x: (&(dyn Foo + Send))) {
+   |             ++              +
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

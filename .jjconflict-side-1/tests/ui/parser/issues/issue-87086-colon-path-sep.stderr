@@ -1,0 +1,119 @@
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:17:12
+   |
+LL |         Foo:Bar => {}
+   |            ^--- specifying the type of a pattern isn't supported
+   |            |
+   |            expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         Foo::Bar => {}
+   |             +
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `{`, or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:23:17
+   |
+LL |         qux::Foo:Bar => {}
+   |                 ^--- specifying the type of a pattern isn't supported
+   |                 |
+   |                 expected one of 8 possible tokens
+   |
+help: maybe write a path separator here
+   |
+LL |         qux::Foo::Bar => {}
+   |                  +
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:29:12
+   |
+LL |         qux:Foo::Baz => {}
+   |            ^-------- specifying the type of a pattern isn't supported
+   |            |
+   |            expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         qux::Foo::Baz => {}
+   |             +
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:35:12
+   |
+LL |         qux: Foo::Baz if true => {}
+   |            ^ -------- specifying the type of a pattern isn't supported
+   |            |
+   |            expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         qux::Foo::Baz if true => {}
+   |            ~~
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:40:15
+   |
+LL |     if let Foo:Bar = f() {
+   |               ^--- specifying the type of a pattern isn't supported
+   |               |
+   |               expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |     if let Foo::Bar = f() {
+   |                +
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:48:16
+   |
+LL |         ref qux: Foo::Baz => {}
+   |                ^ -------- specifying the type of a pattern isn't supported
+   |                |
+   |                expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         ref qux::Foo::Baz => {}
+   |                ~~
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:57:16
+   |
+LL |         mut qux: Foo::Baz => {}
+   |                ^ -------- specifying the type of a pattern isn't supported
+   |                |
+   |                expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         mut qux::Foo::Baz => {}
+   |                ~~
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:68:12
+   |
+LL |         Foo:Bar::Baz => {}
+   |            ^-------- specifying the type of a pattern isn't supported
+   |            |
+   |            expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         Foo::Bar::Baz => {}
+   |             +
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:74:12
+   |
+LL |         Foo:Bar => {}
+   |            ^--- specifying the type of a pattern isn't supported
+   |            |
+   |            expected one of `@` or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |         Foo::Bar => {}
+   |             +
+
+error: aborting due to 9 previous errors
+
