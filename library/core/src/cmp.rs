@@ -1959,14 +1959,12 @@ macro impl_tuples($($mac:ident,)+) {
 /// for all types `T`.
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a homogeneous tuple")]
 #[unstable(feature = "cmp_splat_internals", issue = "160728")]
-#[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-const trait HomogeneousTuple<T>: crate::marker::Tuple {}
+trait HomogeneousTuple<T>: crate::marker::Tuple {}
 
 /// Implements [`HomogeneousTuple`] for a provided tuple.
 macro impl_homogeneous_tuple($($x:ident,)*) {
     #[unstable(feature = "cmp_splat_internals", issue = "160728")]
-    #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-    const impl<T> HomogeneousTuple<T> for ($(${ignore($x)}T,)*) { }
+    impl<T> HomogeneousTuple<T> for ($(${ignore($x)}T,)*) { }
 }
 
 impl_tuples! {
