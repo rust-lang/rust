@@ -10,12 +10,11 @@ use rustc_ast::{
     Safety,
 };
 use rustc_attr_ir::AttrPath;
-use rustc_errors::{Applicability, Diagnostic, PResult};
-use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_errors::{Applicability, PResult};
 use rustc_parse::parse_in;
 use rustc_session::diagnostics::report_lit_error;
 use rustc_session::parse::ParseSess;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 use crate::{AttributeTemplate, diagnostics as errors};
 
@@ -160,10 +159,6 @@ pub fn emit_malformed_attribute(
     name: Symbol,
     template: AttributeTemplate,
 ) {
-    // Some of previously accepted forms were used in practice,
-    // report them as warnings for now.
-    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
-
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
@@ -186,32 +181,20 @@ pub fn emit_malformed_attribute(
     if suggestions.len() > 3 {
         suggestions.clear();
     }
-    if should_warn(name) {
-        let suggestions = suggestions.clone();
-        psess.dyn_buffer_lint(
-            ILL_FORMED_ATTRIBUTE_INPUT,
-            span,
-            ast::CRATE_NODE_ID,
-            move |dcx, level| {
-                crate::diagnostics::IllFormedAttributeInput::new(&suggestions, template.docs, None)
-                    .into_diag(dcx, level)
-            },
-        );
-    } else {
-        suggestions.sort();
-        let mut err = psess.dcx().struct_span_err(span, error_msg).with_span_suggestions(
-            span,
-            if suggestions.len() == 1 {
-                "must be of the form"
-            } else {
-                "the following are the possible correct uses"
-            },
-            suggestions,
-            Applicability::HasPlaceholders,
-        );
-        if let Some(link) = template.docs {
-            err.note(format!("for more information, visit <{link}>"));
-        }
-        err.emit();
+
+    suggestions.sort();
+    let mut err = psess.dcx().struct_span_err(span, error_msg).with_span_suggestions(
+        span,
+        if suggestions.len() == 1 {
+            "must be of the form"
+        } else {
+            "the following are the possible correct uses"
+        },
+        suggestions,
+        Applicability::HasPlaceholders,
+    );
+    if let Some(link) = template.docs {
+        err.note(format!("for more information, visit <{link}>"));
     }
+    err.emit();
 }

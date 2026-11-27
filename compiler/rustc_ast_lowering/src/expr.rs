@@ -966,11 +966,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
-    /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
-    /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
+    /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to `inner_hir_id`.
     pub(super) fn maybe_forward_track_caller(&mut self, outer_hir_id: HirId, inner_hir_id: HirId) {
-        if self.tcx.features().async_fn_track_caller()
-            && let Some(attrs) = self.curr_owner.attrs.get(&outer_hir_id.local_id)
+        if let Some(attrs) = self.curr_owner.attrs.get(&outer_hir_id.local_id)
             && let Some(t) = attrs.iter().find(|a| {
                 matches!(
                     a,

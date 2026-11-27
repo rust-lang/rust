@@ -218,6 +218,7 @@ pub(crate) enum OnDuplicate {
     Warn,
 
     /// Duplicates will be a warning, with a note that this will be an error in the future.
+    #[expect(unused)]
     WarnButFutureError,
 
     /// Give a default error

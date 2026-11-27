@@ -16,7 +16,7 @@ use crate::diagnostics::{
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use crate::target_checking::Policy::{Allow, Error};
 use crate::{AttributeTemplate, diagnostics, template};
 
 const LINT_TEMPLATE: AttributeTemplate = template!(
@@ -356,7 +356,7 @@ impl AttributeParser for LintParser {
             Allow(Target::ForLoop),
             Allow(Target::While),
             Allow(Target::Break),
-            Warn(Target::MacroCall),
+            Error(Target::MacroCall),
         ])
     };
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

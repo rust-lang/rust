@@ -7,7 +7,6 @@ use rustc_attr_parsing::{AttributeTemplate, DuplicateAttribute, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
-use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
 use rustc_parse::{exp, parser};
 use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
@@ -50,12 +49,12 @@ pub(crate) fn warn_on_duplicate_attribute(
         _ => return,
     };
     if let Some(attr) = attr::find_by_name(attrs, name) {
-        ecx.psess().buffer_lint(
-            DUPLICATE_MACRO_ATTRIBUTES,
-            attr.span,
-            ecx.current_expansion.lint_node_id,
-            DuplicateAttribute { this: attr.span, other: span, name, warning: false },
-        );
+        ecx.psess().dcx().emit_err(DuplicateAttribute {
+            this: attr.span,
+            other: span,
+            name,
+            warning: false,
+        });
     }
 }
 

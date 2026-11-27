@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::Reflectiveness::{NonReflective, Reflective};
 use rustc_lint_defs::ToolOptions;
-use rustc_lint_defs::builtin::{DUPLICATE_TOOLS, UNKNOWN_CRATE_TYPES};
+use rustc_lint_defs::builtin::DUPLICATE_TOOLS;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
@@ -19,10 +19,9 @@ pub(crate) struct CrateNameParser;
 
 impl SingleAttributeParser for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -40,8 +39,7 @@ impl CombineAttributeParser for CrateTypeParser {
     const PATH: &[Symbol] = &[sym::crate_type];
     type Item = CrateType;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -55,7 +53,7 @@ impl CombineAttributeParser for CrateTypeParser {
         let crate_type = cx.expect_string_literal(n)?;
 
         let Ok(crate_type) = crate_type.try_into() else {
-            // We don't error on invalid `#![crate_type]` when not applied to a crate
+            // We error on invalid `#![crate_type]` when not applied to a crate
             if cx.shared.target == Target::Crate {
                 let candidate = find_best_match_for_name_with_substrings(
                     &CrateType::all_stable().iter().map(|(name, _)| *name).collect::<Vec<_>>(),
@@ -63,13 +61,9 @@ impl CombineAttributeParser for CrateTypeParser {
                     Some(5),
                 );
                 let span = n.value_span;
-                cx.emit_lint(
-                    UNKNOWN_CRATE_TYPES,
-                    UnknownCrateTypes {
-                        sugg: candidate.map(|s| UnknownCrateTypesSuggestion { span, snippet: s }),
-                    },
-                    span,
-                );
+                cx.emit_err(UnknownCrateTypes {
+                    sugg: candidate.map(|s| UnknownCrateTypesSuggestion { span, snippet: s }),
+                });
             }
             return None;
         };
@@ -82,10 +76,9 @@ pub(crate) struct RecursionLimitParser;
 
 impl SingleAttributeParser for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -114,10 +107,9 @@ pub(crate) struct TypeLengthLimitParser;
 
 impl SingleAttributeParser for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -158,9 +150,8 @@ pub(crate) struct NoStdParser;
 
 impl NoArgsAttributeParser for NoStdParser {
     const PATH: &[Symbol] = &[sym::no_std];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoStd;
 }
@@ -169,9 +160,8 @@ pub(crate) struct NoMainParser;
 
 impl NoArgsAttributeParser for NoMainParser {
     const PATH: &[Symbol] = &[sym::no_main];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
 }
@@ -189,9 +179,8 @@ pub(crate) struct WindowsSubsystemParser;
 
 impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -245,9 +234,8 @@ pub(crate) struct NoBuiltinsParser;
 
 impl NoArgsAttributeParser for NoBuiltinsParser {
     const PATH: &[Symbol] = &[sym::no_builtins];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
 }
@@ -285,8 +273,7 @@ impl CombineAttributeParser for FeatureParser {
     const PATH: &[Symbol] = &[sym::feature];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -300,7 +287,7 @@ impl CombineAttributeParser for FeatureParser {
 
         if list.is_empty() {
             let attr_span = cx.attr_span;
-            cx.adcx().warn_empty_attribute(attr_span);
+            cx.adcx().empty_attribute(attr_span);
         }
 
         let mut res = Vec::new();
@@ -345,7 +332,7 @@ fn parse_register_tool(
 
     if list.is_empty() {
         let attr_span = cx.attr_span;
-        cx.adcx().warn_empty_attribute(attr_span);
+        cx.adcx().empty_attribute(attr_span);
     }
 
     for elem in list.mixed() {

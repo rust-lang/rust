@@ -122,7 +122,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::link_section,
     sym::linkage,
     sym::loop_match,
-    sym::macro_escape,
     sym::macro_export,
     sym::macro_use,
     sym::marker,

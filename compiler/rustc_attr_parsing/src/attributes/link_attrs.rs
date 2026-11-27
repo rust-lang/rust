@@ -4,7 +4,7 @@ use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
-use rustc_lint_defs::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNUSED_ATTRIBUTES};
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
@@ -28,12 +28,9 @@ pub(crate) struct LinkNameParser;
 
 impl SingleAttributeParser for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Error(Target::Param),
-    ]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn), Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
@@ -75,7 +72,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod), Error(Target::Param)]);
+        AllowedTargets::AllowList(&[Allow(Target::ForeignMod)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
@@ -277,7 +274,7 @@ impl CombineAttributeParser for LinkParser {
             })
         });
         if matches!(abi, ExternAbi::Rust) {
-            cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
+            cx.emit_err(Link { span: attr_span });
         }
     }
 }
@@ -516,13 +513,13 @@ fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReaso
 
 impl SingleAttributeParser for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
     };
     const STABILITY: AttributeStability = AttributeStability::Stable;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -632,11 +629,8 @@ pub(crate) struct LinkOrdinalParser;
 
 impl SingleAttributeParser for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Warn(Target::MacroCall),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn), Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(
         List: &["ordinal"],
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
