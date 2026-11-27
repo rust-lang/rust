@@ -33,8 +33,7 @@ const ERROR_TESTS_PATH: &str = "tests/ui/error-codes/";
 const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0717"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
-const IGNORE_UI_TEST_CHECK: &[&str] =
-    &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
+const IGNORE_UI_TEST_CHECK: &[&str] = &["E0461", "E0514", "E0554", "E0640", "E0717", "E0729"];
 
 pub fn check(root_path: &Path, search_paths: &[&Path], tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("error_codes");
