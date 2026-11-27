@@ -1,6 +1,11 @@
-//@ revisions: OPT DBG
-//@ [OPT] compile-flags: -C opt-level=3 -C no-prepopulate-passes
+//@ revisions: OPT-OLD OPT-NEW DBG
+//@ [OPT-OLD] compile-flags: -C opt-level=3 -C no-prepopulate-passes
+//@ [OPT-NEW] compile-flags: -C opt-level=3 -C no-prepopulate-passes
+//@ [OPT-OLD] max-llvm-major-version: 22
+//@ [OPT-NEW] min-llvm-version: 23
 //@ [DBG] compile-flags: -C opt-level=0 -C no-prepopulate-passes
+//@ [OPT-OLD] filecheck-flags: --check-prefix=OPT
+//@ [OPT-NEW] filecheck-flags: --check-prefix=OPT
 //@ only-64bit (so I don't need to worry about usize)
 #![crate_type = "lib"]
 
@@ -193,8 +198,9 @@ pub unsafe fn check_bool_to_ordering(x: bool) -> std::cmp::Ordering {
 pub unsafe fn check_nonnull_to_ptr(x: NonNull<u8>) -> *const u8 {
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
-    // OPT: %0 = icmp ne ptr %x, null
-    // OPT: call void @llvm.assume(i1 %0)
+    // OPT-OLD: %0 = icmp ne ptr %x, null
+    // OPT-OLD: call void @llvm.assume(i1 %0)
+    // OPT-NEW: call void @llvm.assume(i1 true) [ "nonnull"(ptr %x) ]
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
     // CHECK: ret ptr %x
@@ -207,8 +213,9 @@ pub unsafe fn check_nonnull_to_ptr(x: NonNull<u8>) -> *const u8 {
 pub unsafe fn check_ptr_to_nonnull(x: *const u8) -> NonNull<u8> {
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
-    // OPT: %0 = icmp ne ptr %x, null
-    // OPT: call void @llvm.assume(i1 %0)
+    // OPT-OLD: %0 = icmp ne ptr %x, null
+    // OPT-OLD: call void @llvm.assume(i1 %0)
+    // OPT-NEW: call void @llvm.assume(i1 true) [ "nonnull"(ptr %x) ]
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
     // CHECK: ret ptr %x

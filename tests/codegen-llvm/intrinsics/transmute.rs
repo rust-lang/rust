@@ -1,3 +1,6 @@
+//@ revisions: OLD NEW
+//@ [OLD] max-llvm-major-version: 22
+//@ [NEW] min-llvm-version: 23
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
 
@@ -379,11 +382,15 @@ pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
 #[no_mangle]
 pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
     // CHECK: %_0.0 = inttoptr i64 %x.0 to ptr
-    // CHECK: %0 = icmp ne ptr %_0.0, null
-    // CHECK: call void @llvm.assume(i1 %0)
-    // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
-    // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
-    // CHECK: ret { ptr, i64 } %2
+    // OLD: %0 = icmp ne ptr %_0.0, null
+    // OLD: call void @llvm.assume(i1 %0)
+    // OLD: %1 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
+    // OLD: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
+    // OLD: ret { ptr, i64 } %2
+    // NEW: call void @llvm.assume(i1 true) [ "nonnull"(ptr %_0.0) ]
+    // NEW: %0 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
+    // NEW: %1 = insertvalue { ptr, i64 } %0, i64 %x.1, 1
+    // NEW: ret { ptr, i64 } %1
     transmute(x)
 }
 
