@@ -266,29 +266,19 @@ class BuildDirOverride(unittest.TestCase):
         self.check_build_dir([], "build")
 
     def test_config(self):
-        self.check_build_dir(
-            [], "configured", 'build.build-dir = "configured"'
-        )
+        self.check_build_dir([], "configured", 'build.build-dir = "configured"')
 
     def test_set_override(self):
-        self.check_build_dir(
-            ["--set", "build.build-dir=custom"], "custom"
-        )
+        self.check_build_dir(["--set", "build.build-dir=custom"], "custom")
 
     def test_set_equals_syntax(self):
-        self.check_build_dir(
-            ["--set=build.build-dir=custom"], "custom"
-        )
+        self.check_build_dir(["--set=build.build-dir=custom"], "custom")
 
     def test_quoted_path(self):
-        self.check_build_dir(
-            ["--set", 'build.build-dir="custom path"'], "custom path"
-        )
+        self.check_build_dir(["--set", 'build.build-dir="custom path"'], "custom path")
 
     def test_unquoted_path_with_spaces(self):
-        self.check_build_dir(
-            ["--set", "build.build-dir=custom path"], "custom path"
-        )
+        self.check_build_dir(["--set", "build.build-dir=custom path"], "custom path")
 
     def test_override_precedence(self):
         self.check_build_dir(
@@ -305,14 +295,10 @@ class BuildDirOverride(unittest.TestCase):
         )
 
     def test_unrelated_override(self):
-        self.check_build_dir(
-            ["--set", "rust.remap-debuginfo=true"], "build"
-        )
+        self.check_build_dir(["--set", "rust.remap-debuginfo=true"], "build")
 
     def test_path_with_equals(self):
-        self.check_build_dir(
-            ["--set", "build.build-dir=a=b"], "a=b"
-        )
+        self.check_build_dir(["--set", "build.build-dir=a=b"], "a=b")
 
     def test_duplicate_override(self):
         with self.assertRaisesRegex(ValueError, "Duplicate build.build-dir"):
