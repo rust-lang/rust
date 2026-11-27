@@ -1,3 +1,4 @@
+use std::num::NonZeroU32;
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
@@ -764,7 +765,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     CanonAbi::X86(X86Call::Fastcall) => x86::Flavor::Fastcall,
                     CanonAbi::X86(X86Call::Vectorcall) => x86::Flavor::Vectorcall,
                     CanonAbi::C | CanonAbi::X86(X86Call::Stdcall) => {
-                        x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
+                        let regparam = cx.x86_abi_opt().regparm.and_then(NonZeroU32::new);
+                        x86::Flavor::General { regparam }
                     }
                     _ => x86::Flavor::General { regparam: None },
                 };

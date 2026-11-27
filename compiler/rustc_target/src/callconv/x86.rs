@@ -1,9 +1,11 @@
+use std::num::NonZeroU32;
+
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
 use crate::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, PassMode, TyAbiInterface,
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode, TyAbiInterface,
 };
 use crate::spec::{HasTargetSpec, RustcAbi};
 
@@ -42,7 +44,7 @@ where
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Flavor {
-    General { regparam: Option<u32> },
+    General { regparam: Option<NonZeroU32> },
     Fastcall,
     Vectorcall,
 }
@@ -227,15 +229,11 @@ where
         classify_arg(cx, arg);
     }
 
-    fill_inregs(cx, fn_abi, opts, false);
+    fill_inregs(cx, fn_abi, opts);
 }
 
-pub(crate) fn fill_inregs<'a, Ty, C>(
-    cx: &C,
-    fn_abi: &mut FnAbi<'a, Ty>,
-    opts: X86Options,
-    rust_abi: bool,
-) where
+pub(crate) fn fill_inregs<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
+where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     // Mark arguments as InReg like clang does it,
@@ -258,22 +256,24 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     let mut free_regs = match opts.flavor {
         _ if fn_abi.c_variadic => 0,
         Flavor::Fastcall | Flavor::Vectorcall => 2,
-        Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
+        Flavor::General { regparam: None } => 0,
+        Flavor::General { regparam: Some(n) } => u64::from(n.get()),
     };
 
     if free_regs == 0 {
         return;
     }
 
-    // For types generating PassMode::Cast, InRegs will not be set.
-    // Maybe, this is a FIXME
-    let has_casts = fn_abi.args.iter().any(|arg| matches!(arg.mode, PassMode::Cast { .. }));
-    if has_casts && rust_abi {
-        return;
-    }
-
     for arg in fn_abi.args.iter_mut() {
         let attrs = match arg.mode {
+            PassMode::Indirect { ref mut attrs, address_space: _, mode: IndirectMode::Pointer } => {
+                if free_regs > 0 {
+                    free_regs -= 1;
+                    attrs.set(ArgAttribute::InReg);
+                }
+
+                continue;
+            }
             PassMode::Ignore | PassMode::Indirect { attrs: _, address_space: _, mode: _ } => {
                 continue;
             }
