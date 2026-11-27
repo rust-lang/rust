@@ -3,11 +3,9 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #161038
 
-// Two different variations of #161038: one with a trait with a method taking
-// a reference and one taking an impl Trait. Fundamentally, both exploit the
+// Different variations of #161038: one with a trait with a method taking
+// a reference and one taking an impl Trait. Fundamentally, each exploit the
 // fact that we don't treat `'a` as live in `Produce<'a>` bound in the return
 // type.
 
@@ -60,7 +58,7 @@ fn through_alias_param() {
     let wrong: &Payload;
     {
         let x: Box<Payload> = Box::new(Box::new(1));
-        let r: &Payload = &*x; //[nll]~ ERROR `*x` does not live long enough
+        let r: &Payload = &*x; //~ ERROR `*x` does not live long enough
         wrong = make_producer_alias(r).produce();
     }
     println!("{wrong}");
@@ -70,8 +68,36 @@ fn through_impl_header() {
     let wrong: &Payload;
     {
         let x: Box<Payload> = Box::new(Box::new(1));
-        let r: &Payload = &*x; //[nll]~ ERROR `*x` does not live long enough
+        let r: &Payload = &*x; //~ ERROR `*x` does not live long enough
         wrong = make_producer_ref(r).produce();
+    }
+    println!("{wrong}");
+}
+
+trait OutlivesProjection<'a, 'b> {
+    type Output: Produce<'a> + 'b;
+    fn shorten(x: &'a Payload) -> Self::Output;
+}
+impl<'a: 'b, 'b> OutlivesProjection<'a, 'b> for () {
+    type Output = &'a Payload;
+    fn shorten(x: &'a Payload) -> Self::Output {
+        x
+    }
+}
+
+fn make_producer_projection<'a, 'b>(payload: &'a Payload) -> impl Produce<'a> + 'b + use<'a, 'b>
+where
+    (): OutlivesProjection<'a, 'b>,
+{
+    <() as OutlivesProjection<'a, 'b>>::shorten(payload)
+}
+
+fn through_concrete_projection() {
+    let wrong: &Payload;
+    {
+        let x: Box<Payload> = Box::new(Box::new(1));
+        let r: &Payload = &*x; //~ ERROR `*x` does not live long enough
+        wrong = make_producer_projection(r).produce();
     }
     println!("{wrong}");
 }
@@ -79,4 +105,5 @@ fn through_impl_header() {
 fn main() {
     through_alias_param();
     through_impl_header();
+    through_concrete_projection();
 }

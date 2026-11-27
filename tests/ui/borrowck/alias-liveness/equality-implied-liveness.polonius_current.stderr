@@ -1,0 +1,89 @@
+error: lifetime may not live long enough
+  --> $DIR/equality-implied-liveness.rs:40:1
+   |
+LL |   fn make<'a: 'a, 'b: 'b, T: Swap + 'a>(
+   |   ^       --      -- lifetime `'b` defined here
+   |   |       |
+   |  _|       lifetime `'a` defined here
+   | |
+...  |
+LL | |     t: T,
+LL | | ) -> impl Swap + 'b {
+   | |___________________^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/equality-implied-liveness.rs:40:1
+   |
+LL |   fn make<'a: 'a, 'b: 'b, T: Swap + 'a>(
+   |   ^       --      -- lifetime `'b` defined here
+   |   |       |
+   |  _|       lifetime `'a` defined here
+   | |
+...  |
+LL | |     t: T,
+LL | | ) -> impl Swap + 'b {
+   | |___________________^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: one or more lifetime errors were found in this item
+  --> $DIR/equality-implied-liveness.rs:40:4
+   |
+LL | fn make<'a: 'a, 'b: 'b, T: Swap + 'a>(
+   |    ^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
+
+error[E0597]: `value` does not live long enough
+  --> $DIR/equality-implied-liveness.rs:58:38
+   |
+LL |     let value = 43u8;
+   |         ----- binding `value` declared here
+LL |     let short = Rc::new(RefCell::new(&value));
+   |                                      ^^^^^^ borrowed value does not live long enough
+...
+LL |     let result: &'static u8 = *long.borrow();
+   |                 ----------- type annotation requires that `value` is borrowed for `'static`
+LL |     result
+LL | }
+   | - `value` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/equality-implied-liveness.rs:61:54
+   |
+LL |     make(((), Equal(&&(), &&())), long.clone()).swap(make(((), Equal(&&(), &&())), short));
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | ) -> impl Swap + 'b + use<'b, T> {
+   |                     ++++++++++++
+
+error[E0597]: `value` does not live long enough
+  --> $DIR/equality-implied-liveness.rs:70:38
+   |
+LL |     let value = 43u8;
+   |         ----- binding `value` declared here
+LL |     let short = Rc::new(RefCell::new(&value));
+   |                                      ^^^^^^ borrowed value does not live long enough
+...
+LL |     let result: &'static u8 = *long.borrow();
+   |                 ----------- type annotation requires that `value` is borrowed for `'static`
+LL |     result
+LL | }
+   | - `value` dropped here while still borrowed
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/equality-implied-liveness.rs:73:49
+   |
+LL |     make2(Equal(&&(), &&()), long.clone()).swap(make2(Equal(&&(), &&()), short));
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn make2<'a: 'a, 'b: 'b, T: Swap + 'a>(_: Equal<'a, 'b>, t: T) -> impl Swap + 'b + use<'b, T> {
+   |                                                                                  ++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
