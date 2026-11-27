@@ -487,6 +487,7 @@ impl Config {
             target: toml_target,
             dist: toml_dist,
             pgo: toml_pgo,
+            perf: _toml_perf,
             profile: _,
             include: _,
         } = toml;

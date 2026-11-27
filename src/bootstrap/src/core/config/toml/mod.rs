@@ -15,6 +15,7 @@ pub mod dist;
 pub mod gcc;
 pub mod install;
 pub mod llvm;
+pub mod perf;
 pub mod pgo;
 pub mod rust;
 pub mod target;
@@ -32,6 +33,7 @@ use llvm::Llvm;
 use rust::Rust;
 use target::TomlTarget;
 
+use crate::core::config::toml::perf::Perf;
 use crate::core::config::toml::pgo::Pgo;
 use crate::core::config::{Config, Merge, ReplaceOpt};
 use crate::utils::change_tracker::{find_recent_config_change_ids, human_readable_changes};
@@ -54,6 +56,7 @@ pub(crate) struct TomlConfig {
     pub(super) rust: Option<Rust>,
     pub(super) target: Option<HashMap<String, TomlTarget>>,
     pub(super) dist: Option<Dist>,
+    pub(super) perf: Option<Perf>,
     pub(super) pgo: Option<Pgo>,
     pub(super) profile: Option<String>,
     pub(super) include: Option<Vec<PathBuf>>,
@@ -72,6 +75,7 @@ impl Merge for TomlConfig {
             rust,
             dist,
             target,
+            perf,
             pgo,
             profile,
             change_id,
@@ -99,6 +103,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
         do_merge(&mut self.pgo, pgo, replace);
+        do_merge(&mut self.perf, perf, replace);
 
         match (self.target.as_mut(), target) {
             (_, None) => {}
