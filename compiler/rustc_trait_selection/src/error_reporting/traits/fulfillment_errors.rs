@@ -3844,10 +3844,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Note number of types that were expected and given
             err.note(format!(
                 "expected a closure taking {} argument{}, but one taking {} argument{} was given",
-                given.len(),
-                pluralize!(given.len()),
                 expected.len(),
                 pluralize!(expected.len()),
+                given.len(),
+                pluralize!(given.len()),
             ));
             return;
         }
