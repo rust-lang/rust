@@ -230,7 +230,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::{DebugInfo, EntryFnType, Offload};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, dummy_spanned, respan, span_bug, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, dummy_spanned, respan, span_bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument, trace};
 
@@ -1009,30 +1009,19 @@ fn visit_instance_use<'tcx>(
         } else {
             false
         };
-        if let Intrinsic::Rustc(name) = intrinsic.name {
-            // The `abort_immediate` intrinsic lowers to a call to the `crash_impl` lang item if that is present,
-            // but is handled by the backend otherwise.
-            if name == sym::abort_immediate
-                && let Some(def_id) = tcx.lang_items().get(LangItem::CrashImpl)
-            {
-                let crash_impl_instance = Instance::mono(tcx, def_id);
-                if tcx.should_codegen_locally(crash_impl_instance) {
-                    output.push(create_fn_mono_item(tcx, crash_impl_instance, source));
-                }
-            } else if let Some(_requirement) = ValidityRequirement::from_rustc_intrinsic(name) {
-                // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
-                // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
-                // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
-                // codegen a call to that function without generating code for the function itself.
-                let def_id = tcx.require_lang_item(LangItem::PanicNounwind, source);
-                let panic_instance = Instance::mono(tcx, def_id);
-                if tcx.should_codegen_locally(panic_instance) {
-                    output.push(create_fn_mono_item(tcx, panic_instance, source));
-                }
+        if let Intrinsic::Rustc(name) = intrinsic.name
+            && let Some(_requirement) = ValidityRequirement::from_rustc_intrinsic(name)
+        {
+            // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+            // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+            // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+            // codegen a call to that function without generating code for the function itself.
+            let def_id = tcx.require_lang_item(LangItem::PanicNounwind, source);
+            let panic_instance = Instance::mono(tcx, def_id);
+            if tcx.should_codegen_locally(panic_instance) {
+                output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
-        }
-
-        if !intrinsic.must_be_overridden
+        } else if !intrinsic.must_be_overridden
             && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback || !intrinsic_is_replaced)
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
@@ -1385,6 +1374,15 @@ fn collect_items_of_instance<'tcx>(
         }
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
+        }
+
+        // The backend may insert calls to this lang item at any time,
+        // so collect it unconditionally.
+        if let Some(def_id) = tcx.lang_items().get(LangItem::CrashImpl) {
+            let crash_impl_instance = Instance::mono(tcx, def_id);
+            if tcx.should_codegen_locally(crash_impl_instance) {
+                collector.used_items.push(create_fn_mono_item(tcx, crash_impl_instance, DUMMY_SP));
+            }
         }
     }
 

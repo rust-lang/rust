@@ -1098,7 +1098,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
-    fn abort_immediate(&mut self) {
+    fn abort_immediate_impl(&mut self) {
         self.call_intrinsic("llvm.trap", &[], &[]);
     }
 
