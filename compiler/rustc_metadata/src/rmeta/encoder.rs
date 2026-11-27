@@ -648,8 +648,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         (self.syntax_context_remapping, self.local_expn_id_remapping) = tcx
             .with_stable_hashing_context(|mut ctx| {
                 (
-                    SyntaxContextRemapper::with(|r| r.remapping_results(&mut ctx)),
-                    LocalExpnIdRemapper::with(|r| r.remapping_results(&mut ctx)),
+                    SyntaxContextRemapper::with(|mut r| r.remapping_results(&mut ctx)),
+                    LocalExpnIdRemapper::with(|mut r| r.remapping_results(&mut ctx)),
                 )
             });
 
