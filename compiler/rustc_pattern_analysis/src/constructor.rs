@@ -1008,6 +1008,19 @@ pub enum ConstructorSet<Cx: PatCx> {
     NoConstructors,
 }
 
+/// Identifies a row in the matrix, that a constructor came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RowId(u32);
+
+impl RowId {
+    pub fn new(i: usize) -> Self {
+        RowId(i.try_into().unwrap())
+    }
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
 /// Describes the result of analyzing the constructors in a column of a match.
 ///
 /// `present` is morally the set of constructors present in the column, and `missing` is the set of
