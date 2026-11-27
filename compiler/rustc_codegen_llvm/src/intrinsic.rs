@@ -209,66 +209,73 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
                     feature_err(self.sess(), feature, span, msg).emit();
                 }
 
-                let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
-                    bug!("the va_arg intrinsic does not support non-scalar types")
-                };
+                'blk: {
+                    // The backend_repr of x87_f80 is not a scalar, so it needs special-casing.
+                    if result_layout.is_x87_f80(self) {
+                        break 'blk;
+                    }
 
-                // We reject types that would never be passed as varargs in C because
-                // they get promoted to a larger type, specifically integers smaller than
-                // c_int and float type smaller than c_double.
-                match scalar.primitive() {
-                    Primitive::Pointer(_) => {
-                        // Pointers are always OK.
-                    }
-                    Primitive::Bool => {
-                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
-                        if 1 < u64::from(target_c_int_width) {
-                            // Smaller integer types are automatically promototed and `va_arg`
-                            // should not be called on them.
-                            bug!(
-                                "va_arg got i{} but needs at least c_int (an i{})",
-                                1,
-                                target_c_int_width
-                            );
+                    let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
+                        bug!("the va_arg intrinsic does not support non-scalar types")
+                    };
+
+                    // We reject types that would never be passed as varargs in C because
+                    // they get promoted to a larger type, specifically integers smaller than
+                    // c_int and float type smaller than c_double.
+                    match scalar.primitive() {
+                        Primitive::Pointer(_) => {
+                            // Pointers are always OK.
                         }
-                    }
-                    Primitive::Int(..) => {
-                        let int_width = self.cx().size_of(result_layout.ty).bits();
-                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
-                        if int_width < u64::from(target_c_int_width) {
-                            // Smaller integer types are automatically promototed and `va_arg`
-                            // should not be called on them.
-                            bug!(
-                                "va_arg got i{} but needs at least c_int (an i{})",
-                                int_width,
-                                target_c_int_width
-                            );
+                        Primitive::Bool => {
+                            let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                            if 1 < u64::from(target_c_int_width) {
+                                // Smaller integer types are automatically promototed and `va_arg`
+                                // should not be called on them.
+                                bug!(
+                                    "va_arg got i{} but needs at least c_int (an i{})",
+                                    1,
+                                    target_c_int_width
+                                );
+                            }
                         }
-                    }
-                    Primitive::Float(Float::F16) => {
-                        bug!("the va_arg intrinsic does not support `f16`")
-                    }
-                    Primitive::Float(Float::F16B) => {
-                        bug!("the va_arg intrinsic does not support `f16b`")
-                    }
-                    Primitive::Float(Float::F32) => {
-                        // c_double is actually f32 on avr.
-                        if self.cx().sess().target.arch != Arch::Avr {
-                            bug!("the va_arg intrinsic does not support `f32` on this target")
+                        Primitive::Int(..) => {
+                            let int_width = self.cx().size_of(result_layout.ty).bits();
+                            let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                            if int_width < u64::from(target_c_int_width) {
+                                // Smaller integer types are automatically promototed and `va_arg`
+                                // should not be called on them.
+                                bug!(
+                                    "va_arg got i{} but needs at least c_int (an i{})",
+                                    int_width,
+                                    target_c_int_width
+                                );
+                            }
                         }
-                    }
-                    Primitive::Float(Float::F64) => {
-                        // 64-bit floats are always OK.
-                    }
-                    Primitive::Float(Float::F128) => {
-                        // Supported on some targets, especially where long double is IEEE f128.
-                    }
-                    Primitive::Float(Float::PpcF128) => {
-                        // Supported on powerpc and powerpc64 targets.
-                    }
-                    Primitive::Float(Float::X87F80) => {
-                        // FIXME(x87_f80) we should support this.
-                        bug!("the va_arg intrinsic does not currently support `x87_f80`")
+                        Primitive::Float(Float::F16) => {
+                            bug!("the va_arg intrinsic does not support `f16`")
+                        }
+                        Primitive::Float(Float::F16B) => {
+                            bug!("the va_arg intrinsic does not support `f16b`")
+                        }
+                        Primitive::Float(Float::F32) => {
+                            // c_double is actually f32 on avr.
+                            if self.cx().sess().target.arch != Arch::Avr {
+                                bug!("the va_arg intrinsic does not support `f32` on this target")
+                            }
+                        }
+                        Primitive::Float(Float::F64) => {
+                            // 64-bit floats are always OK.
+                        }
+                        Primitive::Float(Float::F128) => {
+                            // Supported on some targets, especially where long double is IEEE f128.
+                        }
+                        Primitive::Float(Float::PpcF128) => {
+                            // Supported on powerpc and powerpc64 targets.
+                        }
+                        Primitive::Float(Float::X87F80) => {
+                            // The user-facing x87_f80 type is accepted above.
+                            bug!("the va_arg intrinsic does not support `x87_f80_raw`")
+                        }
                     }
                 }
 

@@ -12,8 +12,7 @@ use rustc_span::bug;
 use rustc_target::spec::{Arch, Env, LlvmAbi, RustcAbi, Target};
 
 use crate::builder::Builder;
-use crate::llvm::Value;
-use crate::type_of::LayoutLlvmExt;
+use crate::llvm::{Type, Value};
 
 fn round_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
@@ -37,6 +36,22 @@ fn round_pointer_up_to_alignment<'ll>(
         &[bx.type_ptr(), bx.type_isize()],
         &[ptr, bx.const_usize(mask)],
     )
+}
+
+/// A helper for backend_type that ensures we don't call it on non-primitive types.
+///
+/// Doing so is risky because LLVM and rustc's idea of how big or aligned the type
+/// is might be different.
+fn to_backend_type<'ll, 'tcx>(
+    bx: &Builder<'_, 'll, 'tcx>,
+    ty_and_layout: TyAndLayout<'tcx>,
+) -> Type<'ll> {
+    if ty_and_layout.is_x87_f80(bx.cx) {
+        bx.type_x87_f80()
+    } else {
+        assert!(ty_and_layout.backend_repr.is_scalar());
+        bx.backend_type(ty_and_layout)
+    }
 }
 
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(
@@ -83,6 +98,10 @@ fn get_param_type_alignment<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     layout: TyAndLayout<'tcx>,
 ) -> Align {
+    if layout.is_x87_f80(bx) {
+        return layout.align;
+    }
+
     let BackendRepr::Scalar(scalar) = layout.backend_repr else {
         bug!("unexpected backend repr {:?}", layout.backend_repr);
     };
@@ -170,12 +189,12 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
 
     let (llty, size, align) = if indirect {
         (
-            bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, layout.ty)).llvm_type(bx.cx),
+            to_backend_type(bx, bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, layout.ty))),
             bx.cx.data_layout().pointer_size(),
             bx.cx.data_layout().pointer_align(),
         )
     } else {
-        (layout.llvm_type(bx.cx), layout.size, get_param_type_alignment(bx, layout))
+        (to_backend_type(bx, layout), layout.size, get_param_type_alignment(bx, layout))
     };
     let (addr, addr_align) = emit_direct_ptr_va_arg(
         bx,
@@ -188,7 +207,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     );
     if indirect {
         let tmp_ret = bx.load(llty, addr, addr_align);
-        bx.load(layout.llvm_type(bx.cx), tmp_ret, align)
+        bx.load(to_backend_type(bx, layout), tmp_ret, align)
     } else {
         bx.load(llty, addr, addr_align)
     }
@@ -274,7 +293,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
         reg_addr = bx.ptradd(reg_addr, offset);
     }
-    let reg_type = layout.llvm_type(bx);
+    let reg_type = to_backend_type(bx, layout);
     let reg_value = bx.load(reg_type, reg_addr, layout.align);
     bx.br(end);
 
@@ -295,7 +314,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     bx.br(end);
 
     bx.switch_to_block(end);
-    bx.phi(layout.immediate_llvm_type(bx), &[reg_value, stack_value], &[in_reg, on_stack])
+    bx.phi(to_backend_type(bx, layout), &[reg_value, stack_value], &[in_reg, on_stack])
 }
 
 fn is_powerpc_softfloat_abi(target: &Target) -> bool {
@@ -434,7 +453,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     // Return the appropriate result.
     bx.switch_to_block(end);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
-    let val_type = layout.llvm_type(bx);
+    let val_type = to_backend_type(bx, layout);
     let val_addr =
         if is_indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
     let align = get_param_type_alignment(bx, layout);
@@ -543,7 +562,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     // Return the appropriate result.
     bx.switch_to_block(end);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
-    let val_type = layout.llvm_type(bx);
+    let val_type = to_backend_type(bx, layout);
     let val_addr =
         if indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
     bx.load(val_type, val_addr, layout.align)
@@ -629,7 +648,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         }
         BackendRepr::Memory { .. } => {
             let mem_addr = x86_64_sysv64_va_arg_from_memory(bx, va_list_addr, layout);
-            return bx.load(layout.llvm_type(bx), mem_addr, layout.align);
+            return bx.load(to_backend_type(bx, layout), mem_addr, layout.align);
         }
     };
 
@@ -791,7 +810,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
 
     bx.switch_to_block(end);
 
-    let val_type = layout.llvm_type(bx);
+    let val_type = to_backend_type(bx, layout);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
 
     bx.load(val_type, val_addr, layout.align)
@@ -809,7 +828,7 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
 
         // A memcpy below optimizes poorly for 128-bit integers.
         let tmp = bx.alloca(layout.size, layout.align);
-        let val = bx.load(layout.llvm_type(bx), reg_addr, src_align);
+        let val = bx.load(to_backend_type(bx, layout), reg_addr, src_align);
         bx.store(val, tmp, layout.align);
         tmp
     } else {
@@ -932,7 +951,7 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     bx.switch_to_block(end);
     let value_addr =
         bx.phi(bx.type_ptr(), &[reg_value_addr, overflow_value_addr], &[maybe_reg, from_overflow]);
-    bx.load(layout.llvm_type(bx), value_addr, layout.align)
+    bx.load(to_backend_type(bx, layout), value_addr, layout.align)
 }
 
 fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
@@ -969,7 +988,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     bx.store(next_ptr, va_list_addr, ptr_align_abi);
 
     // Load and return the argument value
-    bx.load(layout.llvm_type(bx), aligned_ptr, layout.align)
+    bx.load(to_backend_type(bx, layout), aligned_ptr, layout.align)
 }
 
 fn emit_xtensa_va_arg<'ll, 'tcx>(
@@ -1066,7 +1085,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     assert!(bx.tcx().sess.target.endian == Endian::Little);
     let value_ptr =
         bx.phi(bx.type_ptr(), &[regsave_value_ptr, stack_value_ptr], &[from_regsave, from_stack]);
-    bx.load(layout.llvm_type(bx), value_ptr, layout.align)
+    bx.load(to_backend_type(bx, layout), value_ptr, layout.align)
 }
 
 /// Determine the va_arg implementation to use. The LLVM va_arg instruction
