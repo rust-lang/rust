@@ -228,20 +228,17 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
         }
 
         // `Self` is handled first, unless it's been handled in `parent_args`.
-        if has_self {
-            if let Some(&param) = params.peek() {
-                if param.index == 0 {
-                    if let GenericParamDefKind::Type { .. } = param.kind {
-                        assert_eq!(&args[..], &[]);
-                        args.push(
-                            self_ty
-                                .map(|ty| ty.into())
-                                .unwrap_or_else(|| ctx.inferred_kind(&args, param, true)),
-                        );
-                        params.next();
-                    }
-                }
-            }
+        if has_self
+            && let Some(&param) = params.peek()
+            && param.index == 0
+            && let GenericParamDefKind::Type { .. } = param.kind
+        {
+            assert_eq!(args.as_slice(), []);
+            let self_ty = self_ty
+                .map(|ty| ty.into())
+                .unwrap_or_else(|| ctx.inferred_kind(&args, param, true));
+            args.push(self_ty);
+            params.next();
         }
 
         // Check whether this segment takes generic arguments and the user has provided any.

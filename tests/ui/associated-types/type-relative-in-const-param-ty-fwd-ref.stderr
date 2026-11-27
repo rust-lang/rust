@@ -1,0 +1,8 @@
+error: const parameter type references generic parameter `N` before it is declared
+  --> $DIR/type-relative-in-const-param-ty-fwd-ref.rs:7:35
+   |
+LL | struct Def0<T: Trait<N>, const N: T::Type>(T);
+   |                                   ^^^^^^^ implicitly references parameter `N`
+
+error: aborting due to 1 previous error
+

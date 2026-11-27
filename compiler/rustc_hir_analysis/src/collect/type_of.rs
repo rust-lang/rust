@@ -79,6 +79,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let hir_node = tcx.hir_node(hir_id);
+    let original_def_id = def_id;
     let def_id = match hir_node {
         // For generic params, we lower in the context of the overarching item to be able to resolve
         // type-relative paths in type param defaults & const param types.
@@ -263,15 +264,30 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         }
 
         Node::GenericParam(param) => match &param.kind {
-            GenericParamKind::Type { default: Some(ty), .. } => icx.lower_ty(ty),
-            GenericParamKind::Const { ty, .. } => {
-                let lowered_ty = icx.lower_ty(ty);
-                if !tcx.features().generic_const_parameter_types() && lowered_ty.has_param() {
-                    let guar =
-                        tcx.dcx().emit_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty });
+            GenericParamKind::Type { default: Some(hir_ty), .. } => {
+                let ty = icx.lower_ty(hir_ty);
+                super::reject_implicit_forward_references_to_param(
+                    &icx,
+                    original_def_id,
+                    ty,
+                    hir_ty.span,
+                    "type parameter default",
+                )
+            }
+            GenericParamKind::Const { ty: hir_ty, .. } => {
+                let ty = icx.lower_ty(hir_ty);
+                if !tcx.features().generic_const_parameter_types() && ty.has_param() {
+                    let guar = tcx.dcx().emit_err(ParamInTyOfConstParam { span: hir_ty.span, ty });
                     Ty::new_error(tcx, guar)
                 } else {
-                    lowered_ty
+                    super::reject_implicit_forward_references_to_param(
+                        &icx,
+                        original_def_id,
+                        ty,
+                        hir_ty.span,
+                        "const parameter type",
+                    );
+                    ty
                 }
             }
             _ => bug!("type_of: unexpected node kind {hir_node:?}"),

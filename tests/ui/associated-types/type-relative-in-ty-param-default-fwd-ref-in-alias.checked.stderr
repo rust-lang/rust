@@ -1,0 +1,8 @@
+error: type parameter default references generic parameter `N` before it is declared
+  --> $DIR/type-relative-in-ty-param-default-fwd-ref-in-alias.rs:18:39
+   |
+LL | struct Def0<T: Trait<Discard<N>>, U = T::Type, const N: usize = 0>(T, U);
+   |                                       ^^^^^^^ implicitly references parameter `N`
+
+error: aborting due to 1 previous error
+
