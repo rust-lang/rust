@@ -466,6 +466,65 @@ fn test_capture_env_at_spawn() {
     );
 }
 
+#[test]
+fn test_capture_env_on_remove_env_with_nul_byte() {
+    // What we expect when given env vars with interior nul byte
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd").env("BAD\0", "").args(&["/C", "exit 0"]).status()
+    } else {
+        shell_cmd().env("BAD\0", "").arg("-c").arg("true").status()
+    };
+    assert!(status.unwrap_err().kind() == ErrorKind::InvalidInput);
+
+    // We remove one of the bad env var with interior nul byte but not the other
+    // this should error
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .envs([("BAD\0", ""), ("BAD2\0", "")])
+            .env_remove("BAD\0")
+            .args(&["/C", "exit 0"])
+            .status()
+    } else {
+        shell_cmd()
+            .envs([("BAD\0", ""), ("BAD2\0", "")])
+            .env_remove("BAD\0")
+            .arg("-c")
+            .arg("true")
+            .status()
+    };
+
+    assert!(status.unwrap_err().kind() == ErrorKind::InvalidInput);
+
+    // All env keys were cleared out, this should succeed
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd").env("BAD\0", "").env_clear().args(&["/C", "exit 0"]).status().unwrap()
+    } else {
+        shell_cmd().env("BAD\0", "").env_clear().arg("-c").arg("true").status().unwrap()
+    };
+
+    assert!(status.success());
+
+    // Offending env key was removed, this should succeed
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .envs([("BAD\0", ""), ("GOOD", "")])
+            .env_remove("BAD\0")
+            .args(&["/C", "exit 0"])
+            .status()
+            .unwrap()
+    } else {
+        shell_cmd()
+            .envs([("BAD\0", ""), ("GOOD", "")])
+            .env_remove("BAD\0")
+            .arg("-c")
+            .arg("true")
+            .status()
+            .unwrap()
+    };
+
+    assert!(status.success());
+}
+
 // Regression tests for #30858.
 #[test]
 fn test_interior_nul_in_progname_is_error() {
