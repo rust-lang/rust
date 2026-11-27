@@ -591,40 +591,38 @@ fn register_region_constraints<D, I>(
     use rustc_type_ir::TypeVisitableExt as _;
 
     for (constraint, vis) in constraints {
-        // Re-registering these constraints in nested canonical responses can
-        // lead to exponential growth (#165867). if all outlives components
-        // are the RHS region itself we would only generate constraints of
-        // the form `'a: 'a` and there is no need to register them.
-        let reflexive = if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) =
-            constraint
-            && let ty::GenericArgKind::Type(t) = lhs.kind()
-            && !t.has_infer()
-            && !t.has_escaping_bound_vars()
-        {
-            let mut components = Default::default();
-
-            rustc_type_ir::outlives::push_outlives_components(delegate.cx(), t, &mut components);
-
-            !components.is_empty()
-                && components.iter().all(|component| {
-                    matches!(
-                        component,
-                        rustc_type_ir::outlives::Component::Region(r)
-                            if *r == rhs
-                    )
-                })
-        } else {
-            false
-        };
-
-        if reflexive {
-            continue;
-        }
-
         match constraint {
             ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) => match lhs.kind() {
                 ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, vis, span),
-                ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
+                ty::GenericArgKind::Type(t) => {
+                    // Re-registering these constraints in nested canonical responses can
+                    // lead to exponential growth (#165867). If all outlives components
+                    // are the RHS region itself we would only generate constraints of
+                    // the form `'a: 'a` and there is no need to register them.
+                    if !t.has_infer() && !t.has_escaping_bound_vars() {
+                        let mut components = Default::default();
+
+                        rustc_type_ir::outlives::push_outlives_components(
+                            delegate.cx(),
+                            t,
+                            &mut components,
+                        );
+
+                        if !components.is_empty()
+                            && components.iter().all(|component| {
+                                matches!(
+                                    component,
+                                    rustc_type_ir::outlives::Component::Region(r)
+                                        if *r == rhs
+                                )
+                            })
+                        {
+                            continue;
+                        }
+                    }
+
+                    delegate.register_ty_outlives(t, rhs, span);
+                }
                 ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
             },
             ty::RegionConstraint::Eq(ty::RegionEqPredicate(lhs, rhs)) => {
