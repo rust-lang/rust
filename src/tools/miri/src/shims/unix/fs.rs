@@ -1164,7 +1164,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         flags_op: &OpTy<'tcx>,    // Should be an `int`
         mask_op: &OpTy<'tcx>,     // Should be an `unsigned int`
         statxbuf_op: &OpTy<'tcx>, // Should be a `struct statx *`
-    ) -> InterpResult<'tcx, Scalar> {
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_linux_like("statx");
 
@@ -1176,7 +1177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
         if this.ptr_is_null(statxbuf_ptr)? || this.ptr_is_null(pathname_ptr)? {
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
         }
 
         let statxbuf = this.deref_pointer(statxbuf_op)?;
@@ -1200,7 +1201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`statx`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+            return this.set_errno_and_return_neg1(LibcError("EACCES"), dest);
         }
 
         // Resolve dirfd + path to metadata.
@@ -1209,7 +1210,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let metadata = match metadata {
             Ok(metadata) => metadata,
-            Err(err) => return this.set_errno_and_return_neg1_i32(err),
+            Err(err) => return this.set_errno_and_return_neg1(err, dest),
         };
 
         // The `_mask_op` parameter specifies the file information that the caller requested.
@@ -1322,7 +1323,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // The remaining fields have a mask bit associated with them, a bit that we do not
         // set. Therefore we also do not initialize them.
 
-        interp_ok(Scalar::from_i32(0))
+        this.write_int(0, dest)
     }
 
     fn chmod(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
