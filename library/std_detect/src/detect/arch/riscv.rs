@@ -221,7 +221,7 @@ features! {
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] m: "m";
     /// "M" Extension for Integer Multiplication and Division
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zmmul: "zmmul";
+    @FEATURE: #[stable(feature = "riscv_zmmul", since = "CURRENT_RUSTC_VERSION")] zmmul: "zmmul";
     /// "Zmmul" Extension for Integer Multiplication
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] a: "a";
