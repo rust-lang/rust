@@ -1435,7 +1435,7 @@ impl CommandLineStep for RustdocTheme {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustdoc-themes")
+        run.path("src/tools/rustdoc-themes").alias("rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1488,7 +1488,7 @@ impl CommandLineStep for RustdocJSStd {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/rustdoc-js-std")
+        run.suite_path("tests/rustdoc-js-std").alias("rustdoc")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1565,7 +1565,7 @@ impl CommandLineStep for RustdocJSNotStd {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/rustdoc-js")
+        run.suite_path("tests/rustdoc-js").alias("rustdoc")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1633,7 +1633,7 @@ impl CommandLineStep for RustdocGUI {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/rustdoc-gui")
+        run.suite_path("tests/rustdoc-gui").alias("rustdoc")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1980,6 +1980,7 @@ macro_rules! test {
             mode: $mode:expr,
             suite: $suite:expr,
             default: $default:expr
+            $( , alias: $alias:expr )* // default: None
             $( , IS_HOST: $IS_HOST:expr )? // default: false
             $( , compare_mode: $compare_mode:expr )? // default: None
             $( , )? // optional trailing comma
@@ -2002,7 +2003,7 @@ macro_rules! test {
             });
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.suite_path($path)
+                run.suite_path($path)$(.alias($alias))*
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -2085,6 +2086,7 @@ test!(RustdocHtml {
     mode: CompiletestMode::RustdocHtml,
     suite: "rustdoc-html",
     default: true,
+    alias: "rustdoc",
     IS_HOST: true,
 });
 test!(RustdocUi {
@@ -2092,6 +2094,7 @@ test!(RustdocUi {
     mode: CompiletestMode::Ui,
     suite: "rustdoc-ui",
     default: true,
+    alias: "rustdoc",
     IS_HOST: true,
 });
 
@@ -2100,6 +2103,7 @@ test!(RustdocJson {
     mode: CompiletestMode::RustdocJson,
     suite: "rustdoc-json",
     default: true,
+    alias: "rustdoc",
     IS_HOST: true,
 });
 
@@ -3890,7 +3894,7 @@ impl CommandLineStep for CrateRustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.multi_path(&["src/librustdoc", "src/tools/rustdoc"])
+        run.multi_path(&["src/librustdoc", "src/tools/rustdoc"]).alias("rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3995,7 +3999,7 @@ impl CommandLineStep for CrateRustdocJsonTypes {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/rustdoc-json-types")
+        run.path("src/rustdoc-json-types").alias("rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
