@@ -56,7 +56,7 @@ fn run_test(cg_units: usize) {
         .opt()
         .run();
     let files = shallow_find_files(".", |path| {
-        has_prefix(path, "main.interesting.interesting") && has_extension(path, "ll")
+        has_prefix(path, "main.interesting.") && has_extension(path, "ll")
     });
     assert_eq!(files.len(), 1);
     let llvm_ir = &files[0];
