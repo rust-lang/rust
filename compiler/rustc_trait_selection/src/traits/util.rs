@@ -243,17 +243,15 @@ pub fn implicit_fast_path<'tcx>(
         }
 
         if matches!(trait_pred.self_ty().kind(), ty::Param(_) | ty::Placeholder(_)) {
-            for clause_pred in param_env
+            for _ in param_env
                 .caller_bounds()
                 .trait_clauses(tcx)
                 .with_polarity(ty::ClausePolarity::Positive)
                 .with_self_ty(trait_pred.self_ty())
+                .for_trait(trait_pred.def_id())
                 .iter()
             {
-                let clause_pred = clause_pred.skip_binder();
-                if clause_pred.def_id() == trait_pred.def_id() {
-                    return true;
-                }
+                return true;
             }
         }
     }
