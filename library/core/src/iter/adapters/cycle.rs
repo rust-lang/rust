@@ -44,12 +44,10 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // the cycle iterator is either empty or infinite
-        match self.orig.size_hint() {
-            sz @ (0, Some(0)) => sz,
-            (0, _) => (0, None),
-            _ => (usize::MAX, None),
-        }
+        // `Cycle` yields at least the rest of `self.iter`. After that, it depends on
+        // what clones of `orig` yield, and `Clone` doesn't promise they match `orig`,
+        // so neither "empty" nor "infinite" can be assumed.
+        (self.iter.size_hint().0, None)
     }
 
     #[inline]
