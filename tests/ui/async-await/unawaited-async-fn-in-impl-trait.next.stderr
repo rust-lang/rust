@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `impl Future<Output = impl Trait>: Trait` is not satisfied
+  --> $DIR/unawaited-async-fn-in-impl-trait.rs:9:27
+   |
+LL | async fn first_trait() -> impl Trait {
+   |                           ^^^^^^^^^^ the trait `Trait` is not implemented for `impl Future<Output = impl Trait>`
+   |
+help: the trait `Trait` is implemented for `()`
+  --> $DIR/unawaited-async-fn-in-impl-trait.rs:7:1
+   |
+LL | impl Trait for () {}
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0277]: `impl Future<Output = impl Iterator<Item = ()>>` is not an iterator
+  --> $DIR/unawaited-async-fn-in-impl-trait.rs:20:26
+   |
+LL | async fn first_iter() -> impl Iterator<Item = ()> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ `impl Future<Output = impl Iterator<Item = ()>>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `impl Future<Output = impl Iterator<Item = ()>>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
