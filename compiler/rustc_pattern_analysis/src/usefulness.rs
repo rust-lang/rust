@@ -1901,6 +1901,19 @@ fn is_obviously_one_to_one<Cx: PatCx>(
     arms: &[MatchArm<'_, Cx>],
     scrut_ty: &Cx::Ty,
 ) -> Result<bool, Cx::Error> {
+    // Before calling ctors_for_ty(), check if the match arms are of an appropriate shape.
+    // We do this in reverse order in order to quickly catch a final wildcard arm, which
+    // is a common way in which matches aren’t in the shape this algorithm accepts.
+    if !arms.iter().rev().all(|MatchArm { pat, has_guard, arm_data: _ }| {
+        !has_guard && matches!(pat.ctor(), Constructor::Variant(_))
+    }) {
+        return Ok(false);
+    }
+
+    // Note: This does more work than necessary (allocating a vector of all variants)
+    // in the case where we give up.
+    // This could be improved by adding a more suitable method to PatCx, that does not allocate
+    // and perhaps gives up earlier on its own.
     let ctors = tycx.ctors_for_ty(scrut_ty)?;
 
     if let ConstructorSet::Variants { variants, non_exhaustive: false } = ctors {
@@ -1911,12 +1924,10 @@ fn is_obviously_one_to_one<Cx: PatCx>(
 
         Ok(variants.indices().zip(arms).all(|(ty_variant_idx, arm)| {
             let MatchArm { pat: arm_pat, has_guard: false, arm_data: _ } = arm else {
-                // The arm has a guard.
-                return false;
+                unreachable!();
             };
             let pat_ctor @ &Constructor::Variant(pat_variant_idx) = arm_pat.ctor() else {
-                // The pattern is not the right kind of pattern.
-                return false;
+                unreachable!();
             };
 
             pat_variant_idx == ty_variant_idx && tycx.ctor_arity(pat_ctor, scrut_ty) == 0
