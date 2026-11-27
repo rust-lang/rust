@@ -1,0 +1,28 @@
+error[E0807]: relative paths are not supported in visibilities in 2018 edition or later
+  --> $DIR/E0807.rs:3:12
+   |
+LL |     pub(in a) struct Foo;
+   |            ^ help: try adding a `crate` prefix: `crate::a`
+   |
+   = note: for more information about visibility, visit:
+           https://doc.rust-lang.org/reference/visibility-and-privacy.html
+
+error[E0807]: relative paths are not supported in visibilities in 2018 edition or later
+  --> $DIR/E0807.rs:6:12
+   |
+LL |     pub(in parent) struct Baz;
+   |            ^^^^^^
+   |
+help: try adding a `crate` prefix
+   |
+LL |     pub(in crate::parent) struct Baz;
+   |            +++++++
+help: use `super` if you want this item to be visible in the parent module
+   |
+LL -     pub(in parent) struct Baz;
+LL +     pub(in super) struct Baz;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0807`.
