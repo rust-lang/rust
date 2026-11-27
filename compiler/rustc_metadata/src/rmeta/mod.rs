@@ -319,6 +319,9 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
+    /// The `DefIndex`es whose body was proven never to unwind, one bit each.
+    cannot_unwind: LazyValue<DenseBitSet<u32>>,
+
     source_map: LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,

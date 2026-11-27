@@ -22,6 +22,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::hir::map::compute_hir_hash;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -568,6 +569,36 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
+    fn encode_cannot_unwind(&mut self) -> LazyValue<DenseBitSet<u32>> {
+        let mut proven = GrowableBitSet::<u32>::new_empty();
+
+        // Non-inlinable items are included: their body never reaches the metadata, so this is
+        // the only way their callers can learn about them.
+        if !self.is_proc_macro
+            && self.tcx.sess.opts.output_types.should_codegen()
+            && self.tcx.sess.is_nounwind_inference_enabled()
+            && self.tcx.sess.opts.incremental.is_none()
+        {
+            let reachable_set = self.tcx.reachable_set(());
+            for &local_def_id in self.tcx.mir_keys(()) {
+                if let DefKind::AssocFn | DefKind::Fn = self.tcx.def_kind(local_def_id)
+                    && reachable_set.contains(&local_def_id)
+                    && self.tcx.cannot_unwind(local_def_id.to_def_id())
+                {
+                    proven.insert(local_def_id.local_def_index.as_u32());
+                }
+            }
+        }
+
+        let len = proven.iter().last().map_or(0, |index| index as usize + 1);
+        let mut set = DenseBitSet::new_empty(len);
+        for index in proven.iter() {
+            set.insert(index);
+        }
+
+        self.lazy(set)
+    }
+
     fn encode_source_map(
         &mut self,
     ) -> LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>> {
@@ -765,6 +796,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map());
 
+        let cannot_unwind = stat!("cannot-unwind", || self.encode_cannot_unwind());
+
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
@@ -829,6 +862,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_data,
                 expn_hashes,
                 def_path_hash_map,
+                cannot_unwind,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
             })
         });

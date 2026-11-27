@@ -2827,6 +2827,9 @@ options! {
         "do not use unique names for text and data sections when -Z function-sections is used"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    nounwind_inference: bool = (false, parse_bool, [TRACKED],
+        "infer from a function's MIR body whether an unwind can leave it, and mark it `nounwind` \
+        if not (default: no)"),
     offload: Vec<crate::config::Offload> = (Vec::new(), parse_offload, [TRACKED],
         "a list of offload flags to enable
         Mandatory setting:

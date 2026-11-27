@@ -385,6 +385,14 @@ impl EarlySession {
         self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
     }
 
+    /// The analysis is opt-in, and only optimized builds with an unwinding panic strategy read
+    /// its answer: under `panic=abort` `fn_can_unwind` already says "cannot unwind".
+    pub fn is_nounwind_inference_enabled(&self) -> bool {
+        self.opts.unstable_opts.nounwind_inference
+            && self.opts.optimize != config::OptLevel::No
+            && self.panic_strategy().unwinds()
+    }
+
     /// Get the deployment target on Apple platforms based on the standard environment variables,
     /// or fall back to the minimum version supported by `rustc`.
     ///

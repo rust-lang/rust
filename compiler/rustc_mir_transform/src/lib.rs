@@ -39,6 +39,7 @@ use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, PassCtx, PassPolicy, WithMinOptLevel};
 
+mod cannot_unwind;
 mod canonicalization;
 mod check_pointers;
 mod cost_checker;
@@ -220,6 +221,7 @@ pub fn provide(providers: &mut Providers) {
     ffi_unwind_calls::provide(&mut providers.queries);
     shim::provide(&mut providers.queries);
     cross_crate_inline::provide(&mut providers.queries);
+    cannot_unwind::provide(&mut providers.queries);
     providers.hooks.find_noop_landing_pads_for_instance =
         remove_noop_landing_pads::find_noop_landing_pads_for_instance;
     providers.queries = query::Providers {
