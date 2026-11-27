@@ -167,7 +167,8 @@ struct StorageChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
-        if !context.is_use() {
+        // StorageAlloc requires the local to be live.
+        if !context.is_use() && context != PlaceContext::NonUse(NonUseContext::StorageAlloc) {
             return;
         }
 

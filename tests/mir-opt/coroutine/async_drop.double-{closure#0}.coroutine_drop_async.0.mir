@@ -140,7 +140,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb16: {
-        _12 = move _43;
+        _12 = copy _43;
         _11 = copy (_12.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb15;
     }
@@ -190,7 +190,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb25: {
-        _29 = move _43;
+        _29 = copy _43;
         _28 = copy (_29.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb24;
     }

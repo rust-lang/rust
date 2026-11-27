@@ -443,6 +443,13 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
+                    StatementKind::StorageAlloc(local) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::StorageAlloc),
+                            location
+                        );
+                    }
                     StatementKind::StorageDead(local) => {
                         self.visit_local(
                             $(& $mutability)? *local,
@@ -1361,6 +1368,8 @@ pub enum NonUseContext {
     StorageLive,
     /// Ending a storage live range.
     StorageDead,
+    /// Ensuring a local has allocated storage.
+    StorageAlloc,
     /// User type annotation assertions for NLL.
     AscribeUserTy(ty::Variance),
     /// The data of a user variable, for debug info.
@@ -1460,7 +1469,11 @@ impl PlaceContext {
         match self {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(
-                StorageDead | StorageLive | VarDebugInfo | BackwardIncompatibleDropHint,
+                StorageDead
+                | StorageLive
+                | StorageAlloc
+                | VarDebugInfo
+                | BackwardIncompatibleDropHint,
             ) => ty::Invariant,
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow

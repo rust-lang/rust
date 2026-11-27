@@ -14,6 +14,7 @@
   
       bb0: {
           StorageLive(_1);
+          StorageAlloc(_1);
           StorageLive(_2);
           _2 = const u8::MAX;
           StorageLive(_3);

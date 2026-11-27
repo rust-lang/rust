@@ -221,10 +221,12 @@
           StorageLive(_10);
           _21 = const chained_conditions::promoted[1];
           _10 = &(*_21);
+          StorageAlloc(_7);
           StorageLive(_27);
           StorageLive(_28);
           _27 = no_retag copy (*_8);
           _28 = no_retag copy (*_10);
+          StorageAlloc(_7);
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
@@ -244,7 +246,9 @@
           StorageDead(_30);
           StorageLive(_36);
           StorageLive(_38);
+          StorageAlloc(_36);
           _36 = copy _29 as &[u8] (Transmute);
+          StorageAlloc(_38);
           _38 = copy _28 as &[u8] (Transmute);
           StorageLive(_39);
           _39 = PtrMetadata(copy _36);
@@ -283,10 +287,12 @@
           StorageLive(_17);
           _20 = const chained_conditions::promoted[0];
           _17 = &(*_20);
+          StorageAlloc(_14);
           StorageLive(_47);
           StorageLive(_48);
           _47 = no_retag copy (*_15);
           _48 = no_retag copy (*_17);
+          StorageAlloc(_14);
           StorageLive(_49);
           StorageLive(_50);
           StorageLive(_51);
@@ -306,7 +312,9 @@
           StorageDead(_50);
           StorageLive(_56);
           StorageLive(_58);
+          StorageAlloc(_56);
           _56 = copy _49 as &[u8] (Transmute);
+          StorageAlloc(_58);
           _58 = copy _48 as &[u8] (Transmute);
           StorageLive(_59);
           _59 = PtrMetadata(copy _56);

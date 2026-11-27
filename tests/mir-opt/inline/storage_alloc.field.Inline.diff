@@ -1,0 +1,41 @@
+- // MIR for `field` before Inline
++ // MIR for `field` after Inline
+  
+  fn field() -> MaybeUninit<u8> {
+      let mut _0: std::mem::MaybeUninit<u8>;
+      let mut _1: (std::mem::MaybeUninit<u8>, std::mem::MaybeUninit<u8>);
++     let mut _2: std::mem::MaybeUninit<u8>;
++     scope 1 (inlined callee) {
++         let _3: ();
++         scope 2 (inlined MaybeUninit::<u8>::uninit) {
++         }
++     }
+  
+      bb0: {
+-         (_1.0: std::mem::MaybeUninit<u8>) = callee() -> [return: bb1, unwind: bb2];
++         StorageAlloc(_1);
++         StorageLive(_2);
++         StorageLive(_3);
++         _3 = opaque() -> [return: bb2, unwind: bb1];
+      }
+  
+-     bb1: {
++     bb1 (cleanup): {
+          _0 = copy (_1.1: std::mem::MaybeUninit<u8>);
+-         return;
++         resume;
+      }
+  
+-     bb2 (cleanup): {
++     bb2: {
++         StorageDead(_3);
++         StorageAlloc(_2);
++         _2 = MaybeUninit::<u8> { uninit: const () };
++         (_1.0: std::mem::MaybeUninit<u8>) = move _2;
++         StorageDead(_2);
+          _0 = copy (_1.1: std::mem::MaybeUninit<u8>);
+-         resume;
++         return;
+      }
+  }
+  

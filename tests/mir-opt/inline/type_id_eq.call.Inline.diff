@@ -21,6 +21,7 @@
 -     }
 - 
 -     bb1: {
++         StorageAlloc(_0);
 +         StorageLive(_5);
 +         _5 = copy _3 as u128 (Transmute);
 +         StorageLive(_6);

@@ -215,9 +215,10 @@ impl<'tcx> Visitor<'tcx> for UnprojectableLocals {
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        // Storage markers are removed.
-        if let PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) =
-            context
+        // Storage markers are removed, and StorageAlloc is rewritten explicitly.
+        if let PlaceContext::NonUse(
+            NonUseContext::StorageLive | NonUseContext::StorageDead | NonUseContext::StorageAlloc,
+        ) = context
         {
             return;
         }
@@ -590,6 +591,14 @@ impl<'tcx> MutVisitor<'tcx> for PlaceUpdater<'_, 'tcx> {
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
+            // Rewrite StorageAlloc to the base local of the remapped place.
+            StatementKind::StorageAlloc(ref mut local) => {
+                if let Some(place) = self.remapped_locals[*local] {
+                    *local = place.local;
+                }
+                return;
+            }
+
             // Remove storage lifetime markers because they no longer describe
             // the merged locals. The later storage reconstruction pass rebuilds
             // these markers for all locals, which can also shorten the storage

@@ -19,6 +19,7 @@
           StorageLive(_4);
           _4 = move _2;
 -         _0 = <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut(move _3, move _4) -> [return: bb1, unwind: bb3];
++         StorageAlloc(_0);
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         StorageLive(_5);

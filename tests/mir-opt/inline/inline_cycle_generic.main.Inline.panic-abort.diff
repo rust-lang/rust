@@ -14,6 +14,9 @@
       bb0: {
           StorageLive(_1);
 -         _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
++         StorageAlloc(_1);
++         StorageAlloc(_1);
++         StorageAlloc(_1);
 +         _1 = <B<C> as Call>::call() -> [return: bb1, unwind unreachable];
       }
   

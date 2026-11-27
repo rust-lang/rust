@@ -168,6 +168,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_4);
         StorageLive(_16);
         StorageLive(_2);
+        StorageAlloc(_2);
         _2 = ManuallyDrop::<Vec<impl Sized>> { value: copy _1 };
         StorageLive(_3);
         // DBG: _29 = &_2;
@@ -177,9 +178,11 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_5);
         // DBG: _31 = &_2;
         // DBG: _30 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
+        StorageAlloc(_5);
         _4 = copy ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::NonNull<u8>);
         _5 = copy _4 as std::ptr::NonNull<impl Sized> (Transmute);
         StorageLive(_6);
+        StorageAlloc(_6);
         _6 = copy _4 as *mut impl Sized (Transmute);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -189,6 +192,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_7);
         // DBG: _35 = &_2;
         // DBG: _34 = &(_2.0: std::vec::Vec<impl Sized>);
+        StorageAlloc(_7);
         _7 = copy ((_2.0: std::vec::Vec<impl Sized>).1: usize);
         StorageLive(_8);
         _8 = Le(copy _7, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
@@ -205,6 +209,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_11);
         // DBG: _33 = &_2;
         // DBG: _32 = &(_2.0: std::vec::Vec<impl Sized>);
+        StorageAlloc(_11);
         _11 = copy ((_2.0: std::vec::Vec<impl Sized>).1: usize);
         StorageLive(_12);
         _12 = Le(copy _11, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
@@ -212,7 +217,9 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageDead(_12);
         StorageLive(_17);
         StorageLive(_13);
+        StorageAlloc(_13);
         _13 = copy _4 as *mut u8 (Transmute);
+        StorageAlloc(_17);
         StorageLive(_14);
         _14 = copy _11 as isize (IntToInt);
         StorageLive(_15);
@@ -237,6 +244,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     bb4: {
         // DBG: _37 = &_2;
         // DBG: _36 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
+        StorageAlloc(_19);
         // DBG: _38 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::SIZE) -> [0: bb5, otherwise: bb6];
     }

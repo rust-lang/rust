@@ -48,6 +48,7 @@
           StorageLive(_4);
 -         _4 = ();
 +         _4 = const ();
+          StorageAlloc(_3);
           StorageLive(_12);
           StorageLive(_13);
 -         _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
@@ -78,6 +79,7 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = copy _5;
+          StorageAlloc(_6);
           StorageLive(_14);
           _14 = const 1_usize;
 -         _6 = *const [()] from (copy _7, copy _14);
@@ -87,6 +89,7 @@
           StorageLive(_8);
           StorageLive(_9);
           _9 = copy _6;
+          StorageAlloc(_8);
           StorageLive(_15);
 -         _15 = copy _9;
 -         _8 = copy _9 as *mut () (PtrToPtr);
