@@ -690,33 +690,6 @@ impl<T, A: Allocator> Box<T, A> {
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
 
-    /// Constructs a new `Pin<Box<T, A>>`. If `T` does not implement [`Unpin`], then
-    /// `x` will be pinned in memory and unable to be moved.
-    ///
-    /// Constructing and pinning of the `Box` can also be done in two steps: `Box::pin_in(x, alloc)`
-    /// does the same as <code>[Box::into_pin]\([Box::new_in]\(x, alloc))</code>. Consider using
-    /// [`into_pin`](Box::into_pin) if you already have a `Box<T, A>`, or if you want to
-    /// construct a (pinned) `Box` in a different way than with [`Box::new_in`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_ext)]
-    /// use std::alloc::System;
-    ///
-    /// let x = Box::pin_in(1, System);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-    #[must_use]
-    #[inline(always)]
-    pub fn pin_in(x: T, alloc: A) -> Pin<Self>
-    where
-        A: StaticAllocator,
-    {
-        Self::into_pin(Self::new_in(x, alloc))
-    }
-
     /// Consumes the `Box`, returning the wrapped value.
     ///
     /// # Examples
