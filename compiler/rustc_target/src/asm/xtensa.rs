@@ -48,14 +48,17 @@ impl XtensaInlineAsmRegClass {
     }
 }
 
+// Registers of optional features are always allowed as clobbers. A clobber of a
+// register that the target does not have has no effect. This lets `clobber_abi`
+// use the same register list for all targets.
 fn has_fp(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::fp) {
+    if is_clobber || target_features.contains(&sym::fp) {
         Ok(())
     } else {
         Err("target does not support floating point registers")
@@ -98,9 +101,9 @@ fn has_bool(
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::bool) {
+    if is_clobber || target_features.contains(&sym::bool) {
         Ok(())
     } else {
         Err("target does not support boolean registers")
@@ -112,9 +115,9 @@ fn has_loop(
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&kw::Loop) {
+    if is_clobber || target_features.contains(&kw::Loop) {
         Ok(())
     } else {
         Err("target does not support loop registers")
@@ -126,9 +129,9 @@ fn has_mac16(
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::mac16) {
+    if is_clobber || target_features.contains(&sym::mac16) {
         Ok(())
     } else {
         Err("target does not support MAC16 registers")
@@ -140,9 +143,9 @@ fn has_s32c1i(
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::s32c1i) {
+    if is_clobber || target_features.contains(&sym::s32c1i) {
         Ok(())
     } else {
         Err("target does not support the s32c1i instruction")
