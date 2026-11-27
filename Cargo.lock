@@ -871,7 +871,6 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "shim_utils",
  "tracing",
  "tracing-subscriber",
  "walkdir",

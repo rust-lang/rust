@@ -2,7 +2,7 @@ warning: value assigned to `a` is never read
   --> $DIR/warn-unused-duplication.rs:9:6
    |
 LL |     (a, a) = (0, 1);
-   |      ^  - `a` is overwritten here before the previous value is read
+   |      ^  - `a` is overwritten here before the previous value is used
    |      |
    |      this value is reassigned later and never used
    |

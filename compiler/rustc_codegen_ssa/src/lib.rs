@@ -266,7 +266,8 @@ pub struct EiiLinkageInfo {
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct CrateInfo {
     pub target_cpu: String,
-    pub target_features: Vec<String>,
+    /// Used for the linker.
+    pub backend_target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<SymbolExport>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
@@ -296,7 +297,8 @@ pub struct CrateInfo {
 ///
 /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
 pub struct TargetConfig {
-    /// Options to be set in `sess.internal_target_features`.
+    /// Options to be set in `sess.internal_target_features`. This is also used to populate
+    /// `cfg(target_feature)`.
     pub internal_target_features: UnordSet<Symbol>,
     /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
     pub has_reliable_f16: bool,

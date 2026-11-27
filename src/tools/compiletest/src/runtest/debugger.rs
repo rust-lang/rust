@@ -4,7 +4,8 @@ use std::io::{BufRead, BufReader};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::directives::{LineNumber, line_directive};
+use crate::directives::line::{DirectivePayload, line_directive};
+use crate::directives::{LineNumber, Location};
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -32,6 +33,7 @@ impl DebuggerCommands {
         let mut check_lines = vec![];
         let reader = BufReader::new(File::open(file.as_std_path()).unwrap());
         for (line_number, line) in LineNumber::enumerate().zip(reader.lines()) {
+            let location = Location { file_path: file, line_number };
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
 
             // Breakpoints appear on lines with actual code, typically at the end of the line.
@@ -40,7 +42,7 @@ impl DebuggerCommands {
                 continue;
             }
 
-            let Some(directive) = line_directive(file, line_number, &line) else { continue };
+            let Some(directive) = line_directive(location, &line) else { continue };
             let Ok(directive) = directive.map_err(|e| e.raise_fatal());
 
             if !directive.applies_to_test_revision(test_revision) {
@@ -51,13 +53,17 @@ impl DebuggerCommands {
                 continue;
             };
 
-            match (directive_kind, directive.value_after_colon()) {
+            let value = directive.payload.and_then(|payload| match payload {
+                DirectivePayload::Value(value) => Some(value),
+                DirectivePayload::Remark(_) => None,
+            });
+            match (directive_kind, value) {
                 ("-command", Some(command)) => commands.push(command.to_string()),
                 ("-check", Some(pattern)) => check_lines.push((line_number, pattern.to_string())),
                 ("-repr", Some(var_name)) => {
                     // pseudo-command intercepted by `debugger_tester` to run custom variable
                     // inspection logic.
-                    commands.push(format!("repr {}", var_name.trim()));
+                    commands.push(format!("repr {var_name}"));
                     // Artificially output by `debugger_tester` to confirm that the inspection logic
                     // encountered no errors.
                     check_lines.push((line_number, format!("{var_name}: Ok")));

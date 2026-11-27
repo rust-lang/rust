@@ -24,7 +24,6 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -40,12 +39,14 @@ use rustc_middle::ty::{
     self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
 };
 use rustc_span::edition::Edition;
+use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, bug, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use smallvec::SmallVec;
 
 use crate::diagnostics::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
@@ -772,24 +773,29 @@ declare_lint_pass!(
 );
 
 fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
-    let mut map = FxHashMap::default();
+    if params.len() < 2 {
+        return;
+    }
+
+    // 16 bytes per entry (Symbol: 4B, SyntaxContext: 4B, Span: 8B) -> 128B on stack
+    let mut seen: SmallVec<[(Symbol, SyntaxContext, Span); 8]> = SmallVec::new();
 
     for param in params {
         if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
             if param.is_self() {
                 continue;
             }
-
-            let name = ident.normalize_to_macro_rules();
-
-            if let Some(&prev_use) = map.get(&name) {
+            let ctxt = ident.span.ctxt().normalize_to_macro_rules();
+            if let Some(prev_use) = seen.iter().find_map(|&(name, prev_ctxt, span)| {
+                (name == ident.name && prev_ctxt == ctxt).then_some(span)
+            }) {
                 cx.emit_span_lint(
                     DUPLICATE_PARAMETER_NAMES,
                     ident.span,
                     BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
                 );
             } else {
-                map.insert(name, ident.span);
+                seen.push((ident.name, ctxt, ident.span));
             }
         }
     }

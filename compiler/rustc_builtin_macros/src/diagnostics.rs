@@ -174,6 +174,12 @@ mod autodiff {
         pub(crate) span: Span,
     }
     #[derive(Diagnostic)]
+    #[diag("expected an identifier for the generated function name")]
+    pub(crate) struct AutoDiffInvalidName {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+    #[derive(Diagnostic)]
     #[diag("did not recognize Activity: `{$act}`")]
     pub(crate) struct AutoDiffUnknownActivity {
         #[primary_span]

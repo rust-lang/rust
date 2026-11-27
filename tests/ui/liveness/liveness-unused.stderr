@@ -170,7 +170,7 @@ LL |     a += b;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a -= c;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:185:5
@@ -179,7 +179,7 @@ LL |     a -= c;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a *= d;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:187:5
@@ -188,7 +188,7 @@ LL |     a *= d;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a /= e;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:189:5
@@ -197,7 +197,7 @@ LL |     a /= e;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a |= f;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:191:5
@@ -206,7 +206,7 @@ LL |     a |= f;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a &= g;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:193:5
@@ -215,7 +215,7 @@ LL |     a &= g;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a %= h;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:195:5
@@ -240,7 +240,7 @@ LL |     a += b;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a -= c;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:231:5
@@ -249,7 +249,7 @@ LL |     a -= c;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a *= d;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:233:5
@@ -258,7 +258,7 @@ LL |     a *= d;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a /= e;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:235:5
@@ -267,7 +267,7 @@ LL |     a /= e;
    |     ^^^^^^ this value is reassigned later and never used
 LL |
 LL |     a %= f;
-   |     ------ `a` is overwritten here before the previous value is read
+   |     ------ `a` is overwritten here before the previous value is used
 
 error: value assigned to `a` is never read
   --> $DIR/liveness-unused.rs:237:5

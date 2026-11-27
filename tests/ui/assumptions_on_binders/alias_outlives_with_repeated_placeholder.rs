@@ -14,11 +14,11 @@ core::test_binder_constraints! {
         for<'a> T: Trait<'a>,
         for<'a> <T as Trait<'a>>::Assoc: 'a
     {
-        forall<'a, 'b>
+        forall<'c, 'd>
         where
-            'a: 'b,
+            'c: 'd,
         {
-            for<> <T as Trait<'a>>::Assoc: 'b
+            for<> <T as Trait<'c>>::Assoc: 'd
         } expect {
             or {
                 // this first candidate is the important one!

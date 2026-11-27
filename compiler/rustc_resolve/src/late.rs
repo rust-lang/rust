@@ -1585,37 +1585,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         }
     }
 
-    fn visit_test_binder_forall(&mut self, forall: &'ast TestBinderForall) {
-        self.with_generic_param_rib(
-            &forall.generics.params,
-            RibKind::Normal,
-            forall.node_id,
-            LifetimeBinderKind::WhereBound,
-            forall.span,
-            |this| {
-                this.visit_generics(&forall.generics);
-                this.visit_test_binder_body(&forall.body)
-            },
-        );
-        // exit assertions don't have the bound vars in scope
-        if let Some(assert_on_exit) = &forall.assert_on_exit {
-            for constraint in assert_on_exit {
-                self.visit_test_binder_constraint(constraint);
-            }
-        }
-    }
-
-    fn visit_test_binder_exists(&mut self, exists: &'ast TestBinderExists) {
-        self.with_generic_param_rib(
-            &exists.params,
-            RibKind::Normal,
-            exists.node_id,
-            LifetimeBinderKind::WhereBound,
-            exists.span,
-            |this| visit::walk_test_binder_exists(this, exists),
-        );
-    }
-
     fn visit_test_binder_bound_type_constraint(
         &mut self,
         bound_type: &'ast TestBinderBoundTypeConstraint,
@@ -3824,21 +3793,48 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         constraints: &'ast TestBinderConstraints,
         item_id: NodeId,
     ) {
-        let generics = &constraints.generics;
+        fn collect_params(body: &TestBinderBody, params: &mut Vec<GenericParam>) {
+            for item in &body.items {
+                match item {
+                    TestBinderItem::Forall(item) => {
+                        params.extend(item.generics.params.iter().cloned());
+                        collect_params(&item.body, params);
+                    }
+                    TestBinderItem::Exists(item) => {
+                        params.extend(item.params.iter().cloned());
+                        collect_params(&item.body, params);
+                    }
+                    TestBinderItem::RegionEquality { .. }
+                    | TestBinderItem::Constraint(..)
+                    | TestBinderItem::Predicate(..) => (),
+                }
+            }
+        }
+
+        let mut params = vec![];
+        collect_params(&constraints.body, &mut params);
+
         self.with_generic_param_rib(
-            &generics.params,
+            &constraints.generics.params,
             RibKind::Item(
-                HasGenericParams::Yes(generics.span),
+                HasGenericParams::Yes(constraints.generics.span),
                 self.r.tcx.def_kind(self.r.current_owner.def_id),
             ),
             item_id,
             LifetimeBinderKind::ImplBlock,
-            generics.span,
+            constraints.generics.span,
             |this| {
-                this.visit_generics(generics);
-                this.visit_test_binder_body(&constraints.body);
+                this.visit_generics(&constraints.generics);
+                this.with_generic_param_rib(
+                    &params,
+                    RibKind::Normal,
+                    item_id,
+                    LifetimeBinderKind::WhereBound,
+                    constraints.generics.span,
+                    |this| this.visit_test_binder_body(&constraints.body),
+                )
             },
-        );
+        )
     }
 
     fn resolve_impl_item(

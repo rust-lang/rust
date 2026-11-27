@@ -18,12 +18,10 @@ fn gcc_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
     // FIXME: LLVM also sets +reserve-x18 here under some conditions.
 }
 
-/// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
-/// `--target` and similar).
-///
-/// If `for_cfg` is `true`, only the features implied by `--target` are included, to configure the
-/// target info that populates [`rustc_codegen_ssa::TargetConfig`].
-pub(crate) fn global_gcc_features(sess: &EarlySession, for_cfg: bool) -> Vec<String> {
+/// The list of GCC features computed from the target itself as well as from `-Ctarget-cpu` and from
+/// `-C` flags that under the hood are mapped to target features in GCC. Does NOT include the
+/// features in `-Ctarget-feature`!
+pub(crate) fn base_gcc_features(sess: &EarlySession) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -44,30 +42,11 @@ pub(crate) fn global_gcc_features(sess: &EarlySession, for_cfg: bool) -> Vec<Str
     // should be taken in cases like these.
     let mut features = vec![];
 
-    let mut extend_backend_features = |feature: &str, enable: bool| {
-        // We run through `to_gcc_features` when
-        // passing requests down to GCC. This means that all in-language
-        // features also work on the command line instead of having two
-        // different names when the GCC name and the Rust name differ.
-        features.extend(
-            to_gcc_features(&sess.target, feature)
-                .iter()
-                .flat_map(|feat| to_gcc_features(&sess.target, feat).into_iter())
-                .map(|feature| if !enable { format!("-{}", feature) } else { feature.to_string() }),
-        );
-    };
-
     // Features implied by an implicit or explicit `--target`.
-    target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
-
-    // `internal_target_features` applies -Ctarget-features itself, and GCC has no options for the
-    // features implied by other flags (e.g. retpoline), which would break the target info.
-    if for_cfg {
-        return features;
-    }
-
-    // -Ctarget-features
-    target_features::flag_to_backend_features(sess, extend_backend_features);
+    target_features::target_spec_to_backend_features(
+        sess,
+        extend_with_gcc_features_for_rust_feature(sess, &mut features),
+    );
 
     gcc_features_by_flags(sess, &mut features);
 
@@ -118,6 +97,28 @@ pub fn to_gcc_features<'a>(target: &Target, s: &'a str) -> SmallVec<[&'a str; 2]
         (&Arch::AArch64, "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
         (&Arch::AArch64, "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
+    }
+}
+
+/// Extends the given list of target features with the GCC target features that correspond
+/// to the given Rust target feature.
+/// This is written in curried style (returning a closure) so that it can be easily used with
+/// `target_spec_to_backend_features` and `flag_to_backend_features`.
+pub(crate) fn extend_with_gcc_features_for_rust_feature(
+    sess: &EarlySession,
+    gcc_features: &mut Vec<String>,
+) -> impl FnMut(/* rust_feature */ &str, /* enable */ bool) {
+    |rust_feature, enable| {
+        // We run through `to_gcc_features` when
+        // passing requests down to GCC. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the GCC name and the Rust name differ.
+        gcc_features.extend(
+            to_gcc_features(&sess.target, rust_feature)
+                .iter()
+                .flat_map(|feat| to_gcc_features(&sess.target, feat).into_iter())
+                .map(|feature| if !enable { format!("-{}", feature) } else { feature.to_string() }),
+        );
     }
 }
 

@@ -36,6 +36,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/Transforms/IPO/FatLTOCleanup.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
@@ -728,6 +729,17 @@ static void forceFullLTOSummary(Module *M) {
 
   auto *Zero = ConstantInt::get(Type::getInt32Ty(M->getContext()), 0);
   M->addModuleFlag(Module::Error, "ThinLTO", Zero);
+}
+
+// Lower llvm.type.checked.load into standard loads.
+//
+// Rustc emits checked loads when using `-Zvirtual-function-elimination`.
+// This flag implies fat LTO, but for non-LTO compilations (e.g. building
+// an rlib, or when passing --emit=asm) the checked loads are not supported,
+// and they must be removed.
+extern "C" void LLVMRustRunFatLtoCleanup(LLVMModuleRef M) {
+  ModuleAnalysisManager MAM;
+  FatLtoCleanup().run(*unwrap(M), MAM);
 }
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -1445,9 +1457,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // We don't have a complete picture in our use of ThinLTO, just our immediate
   // crate, so we need `ImportEnabled = false` to limit internalization.
   // Otherwise, we sometimes lose `static` values -- see #60184.
-  computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
-                                  deadIsPrevailing,
-                                  /* ImportEnabled = */ false);
+  computeDeadSymbolsWithConstProp(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing,
+      /* ImportEnabled = */ false);
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
   //
@@ -1465,8 +1480,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
       return true;
     return Prevailing->second == S;
   };
-  ComputeCrossModuleImport(Ret->Index, Ret->ModuleToDefinedGVSummaries,
-                           isPrevailing, Ret->ImportLists, Ret->ExportLists);
+  ComputeCrossModuleImport(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      Ret->Index, Ret->ModuleToDefinedGVSummaries, isPrevailing,
+      Ret->ImportLists, Ret->ExportLists);
 
   auto recordNewLinkage = [&](StringRef ModuleIdentifier,
                               GlobalValue::GUID GUID,
@@ -1478,8 +1497,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // formats. We probably could and should use ELF visibility scheme for many of
   // our targets, however.
   lto::Config conf;
-  thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing,
-                                  recordNewLinkage, Ret->GUIDPreservedSymbols);
+  thinLTOResolvePrevailingInIndex(
+#if LLVM_VERSION_GE(24, 0)
+      cl::getCAPILibraryOptions(),
+#endif
+      conf, Ret->Index, isPrevailing, recordNewLinkage,
+      Ret->GUIDPreservedSymbols);
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
