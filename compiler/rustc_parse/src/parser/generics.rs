@@ -14,6 +14,11 @@ use crate::diagnostics::{
 };
 use crate::exp;
 
+pub(super) enum RecoverDupeWhereClause {
+    Yes,
+    No,
+}
+
 enum PredicateKindOrStructBody {
     PredicateKind(ast::WherePredicateKind),
     StructBody(ThinVec<ast::FieldDef>),
@@ -395,8 +400,11 @@ impl<'a> Parser<'a> {
     /// ```ignore (only-for-syntax-highlight)
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
-    pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        self.parse_where_clause_common(None).map(|(clause, _)| clause)
+    pub(super) fn parse_where_clause(
+        &mut self,
+        recover_dupe: RecoverDupeWhereClause,
+    ) -> PResult<'a, WhereClause> {
+        self.parse_where_clause_common(None, recover_dupe).map(|(clause, _)| clause)
     }
 
     pub(super) fn parse_struct_where_clause(
@@ -404,12 +412,16 @@ impl<'a> Parser<'a> {
         struct_name: Ident,
         body_insertion_point: Span,
     ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
-        self.parse_where_clause_common(Some((struct_name, body_insertion_point)))
+        self.parse_where_clause_common(
+            Some((struct_name, body_insertion_point)),
+            RecoverDupeWhereClause::Yes,
+        )
     }
 
     fn parse_where_clause_common(
         &mut self,
         struct_: Option<(Ident, Span)>,
+        recover_dupe: RecoverDupeWhereClause,
     ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         if !self.eat_keyword(exp!(Where)) {
             return Ok((
@@ -446,7 +458,7 @@ impl<'a> Parser<'a> {
         }
 
         let (predicates, tuple_struct_body) =
-            self.parse_where_clause_predicates(struct_, where_lo)?;
+            self.parse_where_clause_predicates(struct_, where_lo, recover_dupe)?;
         let where_clause = WhereClause {
             has_where_token: true,
             predicates,
@@ -459,6 +471,7 @@ impl<'a> Parser<'a> {
         &mut self,
         struct_: Option<(Ident, Span)>,
         where_lo: Span,
+        recover_dupe: RecoverDupeWhereClause,
     ) -> PResult<'a, (ThinVec<WherePredicate>, Option<ThinVec<ast::FieldDef>>)> {
         let mut predicates = ThinVec::new();
         let mut tuple_struct_body = None;
@@ -514,19 +527,23 @@ impl<'a> Parser<'a> {
                 });
                 Ok((predicate, Trailing::No, UsePreAttrPos::No))
             })?;
-            match predicate {
-                Some(predicate) => predicates.push(predicate),
-                None => break,
+
+            let has_parsed_pred = predicate.is_some();
+            if let Some(pred) = predicate {
+                predicates.push(pred);
             }
 
-            let prev_token = self.prev_token.span;
-            let ate_comma = self.eat(exp!(Comma));
+            let pred_hi = self.prev_token.span;
+            let ate_comma = has_parsed_pred && self.eat(exp!(Comma));
 
-            if self.eat_keyword_noexpect(kw::Where) {
+            if let RecoverDupeWhereClause::Yes = recover_dupe
+                && self.eat_keyword_noexpect(kw::Where)
+            {
                 self.dcx().emit_err(MultipleWhereClauses {
-                    span: self.token.span,
-                    previous: pred_lo,
-                    between: prev_token.shrink_to_hi().to(self.prev_token.span),
+                    span: self.prev_token.span,
+                    previous: where_sp,
+                    between: has_parsed_pred
+                        .then(|| pred_hi.shrink_to_hi().to(self.prev_token.span)),
                 });
             } else if !ate_comma {
                 break;

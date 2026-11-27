@@ -1,11 +1,11 @@
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clause.rs:9:9
+  --> $DIR/duplicate-where-clause.rs:7:5
    |
-LL |         P: Copy
-   |         - previous `where` clause starts here
 LL |     where
-LL |         P: Eq;
-   |         ^
+   |     ----- previous `where` clause starts here
+LL |         P: Copy
+LL |     where
+   |     ^^^^^
    |
 help: consider joining the two `where` clauses into one
    |
@@ -15,7 +15,7 @@ LL +         P: Copy,
    |
 
 error: where clauses are not allowed before const item bodies
-  --> $DIR/duplicate-where-clause.rs:19:5
+  --> $DIR/duplicate-where-clause.rs:17:5
    |
 LL |       const K: ()
    |             - while parsing this const item
@@ -25,5 +25,13 @@ LL | |         P: Eq
 LL |       = ()
    |         -- the item body
 
-error: aborting due to 2 previous errors
+error: cannot define duplicate `where` clauses on an item
+  --> $DIR/duplicate-where-clause.rs:27:19
+   |
+LL | const _: () where where;
+   |             ----- ^^^^^
+   |             |
+   |             previous `where` clause starts here
+
+error: aborting due to 3 previous errors
 
