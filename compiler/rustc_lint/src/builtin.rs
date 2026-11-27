@@ -48,20 +48,7 @@ use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use smallvec::SmallVec;
 
-use crate::diagnostics::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames,
-    BuiltinEllipsisInclusiveRangePatterns, BuiltinEllipsisInclusiveRangePatternsLint,
-    BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
-    BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
-    BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-    BuiltinMutablesTransmutes, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
-    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
-    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
-    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinWhileTrue, EqInternalMethodImplemented,
-    InvalidAsmLabel,
-};
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext, diagnostics};
 
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
@@ -104,7 +91,7 @@ impl EarlyLintPass for WhileTrue {
             cx.emit_span_lint(
                 WHILE_TRUE,
                 condition_span,
-                BuiltinWhileTrue { suggestion: condition_span, replace },
+                diagnostics::BuiltinWhileTrue { suggestion: condition_span, replace },
             );
         }
     }
@@ -174,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                         cx.emit_span_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
                             fieldpat.span,
-                            BuiltinNonShorthandFieldPatterns {
+                            diagnostics::BuiltinNonShorthandFieldPatterns {
                                 ident,
                                 suggestion: fieldpat.span,
                                 prefix: binding_annot.prefix_str(),
@@ -211,7 +198,7 @@ impl EarlyLintPass for UnsafeCode {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
-                self.report_unsafe(cx, blk.span, BuiltinUnsafe::UnsafeBlock);
+                self.report_unsafe(cx, blk.span, diagnostics::BuiltinUnsafe::UnsafeBlock);
             }
         }
     }
@@ -219,23 +206,23 @@ impl EarlyLintPass for UnsafeCode {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
             ast::ItemKind::Trait(ast::Trait { safety: ast::Safety::Unsafe(_), .. }) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
+                self.report_unsafe(cx, it.span, diagnostics::BuiltinUnsafe::UnsafeTrait);
             }
 
             ast::ItemKind::Impl(ast::Impl {
                 of_trait: Some(ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
                 ..
             }) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
+                self.report_unsafe(cx, it.span, diagnostics::BuiltinUnsafe::UnsafeImpl);
             }
 
             ast::ItemKind::GlobalAsm(..) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
+                self.report_unsafe(cx, it.span, diagnostics::BuiltinUnsafe::GlobalAsm);
             }
 
             ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
                 if let Safety::Unsafe(_) = safety {
-                    self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
+                    self.report_unsafe(cx, it.span, diagnostics::BuiltinUnsafe::UnsafeExternBlock);
                 }
             }
 
@@ -247,7 +234,7 @@ impl EarlyLintPass for UnsafeCode {
                     &it.attrs,
                     &[sym::allow_internal_unsafe],
                 ) {
-                    self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
+                    self.report_unsafe(cx, span, diagnostics::BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 
@@ -268,9 +255,9 @@ impl EarlyLintPass for UnsafeCode {
         {
             let decorator = match ctxt {
                 FnCtxt::Foreign => return,
-                FnCtxt::Free => BuiltinUnsafe::DeclUnsafeFn,
-                FnCtxt::Assoc(_) if body.is_none() => BuiltinUnsafe::DeclUnsafeMethod,
-                FnCtxt::Assoc(_) => BuiltinUnsafe::ImplUnsafeMethod,
+                FnCtxt::Free => diagnostics::BuiltinUnsafe::DeclUnsafeFn,
+                FnCtxt::Assoc(_) if body.is_none() => diagnostics::BuiltinUnsafe::DeclUnsafeMethod,
+                FnCtxt::Assoc(_) => diagnostics::BuiltinUnsafe::ImplUnsafeMethod,
             };
             self.report_unsafe(cx, span, decorator);
         }
@@ -343,7 +330,7 @@ impl MissingDoc {
             cx.emit_span_lint(
                 MISSING_DOCS,
                 cx.tcx.def_span(def_id),
-                BuiltinMissingDoc { article, desc },
+                diagnostics::BuiltinMissingDoc { article, desc },
             );
         }
     }
@@ -541,7 +528,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         )
         .is_ok()
         {
-            cx.emit_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
+            cx.emit_span_lint(
+                MISSING_COPY_IMPLEMENTATIONS,
+                item.span,
+                diagnostics::BuiltinMissingCopyImpl,
+            );
         }
     }
 }
@@ -656,7 +647,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         cx.emit_span_lint(
             MISSING_DEBUG_IMPLEMENTATIONS,
             item.span,
-            BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
+            diagnostics::BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
         );
     }
 }
@@ -732,7 +723,10 @@ impl EarlyLintPass for AnonymousParameters {
                     cx.emit_span_lint(
                         ANONYMOUS_PARAMETERS,
                         arg.pat.span,
-                        BuiltinAnonymousParams { suggestion: (arg.pat.span, appl), ty_snip },
+                        diagnostics::BuiltinAnonymousParams {
+                            suggestion: (arg.pat.span, appl),
+                            ty_snip,
+                        },
                     );
                 }
             }
@@ -792,7 +786,11 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
                 cx.emit_span_lint(
                     DUPLICATE_PARAMETER_NAMES,
                     ident.span,
-                    BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
+                    diagnostics::BuiltinDuplicateParameterNames {
+                        span: ident.span,
+                        ident,
+                        prev_use,
+                    },
                 );
             } else {
                 seen.push((ident.name, ctxt, ident.span));
@@ -896,7 +894,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     cx.emit_span_lint(
                         NO_MANGLE_CONST_ITEMS,
                         it.span,
-                        BuiltinConstNoMangle { suggestion },
+                        diagnostics::BuiltinConstNoMangle { suggestion },
                     );
                 }
             }
@@ -954,7 +952,11 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if from_mutbl < to_mutbl {
-                cx.emit_span_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
+                cx.emit_span_lint(
+                    MUTABLE_TRANSMUTES,
+                    expr.span,
+                    diagnostics::BuiltinMutablesTransmutes,
+                );
             }
         }
 
@@ -1018,7 +1020,11 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
     fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[rustc_attr_ir::Attribute]) {
         if let Some(features) = find_attr!(attrs, Feature(features, _) => features) {
             for feature in features {
-                cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
+                cx.emit_span_lint(
+                    UNSTABLE_FEATURES,
+                    feature.span,
+                    diagnostics::BuiltinUnstableFeatures,
+                );
             }
         }
     }
@@ -1074,7 +1080,10 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
                 attr_span,
-                BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
+                diagnostics::BuiltinUngatedAsyncFnTrackCaller {
+                    label: span,
+                    session: &cx.tcx.sess,
+                },
             );
         }
     }
@@ -1161,7 +1170,7 @@ impl UnreachablePub {
         cx.emit_span_lint(
             UNREACHABLE_PUB,
             def_span,
-            BuiltinUnreachablePub {
+            diagnostics::BuiltinUnreachablePub {
                 what,
                 new_vis,
                 suggestion: (vis_span, applicability),
@@ -1307,7 +1316,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 where_spans,
-                BuiltinTypeAliasBounds {
+                diagnostics::BuiltinTypeAliasBounds {
                     in_where_clause: true,
                     label: label_sp,
                     suggestions: vec![(generics.where_clause_span, String::new())],
@@ -1322,7 +1331,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 inline_spans,
-                BuiltinTypeAliasBounds {
+                diagnostics::BuiltinTypeAliasBounds {
                     in_where_clause: false,
                     label: label_sp,
                     suggestions: inline_sugg,
@@ -1398,6 +1407,12 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
 
+        // Derived impls reuse the spans of the derive input, so the external macro check on the
+        // lint span alone does not catch them.
+        if item.span.in_external_macro(cx.sess().source_map()) {
+            return;
+        }
+
         if cx.tcx.features().trivial_bounds() {
             let gen_clauses = cx.tcx.clauses_of(item.owner_id);
             for &(clause, span) in gen_clauses.clauses {
@@ -1423,7 +1438,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     cx.emit_span_lint(
                         TRIVIAL_BOUNDS,
                         span,
-                        BuiltinTrivialBounds { clause_kind_name, clause },
+                        diagnostics::BuiltinTrivialBounds { clause_kind_name, clause },
                     );
                 }
             }
@@ -1478,8 +1493,8 @@ impl EarlyLintPass for DoubleNegations {
             cx.emit_span_lint(
                 DOUBLE_NEGATIONS,
                 expr.span,
-                BuiltinDoubleNegations {
-                    add_parens: BuiltinDoubleNegationsAddParens {
+                diagnostics::BuiltinDoubleNegations {
+                    add_parens: diagnostics::BuiltinDoubleNegationsAddParens {
                         start_span: inner.span.shrink_to_lo(),
                         end_span: inner.span.shrink_to_hi(),
                     },
@@ -1591,7 +1606,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={end})"),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().dcx().emit_err(BuiltinEllipsisInclusiveRangePatterns {
+                    cx.sess().dcx().emit_err(diagnostics::BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: pat.span,
                         replace,
@@ -1600,7 +1615,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     cx.emit_span_lint(
                         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
                         pat.span,
-                        BuiltinEllipsisInclusiveRangePatternsLint::Parenthesise {
+                        diagnostics::BuiltinEllipsisInclusiveRangePatternsLint::Parenthesise {
                             suggestion: pat.span,
                             replace,
                         },
@@ -1609,7 +1624,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().dcx().emit_err(BuiltinEllipsisInclusiveRangePatterns {
+                    cx.sess().dcx().emit_err(diagnostics::BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: join,
                         replace: replace.to_string(),
@@ -1618,7 +1633,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     cx.emit_span_lint(
                         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
                         join,
-                        BuiltinEllipsisInclusiveRangePatternsLint::NonParenthesise {
+                        diagnostics::BuiltinEllipsisInclusiveRangePatternsLint::NonParenthesise {
                             suggestion: join,
                         },
                     );
@@ -1800,7 +1815,12 @@ impl KeywordIdents {
         cx.emit_span_lint(
             lint,
             ident.span,
-            BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span, prefix },
+            diagnostics::BuiltinKeywordIdents {
+                kw: ident,
+                next: edition,
+                suggestion: ident.span,
+                prefix,
+            },
         );
     }
 }
@@ -2152,8 +2172,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             cx.emit_span_lint(
                 EXPLICIT_OUTLIVES_REQUIREMENTS,
                 lint_spans.clone(),
-                BuiltinExplicitOutlives {
-                    suggestion: BuiltinExplicitOutlivesSuggestion {
+                diagnostics::BuiltinExplicitOutlives {
+                    suggestion: diagnostics::BuiltinExplicitOutlivesSuggestion {
                         spans: lint_spans,
                         applicability,
                         count: bound_count,
@@ -2229,18 +2249,22 @@ impl EarlyLintPass for IncompleteInternalFeatures {
             .for_each(|(name, span)| {
                 if features.incomplete(name) {
                     let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
-                        .map(|n| BuiltinFeatureIssueNote { n });
+                        .map(|n| diagnostics::BuiltinFeatureIssueNote { n });
                     let help = HAS_MIN_FEATURES
                         .contains(&name)
-                        .then_some(BuiltinIncompleteFeaturesHelp { name });
+                        .then_some(diagnostics::BuiltinIncompleteFeaturesHelp { name });
 
                     cx.emit_span_lint(
                         INCOMPLETE_FEATURES,
                         span,
-                        BuiltinIncompleteFeatures { name, note, help },
+                        diagnostics::BuiltinIncompleteFeatures { name, note, help },
                     );
                 } else {
-                    cx.emit_span_lint(INTERNAL_FEATURES, span, BuiltinInternalFeatures { name });
+                    cx.emit_span_lint(
+                        INTERNAL_FEATURES,
+                        span,
+                        diagnostics::BuiltinInternalFeatures { name },
+                    );
                 }
             });
     }
@@ -2570,11 +2594,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         msg!("the type `{$ty}` does not permit being left uninitialized")
                     }
                 };
-                let sub = BuiltinUnpermittedTypeInitSub { err };
+                let sub = diagnostics::BuiltinUnpermittedTypeInitSub { err };
                 cx.emit_span_lint(
                     INVALID_VALUE,
                     expr.span,
-                    BuiltinUnpermittedTypeInit {
+                    diagnostics::BuiltinUnpermittedTypeInit {
                         msg,
                         ty: conjured_ty,
                         label: expr.span,
@@ -2680,7 +2704,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
                 cx.emit_span_lint(
                     DEREF_NULLPTR,
                     expr.span,
-                    BuiltinDerefNullptr { label: expr.span },
+                    diagnostics::BuiltinDerefNullptr { label: expr.span },
                 );
             }
         }
@@ -2989,14 +3013,14 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                             cx.emit_span_lint(
                                 NAMED_ASM_LABELS,
                                 span,
-                                InvalidAsmLabel::Named { missing_precise_span },
+                                diagnostics::InvalidAsmLabel::Named { missing_precise_span },
                             );
                         }
                         AsmLabelKind::FormatArg => {
                             cx.emit_span_lint(
                                 NAMED_ASM_LABELS,
                                 span,
-                                InvalidAsmLabel::FormatArg { missing_precise_span },
+                                diagnostics::InvalidAsmLabel::FormatArg { missing_precise_span },
                             );
                         }
                         // the binary asm issue only occurs when using intel syntax on x86 targets
@@ -3010,7 +3034,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                             cx.emit_span_lint(
                                 BINARY_ASM_LABELS,
                                 span,
-                                InvalidAsmLabel::Binary { missing_precise_span, span },
+                                diagnostics::InvalidAsmLabel::Binary { missing_precise_span, span },
                             )
                         }
                         // No lint on anything other than x86
@@ -3086,12 +3110,12 @@ impl EarlyLintPass for SpecialModuleName {
                     "lib" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,
-                        BuiltinSpecialModuleNameUsed::Lib,
+                        diagnostics::BuiltinSpecialModuleNameUsed::Lib,
                     ),
                     "main" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,
-                        BuiltinSpecialModuleNameUsed::Main,
+                        diagnostics::BuiltinSpecialModuleNameUsed::Main,
                     ),
                     _ => continue,
                 }
@@ -3153,7 +3177,7 @@ impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
             cx.emit_span_lint(
                 INTERNAL_EQ_TRAIT_METHOD_IMPLS,
                 item.span,
-                EqInternalMethodImplemented,
+                diagnostics::EqInternalMethodImplemented,
             );
         }
     }

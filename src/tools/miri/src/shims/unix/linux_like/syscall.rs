@@ -39,6 +39,7 @@ pub fn syscall<'tcx>(
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
     let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
+    let sys_statx = ecx.eval_libc("SYS_statx").to_target_usize(ecx)?;
 
     match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -93,6 +94,14 @@ pub fn syscall<'tcx>(
                 "syscall(SYS_copy_file_range, ...)",
             )?;
             ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
+        }
+        num if num == sys_statx => {
+            let ([dirfd, pathname, flags, mask, statxbuf], _) = &ecx.check_varargs(
+                shim_varargs![i32, *_, i32, u32, *libc::statx],
+                varargs,
+                "syscall(SYS_statx, ...)",
+            )?;
+            ecx.linux_statx(dirfd, pathname, flags, mask, statxbuf, dest)?;
         }
         _ => {
             // ENOSYS for unknown syscalls. That matches us returning null for all
