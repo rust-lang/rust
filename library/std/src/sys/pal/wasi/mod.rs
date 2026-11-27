@@ -7,7 +7,6 @@
 use crate::io;
 
 pub mod conf;
-pub mod stack_overflow;
 #[path = "../unix/time.rs"]
 pub mod time;
 

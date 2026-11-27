@@ -122,8 +122,9 @@ impl Thread {
                 let rust_start = init.init();
 
                 // Now that the thread information is set, set up our stack
-                // overflow handler.
-                let _handler = sys::stack_overflow::Handler::new();
+                // overflow handler – if that is required by the current platform.
+                #[cfg(target_family = "unix")]
+                let _handler = crate::sys::pal::stack_overflow::Handler::new();
 
                 rust_start();
             }
