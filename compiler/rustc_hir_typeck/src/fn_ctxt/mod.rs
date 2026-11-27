@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 pub(crate) use inspect_obligations::UseSubtyping;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -128,6 +129,11 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// type ascriptions later.
     pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
 
+    /// Free functions and constructors whose arguments are being checked.
+    /// Their where-clauses must not be selected before the call's arguments
+    /// have been checked (#152752).
+    pub(super) callees_being_checked: RefCell<FxHashSet<HirId>>,
+
     /// Whether the current crate enables the `rustc_attrs` feature.
     /// This allows to skip processing attributes in many places.
     pub(super) has_rustc_attrs: bool,
@@ -155,6 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             root_ctxt,
             diverging_fallback_has_occurred: Cell::new(false),
             trait_ascriptions: Default::default(),
+            callees_being_checked: Default::default(),
             has_rustc_attrs: root_ctxt.tcx.features().rustc_attrs(),
         }
     }

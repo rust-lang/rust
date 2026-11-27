@@ -161,7 +161,11 @@ where
         }
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+    fn try_evaluate_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        skip: &dyn Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> TraitErrors<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
@@ -169,6 +173,10 @@ where
             let mut any_changed = false;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
+                if skip(obligation) {
+                    return true;
+                }
+
                 // Common case: still stalled; keep the obligation. This path is extremely hot in
                 // some cases; there can be thousands of pending obligations.
                 if let Some(stalled_on) = opt_stalled_on

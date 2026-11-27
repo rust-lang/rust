@@ -174,8 +174,14 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     /// Err: remove the obligation from the list and return an error
     ///
     /// Returns a list of errors from obligations that evaluated to Err.
+    ///
+    /// Obligations for which `skip` returns `true` are left pending.
     #[must_use]
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>;
+    fn try_evaluate_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        skip: &dyn Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> TraitErrors<E>;
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>;
 
@@ -192,7 +198,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> TraitErrors<E> {
-        let errors = self.try_evaluate_obligations(infcx);
+        let errors = self.try_evaluate_obligations(infcx, &|_| false);
         if errors.has_errors() {
             return errors;
         }

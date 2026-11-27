@@ -1,6 +1,9 @@
-//@ known-bug: rust-lang/rust#126696
+//@ check-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
+
+// Used to ICE when the const argument of a call was inferred from the argument
+// while the callee had a `[(); N * 2]:` bound.
 
 fn can_double<const N: usize>(x: [(); N])
 where

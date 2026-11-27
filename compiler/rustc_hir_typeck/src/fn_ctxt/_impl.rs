@@ -765,7 +765,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         mutate_fulfillment_errors: impl Fn(&mut ThinVec<traits::FulfillmentError<'tcx>>),
     ) {
-        let result = self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self);
+        // While a call's arguments are being checked, don't select its
+        // where-clauses while they still mention inference variables: doing so
+        // would let them constrain those variables instead of the arguments.
+        let checked_callees = self.callees_being_checked.borrow().clone();
+        let result =
+            self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self, &|obligation| {
+                if let ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _) =
+                    obligation.cause.code()
+                    && checked_callees.contains(hir_id)
+                {
+                    self.deeply_resolve_ignoring_regions(obligation.predicate)
+                        .has_non_region_infer()
+                } else {
+                    false
+                }
+            });
         if let TraitErrors::HasErrors(mut result) = result {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
@@ -1484,6 +1499,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Normalize only after registering type annotations.
         let args = self.normalize(span, Unnormalized::new_wip(args_for_user_type));
 
+        // Keep the callee's where-clauses out of selection until its arguments
+        // have been checked (#152752). Calls with higher-ranked bounds are left
+        // alone: their bounds may depend on each other, and they keep their own
+        // diagnostics.
+        if call_args.is_some()
+            && self.callee_is_free_fn_or_ctor(def_id)
+            && self
+                .tcx
+                .clauses_of(def_id)
+                .instantiate(self.tcx, args)
+                .into_iter()
+                .all(|(clause, _)| clause.skip_normalization().kind().bound_vars().is_empty())
+        {
+            self.callees_being_checked.borrow_mut().insert(hir_id);
+        }
         self.add_required_obligations_for_hir(span, def_id, args, hir_id);
 
         // Instantiate the values for the type parameters into the type of

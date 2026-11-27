@@ -64,7 +64,7 @@ impl<'tcx> At<'_, 'tcx> {
             );
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);
-            let errors = fulfill_cx.try_evaluate_obligations(self.infcx);
+            let errors = fulfill_cx.try_evaluate_obligations(self.infcx, &|_| false);
             if let TraitErrors::HasErrors(errors) = errors {
                 return Err(errors);
             }

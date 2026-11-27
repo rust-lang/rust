@@ -20,6 +20,7 @@ fn main() {
     // I am not really sure what the best way of presenting this error message is,
     // since right now it just suggests changing `3u32` <=> `3f32` back and forth.
     let _: U<_, u32> = U(1, S(3u32));
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR type mismatch resolving
+    //~| ERROR type mismatch resolving
+    //~| ERROR type mismatch resolving
 }
