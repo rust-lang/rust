@@ -115,6 +115,8 @@ LL | / enum E {
 LL | |     TupleWithFields(()),
 LL | | }
    | |_^
+   = note: 'std::f128::consts::E' is unstable, add `#![feature(f128)]` to the crate attributes to enable
+   = note: 'std::f16::consts::E' is unstable, add `#![feature(f16)]` to the crate attributes to enable
 help: the following enum variant is available
    |
 LL -     E.foo();

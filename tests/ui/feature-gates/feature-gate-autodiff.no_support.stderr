@@ -4,6 +4,7 @@ error: cannot find attribute `autodiff_reverse` in this scope
 LL | #[autodiff_reverse(dfoo)]
    |   ^^^^^^^^^^^^^^^^
    |
+   = note: 'std::autodiff::autodiff_reverse' is unstable, add `#![feature(autodiff)]` to the crate attributes to enable
 help: consider importing this attribute macro
    |
 LL + use std::autodiff::autodiff_reverse;

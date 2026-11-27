@@ -4,6 +4,7 @@ error[E0433]: cannot find type `IntoIter` in this scope
 LL |         let mut iter = IntoIter::new(self);
    |                        ^^^^^^^^ use of undeclared type `IntoIter`
    |
+   = note: 'std::sync::mpmc::IntoIter' is unstable, add `#![feature(mpmc_channel)]` to the crate attributes to enable
 help: consider importing one of these structs
    |
 LL + use std::array::IntoIter;

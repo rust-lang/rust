@@ -764,6 +764,7 @@ symbols! {
         copy_nonoverlapping,
         copysign,
         core,
+        core_intrinsics,
         core_panic,
         core_panic_2015_macro,
         core_panic_macro,

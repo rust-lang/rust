@@ -4,6 +4,7 @@ error[E0432]: unresolved import `Trait`
 LL |     use Trait;
    |         ^^^^^ no `Trait` in the root
    |
+   = note: 'std::mem::type_info::Trait' is unstable, add `#![feature(type_info)]` to the crate attributes to enable
 help: consider importing one of these items instead
    |
 LL |     use std::mem::type_info::Trait;

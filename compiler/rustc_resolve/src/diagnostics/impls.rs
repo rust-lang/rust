@@ -1830,9 +1830,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                        // Add a note about unstable features on nightly Rust.
+                        let note = if !is_stable
+                            && let Some(did) = did
+                            && let Some(stab) = this.tcx.lookup_stability(did)
+                            && let StabilityLevel::Unstable { .. } = stab.level
+                        {
+                            Some(format!(
+                                "'{}' is unstable, add `#![feature({})]` \
+                                    to the crate attributes to enable",
+                                path_names_to_string(&path),
+                                stab.feature
+                            ))
+                        }
                         // See if we're recommending TryFrom, TryInto, or FromIterator and add
                         // a note about editions
-                        let note = if let Some(did) = did {
+                        else if let Some(did) = did {
                             let requires_note = !did.is_local()
                                 && find_attr!(
                                     this.tcx,
@@ -4193,7 +4206,7 @@ fn show_candidates(
                 c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
-            ));
+            ))
         }
     });
 
@@ -4255,6 +4268,7 @@ fn show_candidates(
             Applicability::MaybeIncorrect,
             SuggestionStyle::ShowAlways,
         );
+
         showed = true;
     }
     if !accessible_path_strings.is_empty() {
@@ -4364,6 +4378,7 @@ fn show_candidates(
             append_candidates(&mut msg, accessible_path_strings);
             err.help(msg);
         }
+
         showed = true;
     }
     if !inaccessible_path_strings.is_empty()
