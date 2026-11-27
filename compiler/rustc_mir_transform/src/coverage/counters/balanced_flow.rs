@@ -28,7 +28,7 @@ use rustc_index::bit_set::DenseBitSet;
 /// graph, with synthetic in-edges from these nodes:
 /// - Any node that has no out-edges.
 /// - Any node that explicitly requires a sink edge, as indicated by a
-///   caller-supplied `force_sink_edge` function.
+///   caller-supplied `force_sink_edge` or `post_balance_sink_edge` function.
 /// - Any node that would otherwise be unable to reach the sink, because it is
 ///   part of an inescapable loop.
 ///
@@ -53,7 +53,11 @@ impl<G: graph::DirectedGraph> BalancedFlowGraph<G> {
     ///
     /// Assumes that all nodes in the underlying graph are reachable from the
     /// start node.
-    pub(crate) fn for_graph(graph: G, force_sink_edge: impl Fn(G::Node) -> bool) -> Self
+    pub(crate) fn for_graph(
+        graph: G,
+        force_sink_edge: impl Fn(G::Node) -> bool,
+        post_balance_sink_edge: impl Fn(G::Node) -> bool,
+    ) -> Self
     where
         G: graph::ControlFlowGraph,
     {
@@ -73,6 +77,13 @@ impl<G: graph::DirectedGraph> BalancedFlowGraph<G> {
         // `sink_edge_nodes`, and add them to the set as well.
         dfs.complete_search();
         sink_edge_nodes.union_not(dfs.visited_set());
+
+        // Force additional sink edges that do not affect reverse-reachability search.
+        for node in graph.iter_nodes() {
+            if post_balance_sink_edge(node) {
+                sink_edge_nodes.insert(node);
+            }
+        }
 
         // The sink node is 1 higher than the highest real node.
         let sink = G::Node::new(graph.num_nodes());

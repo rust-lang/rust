@@ -27,8 +27,15 @@ pub(crate) struct BcbCountersData {
 /// will later be used (during codegen) to create physical counters or counter
 /// expressions for each BCB node that needs one.
 pub(crate) fn prepare_bcb_counters_data(graph: &CoverageGraph) -> BcbCountersData {
+    // Checks if any successor node dominates the current node. This is given a
+    // sink edge to help with cases when loop doesn't exit before coverage dump.
+    let is_backedge_block = |node: BasicCoverageBlock| {
+        graph.successors[node].iter().any(|&succ| graph.dominates(succ, node))
+    };
+
     // Create the derived graphs that are necessary for subsequent steps.
-    let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
+    let balanced_graph =
+        BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable, is_backedge_block);
     let node_flow_data = node_flow_data_for_balanced_graph(&balanced_graph);
 
     // Also create a "priority list" of coverage graph nodes, to help determine
