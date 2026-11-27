@@ -91,7 +91,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     /// argument of the various `LLVMRustDIBuilderCreate*Type()` methods.
     ///
     /// Right now this takes the form of a hex-encoded opaque hash value.
-    fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
+    pub(super) fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
         let mut hasher = StableHasher::new();
         tcx.with_stable_hashing_context(|mut hcx| {
             hcx.while_hashing_spans(false, |hcx| self.stable_hash(hcx, &mut hasher))
@@ -164,6 +164,16 @@ impl<'ll, 'tcx> StubInfo<'ll, 'tcx> {
         let di_node = build(cx, &unique_type_id_str);
         StubInfo { metadata: di_node, unique_type_id }
     }
+
+    pub(super) fn new_with_id_str(
+        cx: &CodegenCx<'ll, 'tcx>,
+        unique_type_id: UniqueTypeId<'tcx>,
+        unique_type_id_str: &str,
+        build: impl FnOnce(&CodegenCx<'ll, 'tcx>, /* unique_type_id_str: */ &str) -> &'ll DIType,
+    ) -> StubInfo<'ll, 'tcx> {
+        let di_node = build(cx, unique_type_id_str);
+        StubInfo { metadata: di_node, unique_type_id }
+    }
 }
 
 /// Create a stub debuginfo node onto which fields and nested types can be attached.
@@ -177,8 +187,33 @@ pub(super) fn stub<'ll, 'tcx>(
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
 ) -> StubInfo<'ll, 'tcx> {
-    let no_elements: &[Option<&llvm::Metadata>] = &[];
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
+    stub_with_id_str(
+        cx,
+        kind,
+        unique_type_id,
+        &unique_type_id_str,
+        name,
+        def_location,
+        (size, align),
+        containing_scope,
+        flags,
+    )
+}
+
+/// Like [`stub`], but with an already computed unique type ID string.
+pub(super) fn stub_with_id_str<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    kind: Stub<'ll>,
+    unique_type_id: UniqueTypeId<'tcx>,
+    unique_type_id_str: &str,
+    name: &str,
+    def_location: Option<DefinitionLocation<'ll>>,
+    (size, align): (Size, Align),
+    containing_scope: Option<&'ll DIScope>,
+    flags: DIFlags,
+) -> StubInfo<'ll, 'tcx> {
+    let no_elements: &[Option<&llvm::Metadata>] = &[];
 
     let (file_metadata, line_number) = if let Some(def_location) = def_location {
         (def_location.0, def_location.1)
