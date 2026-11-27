@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `[X; 1]`
+error[E0369]: can't compare `[X; 1]` to `[_; 2]`
   --> $DIR/rhs-ty-hint-134162.rs:16:17
    |
 LL |     let _ = [X] == [panic!(); 2];

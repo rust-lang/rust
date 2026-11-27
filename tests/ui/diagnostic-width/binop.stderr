@@ -1,4 +1,4 @@
-error[E0369]: cannot add `((_, _, _, _), _, _, _)` to `((_, _, _, _), _, _, _)`
+error[E0369]: can't add `((_, _, _, _), _, _, _)`
   --> $DIR/binop.rs:8:7
    |
 LL |     x + x;

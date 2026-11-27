@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `[X; 3]`
+error[E0369]: can't compare `[X; 3]`
   --> $DIR/eq-arr.rs:5:17
    |
 LL |     let eq = xs == [X, X, X];

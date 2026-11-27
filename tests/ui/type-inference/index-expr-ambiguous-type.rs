@@ -29,8 +29,7 @@ fn with_known_index_type() {
 
 fn invalid_operator_with_ambiguous_index() {
     let bad_idx = 0u8;
-    let _foo = true + [1, 2, 3][bad_idx.into()];
-    //~^ ERROR cannot add
+    let _foo = true + [1, 2, 3][bad_idx.into()]; //~ ERROR: can't add
 }
 
 fn mismatched_numeric_binop_with_ambiguous_index() {

@@ -1,4 +1,4 @@
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: no implementation for `fn() -> i32 {foo} > {integer}`
   --> $DIR/function-comparison-errors-59488.rs:15:9
    |
 LL |     foo > 12;
@@ -20,7 +20,7 @@ LL |     foo > 12;
    = note: expected fn item `fn() -> i32 {foo}`
                  found type `i32`
 
-error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
+error[E0369]: no implementation for `fn(i64) -> i64 {bar} > {integer}`
   --> $DIR/function-comparison-errors-59488.rs:19:9
    |
 LL |     bar > 13;
@@ -42,7 +42,7 @@ LL |     bar > 13;
    = note: expected fn item `fn(i64) -> i64 {bar}`
                  found type `i64`
 
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: binary operation `>` can't be applied to type `fn() -> i32 {foo}`
   --> $DIR/function-comparison-errors-59488.rs:23:9
    |
 LL |     foo > foo;
@@ -55,7 +55,7 @@ help: use parentheses to call these
 LL |     foo() > foo();
    |        ++      ++
 
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: no implementation for `fn() -> i32 {foo} > fn(i64) -> i64 {bar}`
   --> $DIR/function-comparison-errors-59488.rs:26:9
    |
 LL |     foo > bar;
@@ -72,7 +72,7 @@ LL |     foo > bar;
    = note: expected fn item `fn() -> i32 {foo}`
               found fn item `fn(i64) -> i64 {bar}`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}`
+error[E0369]: can't compare `fn(usize) -> Foo {Foo::Bar}`
   --> $DIR/function-comparison-errors-59488.rs:31:5
    |
 LL |     assert_eq!(Foo::Bar, i);

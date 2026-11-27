@@ -1,4 +1,4 @@
-error[E0369]: cannot add `Box<isize>` to `Box<isize>`
+error[E0369]: can't add `Box<isize>`
   --> $DIR/autoderef-box-no-add.rs:25:24
    |
 LL |     let z: isize = a.x + b.y;
@@ -12,8 +12,8 @@ note: `Box<isize>` does not implement `Add`
    |
    = note: `Box<isize>` is defined in another crate
 
-error[E0369]: cannot add `Box<isize>` to `Box<isize>`
-  --> $DIR/autoderef-box-no-add.rs:31:33
+error[E0369]: can't add `Box<isize>`
+  --> $DIR/autoderef-box-no-add.rs:30:33
    |
 LL |     let answer: isize = forty.a + two.a;
    |                         ------- ^ ----- Box<isize>

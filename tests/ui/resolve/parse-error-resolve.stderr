@@ -9,7 +9,7 @@ help: you might have meant to end the type parameters here
 LL | impl<S: Into<std::borrow::Cow<'static, str>>> From<S> for Canonical {
    |                                             +
 
-error[E0369]: cannot add `{integer}` to `&str`
+error[E0369]: can't add `{integer}` to `&str`
   --> $DIR/parse-error-resolve.rs:5:16
    |
 LL |     let _ = "" + 1;

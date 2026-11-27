@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `()` by `&i32`
+error[E0369]: can't multiply `()` by `&i32`
   --> $DIR/multiply-is-deref-on-rhs.rs:4:5
    |
 LL |     x = ()

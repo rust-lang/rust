@@ -13,7 +13,7 @@ struct Nanoseconds(NanoI32);
 //~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Ord` is not satisfied
 //~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Hash` is not satisfied
 //~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Default` is not satisfied
-//~| ERROR: `==` cannot be applied
+//~| ERROR: can't compare
 
 type NanoI32 = pattern_type!(i32 is 0..=999_999_999);
 
