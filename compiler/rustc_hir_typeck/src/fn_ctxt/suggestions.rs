@@ -3929,10 +3929,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
     ) {
+        // An unsuffixed literal leaves an inference variable behind (`{integer}`), which would
+        // make the swapped impl only *maybe* apply. Check it against the type the literal falls
+        // back to instead.
+        let (swapped_self_ty, swapped_rhs_ty) = self.resolve_numeric_literals_with_default(
+            self.deeply_resolve_ignoring_regions((rhs_ty, lhs_ty)),
+        );
         if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().partial_eq_trait()
+            // An error type satisfies every bound, which says nothing about a swap.
+            && !(swapped_self_ty, swapped_rhs_ty).references_error()
             && self
                 .infcx
-                .type_implements_trait(partial_eq_def_id, [rhs_ty, lhs_ty], self.param_env)
+                .type_implements_trait(
+                    partial_eq_def_id,
+                    [swapped_self_ty, swapped_rhs_ty],
+                    self.param_env,
+                )
                 .must_apply_modulo_regions()
         {
             let sm = self.tcx.sess.source_map();
