@@ -1373,7 +1373,12 @@ pub enum DesugaringKind {
         ///
         /// If it wasn't written in the source then we have to be careful with suggestions about
         /// rewriting it.
-        source: bool,
+        ///
+        /// WARNING: This can depend on whether local source files are available.
+        /// Only use this for diagnostics, never for compiler semantics or
+        /// incremental compilation.
+        #[stable_hash(ignore)]
+        is_source_literal_for_diagnostics_only: bool,
     },
     RangeExpr,
 }
@@ -1393,8 +1398,10 @@ impl DesugaringKind {
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
             DesugaringKind::PatTyRange => "pattern type",
-            DesugaringKind::FormatLiteral { source: true } => "format string literal",
-            DesugaringKind::FormatLiteral { source: false } => {
+            DesugaringKind::FormatLiteral { is_source_literal_for_diagnostics_only: true } => {
+                "format string literal"
+            }
+            DesugaringKind::FormatLiteral { is_source_literal_for_diagnostics_only: false } => {
                 "expression that expanded into a format string literal"
             }
             DesugaringKind::RangeExpr => "range expression",

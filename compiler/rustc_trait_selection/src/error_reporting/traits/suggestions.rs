@@ -5494,10 +5494,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ) = expr.kind
             {
                 if Some(*span) != err.span.primary_span() {
-                    let msg = if span.is_desugaring(DesugaringKind::FormatLiteral { source: true })
-                    {
+                    let msg = if span.is_desugaring(DesugaringKind::FormatLiteral {
+                        is_source_literal_for_diagnostics_only: true,
+                    }) {
                         "required by this formatting parameter"
-                    } else if span.is_desugaring(DesugaringKind::FormatLiteral { source: false }) {
+                    } else if span.is_desugaring(DesugaringKind::FormatLiteral {
+                        is_source_literal_for_diagnostics_only: false,
+                    }) {
                         "required by a formatting parameter in this expression"
                     } else {
                         "required by a bound introduced by this call"
