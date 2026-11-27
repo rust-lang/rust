@@ -1837,7 +1837,8 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
     }
 
     // Fast path for matches that pair up 1:1 with a fieldless enum.
-    if is_obviously_one_to_one(tycx, arms, &scrut_ty)? {
+    // But it may give up and waste effort, so only do it when the match is large.
+    if arms.len() > 16 && is_obviously_one_to_one(tycx, arms, &scrut_ty)? {
         return Ok(UsefulnessReport {
             arm_usefulness: arms.iter().map(|&arm| (arm, Usefulness::Useful(Vec::new()))).collect(),
             non_exhaustiveness_witnesses: Vec::new(),
