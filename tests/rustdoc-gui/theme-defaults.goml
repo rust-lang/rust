@@ -15,7 +15,7 @@ set-local-storage: {
     "rustdoc-use-system-theme": null,
     "rustdoc-theme": "ayu"
 }
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+reload:
 call-function: ("open-settings-menu", {})
 assert: "#theme-system-preference:checked"
 assert: "#preferred-light-theme-light:checked"

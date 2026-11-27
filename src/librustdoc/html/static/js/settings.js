@@ -81,18 +81,21 @@
      */
     function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
-            const settingId = toggle.id;
-            const settingValue = getSettingValue(settingId);
-            if (settingValue !== null) {
-                toggle.checked = settingValue === "true";
-            }
-            toggle.onchange = () => {
-                changeSetting(toggle.id, toggle.checked);
-            };
-        });
         onEachLazy(
-            settingsElement.querySelectorAll("input[type=\"radio\"]"),
+            settingsElement.querySelectorAll(".setting-check input[type=\"checkbox\"]"),
+            toggle => {
+                const settingId = toggle.id;
+                const settingValue = getSettingValue(settingId);
+                if (settingValue !== null) {
+                    toggle.checked = settingValue === "true";
+                }
+                toggle.onchange = () => {
+                    changeSetting(toggle.id, toggle.checked);
+                };
+            },
+        );
+        onEachLazy(
+            settingsElement.querySelectorAll(".setting-radio input[type=\"radio\"]"),
             /** @param {HTMLInputElement} elem */
             elem => {
                 const settingId = elem.name;
@@ -116,27 +119,37 @@
 
     /**
      * This function builds the sections inside the "settings page". It takes a `tabs` list
-     * as argument which describes each setting and how to render it. It returns a string
-     * representing the raw HTML.
+     * as argument which describes each setting and how to render it. It returns an HTMLElement
+     * representing the headers and an HTML string representing the tabs content.
      *
      * @param {Array<rustdoc.SettingsTab>} tabs
      *
-     * @return {string}
+     * @return {(string | HTMLDivElement)[]}
      */
     function buildSettingsPageSections(tabs) {
         let output = "";
+        const headers = document.createElement("div");
+        headers.className = "tabs-header";
 
-        output += "<div class=\"tabs\">";
         for (const [index, tab] of tabs.entries()) {
-            output += `\
-                <button class="tab${index === 0 ? " selected" : ""}" data-name="${tab.name}">\
-                    ${tab.name}\
-                </button>`;
-        }
-        output += "</div>";
-        for (const [index, tab] of tabs.entries()) {
-            output += `\
-<div class="setting${index === 0 ? " selected" : ""}" data-name="${tab.name}">`;
+            const input = document.createElement("input");
+            const settingId = `setting-tab-${tab.name}`;
+            input.id = settingId;
+            input.setAttribute("type", "radio");
+            input.setAttribute("name", "setting-radio");
+            // We prevent the `input` to be focusable so we can handle the `tab` through the label.
+            input.setAttribute("tabindex", "-1");
+            if (index === 0) {
+                input.setAttribute("checked", "");
+            }
+            headers.appendChild(input);
+            const label = document.createElement("label");
+            label.setAttribute("for", settingId);
+            label.setAttribute("tabindex", "0");
+            label.innerText = tab.name;
+            headers.appendChild(label);
+
+            output += "<section class='content'>";
             for (const setting of tab.settings) {
                 const js_data_name = setting["js_name"];
                 const setting_name = setting["name"];
@@ -173,9 +186,9 @@
 </div>`;
                 }
             }
-            output += "</div>";
+            output += "</section>";
         }
-        return output;
+        return [headers, output];
     }
 
     /**
@@ -286,36 +299,21 @@
         ];
 
         // Then we build the DOM.
+        const settings = document.createElement("div");
+        settings.className = "settings tabs";
+        const [headers, settingsTabs] = buildSettingsPageSections(tabs);
+        // @ts-expect-error
+        settings.appendChild(headers);
+        // @ts-expect-error
+        settings.insertAdjacentHTML("beforeend", settingsTabs);
+
         const elementKind = isSettingsPage ? "section" : "div";
-        const innerHTML = `<div class="settings">${buildSettingsPageSections(tabs)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
         if (!isSettingsPage) {
             el.className = "popover";
         }
-        el.innerHTML = innerHTML;
-        const selectedClass = "selected";
-        onEachLazy(el.getElementsByClassName("tab"), tab => {
-            tab.onclick = () => {
-                if (tab.classList.contains(selectedClass)) {
-                    return;
-                }
-                const selectedTab = el.querySelector(`.tab.${selectedClass}`);
-                if (selectedTab) {
-                    selectedTab.classList.remove(selectedClass);
-                }
-                const name = tab.getAttribute("data-name");
-                const selected = el.querySelector(`#settings .setting.${selectedClass}`);
-                if (selected) {
-                    selected.classList.remove(selectedClass);
-                }
-                const newSelected = el.querySelector(`#settings .setting[data-name="${name}"]`);
-                if (newSelected) {
-                    newSelected.classList.add(selectedClass);
-                }
-                tab.classList.add(selectedClass);
-            };
-        });
+        el.appendChild(settings);
 
         if (isSettingsPage) {
             const mainElem = document.getElementById(MAIN_ID);
