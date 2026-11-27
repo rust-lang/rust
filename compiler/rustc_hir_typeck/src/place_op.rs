@@ -1,4 +1,4 @@
-use rustc_ast as ast;
+use rustc_ast::{self as ast, UnsafeBinderCastKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
@@ -271,7 +271,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         while let hir::ExprKind::Field(expr, _)
         | hir::ExprKind::Index(expr, _, _)
-        | hir::ExprKind::Unary(hir::UnOp::Deref, expr) = exprs.last().unwrap().kind
+        | hir::ExprKind::Unary(hir::UnOp::Deref, expr)
+        | hir::ExprKind::Type(expr, _)
+        | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, expr, _) =
+            exprs.last().unwrap().kind
         {
             exprs.push(expr);
         }
