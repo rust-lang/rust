@@ -128,7 +128,10 @@ unsafe extern "C" fn print_stack_trace(signum: libc::c_int) {
         written += 1;
     }
     raw_errln!("note: we would appreciate a report at https://github.com/rust-lang/rust");
-    written += 1;
+    raw_errln!(
+        "note: we do not allow LLM-created issues; see Forge and .agents/skills in the Rust monorepo"
+    );
+    written += 2;
     if maybe_stack_overflow {
         // get the current stack size WITHOUT blocking and double it
         let new_size = STACK_SIZE.get().copied().unwrap_or(DEFAULT_STACK_SIZE) * 2;

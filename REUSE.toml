@@ -19,6 +19,7 @@ path = [
     "tests/**",
     "src/**",
     ".github/**",
+    ".agents/skills/**",
     "AGENTS.md",
     "Cargo.lock",
     "Cargo.toml",

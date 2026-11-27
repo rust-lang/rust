@@ -12,6 +12,8 @@ body:
 
         You can read "[Rust Bug Minimization Patterns](http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/)" for how to create smaller examples.
 
+        DO NOT POST LLM-GENERATED TEXT without clearly marking it.
+
   - type: textarea
     id: code
     attributes:

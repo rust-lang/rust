@@ -15,6 +15,8 @@ If the new feature is small, it may be fine to skip the RFC process. In that
 case, you can use `issue = "none"` in your initial implementation PR. The
 reviewer will ask you to open a tracking issue if they agree your feature can be
 added without an RFC.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 Feature gate: `#![feature(...)]`
