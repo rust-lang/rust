@@ -60,19 +60,17 @@ pub enum OverlapMode {
 
 impl OverlapMode {
     pub fn get(tcx: TyCtxt<'_>, trait_id: DefId) -> OverlapMode {
-        let with_negative_coherence = tcx.features().with_negative_coherence();
-        let strict_coherence = find_attr!(tcx, trait_id, RustcStrictCoherence(span) => *span);
-
-        if with_negative_coherence {
-            if strict_coherence.is_some() { OverlapMode::Strict } else { OverlapMode::WithNegative }
-        } else {
-            if let Some(span) = strict_coherence {
+        match find_attr!(tcx, trait_id, RustcStrictCoherence(span) => *span) {
+            Some(_) if tcx.features_for(trait_id).with_negative_coherence() => Self::Strict,
+            Some(attr_span) => {
                 tcx.dcx().emit_err(StrictCoherenceNeedsNegativeCoherence {
                     span: tcx.def_span(trait_id),
-                    attr_span: span,
+                    attr_span,
                 });
+                Self::Stable
             }
-            OverlapMode::Stable
+            None if tcx.features().with_negative_coherence() => Self::WithNegative,
+            None => Self::Stable,
         }
     }
 

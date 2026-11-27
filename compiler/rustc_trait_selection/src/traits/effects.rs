@@ -413,7 +413,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
             match tcx.coroutine_movability(def_id) {
                 ty::Movability::Static => Err(EvaluationFailure::NoSolution),
                 ty::Movability::Movable => {
-                    if tcx.features().coroutine_clone() {
+                    if tcx.features_for(def_id).coroutine_clone() {
                         Ok(ty::Binder::dummy(vec![
                             args.as_coroutine().tupled_upvars_ty(),
                             Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args),

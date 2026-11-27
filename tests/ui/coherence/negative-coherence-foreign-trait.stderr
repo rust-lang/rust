@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `From<&_>` for type `M`
+  --> $DIR/negative-coherence-foreign-trait.rs:13:1
+   |
+LL | impl<T: DerefMut> From<T> for M {
+   | ------------------------------- first implementation here
+...
+LL | impl<'a, T> From<&'a T> for M {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `M`
+   |
+   = note: downstream crates may implement trait `std::ops::DerefMut` for type `&_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1190,7 +1190,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 match self.tcx().coroutine_movability(coroutine_def_id) {
                     hir::Movability::Static => {}
                     hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
+                        if self.tcx().features_for(coroutine_def_id).coroutine_clone() {
                             let resolved_upvars =
                                 self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                             if resolved_upvars.is_ty_var() {

@@ -114,14 +114,6 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
-    fn gca_const_items(self) -> bool {
-        self.gca_const_items()
-    }
-
-    fn coroutine_clone(self) -> bool {
-        self.coroutine_clone()
-    }
-
     fn move_trait(self) -> bool {
         self.move_trait()
     }
@@ -131,6 +123,50 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         // enabled, even if it is enabled through `#[feature]`.
         // This is to prevent accidentally leaking unstable APIs to stable.
         !self.staged_api() && self.enabled(symbol)
+    }
+}
+
+/// See [`TyCtxt::features_for`].
+#[derive(Copy, Clone)]
+pub struct ItemFeatures<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    krate: CrateNum,
+}
+
+impl<'tcx> ItemFeatures<'tcx> {
+    fn enabled(self, feature: Symbol) -> bool {
+        self.tcx.features().enabled(feature)
+            || self.tcx.lang_feature_enabled_in(self.krate, feature)
+    }
+
+    pub fn gca_const_items(self) -> bool {
+        self.enabled(sym::gca_const_items)
+    }
+
+    pub fn coroutine_clone(self) -> bool {
+        self.enabled(sym::coroutine_clone)
+    }
+
+    pub fn with_negative_coherence(self) -> bool {
+        self.enabled(sym::with_negative_coherence)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::ItemFeatures<TyCtxt<'tcx>> for ItemFeatures<'tcx> {
+    fn generic_const_exprs(self) -> bool {
+        self.enabled(sym::generic_const_exprs)
+    }
+
+    fn gca_const_items(self) -> bool {
+        self.gca_const_items()
+    }
+
+    fn coroutine_clone(self) -> bool {
+        self.coroutine_clone()
+    }
+
+    fn move_trait(self) -> bool {
+        self.enabled(sym::move_trait)
     }
 }
 
@@ -1266,6 +1302,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_direct_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst);
         self.is_always_gca(def_id) || self.const_of_item(def_id).is_some()
+    }
+
+    /// Whether `krate` enables the language feature `feature`.
+    pub fn lang_feature_enabled_in(self, krate: CrateNum, feature: Symbol) -> bool {
+        if krate == LOCAL_CRATE {
+            self.features().enabled(feature)
+        } else {
+            self.enabled_lang_features_in(krate).contains(&feature)
+        }
+    }
+
+    /// Features enabled in the current crate or in the crate defining `def_id`.
+    pub fn features_for(self, def_id: DefId) -> ItemFeatures<'tcx> {
+        ItemFeatures { tcx: self, krate: def_id.krate }
     }
 
     /// Whether this is a projection const marked with `#[always_gca]`

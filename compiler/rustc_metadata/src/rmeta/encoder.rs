@@ -674,6 +674,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
 
         let lib_features = stat!("lib-features", || self.encode_lib_features());
+        let enabled_lang_features = stat!("enabled-lang-features", || self
+            .lazy_array(tcx.enabled_lang_features_in(LOCAL_CRATE).iter()));
 
         let stability_implications =
             stat!("stability-implications", || self.encode_stability_implications());
@@ -804,6 +806,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 crate_deps,
                 dylib_dependency_formats,
                 lib_features,
+                enabled_lang_features,
                 stability_implications,
                 lang_items,
                 diagnostic_items,

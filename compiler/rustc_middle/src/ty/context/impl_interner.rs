@@ -347,6 +347,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
+    type ItemFeatures = crate::ty::ItemFeatures<'tcx>;
+
+    fn features_for(self, def_id: DefId) -> Self::ItemFeatures {
+        self.features_for(def_id)
+    }
+
     fn assumptions_on_binders(self) -> bool {
         self.assumptions_on_binders()
     }

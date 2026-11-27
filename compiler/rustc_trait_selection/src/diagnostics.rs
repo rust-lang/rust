@@ -21,6 +21,16 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 pub(crate) mod note_and_explain;
 
 #[derive(Diagnostic)]
+#[diag(
+    "`{$name}` is from a crate with `gca_const_items`, which requires `-Znext-solver=globally` in this crate too"
+)]
+pub(crate) struct GcaConstRequiresNextSolver {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("unable to construct a constant value for the alias const {$alias_const}")]
 pub(crate) struct UnableToConstructConstantValue<'a> {
     #[primary_span]

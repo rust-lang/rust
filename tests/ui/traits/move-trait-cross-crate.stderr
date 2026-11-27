@@ -1,0 +1,56 @@
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move-trait-cross-crate.rs:16:14
+   |
+LL |     up::need(up::NotMove);
+   |     -------- ^^^^^^^^^^^ the trait `Move` is not implemented for `NotMove`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `NotMove: Move` is not satisfied
+note: required by a bound in `need`
+  --> $DIR/auxiliary/move-trait-upstream.rs:10:16
+   |
+LL | pub fn need<T: Move>(_: T) {}
+   |                ^^^^ required by this bound in `need`
+help: consider borrowing here
+   |
+LL |     up::need(&up::NotMove);
+   |              +
+LL |     up::need(&mut up::NotMove);
+   |              ++++
+
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move-trait-cross-crate.rs:18:14
+   |
+LL |     up::need((up::NotMove,));
+   |     -------- ^^^^^^^^^^^^^^ may not be movable
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: within `(NotMove,)`, the nightly-only, unstable trait `Move` is not implemented for `NotMove`
+   = note: required because it appears within the type `(NotMove,)`
+note: required by a bound in `need`
+  --> $DIR/auxiliary/move-trait-upstream.rs:10:16
+   |
+LL | pub fn need<T: Move>(_: T) {}
+   |                ^^^^ required by this bound in `need`
+
+error[E0277]: values of type `NotMove` may not be movable
+  --> $DIR/move-trait-cross-crate.rs:20:14
+   |
+LL |     up::need([up::NotMove]);
+   |     -------- ^^^^^^^^^^^^^ may not be movable
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: within `[NotMove; 1]`, the nightly-only, unstable trait `Move` is not implemented for `NotMove`
+   = note: required because it appears within the type `[NotMove; 1]`
+note: required by a bound in `need`
+  --> $DIR/auxiliary/move-trait-upstream.rs:10:16
+   |
+LL | pub fn need<T: Move>(_: T) {}
+   |                ^^^^ required by this bound in `need`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

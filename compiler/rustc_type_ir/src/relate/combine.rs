@@ -206,7 +206,7 @@ where
 
         (ty::ConstKind::Alias(ty::IsRigid::No, _), _)
         | (_, ty::ConstKind::Alias(ty::IsRigid::No, _))
-            if infcx.cx().features().generic_const_exprs() =>
+            if ty::gce_applies_to(infcx.cx(), (a, b)) =>
         {
             relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
             Ok(b)

@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -9,7 +10,11 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::{self as ty, AliasConst, BoundVarIndexKind, Interner};
+use crate::inherent::*;
+use crate::{
+    self as ty, AliasConst, BoundVarIndexKind, Interner, TypeFlags, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
@@ -153,14 +158,18 @@ impl<I: Interner> AliasConstKind<I> {
         interner.is_direct_const(self)
     }
 
-    pub fn def_span(self, interner: I) -> I::Span {
+    pub fn def_id(self) -> I::DefId {
         match self {
-            AliasConstKind::Projection { def_id } => interner.def_span(def_id.into()),
-            AliasConstKind::InherentSelf { def_id } => interner.def_span(def_id.into()),
-            AliasConstKind::InherentImpl { def_id } => interner.def_span(def_id.into()),
-            AliasConstKind::Free { def_id } => interner.def_span(def_id.into()),
-            AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
+            Self::Projection { def_id } => def_id.into(),
+            Self::InherentSelf { def_id } => def_id.into(),
+            Self::InherentImpl { def_id } => def_id.into(),
+            Self::Free { def_id } => def_id.into(),
+            Self::Anon { def_id } => def_id.into(),
         }
+    }
+
+    pub fn def_span(self, interner: I) -> I::Span {
+        interner.def_span(self.def_id())
     }
 }
 
@@ -287,6 +296,39 @@ impl<I: Interner> ValTreeKind<I> {
             ValTreeKind::Leaf(_) => None,
         }
     }
+}
+
+/// Whether GCE applies to `value`: the current crate or the crate of a const in it enables it.
+pub fn gce_applies_to<I: Interner>(cx: I, value: impl TypeVisitable<I>) -> bool {
+    struct MentionsGceConst<I>(I);
+
+    impl<I: Interner> TypeVisitor<I> for MentionsGceConst<I> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+            if ty.has_type_flags(TypeFlags::HAS_CONST_ALIAS) {
+                ty.super_visit_with(self)
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
+
+        fn visit_const(&mut self, ct: ty::Const<I>) -> Self::Result {
+            if !ct.has_type_flags(TypeFlags::HAS_CONST_ALIAS) {
+                return ControlFlow::Continue(());
+            }
+            match ct.kind() {
+                ConstKind::Alias(_, alias_const)
+                    if self.0.features_for(alias_const.kind.def_id()).generic_const_exprs() =>
+                {
+                    ControlFlow::Break(())
+                }
+                _ => ct.super_visit_with(self),
+            }
+        }
+    }
+
+    cx.features().generic_const_exprs() || value.visit_with(&mut MentionsGceConst(cx)).is_break()
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

@@ -789,10 +789,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 let tcx = self.tcx();
-                assert!(
-                    tcx.features().generic_const_exprs(),
-                    "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
-                );
 
                 {
                     let c1 = tcx.expand_abstract_consts(c1);
@@ -1198,11 +1194,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                 self.infcx.tcx.trait_is_coinductive(data.def_id())
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
                 // FIXME(generic_const_exprs): GCE needs well-formedness predicates to be
                 // coinductive, but GCE is on the way out anyways, so this should eventually
                 // be replaced with `false`.
-                self.infcx.tcx.features().generic_const_exprs()
+                ty::gce_applies_to(self.infcx.tcx, term)
             }
             _ => false,
         })
@@ -2144,7 +2140,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     unreachable!("tried to assemble `Clone` for static coroutine")
                 }
                 hir::Movability::Movable => {
-                    if self.tcx().features().coroutine_clone() {
+                    if self.tcx().features_for(def_id).coroutine_clone() {
                         ty::Binder::dummy(vec![
                             args.as_coroutine().tupled_upvars_ty(),
                             Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),

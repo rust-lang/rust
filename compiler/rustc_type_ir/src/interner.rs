@@ -351,6 +351,10 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
+    type ItemFeatures: ItemFeatures<Self>;
+    /// Features enabled in the current crate or in the crate defining `def_id`.
+    fn features_for(self, def_id: Self::DefId) -> Self::ItemFeatures;
+
     fn assumptions_on_binders(self) -> bool;
 
     fn renormalize_rigid_aliases(self) -> bool;

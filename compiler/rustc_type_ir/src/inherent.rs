@@ -599,13 +599,21 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
+    fn move_trait(self) -> bool;
+
+    fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
+}
+
+/// See [`Interner::features_for`].
+#[rust_analyzer::prefer_underscore_import]
+pub trait ItemFeatures<I: Interner>: Copy {
+    fn generic_const_exprs(self) -> bool;
+
     fn gca_const_items(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
 
     fn move_trait(self) -> bool;
-
-    fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
 #[rust_analyzer::prefer_underscore_import]
