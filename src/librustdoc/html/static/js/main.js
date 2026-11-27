@@ -1316,8 +1316,9 @@ function preLoadCss(cssUrl) {
             const force_visible = base.TOOLTIP_FORCE_VISIBLE;
             hideTooltip(false);
             if (force_visible) {
-                showTooltip(base);
-                base.TOOLTIP_FORCE_VISIBLE = true;
+                showTooltip(base).then(() => {
+                    base.TOOLTIP_FORCE_VISIBLE = true;
+                });
             }
         }
     });
@@ -1348,23 +1349,108 @@ function preLoadCss(cssUrl) {
         });
     });
 
+    /** @type {Promise<void>|null} */
+    let notable_traits_loading = null;
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async function loadNotableTraits() {
+        if (notable_traits_loading === null) {
+            const page = window.location.pathname.split("/").pop();
+            // @ts-expect-error
+            const name = page.endsWith(".html") ? page.slice(0, -"html".length) : page;
+            notable_traits_loading = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = name + "notable-traits-data.js";
+                script.onload = () => resolve();
+                script.onerror = reject;
+                document.head.append(script);
+            });
+        }
+        try {
+            await notable_traits_loading;
+        } catch {
+            notable_traits_loading = null;
+        }
+        if (!window.NOTABLE_TRAITS) {
+            throw new Error("showTooltip() called with notable without any notable traits!");
+        }
+    }
+
     /**
      * Show a tooltip immediately.
      *
      * @param {HTMLElement} e - The tooltip's anchor point. The DOM is consulted to figure
      *                          out what the tooltip should contain, and where it should be
      *                          positioned.
+     * @returns {Promise<void>}
      */
-    function showTooltip(e) {
-        const notable_ty = e.getAttribute("data-notable-ty");
-        if (!window.NOTABLE_TRAITS && notable_ty) {
-            const data = document.getElementById("notable-traits-data");
-            if (data) {
-                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+    async function showTooltip(e) {
+        /**
+         * Create the tooltip immediately.
+         *
+         * @param {HTMLElement} content - The tooltip's content element.
+         * @param {HTMLElement} e - Same as `showTooltip`'s.
+         * @returns {HTMLElement}
+         */
+        function createNotableTooltip(content, e) {
+            // use Object.assign to make sure the object has the correct type
+            // with all of the correct fields before it is assigned to a variable,
+            // as typescript has no way to change the type of a variable once it is initialized.
+            const wrapper = Object.assign(document.createElement("div"), {TOOLTIP_BASE: e});
+            wrapper.appendChild(content);
+            wrapper.className = "tooltip popover";
+            const focusCatcher = document.createElement("div");
+            focusCatcher.setAttribute("tabindex", "0");
+            // @ts-expect-error
+            focusCatcher.onfocus = hideTooltip;
+            wrapper.appendChild(focusCatcher);
+            const pos = e.getBoundingClientRect();
+            // 5px overlap so that the mouse can easily travel from place to place
+            wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+            // @ts-expect-error
+            wrapper.style.left = 0;
+            wrapper.style.right = "auto";
+            wrapper.style.visibility = "hidden";
+            document.body.appendChild(wrapper);
+            const wrapperPos = wrapper.getBoundingClientRect();
+            // offset so that the arrow points at the center of the "(i)"
+            const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
+            if (finalPos > 0) {
+                wrapper.style.left = finalPos + "px";
             } else {
-                throw new Error("showTooltip() called with notable without any notable traits!");
+                wrapper.style.setProperty(
+                    "--popover-arrow-offset",
+                    (wrapperPos.right - pos.right + 4) + "px",
+                );
             }
+            wrapper.style.visibility = "";
+            window.CURRENT_TOOLTIP_ELEMENT = wrapper;
+            clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
+            wrapper.onpointerenter = ev => {
+                // If this is a synthetic touch event, ignore it. A click event will be along
+                // shortly.
+                if (ev.pointerType !== "mouse") {
+                    return;
+                }
+                clearTooltipHoverTimeout(e);
+            };
+            wrapper.onpointerleave = ev => {
+                // If this is a synthetic touch event, ignore it. A click event will be along
+                // shortly.
+                if (ev.pointerType !== "mouse" || !(ev.relatedTarget instanceof HTMLElement)) {
+                    return;
+                }
+                if (!e.TOOLTIP_FORCE_VISIBLE && !e.contains(ev.relatedTarget)) {
+                    // See "Tooltip pointer leave gesture" below.
+                    setTooltipHoverTimeout(e, false);
+                    addClass(wrapper, "fade-out");
+                }
+            };
+            return wrapper;
         }
+
         // Make this function idempotent. If the tooltip is already shown, avoid doing extra work
         // and leave it alone.
         if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
@@ -1372,14 +1458,26 @@ function preLoadCss(cssUrl) {
             return;
         }
         window.hideAllModals(false);
-        // use Object.assign to make sure the object has the correct type
-        // with all of the correct fields before it is assigned to a variable,
-        // as typescript has no way to change the type of a variable once it is initialized.
-        const wrapper = Object.assign(document.createElement("div"), {TOOLTIP_BASE: e});
+
+        const notable_ty = e.getAttribute("data-notable-ty");
+        if (!window.NOTABLE_TRAITS && notable_ty) {
+            const loading = document.createElement("div");
+            loading.innerText = "Loading...";
+            loading.style.padding = "4px";
+            // While loading for the notable traits data to be loaded, we display the tooltip
+            // with "loading..." text.
+            const wrapper = createNotableTooltip(loading, e);
+            await loadNotableTraits();
+            // And to prevent messing up the layout, we remove the tooltip we just created before
+            // replacing it with the actual one.
+            // @ts-expect-error
+            wrapper.parentElement.removeChild(wrapper);
+        }
+        const content = document.createElement("div");
+        content.className = "content";
         if (notable_ty) {
-            wrapper.innerHTML = "<div class=\"content\">" +
-                // @ts-expect-error
-                window.NOTABLE_TRAITS[notable_ty] + "</div>";
+            // @ts-expect-error
+            content.innerHTML = window.NOTABLE_TRAITS[notable_ty] + "</div>";
         } else {
             // Replace any `title` attribute with `data-title` to avoid double tooltips.
             const ttl = e.getAttribute("title");
@@ -1389,58 +1487,10 @@ function preLoadCss(cssUrl) {
             }
             const dttl = e.getAttribute("data-title");
             if (dttl !== null) {
-                const titleContent = document.createElement("div");
-                titleContent.className = "content";
-                titleContent.appendChild(document.createTextNode(dttl));
-                wrapper.appendChild(titleContent);
+                content.appendChild(document.createTextNode(dttl));
             }
         }
-        wrapper.className = "tooltip popover";
-        const focusCatcher = document.createElement("div");
-        focusCatcher.setAttribute("tabindex", "0");
-        // @ts-expect-error
-        focusCatcher.onfocus = hideTooltip;
-        wrapper.appendChild(focusCatcher);
-        const pos = e.getBoundingClientRect();
-        // 5px overlap so that the mouse can easily travel from place to place
-        wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
-        // @ts-expect-error
-        wrapper.style.left = 0;
-        wrapper.style.right = "auto";
-        wrapper.style.visibility = "hidden";
-        document.body.appendChild(wrapper);
-        const wrapperPos = wrapper.getBoundingClientRect();
-        // offset so that the arrow points at the center of the "(i)"
-        const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
-        if (finalPos > 0) {
-            wrapper.style.left = finalPos + "px";
-        } else {
-            wrapper.style.setProperty(
-                "--popover-arrow-offset",
-                (wrapperPos.right - pos.right + 4) + "px",
-            );
-        }
-        wrapper.style.visibility = "";
-        window.CURRENT_TOOLTIP_ELEMENT = wrapper;
-        clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
-        wrapper.onpointerenter = ev => {
-            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse") {
-                return;
-            }
-            clearTooltipHoverTimeout(e);
-        };
-        wrapper.onpointerleave = ev => {
-            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse" || !(ev.relatedTarget instanceof HTMLElement)) {
-                return;
-            }
-            if (!e.TOOLTIP_FORCE_VISIBLE && !e.contains(ev.relatedTarget)) {
-                // See "Tooltip pointer leave gesture" below.
-                setTooltipHoverTimeout(e, false);
-                addClass(wrapper, "fade-out");
-            }
-        };
+        createNotableTooltip(content, e);
     }
 
     /**
@@ -1541,13 +1591,14 @@ function preLoadCss(cssUrl) {
             if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
             } else {
-                showTooltip(e);
-                // @ts-expect-error
-                window.CURRENT_TOOLTIP_ELEMENT.setAttribute("tabindex", "0");
-                // @ts-expect-error
-                window.CURRENT_TOOLTIP_ELEMENT.focus();
-                // @ts-expect-error
-                window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
+                showTooltip(e).then(() => {
+                    // @ts-expect-error
+                    window.CURRENT_TOOLTIP_ELEMENT.setAttribute("tabindex", "0");
+                    // @ts-expect-error
+                    window.CURRENT_TOOLTIP_ELEMENT.focus();
+                    // @ts-expect-error
+                    window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
+                });
             }
             return false;
         };
