@@ -1,49 +1,24 @@
-//@ run-pass
-#![feature(core_intrinsics)]
+//@ needs-rustc-debug-assertions
+//@ revisions: normal with_delayed
+//@ [with_delayed] compile-flags: -Z eagerly-emit-delayed-bugs
 
-use std::intrinsics::discriminant_value;
+#![crate_type = "lib"]
 
-struct Zst;
+// Repro for <https://github.com/rust-lang/rust/issues/144501>
+// which ICEd because the calculated layout is invalid
+// but which we needn't care about as the discriminant already was.
 
-struct Struct {
-    _a: u32,
+enum E {
+//~^ ERROR must be specified
+    S0 {
+        s: String,
+    },
+    Bar = {
+        let x = 1;
+        3
+    },
 }
 
-union Union {
-    _a: u32,
-}
-
-fn check(v: u8) {
-    assert_eq!(v, 0);
-}
-
-pub fn generic<T>()
-where
-    for<'a> T: Fn(&'a isize),
-{
-    let v: Vec<T> =  Vec::new();
-    let _: u8 = discriminant_value(&v);
-}
-
-fn main() {
-    // check that we use `u8` as the discriminant value
-    // for everything that is not an enum.
-    check(discriminant_value(&true));
-    check(discriminant_value(&'a'));
-    check(discriminant_value(&7));
-    check(discriminant_value(&7.0));
-    check(discriminant_value(&Zst));
-    check(discriminant_value(&Struct { _a: 7 }));
-    check(discriminant_value(&Union { _a: 7 }));
-    check(discriminant_value(&[7, 77]));
-    check(discriminant_value(&(7 as *const ())));
-    check(discriminant_value(&(7 as *mut ())));
-    check(discriminant_value(&&7));
-    check(discriminant_value(&&mut 7));
-    check(discriminant_value(&check));
-    let fn_ptr: fn(u8) = check;
-    check(discriminant_value(&fn_ptr));
-    let hrtb: for<'a> fn(&'a str) -> &'a str = |x| x;
-    check(discriminant_value(&hrtb));
-    check(discriminant_value(&(7, 77, 777)));
-}
+static C: E = E::S1 { u: 23 };
+//~^ ERROR no variant named
+//[with_delayed]~| ERROR but no error emitted

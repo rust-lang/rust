@@ -9,7 +9,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::DefKind;
 use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
@@ -1957,45 +1957,6 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     for v in def.variants() {
         if let ty::VariantDiscr::Explicit(discr_def_id) = v.discr {
             tcx.ensure_ok().typeck(discr_def_id.expect_local());
-        }
-    }
-
-    if def.repr().int.is_none() {
-        let is_unit = |var: &ty::VariantDef| matches!(var.ctor_kind(), Some(CtorKind::Const));
-        let get_disr = |var: &ty::VariantDef| match var.discr {
-            ty::VariantDiscr::Explicit(disr) => Some(disr),
-            ty::VariantDiscr::Relative(_) => None,
-        };
-
-        let non_unit = def.variants().iter().find(|var| !is_unit(var));
-        let disr_unit =
-            def.variants().iter().filter(|var| is_unit(var)).find_map(|var| get_disr(var));
-        let disr_non_unit =
-            def.variants().iter().filter(|var| !is_unit(var)).find_map(|var| get_disr(var));
-
-        if disr_non_unit.is_some() || (disr_unit.is_some() && non_unit.is_some()) {
-            let mut err = struct_span_code_err!(
-                tcx.dcx(),
-                tcx.def_span(def_id),
-                E0732,
-                "`#[repr(inttype)]` must be specified for enums with explicit discriminants and non-unit variants"
-            );
-            if let Some(disr_non_unit) = disr_non_unit {
-                err.span_label(
-                    tcx.def_span(disr_non_unit),
-                    "explicit discriminant on non-unit variant specified here",
-                );
-            } else {
-                err.span_label(
-                    tcx.def_span(disr_unit.unwrap()),
-                    "explicit discriminant specified here",
-                );
-                err.span_label(
-                    tcx.def_span(non_unit.unwrap().def_id),
-                    "non-unit discriminant declared here",
-                );
-            }
-            err.emit();
         }
     }
 

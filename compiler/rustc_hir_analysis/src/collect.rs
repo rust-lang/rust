@@ -17,18 +17,20 @@
 use std::cell::Cell;
 use std::{assert_matches, debug_assert_matches, iter};
 
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::{ExternAbi, Integer, IntegerType, Size};
 use rustc_ast::Recovered;
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, E0732, ErrorGuaranteed, Level,
+    StashKey, struct_span_code_err,
 };
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
+use rustc_index::IndexVec;
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
@@ -1077,11 +1079,11 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         bug!("expected ADT to be an item");
     };
 
-    let repr = tcx.repr_options_of_def(def_id);
+    let mut repr = tcx.repr_options_of_def(def_id);
     let (kind, variants) = match &item.kind {
         ItemKind::Enum(_, _, def) => {
             let mut distance_from_explicit = 0;
-            let variants = def
+            let variants: IndexVec<_, _> = def
                 .variants
                 .iter()
                 .map(|v| {
@@ -1104,6 +1106,48 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                     )
                 })
                 .collect();
+
+            if repr.int.is_none() {
+                let is_unit =
+                    |var: &ty::VariantDef| matches!(var.ctor_kind(), Some(CtorKind::Const));
+                let get_disr = |var: &ty::VariantDef| match var.discr {
+                    ty::VariantDiscr::Explicit(disr) => Some(disr),
+                    ty::VariantDiscr::Relative(_) => None,
+                };
+
+                let non_unit = variants.iter().find(|var| !is_unit(var));
+                let disr_unit =
+                    variants.iter().filter(|var| is_unit(var)).find_map(|var| get_disr(var));
+                let disr_non_unit =
+                    variants.iter().filter(|var| !is_unit(var)).find_map(|var| get_disr(var));
+
+                if disr_non_unit.is_some() || (disr_unit.is_some() && non_unit.is_some()) {
+                    let mut err = struct_span_code_err!(
+                        tcx.dcx(),
+                        tcx.def_span(def_id),
+                        E0732,
+                        "`#[repr(inttype)]` must be specified for enums with explicit discriminants and non-unit variants"
+                    );
+                    if let Some(disr_non_unit) = disr_non_unit {
+                        err.span_label(
+                            tcx.def_span(disr_non_unit),
+                            "explicit discriminant on non-unit variant specified here",
+                        );
+                    } else {
+                        err.span_label(
+                            tcx.def_span(disr_unit.unwrap()),
+                            "explicit discriminant specified here",
+                        );
+                        err.span_label(
+                            tcx.def_span(non_unit.unwrap().def_id),
+                            "non-unit discriminant declared here",
+                        );
+                    }
+                    err.emit();
+                    // Pick a permissive value so the rest of the compiler can just keep going.
+                    repr.int = Some(IntegerType::Fixed(Integer::I128, false));
+                }
+            }
 
             (AdtKind::Enum, variants)
         }
