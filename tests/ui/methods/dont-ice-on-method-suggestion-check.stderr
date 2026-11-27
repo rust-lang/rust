@@ -1,0 +1,25 @@
+error[E0599]: no method named `load` found for enum `Result<T, E>` in the current scope
+  --> $DIR/dont-ice-on-method-suggestion-check.rs:27:93
+   |
+LL |     let _ = AtomicU8::new(0).try_update(Ordering::AcqRel, Ordering::Acquire, |old| Some(2)).load();
+   |             ---------------- method `load` is available on `&Atomic<u8>`                    ^^^^ method not found in `Result<u8, u8>`
+
+error[E0599]: no method named `other` found for struct `Bar` in the current scope
+  --> $DIR/dont-ice-on-method-suggestion-check.rs:29:26
+   |
+LL | struct Bar;
+   | ---------- method `other` not found for this struct
+...
+LL |     Foo(1_u8).make_bar().other();
+   |                          ^^^^^ method not found in `Bar`
+
+error[E0609]: no field `kaboom` on type `Option<i32>`
+  --> $DIR/dont-ice-on-method-suggestion-check.rs:30:37
+   |
+LL |     List { a: Some(&3) }.a.cloned().kaboom;
+   |                                     ^^^^^^ unknown field
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.
