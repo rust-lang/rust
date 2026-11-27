@@ -1231,3 +1231,11 @@ pub(crate) struct NamedArgumentUsedPositionally {
     pub name: String,
     pub named_arg_name: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("bad C type `{$name}`")]
+pub(crate) struct BadCType {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}

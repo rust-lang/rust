@@ -57,6 +57,19 @@ const GATED_CFGS: &[GatedCfg] = &[
     ),
     (sym::target_has_threads, sym::cfg_target_has_threads, Features::cfg_target_has_threads),
     (sym::target_object_format, sym::cfg_target_object_format, Features::cfg_target_object_format),
+    (sym::c_char, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_schar, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_uchar, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_short, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_int, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_long, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_longlong, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_ushort, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_uint, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_ulong, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_ulonglong, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_float, sym::cfg_c_types, Features::cfg_c_types),
+    (sym::c_double, sym::cfg_c_types, Features::cfg_c_types),
 ];
 
 /// Find a gated cfg matching `name`.

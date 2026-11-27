@@ -431,6 +431,8 @@ declare_features! (
     (unstable, cfg_target_object_format, "1.97.0", Some(152586)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
+    /// Allows `cfg(c_char = "...")`, `cfg(c_int = "...")`, etc.
+    (unstable, cfg_c_types, "CURRENT_RUSTC_VERSION", None),
     /// Allows the use of `#[cfg(ub_checks)]` to check if UB checks are enabled.
     (unstable, cfg_ub_checks, "1.79.0", Some(123499)),
     /// Allow conditional compilation depending on rust version

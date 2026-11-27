@@ -154,7 +154,23 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_reliable_f16b, None | Some(_))
             | (sym::target_has_reliable_f128, None | Some(_))
             | (sym::target_has_reliable_f128_math, None | Some(_))
-            | (sym::target_thread_local, None) => disallow(cfg, "--target"),
+            | (sym::target_thread_local, None)
+            | (
+                sym::c_char
+                | sym::c_schar
+                | sym::c_uchar
+                | sym::c_short
+                | sym::c_ushort
+                | sym::c_int
+                | sym::c_uint
+                | sym::c_long
+                | sym::c_ulong
+                | sym::c_longlong
+                | sym::c_ulonglong
+                | sym::c_float
+                | sym::c_double,
+                Some(_),
+            ) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
             _ => {}
         }
@@ -306,6 +322,23 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
+    ins_sym!(sym::c_char, sess.target.options.c_types.c_char.to_sym());
+    ins_sym!(sym::c_schar, sym::i8);
+    ins_sym!(sym::c_uchar, sym::u8);
+
+    ins_sym!(sym::c_short, sess.target.options.c_types.c_short.signed_sym());
+    ins_sym!(sym::c_int, sess.target.options.c_types.c_int.signed_sym());
+    ins_sym!(sym::c_long, sess.target.options.c_types.c_long.signed_sym());
+    ins_sym!(sym::c_longlong, sess.target.options.c_types.c_longlong.signed_sym());
+
+    ins_sym!(sym::c_ushort, sess.target.options.c_types.c_short.unsigned_sym());
+    ins_sym!(sym::c_uint, sess.target.options.c_types.c_int.unsigned_sym());
+    ins_sym!(sym::c_ulong, sess.target.options.c_types.c_long.unsigned_sym());
+    ins_sym!(sym::c_ulonglong, sess.target.options.c_types.c_longlong.unsigned_sym());
+
+    ins_sym!(sym::c_float, sess.target.options.c_types.c_float.to_sym());
+    ins_sym!(sym::c_double, sess.target.options.c_types.c_double.to_sym());
+
     if !sess.target.singlethread(&sess.internal_target_features) {
         ins_none!(sym::target_has_threads);
     }
@@ -421,6 +454,24 @@ impl CheckCfg {
                 .chain(rustc_target::target_features::RUSTC_SPECIFIC_FEATURES.iter().cloned())
                 .map(Symbol::intern),
         );
+
+        ins!(sym::c_char, empty_values).extend([sym::i8, sym::u8]);
+        ins!(sym::c_schar, empty_values).extend([sym::i8]);
+        ins!(sym::c_uchar, empty_values).extend([sym::u8]);
+
+        ins!(sym::c_short, empty_values).extend([sym::i16]);
+        ins!(sym::c_ushort, empty_values).extend([sym::u16]);
+
+        ins!(sym::c_int, empty_values).extend([sym::i16, sym::i32]);
+        ins!(sym::c_long, empty_values).extend([sym::i32, sym::i64]);
+        ins!(sym::c_longlong, empty_values).extend([sym::i64]);
+
+        ins!(sym::c_uint, empty_values).extend([sym::u16, sym::u32]);
+        ins!(sym::c_ulong, empty_values).extend([sym::u32, sym::u64]);
+        ins!(sym::c_ulonglong, empty_values).extend([sym::u64]);
+
+        ins!(sym::c_float, empty_values).extend([sym::f32]);
+        ins!(sym::c_double, empty_values).extend([sym::f32, sym::f64]);
 
         // sym::target_*
         {

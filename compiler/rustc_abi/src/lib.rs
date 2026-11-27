@@ -1255,6 +1255,22 @@ impl Align {
     }
 }
 
+/// The possible types of core::ffi::c_char.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum CCharTy {
+    I8,
+    U8,
+}
+
+impl CCharTy {
+    pub fn to_sym(self) -> Symbol {
+        match self {
+            CCharTy::I8 => sym::i8,
+            CCharTy::U8 => sym::u8,
+        }
+    }
+}
+
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -1286,6 +1302,28 @@ impl Integer {
             I32 => "u32",
             I64 => "u64",
             I128 => "u128",
+        }
+    }
+
+    pub fn signed_sym(self) -> Symbol {
+        use Integer::*;
+        match self {
+            I8 => sym::i8,
+            I16 => sym::i16,
+            I32 => sym::i32,
+            I64 => sym::i64,
+            I128 => sym::i128,
+        }
+    }
+
+    pub fn unsigned_sym(self) -> Symbol {
+        use Integer::*;
+        match self {
+            I8 => sym::u8,
+            I16 => sym::u16,
+            I32 => sym::u32,
+            I64 => sym::u64,
+            I128 => sym::u128,
         }
     }
 
@@ -1487,6 +1525,20 @@ impl Float {
             X87F80 => "x87_f80",
             F128 => "f128",
             PpcF128 => "ppcf128",
+        }
+    }
+
+    pub fn to_sym(self) -> Symbol {
+        use Float::*;
+
+        match self {
+            F16 => sym::f16,
+            F16B => sym::f16b,
+            F32 => sym::f32,
+            F64 => sym::f64,
+            X87F80 => sym::x87_f80,
+            F128 => sym::f128,
+            PpcF128 => sym::ppcf128,
         }
     }
 

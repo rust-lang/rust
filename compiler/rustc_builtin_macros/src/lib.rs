@@ -24,6 +24,7 @@ use crate::deriving::*;
 mod alloc_error_handler;
 mod assert;
 mod autodiff;
+mod c_type;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
@@ -74,6 +75,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         // tidy-alphabetical-start
         asm: asm::expand_asm,
         assert: assert::expand_assert,
+        c_type: c_type::expand_c_type,
         cfg: cfg::expand_cfg,
         cfg_select: cfg_select::expand_cfg_select,
         column: source_util::expand_column,

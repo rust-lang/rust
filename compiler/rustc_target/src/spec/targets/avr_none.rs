@@ -1,3 +1,5 @@
+use rustc_abi::{CCharTy, Float, Integer};
+
 use crate::spec::{Arch, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
@@ -14,6 +16,15 @@ pub(crate) fn target() -> Target {
         pointer_width: 16,
         options: TargetOptions {
             c_int_width: 16,
+            c_types: crate::spec::CTypes {
+                c_char: CCharTy::I8,
+                c_short: Integer::I16,
+                c_int: Integer::I16,
+                c_long: Integer::I32,
+                c_longlong: Integer::I32,
+                c_float: Float::F32,
+                c_double: Float::F64,
+            },
             cpu: "avr2".into(),
             exe_suffix: ".elf".into(),
             linker: Some("avr-gcc".into()),

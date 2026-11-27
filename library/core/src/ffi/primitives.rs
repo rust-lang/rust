@@ -3,6 +3,11 @@
 //! This module is intentionally standalone to facilitate parsing when retrieving
 //! core C types.
 
+#[rustc_builtin_macro]
+macro c_type($($tt:tt)*) {
+    /* compiler built-in */
+}
+
 macro_rules! type_alias {
     {
       $Docfile:tt, $Alias:ident = $Real:ty;
@@ -28,14 +33,55 @@ type_alias! { "c_ushort.md", c_ushort = u16; }
 type_alias! { "c_int.md", c_int = c_int_definition::c_int; #[doc(cfg(true))] }
 type_alias! { "c_uint.md", c_uint = c_int_definition::c_uint; #[doc(cfg(true))] }
 
-type_alias! { "c_long.md", c_long = c_long_definition::c_long; #[doc(cfg(true))] }
-type_alias! { "c_ulong.md", c_ulong = c_long_definition::c_ulong; #[doc(cfg(true))] }
+type_alias! { "c_long.md", c_long = definitions::c_long; #[doc(cfg(true))] }
+type_alias! { "c_ulong.md", c_ulong = definitions::c_ulong; #[doc(cfg(true))] }
 
 type_alias! { "c_longlong.md", c_longlong = i64; }
 type_alias! { "c_ulonglong.md", c_ulonglong = u64; }
 
-type_alias! { "c_float.md", c_float = f32; }
+type_alias! { "c_float.md", c_float = c_type!(c_float); }
 type_alias! { "c_double.md", c_double= c_double_definition::c_double; #[doc(cfg(true))] }
+
+mod definitions {
+    pub(super) type c_long = cfg_select! {
+        c_long = "i32" => i32,
+        c_long = "i64" => i64,
+    };
+
+    pub(super) type c_ulong = cfg_select! {
+        c_ulong = "u32" => u32,
+        c_ulong = "u64" => u64,
+    };
+}
+
+macro_rules! assert_eq_ty {
+    ($a:ty, $b:ty) => {
+        const _: fn(_: $a) -> $b = |x| x;
+    };
+}
+
+assert_eq_ty!(c_char, c_char_definition::c_char);
+assert_eq_ty!(c_schar, i8);
+assert_eq_ty!(c_uchar, u8);
+
+assert_eq_ty!(c_short, i16);
+assert_eq_ty!(c_ushort, u16);
+
+assert_eq_ty!(c_int, c_int_definition::c_int);
+assert_eq_ty!(c_uint, c_int_definition::c_uint);
+
+assert_eq_ty!(c_long, c_long_definition::c_long);
+assert_eq_ty!(c_ulong, c_long_definition::c_ulong);
+
+assert_eq_ty!(c_longlong, i64);
+assert_eq_ty!(c_ulonglong, u64);
+
+assert_eq_ty!(c_float, f32);
+assert_eq_ty!(c_double, c_double_definition::c_double);
+
+assert_eq_ty!(c_size_t, usize);
+assert_eq_ty!(c_ptrdiff_t, isize);
+assert_eq_ty!(c_ssize_t, isize);
 
 mod c_char_definition {
     crate::cfg_select! {
