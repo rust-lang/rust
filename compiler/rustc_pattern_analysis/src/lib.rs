@@ -1,3 +1,4 @@
+#![feature(iter_collect_into)]
 //! Analysis of patterns, notably match exhaustiveness checking. The main entrypoint for this crate
 //! is [`usefulness::compute_match_usefulness`]. For rustc-specific types and entrypoints, see the
 //! [`rustc`] module.

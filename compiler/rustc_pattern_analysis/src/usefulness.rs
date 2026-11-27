@@ -710,6 +710,7 @@
 
 use std::fmt;
 
+use bumpalo::Bump;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
@@ -1017,7 +1018,8 @@ impl<Cx: PatCx> Clone for PlaceInfo<Cx> {
 // - Cx global compilation context
 struct PatStack<'p, Cx: PatCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
+    pats: Vec<PatOrWild<'p, Cx>, &'p Bump>,
+    arena: &'p Bump,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
@@ -1026,13 +1028,15 @@ struct PatStack<'p, Cx: PatCx> {
 
 impl<'p, Cx: PatCx> Clone for PatStack<'p, Cx> {
     fn clone(&self) -> Self {
-        Self { pats: self.pats.clone(), relevant: self.relevant }
+        Self { pats: self.pats.clone(), relevant: self.relevant, arena: self.arena.clone() }
     }
 }
 
 impl<'p, Cx: PatCx> PatStack<'p, Cx> {
-    fn from_pattern(pat: &'p DeconstructedPat<Cx>) -> Self {
-        PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
+    fn from_pattern(arena: &'p Bump, pat: &'p DeconstructedPat<Cx>) -> Self {
+        let mut pats = Vec::with_capacity_in(1, arena);
+        pats.push(PatOrWild::Pat(pat));
+        PatStack { arena, pats, relevant: true }
     }
 
     fn len(&self) -> usize {
@@ -1076,13 +1080,17 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         }
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = head_pat.specialize(ctor, ctor_arity);
+        let mut new_pats = head_pat.specialize(ctor, ctor_arity, self.arena);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
         let ctor_is_relevant =
             !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
-        Ok(PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant })
+        Ok(PatStack {
+            pats: new_pats,
+            relevant: self.relevant && ctor_is_relevant,
+            arena: self.arena,
+        })
     }
 }
 
@@ -1134,9 +1142,9 @@ struct MatrixRow<'p, Cx: PatCx> {
 }
 
 impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
-    fn new(arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
+    fn new(arena: &'p Bump, arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
         MatrixRow {
-            pats: PatStack::from_pattern(arm.pat),
+            pats: PatStack::from_pattern(arena, arm.pat),
             parent_row: arm_id,
             is_under_guard: arm.has_guard,
             useful: false,
@@ -1213,13 +1221,14 @@ struct Matrix<'p, Cx: PatCx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
-    rows: Vec<MatrixRow<'p, Cx>>,
+    rows: Vec<MatrixRow<'p, Cx>, &'p Bump>,
     /// Track info about each place. Each place corresponds to a column in `rows`, and their types
     /// must match.
-    place_info: SmallVec<[PlaceInfo<Cx>; 2]>,
+    place_info: Vec<PlaceInfo<Cx>, &'p Bump>,
     /// Track whether the virtual wildcard row used to compute exhaustiveness is relevant. See top
     /// of the file for details on relevancy.
     wildcard_row_is_relevant: bool,
+    arena: &'p Bump,
 }
 
 impl<'p, Cx: PatCx> Matrix<'p, Cx> {
@@ -1230,20 +1239,28 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new(arms: &[MatchArm<'p, Cx>], scrut_ty: Cx::Ty, scrut_validity: PlaceValidity) -> Self {
+    fn new(
+        arena: &'p Bump,
+        arms: &[MatchArm<'p, Cx>],
+        scrut_ty: Cx::Ty,
+        scrut_validity: PlaceValidity,
+    ) -> Self {
         let place_info = PlaceInfo {
             ty: scrut_ty,
             private_uninhabited: false,
             validity: scrut_validity,
             is_scrutinee: true,
         };
+        let mut p = Vec::with_capacity_in(1, arena);
+        p.push(place_info);
         let mut matrix = Matrix {
-            rows: Vec::with_capacity(arms.len()),
-            place_info: smallvec![place_info],
+            rows: Vec::with_capacity_in(arms.len(), arena),
+            place_info: p,
             wildcard_row_is_relevant: true,
+            arena,
         };
         for (arm_id, arm) in arms.iter().enumerate() {
-            matrix.push(MatrixRow::new(arm, arm_id));
+            matrix.push(MatrixRow::new(arena, arm, arm_id));
         }
         matrix
     }
@@ -1283,9 +1300,10 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         if matches!(ctor, Constructor::Or) {
             // Specializing with `Or` means expanding rows with or-patterns.
             let mut matrix = Matrix {
-                rows: Vec::new(),
+                rows: Vec::new_in(self.arena),
                 place_info: self.place_info.clone(),
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant,
+                arena: self.arena,
             };
             for (i, row) in self.rows().enumerate() {
                 for new_row in row.expand_or_pat(i) {
@@ -1296,12 +1314,15 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         } else {
             let subfield_place_info = self.place_info[0].specialize(pcx.cx, ctor);
             let arity = subfield_place_info.len();
-            let specialized_place_info =
-                subfield_place_info.chain(self.place_info[1..].iter().cloned()).collect();
+            let mut specialized_place_info = Vec::new_in(self.arena);
+            subfield_place_info
+                .chain(self.place_info[1..].iter().cloned())
+                .collect_into(&mut specialized_place_info);
             let mut matrix = Matrix {
-                rows: Vec::new(),
+                rows: Vec::new_in(self.arena),
                 place_info: specialized_place_info,
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
+                arena: self.arena,
             };
             for (i, row) in self.rows().enumerate() {
                 if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
@@ -1826,6 +1847,7 @@ pub struct UsefulnessReport<'p, Cx: PatCx> {
 #[instrument(skip(tycx, arms), level = "debug")]
 pub fn compute_match_usefulness<'p, Cx: PatCx>(
     tycx: &Cx,
+    arena: &'p Bump,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: PlaceValidity,
@@ -1833,7 +1855,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
     if tycx.match_may_contain_deref_pats() {
-        checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
+        checks::detect_mixed_deref_pat_ctors(tycx, arms, &arena)?;
     }
 
     let mut cx = UsefulnessCtxt {
@@ -1842,7 +1864,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         complexity_limit,
         complexity_level: 0,
     };
-    let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
+    let mut matrix = Matrix::new(arena, arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(&mut cx, &mut matrix)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();

@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::iter::once;
 
+use bumpalo::Bump;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
@@ -1074,8 +1075,10 @@ pub fn analyze_match<'p, 'tcx>(
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
 
     let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
+    let arena = Bump::new();
     let report = compute_match_usefulness(
         tycx,
+        &arena,
         arms,
         scrut_ty,
         scrut_validity,
@@ -1085,7 +1088,7 @@ pub fn analyze_match<'p, 'tcx>(
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
-        let pat_column = PatternColumn::new(arms);
+        let pat_column = PatternColumn::new(arms, &arena);
         lint_nonexhaustive_missing_variants(tycx, arms, &pat_column, scrut_ty)?;
     }
 

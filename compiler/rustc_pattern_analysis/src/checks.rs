@@ -1,5 +1,7 @@
 //! Contains checks that must be run to validate matches before performing usefulness analysis.
 
+use bumpalo::Bump;
+
 use crate::constructor::Constructor::*;
 use crate::pat_column::PatternColumn;
 use crate::{MatchArm, PatCx};
@@ -8,8 +10,9 @@ use crate::{MatchArm, PatCx};
 pub(crate) fn detect_mixed_deref_pat_ctors<'p, Cx: PatCx>(
     cx: &Cx,
     arms: &[MatchArm<'p, Cx>],
+    arena: &Bump,
 ) -> Result<(), Cx::Error> {
-    let pat_column = PatternColumn::new(arms);
+    let pat_column = PatternColumn::new(arms, arena);
     detect_mixed_deref_pat_ctors_inner(cx, &pat_column)
 }
 
