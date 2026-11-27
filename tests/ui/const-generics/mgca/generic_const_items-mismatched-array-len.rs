@@ -25,7 +25,7 @@ fn foo<T: Trait, const A: [u8; <T as Trait>::LEN]>() -> [u8; <T as Trait>::LEN] 
 
 fn bar<T: Trait>() -> [u8; <T as Trait>::LEN] {
     foo::<T, { [1, 2, 3] }>()
-    //~^ ERROR the constant `*b"\x01\x02\x03"` is not of type `[u8; <T as Trait>::LEN]`
+    //~^ ERROR: array length mismatch
 }
 
 fn main() {
