@@ -48,14 +48,14 @@
 //! - High-level API
 //!   - `FnPtrDiscriminatorSource`
 //!   - `ptrauth_compute_fn_ptr_type_discriminator_for`
-//!   - `ptrauth_clone_discriminated_schema_for`
+//!   - `is_ptrauth_signed_abi`
+//!   - `ptrauth_signing_discriminator_for`
 //!
 //! - Low-level API
-//!   - `FnPtrTypeDiscriminatorInput`
+//!   - `FnPtrTypeDiscriminatorInput` - canonical function signature input for
+//!     discriminator calculation (as a convenience it exposes the function ABI
+//!     through `abi()`)
 //!   - `compute_fn_ptr_type_discriminator`
-//!
-//! - Signature extraction
-//!   - `extract_fn_ptr_type`
 //!
 //! - Clang-compatible type model
 //!   - `ClangDiscTy`
@@ -72,12 +72,13 @@
 //! discriminator computation. Divergence from Clang will result in incompatible
 //! pointer authentication values across language boundaries.
 //!
-//! This implementation intentionally approximates Clang's behavior for extern "C"
-//! function types only. It does NOT attempt to model full type system rules.
+//! This implementation intentionally approximates Clang's behavior for
+//! `extern "C"` and `extern "system"` function types only. It does NOT attempt
+//! to model full Rust type system rules.
 
 use rustc_abi::ExternAbi;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
-use rustc_session::PointerAuthSchema;
+use rustc_session::{PointerAuthDiscrimination, PointerAuthSchema};
 use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
@@ -96,30 +97,20 @@ pub trait FnPtrDiscriminatorSource<'tcx>: Sized {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>>;
 }
 
-/// Enables discriminator computation directly from Rust function types.
+/// Enables discriminator computation for function pointer types.
 ///
-/// Accepts both:
-/// - `FnPtr`: actual function pointer types
-/// - `FnDef`: function items
-///
-/// FnDef is only accepted for convenience; the discriminator is still computed
-/// from the instantiated function signature.
+/// Only `FnPtr` is accepted: function items (`FnDef`) have no runtime code
+/// address, and wrappers such as `Option<fn()>` must be handled separately.
 impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
-        let ty = extract_fn_ptr_type(tcx, self)?;
-
+        let ty = tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new(self),
+        );
         match ty.kind() {
             ty::FnPtr(sig, header) => {
-                let sig = sig.skip_binder();
-                Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig, header))
+                Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig.skip_binder(), header))
             }
-
-            ty::FnDef(def_id, args) => {
-                let sig = tcx.fn_sig(*def_id).instantiate(tcx, args.skip_binder()).skip_binder();
-
-                Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
-            }
-
             _ => None,
         }
     }
@@ -169,37 +160,37 @@ where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
     let input = source.discriminator_input(tcx)?;
-    Some(compute_fn_ptr_type_discriminator(tcx, &input))
+    compute_fn_ptr_type_discriminator(tcx, &input)
 }
 
-/// Clones a pointer authentication schema and updates its constant
-/// discriminator.
+/// Return true if a function pointer with this ABI is signed under pointer
+/// authentication and calls through them authenticated.
+pub fn is_ptrauth_signed_abi(abi: ExternAbi) -> bool {
+    matches!(abi, ExternAbi::C { .. } | ExternAbi::System { .. })
+}
+
+/// Returns a discriminator for function pointer in `source` that is used for
+/// signing and authentication under given `schema`. None if the function ABI
+/// does not support function pointer authentication.
 ///
-/// If `schema` is `Some`, the function computes a function pointer type
-/// discriminator from `source` and stores it in the cloned schema's
-/// `constant_discriminator` field.
-///
-/// If no discriminator can be computed (for example, because `source` does not
-/// represent a function pointer type), the schema is returned unchanged.
-///
-/// This is intended as a convenience helper for code generation sites that need
-/// to attach function pointer type discrimination to a generic schema before
-/// calling `get_fn_addr`.
-pub fn ptrauth_clone_discriminated_schema_for<'tcx, S>(
+/// With function pointer type discrimination this is the discriminator
+/// calculated for the `source`, otherwise `schema`'s constant discriminator.
+pub fn ptrauth_signing_discriminator_for<'tcx, S>(
     tcx: TyCtxt<'tcx>,
-    mut schema: Option<PointerAuthSchema>,
+    schema: &PointerAuthSchema,
     source: S,
-) -> Option<PointerAuthSchema>
+) -> Option<u16>
 where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
-    if let Some(ref mut s) = schema {
-        if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, source) {
-            s.constant_discriminator = disc;
-        }
+    let input = source.discriminator_input(tcx)?;
+    if !is_ptrauth_signed_abi(input.abi()) {
+        return None;
     }
-
-    schema
+    match schema.discrimination_kind {
+        PointerAuthDiscrimination::Type => compute_fn_ptr_type_discriminator(tcx, &input),
+        _ => Some(schema.constant_discriminator),
+    }
 }
 
 /// Canonical representation of a function signature used for pointer
@@ -213,6 +204,10 @@ pub struct FnPtrTypeDiscriminatorInput<'tcx> {
 }
 
 impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
+    pub fn abi(&self) -> ExternAbi {
+        self.abi
+    }
+
     fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
@@ -232,39 +227,17 @@ impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
     }
 }
 
-/// Unwraps optional function pointers and normalizes the type.
-///
-/// Only `Option<fn*>` is supported for nullability modeling, matching C ABI
-/// null pointer conventions.
-fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    ty = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), Unnormalized::new(ty));
-
-    loop {
-        match ty.kind() {
-            ty::Adt(def, args) if tcx.lang_items().option_type() == Some(def.did()) => {
-                ty = args.type_at(0);
-                continue;
-            }
-
-            ty::FnPtr(..) | ty::FnDef(..) => {
-                return Some(ty);
-            }
-
-            _ => return None,
-        }
-    }
-}
-
 /// Computes the Clang-compatible function pointer type discriminator.
 ///
-/// This is the low-level discriminator computation routine operating on an
-/// already constructed `FnPtrTypeDiscriminatorInput`.
+/// This is the low-level discriminator calculation function operating on
+/// `FnPtrTypeDiscriminatorInput`. Returns `None` for unsupported ABIs (see
+/// `is_ptrauth_signed_abi`).
 fn compute_fn_ptr_type_discriminator<'tcx>(
     tcx: TyCtxt<'tcx>,
     input: &FnPtrTypeDiscriminatorInput<'tcx>,
-) -> u16 {
-    if !matches!(input.abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
-        return 0;
+) -> Option<u16> {
+    if !is_ptrauth_signed_abi(input.abi) {
+        return None;
     }
 
     let mut enc = PtrauthEncoder::new();
@@ -282,7 +255,7 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     enc.push(b'E');
 
-    enc.finish()
+    Some(enc.finish())
 }
 
 // Clang disc type.
