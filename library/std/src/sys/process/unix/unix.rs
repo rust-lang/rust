@@ -74,6 +74,24 @@ impl Command {
             return Ok((ret, ours));
         }
 
+        if self.get_chroot().is_some() {
+            cfg_select! {
+                any(target_os = "nto", target_os = "qnx") => {
+                    return Err(io::const_error!(
+                        io::ErrorKind::Unsupported,
+                        "chroot not async-signal-safe on QNX"
+                    ));
+                }
+                target_os = "cygwin" => {
+                    return Err(io::const_error!(
+                        io::ErrorKind::Unsupported,
+                        "chroot after fork not currently safe on Cygwin"
+                    ));
+                }
+                _ => {}
+            }
+        }
+
         #[cfg(target_os = "linux")]
         let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
 
@@ -331,13 +349,7 @@ impl Command {
             }
         }
         if let Some(chroot) = self.get_chroot() {
-            #[cfg(not(target_os = "fuchsia"))]
             cvt(libc::chroot(chroot.as_ptr()))?;
-            #[cfg(target_os = "fuchsia")]
-            return Err(io::const_error!(
-                io::ErrorKind::Unsupported,
-                "chroot not supported by fuchsia"
-            ));
         }
         if let Some(cwd) = self.get_cwd() {
             cvt(libc::chdir(cwd.as_ptr()))?;

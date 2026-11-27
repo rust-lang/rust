@@ -217,10 +217,8 @@ pub impl(self) trait CommandExt {
     ///
     /// This typically requires privileges, such as root or a specific capability.
     ///
-    /// Note that `chroot` is not guaranteed to be async-signal-safe on all OSes, and functions
-    /// called between `fork` and `exec` must be async-signal-safe. However, in practice, the
-    /// ability to `fork` then `chroot` then `exec` is a capability widely provided by Rust targets
-    /// and relied upon by numerous programs.
+    /// On targets where `chroot` cannot be safely called between `fork` and `exec`, spawning the
+    /// process will fail if this was called. This currently includes Cygwin and QNX.
     ///
     /// `chroot` is not, by itself, a complete security or sandboxing measure. It may form some part
     /// of a containment mechanism, but fully containing a process requires additional steps.
