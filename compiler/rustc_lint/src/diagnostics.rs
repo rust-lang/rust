@@ -947,8 +947,9 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
 
 // drop_forget_useless.rs
 #[derive(Diagnostic)]
-#[diag("calls to `std::mem::drop` with a reference instead of an owned value does nothing")]
+#[diag("calls to `{$fn_path}` with a reference instead of an owned value does nothing")]
 pub(crate) struct DropRefDiag<'a> {
+    pub fn_path: String,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -957,8 +958,9 @@ pub(crate) struct DropRefDiag<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("calls to `std::mem::drop` with a value that implements `Copy` does nothing")]
+#[diag("calls to `{$fn_path}` with a value that implements `Copy` does nothing")]
 pub(crate) struct DropCopyDiag<'a> {
+    pub fn_path: String,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -969,11 +971,12 @@ pub(crate) struct DropCopyDiag<'a> {
 #[derive(Diagnostic)]
 #[diag(
     "calls to {$from_fn ->
-        [true] `std::ptr::drop_in_place`
+        [true] `{$fn_path}`
         *[false] `drop_in_place`
     } with a pointer to a reference instead of a pointer to an owned value does nothing"
 )]
 pub(crate) struct DropInPlaceRefDiag<'a> {
+    pub fn_path: String,
     pub from_fn: bool,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
@@ -985,11 +988,12 @@ pub(crate) struct DropInPlaceRefDiag<'a> {
 #[derive(Diagnostic)]
 #[diag(
     "calls to {$from_fn ->
-        [true] `std::ptr::drop_in_place`
+        [true] `{$fn_path}`
         *[false] `drop_in_place`
     } with a pointer to a value that implements `Copy` does nothing"
 )]
 pub(crate) struct DropInPlaceCopyDiag<'a> {
+    pub fn_path: String,
     pub from_fn: bool,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
@@ -999,8 +1003,9 @@ pub(crate) struct DropInPlaceCopyDiag<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("calls to `std::mem::forget` with a reference instead of an owned value does nothing")]
+#[diag("calls to `{$fn_path}` with a reference instead of an owned value does nothing")]
 pub(crate) struct ForgetRefDiag<'a> {
+    pub fn_path: String,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -1009,8 +1014,9 @@ pub(crate) struct ForgetRefDiag<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("calls to `std::mem::forget` with a value that implements `Copy` does nothing")]
+#[diag("calls to `{$fn_path}` with a value that implements `Copy` does nothing")]
 pub(crate) struct ForgetCopyDiag<'a> {
+    pub fn_path: String,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
