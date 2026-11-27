@@ -230,7 +230,7 @@ pub fn prepare_session_directory(
 
     debug!("prepare_session_directory");
 
-    // {incr-comp-dir}/{crate-name}-{disambiguator}-{prefix}
+    // {incr-comp-dir}/{crate-name}-{disambiguator}-{suffix}
     let crate_dir = crate_path(sess, crate_name, stable_crate_id, suffix);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
@@ -556,10 +556,8 @@ fn crate_path(
 ) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name = format!(
-        "{crate_name}-{}-{suffix}",
-        stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE)
-    );
+    let crate_id = stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE);
+    let crate_name = format!("{crate_name}-{crate_id}-{suffix}");
     incr_dir.join(crate_name)
 }
 

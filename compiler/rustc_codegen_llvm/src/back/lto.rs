@@ -395,11 +395,8 @@ fn thin_lto(
                         name.clone(),
                         CachedModuleCodegen {
                             name: name.clone(),
-                            source: prev_work_products
-                                .as_ref()
-                                .unwrap()
-                                .get(&WorkProductId::from_cgu_name(name))
-                                .unwrap()
+                            source: prev_work_products.as_ref().unwrap()
+                                [&WorkProductId::from_cgu_name(name)]
                                 .clone(),
                         },
                     ))

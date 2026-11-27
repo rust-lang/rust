@@ -127,7 +127,7 @@ impl Linker {
                             sess,
                             self.crate_info.local_crate_name,
                             self.local_crate_id,
-                            "thinlto",
+                            "lto",
                         )
                     });
 
