@@ -118,9 +118,15 @@ pub(crate) struct ConcatCStrLit {
 
 #[derive(Diagnostic)]
 #[diag("cannot export macro_rules! macros from a `proc-macro` crate type currently")]
+#[help(
+    "to use the macro in other modules, add `#[macro_use]` where its module is declared, or re-export it with `pub(crate) use {$name};`"
+)]
 pub(crate) struct ExportMacroRules {
     #[primary_span]
     pub(crate) span: Span,
+    #[suggestion("remove this attribute", code = "", applicability = "maybe-incorrect")]
+    pub(crate) macro_export_span: Span,
+    pub(crate) name: Symbol,
 }
 
 #[derive(Diagnostic)]
