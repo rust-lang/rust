@@ -648,6 +648,11 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_generic_param(&mut self, cx: &LateContext<'_>, param: &hir::GenericParam<'_>) {
         if let GenericParamKind::Const { .. } = param.kind {
+            // Derived impls reuse the spans of the derive input, so the external macro check on
+            // the lint span alone does not catch them.
+            if cx.tcx.def_span(param.hir_id.owner).in_external_macro(cx.sess().source_map()) {
+                return;
+            }
             NonUpperCaseGlobals::check_upper_case(
                 cx,
                 "const parameter",

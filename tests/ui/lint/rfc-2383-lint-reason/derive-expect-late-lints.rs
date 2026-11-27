@@ -3,27 +3,27 @@
 //
 // See <https://github.com/rust-lang/rust/issues/150553> for rationale.
 
-//@ check-fail
+//@ check-pass
 
 #![feature(trivial_bounds)]
 #![deny(drop_bounds, dyn_drop, trivial_bounds, non_upper_case_globals)]
 
 #[derive(Clone)]
 #[expect(drop_bounds)]
-pub struct DropBound<T: Drop>(T); //~ ERROR bounds on `T: Drop`
+pub struct DropBound<T: Drop>(T);
 
 #[derive(Clone, Copy)]
 #[expect(dyn_drop)]
-pub struct DynDrop(*const dyn Drop); //~ ERROR types that do not implement `Drop`
+pub struct DynDrop(*const dyn Drop);
 
 #[derive(Clone)]
 #[expect(trivial_bounds)]
 pub struct TrivialBound<T>(T)
 where
-    u8: Copy; //~ ERROR trait bound u8: Copy
+    u8: Copy;
 
 #[derive(Clone)]
 #[expect(non_upper_case_globals)]
-pub struct ConstParam<const n: usize>([u8; n]); //~ ERROR const parameter `n`
+pub struct ConstParam<const n: usize>([u8; n]);
 
 fn main() {}

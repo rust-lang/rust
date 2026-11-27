@@ -1398,6 +1398,12 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
 
+        // Derived impls reuse the spans of the derive input, so the external macro check on the
+        // lint span alone does not catch them.
+        if item.span.in_external_macro(cx.sess().source_map()) {
+            return;
+        }
+
         if cx.tcx.features().trivial_bounds() {
             let gen_clauses = cx.tcx.clauses_of(item.owner_id);
             for &(clause, span) in gen_clauses.clauses {
