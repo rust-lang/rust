@@ -20,6 +20,7 @@ cfg_select! {
         target_os = "solaris",
         target_os = "illumos",
     ) => {
+        mod guard_page;
         mod handler_signal;
         mod thread_info;
         use handler_signal as imp;
