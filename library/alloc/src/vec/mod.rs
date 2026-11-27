@@ -2633,27 +2633,24 @@ impl<T, A: Allocator> Vec<T, A> {
         // And avoids any memory writes if we don't need to remove anything.
         let mut first_duplicate_idx: usize = 1;
         let start = self.as_mut_ptr();
-        while first_duplicate_idx != len {
-            let found_duplicate = {
-                // SAFETY: first_duplicate always in range [1..len).
-                // Note that we start iteration from 1 so we never overflow.
-                let prev = unsafe { start.add(first_duplicate_idx.wrapping_sub(1)) };
-                // ignore-tidy-undocumented-unsafe
-                let current = unsafe { start.add(first_duplicate_idx) };
-                // We explicitly say in docs that references are reversed.
-                // ignore-tidy-undocumented-unsafe
-                unsafe { same_bucket(&mut *current, &mut *prev) }
-            };
-            if found_duplicate {
+        loop {
+            // SAFETY: 1 <= first_duplicate_idx < len (should never underflow)
+            let prev = unsafe { &mut *start.add(first_duplicate_idx - 1) };
+            // SAFETY: 1 <= first_duplicate_idx < len (should never go out of bound)
+            let curr = unsafe { &mut *start.add(first_duplicate_idx) };
+
+            if hint::unlikely(same_bucket(curr, prev)) {
                 break;
             }
+
             first_duplicate_idx += 1;
+
+            if first_duplicate_idx == len {
+                // No consecutive duplicate is found by predicate, return early
+                return;
+            }
         }
-        // Don't need to remove anything.
-        // We cannot get bigger than len.
-        if first_duplicate_idx == len {
-            return;
-        }
+
         // SAFETY: first_duplicate_idx always in range [1..len)
         unsafe {
             self.dedup_tail(same_bucket, first_duplicate_idx);
@@ -2686,34 +2683,20 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                /* This code gets executed when `same_bucket` panics */
-
-                // SAFETY: invariant guarantees that `read - write`
-                // and `len - read` never overflow and that the copy is always
-                // in-bounds.
+                let remaining = self.vec.len() - self.read;
+                // SAFETY: Trailing unchecked items must be valid since we never touch them.
                 unsafe {
-                    let ptr = self.vec.as_mut_ptr();
-                    let len = self.vec.len();
-
-                    /* How many items were left when `same_bucket` panicked.
-                     * Basically vec[read..].len() */
-                    let items_left = len.wrapping_sub(self.read);
-
-                    /* Pointer to first item in vec[write..write+items_left] slice */
-                    let dropped_ptr = ptr.add(self.write);
-                    /* Pointer to first item in vec[read..] slice */
-                    let valid_ptr = ptr.add(self.read);
-
-                    /* Copy `vec[read..]` to `vec[write..write+items_left]`.
-                     * The slices can overlap, so `copy_nonoverlapping` cannot be used */
-                    ptr::copy(valid_ptr, dropped_ptr, items_left);
-
-                    /* How many items have been already dropped
-                     * Basically vec[read..write].len() */
-                    let dropped = self.read.wrapping_sub(self.write);
-
-                    self.vec.set_len(len - dropped);
+                    ptr::copy(
+                        self.vec.as_ptr().add(self.read),
+                        self.vec.as_mut_ptr().add(self.write),
+                        remaining,
+                    );
+                }
+                // SAFETY: After filling holes, all items are in contiguous memory.
+                unsafe {
+                    self.vec.set_len(self.write + remaining);
                 }
             }
         }

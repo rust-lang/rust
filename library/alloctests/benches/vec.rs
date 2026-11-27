@@ -1145,3 +1145,9 @@ fn bench_next_chunk(b: &mut Bencher) {
         sum
     })
 }
+
+#[bench]
+fn bench_dedup_by_nothing_100000(b: &mut Bencher) {
+    let mut v = black_box(vec![826u32; 100000]);
+    b.iter(|| v.dedup_by(|x, _| *x == 827u32));
+}
