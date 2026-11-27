@@ -10,68 +10,61 @@ pub(super) trait SpecFromElem: Sized {
 }
 
 impl<T: Clone> SpecFromElem for T {
-    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+    fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+        // specialization for `T: IsZero`
+        if let Some(elem) = core::any::try_as_dyn::<T, dyn IsZero>(&elem)
+            && elem.is_zero()
+        {
+            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
+        }
+        // specialization for `u8` and `i8`
+        if let Some(elem) = core::any::try_as_dyn::<T, dyn TransmutableToU8>(&elem) {
+            let mut v = Vec::with_capacity_in(n, alloc);
+            // ignore-tidy-undocumented-unsafe
+            unsafe {
+                ptr::write_bytes(v.as_mut_ptr(), elem.to_u8(), n);
+                v.set_len(n);
+            }
+            return v;
+        }
+        // specialization for ZST
+        if let Some(_) = core::any::try_as_dyn::<T, dyn ZstCopyAndTrivialClone>(&elem) {
+            let mut v = Vec::with_capacity_in(n, alloc);
+            // SAFETY: the capacity has just been set to `n`
+            // and `()` is a ZST with trivial `Clone` implementation
+            unsafe {
+                v.set_len(n);
+            }
+            return v;
+        }
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, elem);
         v
     }
 }
 
-impl<T: Clone + IsZero> SpecFromElem for T {
-    #[inline]
-    default fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-        if elem.is_zero() {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, elem);
-        v
+/// # Safety
+/// Must be transmutable to `u8`
+unsafe trait TransmutableToU8 {
+    fn to_u8(&self) -> u8;
+}
+
+unsafe impl TransmutableToU8 for i8 {
+    fn to_u8(&self) -> u8 {
+        self.cast_unsigned()
     }
 }
 
-impl SpecFromElem for i8 {
-    #[inline]
-    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
-        if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        let mut v = Vec::with_capacity_in(n, alloc);
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
-            v.set_len(n);
-        }
-        v
+unsafe impl TransmutableToU8 for u8 {
+    fn to_u8(&self) -> u8 {
+        *self
     }
 }
 
-impl SpecFromElem for u8 {
-    #[inline]
-    fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
-        if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        let mut v = Vec::with_capacity_in(n, alloc);
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            ptr::write_bytes(v.as_mut_ptr(), elem, n);
-            v.set_len(n);
-        }
-        v
-    }
-}
+/// # Safety
+/// Must be ZST, `Copy`, and have trivial `Clone`
+unsafe trait ZstCopyAndTrivialClone {}
 
 // A better way would be to implement this for all ZSTs which are `Copy` and have trivial `Clone`
 // but the latter cannot be detected currently
-impl SpecFromElem for () {
-    #[inline]
-    fn from_elem<A: Allocator>(_elem: (), n: usize, alloc: A) -> Vec<(), A> {
-        let mut v = Vec::with_capacity_in(n, alloc);
-        // SAFETY: the capacity has just been set to `n`
-        // and `()` is a ZST with trivial `Clone` implementation
-        unsafe {
-            v.set_len(n);
-        }
-        v
-    }
-}
+unsafe impl ZstCopyAndTrivialClone for () {}
