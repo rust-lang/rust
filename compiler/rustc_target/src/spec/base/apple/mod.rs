@@ -332,7 +332,7 @@ impl OSVersion {
             (Os::MacOs, crate::spec::Arch::AArch64, _) => (11, 0, 0),
             (Os::IOs, crate::spec::Arch::AArch64, Env::MacAbi) => (14, 0, 0),
             (Os::IOs, crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),
-            (Os::IOs, _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
+            (Os::IOs, _, _) if target.is_arm64e_apple() => (14, 0, 0),
             // Mac Catalyst defaults to 13.1 in Clang.
             (Os::IOs, _, Env::MacAbi) => (13, 1, 0),
             (Os::TvOs, crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),

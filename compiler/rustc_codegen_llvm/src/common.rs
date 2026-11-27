@@ -35,15 +35,17 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    // Only free functions or methods
     let def_id = instance.def_id();
-    if !matches!(cx.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-        return llfn;
-    }
-    // Only C ABI
-    let abi = cx.tcx.fn_sig(def_id).skip_binder().abi();
-    if !matches!(abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
-        return llfn;
+    if !cx.sess().pointer_authentication_covers_all_abis() {
+        // Only free functions or methods
+        if !matches!(cx.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+            return llfn;
+        }
+        // Only C ABI
+        let abi = cx.tcx.fn_sig(def_id).skip_binder().abi();
+        if !matches!(abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
+            return llfn;
+        }
     }
     // Ignore LLVM intrinsics
     if llvm::get_value_name(llfn).starts_with(b"llvm.") {
