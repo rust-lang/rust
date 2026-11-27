@@ -509,6 +509,25 @@ pub(crate) fn check_intrinsic_type(
             tcx.types.u8,
         ),
 
+        sym::custom_global_alloc => (
+            0,
+            0,
+            vec![
+                Ty::new_mut_ptr(tcx, tcx.types.u8),
+                tcx.types.usize,
+                tcx.types.usize,
+                tcx.types.bool,
+            ],
+            Ty::new_mut_ptr(tcx, tcx.types.u8),
+        ),
+
+        sym::custom_global_alloc_dealloc => (
+            0,
+            0,
+            vec![Ty::new_mut_ptr(tcx, tcx.types.u8), tcx.types.usize, tcx.types.usize],
+            Ty::new_mut_ptr(tcx, tcx.types.u8),
+        ),
+
         sym::const_allocate => {
             (0, 0, vec![tcx.types.usize, tcx.types.usize], Ty::new_mut_ptr(tcx, tcx.types.u8))
         }

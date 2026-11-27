@@ -365,6 +365,10 @@ language_item_table! {
     OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
     GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
 
+    // Shims for custom global allocator methods (used by miri)
+    GlobalAllocShim,         sym::global_alloc_shim,   global_alloc_shim,          Target::Fn,             GenericRequirement::None;
+    GlobalAllocDeallocShim,  sym::global_alloc_dealloc_shim, global_alloc_dealloc_shim, Target::Fn,        GenericRequirement::None;
+
     PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);
 
     ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct,         GenericRequirement::Exact(1);

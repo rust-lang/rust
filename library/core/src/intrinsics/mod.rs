@@ -2757,6 +2757,47 @@ pub const fn overflow_checks() -> bool {
     cfg!(overflow_checks)
 }
 
+/// Creates an allocation in Miri for a custom global allocator `alloc` call to make sure
+/// allocation bounds can be checked when a custom global allocator is present. We replace the
+/// original return value of the allocator with the one created in this intrinsic and block the
+/// memory region in the original allocation.
+///
+/// # Safety
+/// The caller must ensure that:
+///
+///     - The `ptr` argument has to be a pointer to some live allocation
+///     - The `size` argument has to be non-zero
+///     - The `align` argument must be a power of two
+#[rustc_intrinsic]
+pub const unsafe fn custom_global_alloc(
+    ptr: *mut u8,
+    size: usize,
+    align: usize,
+    zeroed: bool,
+) -> *mut u8 {
+    // Miri overrides this function. Runtime code just returns the `ptr` argument.
+    ptr
+}
+/// Handles deallocation of an allocation created by a custom global allocator in Miri. As
+/// our handling of a custom global allocator `alloc` call creates an additional allocation, we need to
+/// deallocate it in this intrinsic and forward the original pointer to the actual dealloc call.
+///
+/// # Safety
+/// The caller must ensure that:
+///
+///     - The `ptr` argument is a pointer to some live allocation, created by a custom global allocator
+///     - The `size` argument is non-zero
+///     - The `align` argument muts be a power of two
+#[rustc_intrinsic]
+pub const unsafe fn custom_global_alloc_dealloc(
+    ptr: *mut u8,
+    size: usize,
+    align: usize,
+) -> *mut u8 {
+    // Miri overrides this function. Runtime code just returns the `ptr` argument.
+    ptr
+}
+
 /// Allocates a block of memory at compile time.
 /// At runtime, just returns a null pointer.
 ///
