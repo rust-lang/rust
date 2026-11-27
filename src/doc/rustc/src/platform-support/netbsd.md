@@ -25,10 +25,10 @@ are currently defined running NetBSD:
 
 All use the "native" `stdc++` library which goes along with the natively
 supplied GNU C++ compiler for the given OS version.  Most of the bootstraps
-are built for NetBSD 9.x, although some exceptions exist (some are
+are built for NetBSD 10.x, although some exceptions exist (some are
 built for newer NetBSD versions, due to target becoming usable first
 with newer versions).  `x86_64-unknown-netbsd` is built for NetBSD
-10.x to access a newer gcc.
+11.x to access a newer gcc.
 
 
 ## Target Maintainers
@@ -38,7 +38,7 @@ with newer versions).  `x86_64-unknown-netbsd` is built for NetBSD
 
 Further contacts:
 
-- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust197/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust.  Note that we have the convention of having multiple rust versions active in pkgsrc-wip at any one time, so the version number is part of the directory name, and from time to time old versions are culled so this is not a fully "stable" link.
+- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust198/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust.  Note that we have the convention of having multiple rust versions active in pkgsrc-wip at any one time, so the version number is part of the directory name, and from time to time old versions are culled so this is not a fully "stable" link.
 - [NetBSD's pkgsrc lang/rust](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust) for the "proper" package in pkgsrc.
 - [NetBSD's pkgsrc lang/rust-bin](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust-bin) which re-uses the bootstrap kit as a binary distribution and therefore avoids the rather protracted native build time of rust itself
 
