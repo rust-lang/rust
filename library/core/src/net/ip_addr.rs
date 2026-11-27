@@ -136,20 +136,22 @@ impl Hash for Ipv4Addr {
 /// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
 ///
 /// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
-/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+/// Use [`Ipv6Addr::to_ipv4_mapped`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
+/// [`Ipv6Addr::to_ipv4`] also accepts IPv4-mapped addresses, but additionally converts IPv4-compatible
+/// addresses, including the IPv6 unspecified address `::` (to `0.0.0.0`) and loopback address
+/// `::1` (to `0.0.0.1`).
 ///
 /// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
 /// # Textual representation
 ///
 /// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
-/// an IPv6 address in text, but in general, each segments is written in hexadecimal
-/// notation, and segments are separated by `:`. For more information, see
-/// [IETF RFC 5952].
+/// an IPv6 address in text, but in general, each segment is written in hexadecimal
+/// notation, and segments are separated by `:`. The accepted forms are defined in
+/// [IETF RFC 4291 section 2.2], and the recommended canonical form in [IETF RFC 5952].
 ///
 /// [`FromStr`]: crate::str::FromStr
+/// [IETF RFC 4291 section 2.2]: https://tools.ietf.org/html/rfc4291#section-2.2
 /// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
 ///
 /// # Examples
@@ -210,7 +212,7 @@ impl Hash for Ipv6Addr {
 ///     Some(Global) => println!("Global scope"),
 ///     Some(s) => {
 ///         let snum = s as u8;
-///         if matches!(0x0 | 0xF, snum) {
+///         if matches!(snum, 0x0 | 0xF) {
 ///             println!("Reserved scope {snum:X}")
 ///         } else {
 ///             println!("Unassigned scope {snum:X}")
@@ -1573,9 +1575,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] for the special 'unspecified' address (`::`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// This property is defined in [IETF RFC 4291 section 2.5.2].
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.2
     ///
     /// # Examples
     ///
@@ -1668,7 +1670,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), false);
     ///
     /// // Addresses reserved for benchmarking (`2001:2::/48`)
-    /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1,).is_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1).is_global(), false);
     ///
     /// // Addresses reserved for documentation (`2001:db8::/32` and `3fff::/20`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1).is_global(), false);
@@ -1694,7 +1696,7 @@ impl Ipv6Addr {
             || matches!(self.segments(), [0x64, 0xff9b, 1, _, _, _, _, _])
             // Discard-Only Address Block (`100::/64`)
             || matches!(self.segments(), [0x100, 0, 0, 0, _, _, _, _])
-            // Dummy IPv6 Prefix (100:0:0:1::/64)
+            // Dummy IPv6 Prefix (`100:0:0:1::/64`)
             || matches!(self.segments(), [0x100, 0, 0, 1, _, _, _, _])
             // IETF Protocol Assignments (`2001::/23`)
             || (matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b < 0x200)
@@ -1710,7 +1712,7 @@ impl Ipv6Addr {
                     // AS112-v6 (`2001:4:112::/48`)
                     || matches!(self.segments(), [0x2001, 4, 0x112, _, _, _, _, _])
                     // ORCHIDv2 (`2001:20::/28`)
-                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)`
+                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)
                     || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x3F)
                 ))
             // 6to4 (`2002::/16`) – it's not explicitly documented as globally reachable,
@@ -1725,9 +1727,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is a unique local address (`fc00::/7`).
     ///
-    /// This property is defined in [IETF RFC 4193].
+    /// This property is defined in [IETF RFC 4193 section 3.1].
     ///
-    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
+    /// [IETF RFC 4193 section 3.1]: https://tools.ietf.org/html/rfc4193#section-3.1
     ///
     /// # Examples
     ///
@@ -1745,10 +1747,10 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
+    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291 section 2.4].
     /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [multicast address]: Ipv6Addr::is_multicast
     ///
     /// # Examples
@@ -1826,10 +1828,10 @@ impl Ipv6Addr {
     /// Returns [`true`] if this is an address reserved for documentation
     /// (`2001:db8::/32` and `3fff::/20`).
     ///
-    /// This property is defined by [IETF RFC 3849] and [IETF RFC 9637].
+    /// This property is defined by [IETF RFC 3849 section 2] and [IETF RFC 9637 section 6].
     ///
-    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
-    /// [IETF RFC 9637]: https://tools.ietf.org/html/rfc9637
+    /// [IETF RFC 3849 section 2]: https://tools.ietf.org/html/rfc3849#section-2
+    /// [IETF RFC 9637 section 6]: https://tools.ietf.org/html/rfc9637#section-6
     ///
     /// # Examples
     ///
@@ -1851,11 +1853,11 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
     ///
-    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
+    /// This property is defined in [IETF RFC 5180 section 8], where it is mistakenly specified as covering the range `2001:0200::/48`.
     /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
     ///
-    /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
-    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
+    /// [IETF RFC 5180 section 8]: https://tools.ietf.org/html/rfc5180#section-8
+    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata/eid1752
     ///
     /// ```
     /// #![feature(ip)]
@@ -1876,21 +1878,25 @@ impl Ipv6Addr {
     ///
     /// The following return false:
     ///
+    /// - multicast addresses
     /// - the loopback address
     /// - the link-local addresses
     /// - unique local addresses
     /// - the unspecified address
-    /// - the address range reserved for documentation
+    /// - the address ranges reserved for documentation
+    /// - the address range reserved for benchmarking
     ///
-    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
+    /// Note that unlike [`is_global`](Ipv6Addr::is_global), this does not exclude other
+    /// special-purpose addresses, such as IPv4-mapped addresses.
     ///
-    /// ```no_rust
-    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
-    /// be supported in new implementations (i.e., new implementations must treat this prefix as
-    /// Global Unicast).
-    /// ```
+    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]:
+    ///
+    /// > The special behavior of \[the site-local unicast\] prefix defined in [RFC3513] must no
+    /// > longer be supported in new implementations (i.e., new implementations must treat this
+    /// > prefix as Global Unicast).
     ///
     /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
+    /// [RFC3513]: https://tools.ietf.org/html/rfc3513
     ///
     /// # Examples
     ///
@@ -1961,9 +1967,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is a multicast address (`ff00::/8`).
     ///
-    /// This property is defined by [IETF RFC 4291].
+    /// This property is defined by [IETF RFC 4291 section 2.7].
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291 section 2.7]: https://tools.ietf.org/html/rfc4291#section-2.7
     ///
     /// # Examples
     ///
@@ -2012,7 +2018,7 @@ impl Ipv6Addr {
     /// All addresses *not* starting with `::ffff` will return `None`.
     ///
     /// [`IPv4` address]: Ipv4Addr
-    /// [IPv4-mapped]: Ipv6Addr
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
     /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
@@ -2170,7 +2176,8 @@ impl Ipv6Addr {
 }
 
 /// Writes an Ipv6Addr, conforming to the canonical style described by
-/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
+/// [RFC 5952 section 4](https://tools.ietf.org/html/rfc5952#section-4). IPv4-mapped addresses
+/// use the mixed notation recommended by [section 5](https://tools.ietf.org/html/rfc5952#section-5).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
