@@ -1453,11 +1453,14 @@ rustc_queries! {
         }
     }
 
-    /// The `symbol_name` query provides the symbol name for calling a
-    /// given instance from the local crate. In particular, it will also
-    /// look up the correct symbol name of instances from upstream crates.
-    query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName<'tcx> {
-        desc { "computing the symbol for `{}`", key }
+    /// Returns the linkage symbol and edits for reconstructing a codegen ordering key
+    /// that omits v0 crate disambiguators to reduce dependence on crate metadata.
+    ///
+    /// The ordering key is not necessarily unique or fully metadata-independent
+    /// and must not be used for linkage.
+    query symbol_name_and_sort_key(key: ty::Instance<'tcx>)
+        -> (ty::SymbolName<'tcx>, ty::SymbolNameSortEdits<'tcx>) {
+        desc { "computing the symbol and sorting key for `{}`", key }
         cache_on_disk
     }
 

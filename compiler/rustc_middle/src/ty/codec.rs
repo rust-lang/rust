@@ -279,6 +279,14 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SymbolName<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SymbolNameSortEdits<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let tcx = decoder.interner();
+        let len = decoder.read_usize();
+        ty::SymbolNameSortEdits::new(tcx, decoder.read_raw_bytes(len))
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);

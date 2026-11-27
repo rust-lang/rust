@@ -179,6 +179,7 @@ impl_erasable_for_types_with_no_type_params! {
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
     (rustc_middle::ty::GenericArgs<'_>, rustc_middle::ty::GenericArgs<'_>),
+    (rustc_middle::ty::SymbolName<'_>, rustc_middle::ty::SymbolNameSortEdits<'_>),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
     Option<&'_ OsStr>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
