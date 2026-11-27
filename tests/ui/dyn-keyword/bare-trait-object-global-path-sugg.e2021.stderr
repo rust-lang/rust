@@ -1,0 +1,91 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:18:29
+   |
+LL | pub fn issue_example(_: Box<::std::any::Any + 'static>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub fn issue_example(_: Box<dyn ::std::any::Any + 'static>) {}
+   |                             +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:23:26
+   |
+LL | pub type AutoTrait = Box<::std::any::Any + Send>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type AutoTrait = Box<dyn ::std::any::Any + Send>;
+   |                          +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:28:28
+   |
+LL | pub type SingleBound = Box<::std::any::Any>;
+   |                            ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type SingleBound = Box<dyn ::std::any::Any>;
+   |                            +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:33:27
+   |
+LL | pub type InRef<'a> = &'a (::std::any::Any + 'static);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type InRef<'a> = &'a (dyn ::std::any::Any + 'static);
+   |                           +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:38:32
+   |
+LL | pub type GlobalAutoTrait = Box<::std::any::Any + ::std::marker::Send + 'static>;
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type GlobalAutoTrait = Box<dyn ::std::any::Any + ::std::marker::Send + 'static>;
+   |                                +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:43:30
+   |
+LL | pub type LifetimeFirst = Box<'static + ::std::any::Any>;
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type LifetimeFirst = Box<dyn 'static + ::std::any::Any>;
+   |                              +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:48:23
+   |
+LL | pub type Binder = Box<for<'a> ::std::ops::Fn(&'a u8) + Send>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type Binder = Box<dyn for<'a> ::std::ops::Fn(&'a u8) + Send>;
+   |                       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-object-global-path-sugg.rs:53:24
+   |
+LL | pub type FnSugar = Box<::std::ops::Fn(u8) -> u8 + Send>;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | pub type FnSugar = Box<dyn ::std::ops::Fn(u8) -> u8 + Send>;
+   |                        +++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0782`.
