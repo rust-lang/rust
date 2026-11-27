@@ -1,0 +1,18 @@
+error: higher-ranked lifetime error
+  --> $DIR/hr-object-bound-no-ice.rs:23:5
+   |
+LL |     t.call();
+   |     ^^^^^^^^
+   |
+   = note: could not normalize `<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Super>::SuperAssoc == for<'b> fn(&<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Trait<'b>>::Assoc)`
+
+error: higher-ranked lifetime error
+  --> $DIR/hr-object-bound-no-ice.rs:23:5
+   |
+LL |     t.call();
+   |     ^^^^^^^^
+   |
+   = note: could not prove `dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)>: Trait<'_>`
+
+error: aborting due to 2 previous errors
+

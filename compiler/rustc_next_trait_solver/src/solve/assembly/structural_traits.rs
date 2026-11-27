@@ -9,7 +9,7 @@ use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
     self as ty, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
-    TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
+    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -1035,6 +1035,14 @@ where
         // don't want the projection itself is replaced by infer var but only its
         // args.
         let alias_term = self.ecx.normalize(self.param_env, Unnormalized::new_wip(alias_term))?;
+
+        // We cannot replace projections which have HR args.
+        // Trying so would result in ICEs.
+        //
+        // See tests/ui/traits/object/hr-object-bound-no-ice.rs
+        if alias_term.has_escaping_bound_vars() {
+            return Ok(None);
+        }
 
         // This is quite similar to the `projection_may_match` we use in unsizing,
         // but here we want to unify a projection predicate against an alias term

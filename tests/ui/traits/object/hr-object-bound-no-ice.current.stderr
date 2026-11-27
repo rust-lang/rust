@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/hr-object-bound-no-ice.rs:23:5
+   |
+LL |     t.call();
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Trait<'_>>::Assoc`
+              found associated type `<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Trait<'b>>::Assoc`
+note: the lifetime requirement is introduced here
+  --> $DIR/hr-object-bound-no-ice.rs:11:24
+   |
+LL | trait Trait<'a>: Super<SuperAssoc = for<'b> fn(&'a <Self as Trait<'b>>::Assoc)> {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/hr-object-bound-no-ice.rs:23:5
+   |
+LL |     t.call();
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Trait<'_>>::Assoc`
+              found associated type `<dyn Trait<'_, Assoc = T, SuperAssoc = fn(&T)> as Trait<'b>>::Assoc`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
