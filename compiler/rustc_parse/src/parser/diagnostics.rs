@@ -1435,6 +1435,12 @@ impl<'a> Parser<'a> {
                             // All we know is that this is `foo < bar >` and *nothing* else. Try to
                             // be helpful, but don't attempt to recover.
                             err.help_turbofish = true;
+                        } else if op.node == BinOpKind::Lt
+                            && matches!(l1.kind, ExprKind::Path(..))
+                            && !self.token.can_begin_expr()
+                        {
+                            // `foo < 1 >` with no operand after the `>` can't be a comparison.
+                            err.help_turbofish = true;
                         }
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
