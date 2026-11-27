@@ -556,6 +556,7 @@ class FakeArgs:
     def __init__(self):
         self.build = ""
         self.build_dir = ""
+        self.set = []
         self.clean = False
         self.verbose = False
         self.json_output = False
@@ -589,7 +590,22 @@ class RustBuild(object):
         self.use_vendored_sources = self.get_toml("vendor", "build") == "true"
         self.use_locked_deps = self.get_toml("locked-deps", "build") == "true"
 
-        build_dir = args.build_dir or self.get_toml("build-dir", "build") or "build"
+        # Rust bootstrap also accepts build.build-dir through --set.
+        # Use the same directory when preparing the stage0 toolchain.
+        build_dir_override = None
+        for option in args.set:
+            value = self.get_toml_static(option, "build-dir", "build")
+            if value is not None:
+                if build_dir_override is not None:
+                    raise ValueError("Duplicate build.build-dir override")
+                build_dir_override = value
+
+        build_dir = (
+            args.build_dir
+            or build_dir_override
+            or self.get_toml("build-dir", "build")
+            or "build"
+        )
         self.build_dir = os.path.abspath(build_dir)
 
         self.stage0_data = parse_stage0_file(
@@ -1311,6 +1327,7 @@ def parse_args(args):
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("--config")
     parser.add_argument("--build-dir")
+    parser.add_argument("--set", action="append", default=[])
     parser.add_argument("--build")
     parser.add_argument("--color", choices=["always", "never", "auto"])
     parser.add_argument("--clean", action="store_true")
