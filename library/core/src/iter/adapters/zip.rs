@@ -319,6 +319,24 @@ where
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if !A::MAY_HAVE_SIDE_EFFECT && !B::MAY_HAVE_SIDE_EFFECT {
+            if n < self.len - self.index {
+                let i = self.index + n;
+                // since get_unchecked executes code which can panic we increment the counters
+                // beforehand so that the same index won't be accessed twice, as required by
+                // TrustedRandomAccess
+                self.index = i + 1;
+                // SAFETY: `n < self.len - self.index` is (modulo overflow) equivalent to
+                // `n + self.index < self.len`, so `i` is smaller than `self.len`.
+                return unsafe {
+                    Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+                };
+            } else {
+                self.index = self.len;
+                return None;
+            }
+        }
+
         let delta = cmp::min(n, self.len - self.index);
         let end = self.index + delta;
         while self.index < end {
