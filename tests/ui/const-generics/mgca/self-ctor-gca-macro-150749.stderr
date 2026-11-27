@@ -1,0 +1,8 @@
+error: the `Self` constructor cannot be used as a const argument
+  --> $DIR/self-ctor-gca-macro-150749.rs:14:33
+   |
+LL |         let temp_ptr: [(); gca!(Self)];
+   |                                 ^^^^
+
+error: aborting due to 1 previous error
+
