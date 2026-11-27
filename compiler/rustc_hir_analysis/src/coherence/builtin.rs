@@ -63,7 +63,9 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
-    match checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty().kind() {
+    let self_ty = checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_ty = tcx.expand_free_alias_tys(self_ty);
+    match self_ty.kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -84,6 +86,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -137,6 +140,7 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
     debug!("visit_implementation_of_unpin: impl_did={:?}", impl_did);
 
     let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     debug!("visit_implementation_of_unpin: self_type={:?}", self_type);
 
     let span = tcx.def_span(impl_did);
@@ -172,6 +176,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
     let self_type = header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
@@ -294,11 +299,13 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     let trait_name = "DispatchFromDyn";
 
     let source = trait_ref.self_ty();
+    let source = tcx.expand_free_alias_tys(source);
     let target = {
         assert!(tcx.is_lang_item(trait_ref.def_id, LangItem::DispatchFromDyn));
 
         trait_ref.args.type_at(1)
     };
+    let target = tcx.expand_free_alias_tys(target);
 
     // Check `CoercePointee` impl is WF -- if not, then there's no reason to report
     // redundant errors for `DispatchFromDyn`. This is best effort, though.
@@ -474,6 +481,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let reborrow_trait = tcx.require_lang_item(LangItem::Reborrow, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
+    let source = tcx.expand_free_alias_tys(source);
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
@@ -664,10 +672,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
+    let source = tcx.expand_free_alias_tys(source);
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
+    let target = tcx.expand_free_alias_tys(target);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
