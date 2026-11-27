@@ -1,11 +1,11 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/hrtb-closure-suggest-type-annotation.rs:33:5
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:35:5
    |
 LL |     inner(buf, outer_closure)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must implement `FnOnce<(&'1 mut [u8],)>`, for any lifetime `'1`...
-  --> $DIR/hrtb-closure-suggest-type-annotation.rs:8:8
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:10:8
    |
 LL | fn inner<F>(buf: &mut [u8], func: F) -> usize
 LL | where
@@ -18,13 +18,13 @@ LL |     let outer_closure = |buf: &mut [u8]| {
    |                             +++++++++++
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/hrtb-closure-suggest-type-annotation.rs:33:5
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:35:5
    |
 LL |     inner(buf, outer_closure)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must implement `FnOnce<(&'1 mut [u8],)>`, for any lifetime `'1`...
-  --> $DIR/hrtb-closure-suggest-type-annotation.rs:8:29
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:10:29
    |
 LL | fn inner<F>(buf: &mut [u8], func: F) -> usize
 LL | where
