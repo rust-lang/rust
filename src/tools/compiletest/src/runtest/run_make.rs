@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
-use std::{env, fs};
+use std::{env, fs, iter};
 
 use build_helper::fs::{ignore_not_found, recursive_remove};
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::common::TestSuite;
-use crate::util::{ArgFileCommand, copy_dir_all, dylib_env_var};
+use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
     pub(super) fn run_rmake_test(&self) {
@@ -106,9 +106,29 @@ impl TestCx<'_> {
             p
         };
 
-        let out_dirs_to_args = |paths: Vec<PathBuf>| {
-            paths.into_iter().map(|p| format!("-Ldependency={}", p.display())).collect::<Vec<_>>()
-        };
+        // The full list of transitive dependencies for `run_make_support` requires
+        // passing a lot of absolute paths, which risks running into command-line length
+        // limits on Windows. Since those arguments aren't very interesting anyway,
+        // sidestep the limit by passing them via an argfile instead.
+        let deps_argfile_path = &base_dir.join("deps_argfile");
+        {
+            use std::fmt::Write;
+            let buf = &mut String::new();
+
+            // Specify library search paths for `run_make_support`.
+            for path in iter::chain(&support_lib_deps, &support_lib_deps_deps) {
+                writeln!(buf, "-Ldependency={}", path.display()).unwrap();
+            }
+
+            // Provide `run_make_support` as extern prelude, so test writers don't need to write
+            // `extern run_make_support;`.
+            writeln!(buf, "--extern=run_make_support={support_lib_rlib_path}",).unwrap();
+            if let Some(support_lib_rmeta_path) = support_lib_rmeta_path {
+                writeln!(buf, "--extern=run_make_support={support_lib_rmeta_path}").unwrap();
+            }
+
+            fs::write(deps_argfile_path, buf).unwrap();
+        }
 
         // run-make-support and run-make tests are compiled using the stage0 compiler
         // If the stage is 0, then the compiler that we test (either bootstrap or an explicitly
@@ -118,7 +138,7 @@ impl TestCx<'_> {
             .stage0_rustc_path
             .as_ref()
             .expect("stage0 rustc is required to run run-make tests");
-        let mut rustc = ArgFileCommand::new(&stage0_rustc);
+        let mut rustc = Command::new(&stage0_rustc);
         rustc
             // `rmake.rs` **must** be buildable by a stable compiler, it may not use *any* unstable
             // library or compiler features. Here, we force the stage 0 rustc to consider itself as
@@ -127,20 +147,10 @@ impl TestCx<'_> {
             .env("RUSTC_BOOTSTRAP", "-1")
             .arg("-o")
             .arg(&recipe_bin)
-            // Specify library search paths for `run_make_support`.
-            .args(out_dirs_to_args(support_lib_deps))
-            .args(out_dirs_to_args(support_lib_deps_deps))
-            // Provide `run_make_support` as extern prelude, so test writers don't need to write
-            // `extern run_make_support;`.
-            .arg("--extern")
-            .arg(format!("run_make_support={}", &support_lib_rlib_path))
+            .arg(format!("@{deps_argfile_path}"))
             .arg("--edition=2024")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
-
-        if let Some(support_lib_rmeta_path) = support_lib_rmeta_path {
-            rustc.arg("--extern").arg(format!("run_make_support={}", &support_lib_rmeta_path));
-        }
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
