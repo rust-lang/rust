@@ -1,6 +1,6 @@
 custom panic handler called!
 panicked at RUSTLIB/alloc/src/alloc.rs:LL:CC:
-memory allocation of 4 bytes failed
+memory allocation of 4 bytes (aligned to 4 bytes) failed
 error: abnormal termination: the program aborted execution
   --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
    |
