@@ -1105,6 +1105,8 @@ pub(crate) struct TargetCfg {
     pub(crate) panic: PanicStrategy,
     #[serde(default)]
     pub(crate) dynamic_linking: bool,
+    #[serde(default = "default_emit_debug_gdb_scripts")]
+    pub(crate) emit_debug_gdb_scripts: bool,
     #[serde(rename = "supported-sanitizers", default)]
     pub(crate) sanitizers: Vec<Sanitizer>,
     #[serde(rename = "supports-xray", default)]
@@ -1134,6 +1136,10 @@ impl TargetCfg {
     pub(crate) fn os_and_env(&self) -> String {
         format!("{}-{}", self.os, self.env)
     }
+}
+
+fn default_emit_debug_gdb_scripts() -> bool {
+    true
 }
 
 fn default_os() -> String {

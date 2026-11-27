@@ -38,6 +38,11 @@ fn is_symbol_ok(sym: &str) -> bool {
         return true; // Unfortunately we have to not mangle this for now
     }
 
+    if sym.starts_with("__rustc_debug_gdb_scripts_section") {
+        // These symbols are fine; they're made unique by the crate ID.
+        return true;
+    }
+
     false
 }
 

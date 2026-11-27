@@ -786,20 +786,28 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     /// Creates any deferred debug metadata nodes
-    pub(crate) fn debuginfo_finalize(&self) {
-        if let Some(dbg_cx) = &self.dbg_cx {
-            debug!("finalize");
-
-            if gdb::needs_gdb_debug_scripts_section(self) {
-                // Add a .debug_gdb_scripts section to this compile-unit. This will
-                // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-                // which activates the Rust pretty printers for binary this section is
-                // contained in.
-                gdb::get_or_insert_gdb_debug_scripts_section_global(self);
-            }
-
-            dbg_cx.finalize();
+    pub(crate) fn debuginfo_finalize(&mut self) {
+        if self.dbg_cx.is_none() {
+            return;
         }
+
+        debug!("finalize");
+
+        if gdb::needs_gdb_debug_scripts_section(self) {
+            // Add a .debug_gdb_scripts section to this compile-unit. This will
+            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+            // which activates the Rust pretty printers for binary this section is
+            // contained in.
+            let section_var = gdb::get_or_insert_gdb_debug_scripts_section_global(self);
+
+            // Make sure that the linker doesn't optimize the global away. Adding
+            // it to `llvm.used` has the advantage that it works even in no_std
+            // binaries, where we don't have a main shim and thus don't emit a
+            // volatile load to preserve the global.
+            self.add_used_global(section_var);
+        }
+
+        debug_context(self).finalize();
     }
 }
 
