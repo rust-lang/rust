@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic;
 
 use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
@@ -250,8 +250,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Helper to print a warning when a pointer is shared with the native code.
         let expose = |prov: Provenance| -> InterpResult<'tcx> {
-            static DEDUP: AtomicBool = AtomicBool::new(false);
-            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            static DEDUP: atomic::AtomicBool = atomic::AtomicBool::new(false);
+            if !DEDUP.swap(true, atomic::Ordering::Relaxed) {
                 // Newly set, so first time we get here.
                 ecx.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
             }

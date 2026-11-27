@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic;
 use std::time::Duration;
 use std::{io, mem};
 
@@ -804,8 +804,8 @@ impl UnixSocketFileDescription for TcpSocket {
             // This is problematic because UNIX targets could expect a real local address even
             // for a connecting non-blocking socket.
 
-            static DEDUP: AtomicBool = AtomicBool::new(false);
-            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            static DEDUP: atomic::AtomicBool = atomic::AtomicBool::new(false);
+            if !DEDUP.swap(true, atomic::Ordering::Relaxed) {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
             }
         }

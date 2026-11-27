@@ -154,6 +154,9 @@ pub enum NonHaltingDiagnostic {
     SocketAddressResolution {
         error: std::io::Error,
     },
+    UnknownTimezone {
+        timezone: String,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -678,6 +681,7 @@ impl<'tcx> MiriMachine<'tcx> {
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
             ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
             SocketAddressResolution { error } => format!("address resolution failed: {error}"),
+            UnknownTimezone { timezone } => format!("TZ environment variable is set to unknown timezone {timezone:?}"),
         };
 
         let (main_span_label, diag_level) = match &e {
@@ -703,6 +707,8 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("Called `getsockname` on connecting socket".to_string(), DiagLevel::Warning),
             SocketAddressResolution { .. } =>
                 ("error during address resolution".to_string(), DiagLevel::Warning),
+            UnknownTimezone { .. } =>
+                ("failed to resvoled timezone name".to_string(), DiagLevel::Warning),
         };
 
         let extras = match &e {
@@ -812,6 +818,12 @@ impl<'tcx> MiriMachine<'tcx> {
                 vec![help!(
                     "add `-Zmiri-genmc-weak-cas-spurious-failures` to MIRIFLAGS to explore spurious failures; all retry loops around `compare_exchange_weak` then need to be bounded"
                 )],
+            UnknownTimezone { .. } => {
+                vec![
+                    help!("Miri will fall back to UTC as the current timezone"),
+                    note!("this warning is only shown once per program execution"),
+                ]
+            }
             _ => vec![],
         };
 

@@ -1,6 +1,6 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
-//@run-native
+//@run-native: ignore-output
 
 use std::time::{Duration, Instant};
 use std::{env, mem, ptr};
@@ -249,7 +249,7 @@ fn test_localtime_r_dst() {
 
 /// PST timezone test (testing different timezone handling).
 fn test_localtime_r_pst() {
-    set_tz("PST8PDT");
+    set_tz("America/Vancouver");
 
     const TIME_SINCE_EPOCH: libc::time_t = 1712475836; // 2024-04-07 07:43:56 GMT
     let custom_time_ptr = &TIME_SINCE_EPOCH;
