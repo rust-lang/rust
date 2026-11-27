@@ -145,22 +145,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timestamp = Timestamp::new(sec_since_epoch, 0).expect("timestamp should be valid");
 
         // Figure out what time zone is in use
-        let tz_name = ecx.get_env_var(OsStr::new("TZ"))?;
-        let tz =
-            tz_name.as_ref().and_then(|tz| TimeZone::get(tz.to_str()?).ok()).unwrap_or_else(|| {
-                // jiff does not support this timezone. That also happens for obsolete timezones
-                // that typically work on POSIX systems, like "PST8PDT". So let's emit a warning to
-                // make the user aware of this possible discrepancy.
-                if let Some(tz_name) = &tz_name {
+        let tz = match ecx.get_env_var(OsStr::new("TZ"))? {
+            Some(tz_name) => {
+                tz_name.to_str().and_then(|tz| TimeZone::get(tz).ok()).unwrap_or_else(|| {
+                    // jiff does not support this timezone. That also happens for obsolete timezones
+                    // that typically work on POSIX systems, like "PST8PDT". So let's emit a warning
+                    // to make the user aware of this possible discrepancy.
                     static DEDUP: atomic::AtomicBool = atomic::AtomicBool::new(false);
                     if !DEDUP.swap(true, atomic::Ordering::Relaxed) {
                         ecx.emit_diagnostic(NonHaltingDiagnostic::UnknownTimezone {
                             timezone: tz_name.to_string_lossy().into_owned(),
                         });
                     }
-                }
-                TimeZone::UTC
-            });
+
+                    TimeZone::UTC
+                })
+            }
+            None => {
+                // Fall back to system timezone when TZ is not set. This reads the host's
+                // "TZ", which is strictly speaking wrong, but close enough.
+                TimeZone::system()
+            }
+        };
 
         // Put the two together. Looks like we have to do this twice to get all the information.
         let dt = timestamp.to_zoned_datetime(tz.clone());
