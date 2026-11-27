@@ -50,6 +50,13 @@ pub struct Environment {
     /// so local runs can avoid it.
     #[builder(default = "true")]
     pub(crate) optimize_rustdoc: bool,
+
+    /// Whether we want to optimize LLVM. We do on CI, so it's on by default, but it is an option so
+    /// local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_llvm: bool,
+
+    pub(crate) download_ci_llvm: bool,
 }
 
 impl Environment {

@@ -142,6 +142,11 @@ enum EnvironmentCmd {
         #[clap(flatten)]
         shared: SharedArgs,
     },
+    /// Perform an optimized build on aarch64 Mac CI, directly inside Github Actions.
+    MacCi {
+        #[clap(flatten)]
+        shared: SharedArgs,
+    },
 }
 
 /// For a fast try build, we want to only build the bare minimum of components to get a
@@ -194,6 +199,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .optimize_clippy(optimize_clippy)
                 .optimize_cranelift(optimize_cranelift)
                 .optimize_rustdoc(optimize_rustdoc)
+                .download_ci_llvm(false)
                 .build()?;
 
             (env, shared.build_args)
@@ -245,6 +251,48 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             (env, shared.build_args)
         }
+
+        EnvironmentCmd::MacCi { shared } => {
+            let target_triple =
+                std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
+
+            let developer_dir =
+                std::env::var("DEVELOPER_DIR").expect("DEVELOPER_DIR environment variable missing");
+            let llvm_binaries_path =
+                Utf8Path::new(&developer_dir).join("Toolchains/XcodeDefault.xctoolchain/usr/");
+
+            // GH Mac runners are currently too slow to optimize tools.
+            let optimize_tools = false;
+
+            // They are also currently too slow to optimize LLVM.
+            let optimize_llvm = false;
+
+            let checkout_dir: Utf8PathBuf = std::env::current_dir()?.try_into()?;
+            let env = EnvironmentBuilder::default()
+                .host_tuple(target_triple)
+                .python_binary("python3".to_string())
+                .checkout_dir(checkout_dir.clone())
+                .host_llvm_dir(llvm_binaries_path)
+                .artifact_dir(checkout_dir.join("opt-artifacts"))
+                .build_dir(checkout_dir.join("build"))
+                .shared_llvm(true)
+                .use_bolt(false)
+                .skipped_tests(vec![])
+                .run_tests(true) // tmp
+                .fast_try_build(is_fast_try_build)
+                .build_llvm(true)
+                .download_ci_llvm(true) // tmp: for the first throwaway LLVM, in case the segfault
+                // workaround busts the sccache and makes the LLVM build take 5 hours multime times.
+                // Also to see what it does on CI.
+                .optimize_cargo(optimize_tools)
+                .optimize_clippy(optimize_tools)
+                .optimize_cranelift(optimize_tools)
+                .optimize_rustdoc(optimize_tools)
+                .optimize_llvm(optimize_llvm)
+                .build()?;
+
+            (env, shared.build_args)
+        }
     };
     Ok((env, args))
 }
@@ -264,6 +312,10 @@ fn execute_pipeline(
             copy_and_build_rustc_perf(env, &rustc_perf_checkout_dir)
         }
     })?;
+
+    // We generally need to build LLVM on CI, but may have to avoid optimizing it. Some builders
+    // only have enough capacity to PGO rustc itself.
+    let optimize_llvm = env.optimize_llvm;
 
     let optimize_cargo = env.optimize_cargo;
     let optimize_clippy = !is_fast_try_build() && env.optimize_clippy;
@@ -295,6 +347,22 @@ fn execute_pipeline(
                 // The profiles are then merged together into a single PGO profile.
                 let mut builder =
                     Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+
+                // FIXME: temporary workaround for segfaults on aarch64 MacOS, tracked in
+                // https://github.com/rust-lang/rust/issues/163640. This issue is fixed in upstream cc-rs
+                // already but not present in the rust dependencies yet. Once that is done, we can remove the
+                // overrides below.
+                if env.host_tuple() == "aarch64-apple-darwin" {
+                    builder = builder.workaround_cc_segfaults();
+
+                    // The first LLVM we build is thrown away so we can use the one already built by
+                    // CI??? Then we will build LLVM regularly, without any overrides and without
+                    // busting the sccache.
+                    if env.download_ci_llvm {
+                        builder = builder.with_download_ci_llvm();
+                    }
+                }
+
                 if optimize_cargo {
                     builder = builder.with_cargo().cargo_pgo_instrument(&rustc_profile_dir_root)
                 }
@@ -358,6 +426,12 @@ fn execute_pipeline(
             );
             stage.section(&section_label, |section| {
                 let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&rustc_profile);
+
+                // If we're building LLVM in the next stage, we don't need to build it here.
+                if env.build_llvm() && env.download_ci_llvm {
+                    cmd = cmd.with_download_ci_llvm();
+                }
+
                 if optimize_cargo {
                     cmd = cmd.with_cargo().cargo_pgo_optimize(&rustc_profile);
                 }
@@ -382,10 +456,12 @@ fn execute_pipeline(
 
     // Stage 2: Gather LLVM PGO profiles
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
-    let llvm_pgo_profile = if env.build_llvm() {
+    let llvm_pgo_profile = if env.build_llvm() && optimize_llvm {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
-            // Remove the previous, uninstrumented build of LLVM.
-            clear_llvm_files(env)?;
+            if !env.download_ci_llvm {
+                // Remove the previous, uninstrumented build of LLVM.
+                clear_llvm_files(env)?;
+            }
 
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
@@ -539,7 +615,7 @@ fn execute_pipeline(
 
     // Final stage: Assemble the dist artifacts
     // The previous PGO-optimized rustc build and PGO-optimized LLVM builds should be reused.
-    timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
+    timer.section("Stage 4 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
     // possible regressions.
