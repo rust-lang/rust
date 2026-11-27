@@ -1,0 +1,11 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/use-unclosed-brace.rs:10:14
+   |
+LL | use foo::{bar, baz;
+   |          - unclosed delimiter
+...
+LL | fn main() {}
+   |             ^
+
+error: aborting due to 1 previous error
+

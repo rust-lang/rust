@@ -1,0 +1,29 @@
+error: implementation of `HR` is not general enough
+  --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:25:5
+   |
+LL |     hr(not_hr_func);
+   |     ^^^^^^^^^^^^^^^ implementation of `HR` is not general enough
+   |
+   = note: `HR` would have to be implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`...
+   = note: ...but `HR` is actually implemented for the type `for<'a> fn(&'a ())`
+
+error: implementation of `NotHR` is not general enough
+  --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:27:5
+   |
+LL |     not_hr(hr_func);
+   |     ^^^^^^^^^^^^^^^ implementation of `NotHR` is not general enough
+   |
+   = note: `NotHR` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...but `NotHR` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+
+error: implementation of `NotHR` is not general enough
+  --> $DIR/hr-fn-ptr-trait-impl-mismatch-29061.rs:29:5
+   |
+LL |     not_hr(hr_func2);
+   |     ^^^^^^^^^^^^^^^^ implementation of `NotHR` is not general enough
+   |
+   = note: `NotHR` would have to be implemented for the type `for<'b> fn(&'b ())`
+   = note: ...but `NotHR` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,18 @@
+- // MIR for `test` before GVN
++ // MIR for `test` after GVN
+  
+  fn test(_1: i32) -> i32 {
+      debug x => _1;
+      let mut _0: i32;
+      let mut _2: i32;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         _0 = Mul(move _2, const 0_i32);
++         _0 = const 0_i32;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,13 @@
+// This is a regression test for <https://github.com/rust-lang/rust/issues/152797>.
+#![feature(final_associated_functions)]
+#![feature(gca_min_const_items)]
+#![expect(incomplete_features)]
+trait Uwu {
+    final type Ovo;
+    //~^ error: `final` is only allowed on associated functions in traits
+    #[rustc_always_gca]
+    final const QwQ: ();
+    //~^ error: `final` is only allowed on associated functions in traits
+}
+
+fn main() {}

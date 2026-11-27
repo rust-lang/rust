@@ -1,0 +1,25 @@
+error[E0277]: the size for values of type `dyn Example` cannot be known at compilation time
+  --> $DIR/ice-size_and_align_of-closure-not-supported-88212.rs:14:9
+   |
+LL |     let x: dyn Example = *example();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Example`
+   = note: all local variables must have a statically known size
+help: consider borrowing here
+   |
+LL |     let x: &dyn Example = *example();
+   |            +
+
+error[E0277]: the size for values of type `dyn Example` cannot be known at compilation time
+  --> $DIR/ice-size_and_align_of-closure-not-supported-88212.rs:16:13
+   |
+LL |         let _y = x;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Example`
+   = note: all local variables must have a statically known size
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

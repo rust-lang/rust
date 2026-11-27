@@ -1,0 +1,10 @@
+[package]
+name = "consumer"
+version = "0.1.0"
+
+[dependencies]
+mylib_v1 = { path = "../mylib_v1", package = "mylib" }
+mylib_v2 = { path = "../mylib_v2", package = "mylib" }
+
+# Avoid interference with root workspace when casually testing
+[workspace]

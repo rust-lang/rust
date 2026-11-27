@@ -1,0 +1,9 @@
+error[E0275]: overflow assigning `Box<_>` to `_`
+  --> $DIR/infinite-type-occurs-check.rs:9:9
+   |
+LL |     g = f;
+   |         ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

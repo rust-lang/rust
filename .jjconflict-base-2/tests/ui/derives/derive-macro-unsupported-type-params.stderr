@@ -1,0 +1,28 @@
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/derive-macro-unsupported-type-params.rs:11:13
+   |
+LL |     Variant(T),
+   |             ^ not found in this scope
+
+error[E0107]: missing generics for enum `A`
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:6
+   |
+LL | #[derive(A)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum A<T> {
+   |      ^
+
+error[E0107]: missing generics for enum `A`
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:6
+   |
+LL | #[derive(A)]
+   |          - this derive macro might not support items with generic parameters
+LL | enum A<T> {
+   |      ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.

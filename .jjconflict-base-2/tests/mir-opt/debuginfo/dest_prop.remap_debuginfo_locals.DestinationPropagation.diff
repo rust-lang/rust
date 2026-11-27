@@ -1,0 +1,36 @@
+- // MIR for `remap_debuginfo_locals` before DestinationPropagation
++ // MIR for `remap_debuginfo_locals` after DestinationPropagation
+  
+  fn remap_debuginfo_locals(_1: bool, _2: &bool) -> &bool {
+-     debug c => _3;
++     debug c => _2;
+      let mut _0: &bool;
+      let mut _3: &bool;
+      let mut _4: bool;
+  
+      bb0: {
+-         // DBG: _3 = &_1;
+-         StorageLive(_4);
+-         _4 = copy _1;
+-         _3 = copy _2;
+-         switchInt(copy _4) -> [1: bb1, otherwise: bb2];
++         // DBG: _2 = &_1;
++         nop;
++         nop;
++         nop;
++         switchInt(copy _1) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          goto -> bb2;
+      }
+  
+      bb2: {
+-         StorageDead(_4);
+-         _0 = copy _3;
++         nop;
++         _0 = copy _2;
+          return;
+      }
+  }
+  

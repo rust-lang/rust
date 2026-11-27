@@ -1,0 +1,13 @@
+error: expected one of `+`, `,`, `::`, `=`, or `>`, found `From`
+  --> $DIR/unclosed-generics-in-impl-def.rs:1:46
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>> From<S> for Canonical {}
+   |                                              ^^^^ expected one of `+`, `,`, `::`, `=`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>>> From<S> for Canonical {}
+   |                                             +
+
+error: aborting due to 1 previous error
+

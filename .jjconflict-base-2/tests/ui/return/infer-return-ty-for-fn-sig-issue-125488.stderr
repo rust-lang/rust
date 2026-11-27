@@ -1,0 +1,51 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/infer-return-ty-for-fn-sig-issue-125488.rs:8:24
+   |
+LL |     fn f1(s: S<'_>) -> _ {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn f1(s: S<'_>) -> _ {
+LL +     fn f1(s: S<'_>) -> S<'_> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/infer-return-ty-for-fn-sig-issue-125488.rs:13:24
+   |
+LL |     fn f2(s: S<'_>) -> _ {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn f2(s: S<'_>) -> _ {
+LL +     fn f2(s: S<'_>) -> S<'_> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/infer-return-ty-for-fn-sig-issue-125488.rs:23:24
+   |
+LL |     fn f3(s: S<'_>) -> _ {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn f3(s: S<'_>) -> _ {
+LL +     fn f3(s: S<'_>) -> S<'_> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/infer-return-ty-for-fn-sig-issue-125488.rs:28:24
+   |
+LL |     fn f4(s: S<'_>) -> _ {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn f4(s: S<'_>) -> _ {
+LL +     fn f4(s: S<'_>) -> S<'_> {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

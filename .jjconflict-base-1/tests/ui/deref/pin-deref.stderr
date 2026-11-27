@@ -1,0 +1,51 @@
+error[E0596]: cannot borrow data in dereference of `Pin<&MyUnpinType>` as mutable
+  --> $DIR/pin-deref.rs:31:5
+   |
+LL |     r_unpin.at_mut_self();
+   |     ^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&MyUnpinType>`
+
+error[E0596]: cannot borrow data in dereference of `Pin<&mut MyPinType>` as mutable
+  --> $DIR/pin-deref.rs:36:5
+   |
+LL |     r_pin.at_mut_self();
+   |     ^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&mut MyPinType>`
+
+error[E0596]: cannot borrow data in dereference of `Pin<&MyPinType>` as mutable
+  --> $DIR/pin-deref.rs:41:5
+   |
+LL |     r_pin.at_mut_self();
+   |     ^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&MyPinType>`
+
+error[E0596]: cannot borrow data in dereference of `Pin<&MyUnpinType>` as mutable
+  --> $DIR/pin-deref.rs:49:5
+   |
+LL |     r_unpin
+   |     ^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&MyUnpinType>`
+
+error[E0596]: cannot borrow data in dereference of `Pin<&MyPinType>` as mutable
+  --> $DIR/pin-deref.rs:65:5
+   |
+LL |     r_pin
+   |     ^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&MyPinType>`
+
+error[E0596]: cannot borrow data in dereference of `Pin<&mut MyPinType>` as mutable
+  --> $DIR/pin-deref.rs:73:5
+   |
+LL |     r_pin
+   |     ^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<&mut MyPinType>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

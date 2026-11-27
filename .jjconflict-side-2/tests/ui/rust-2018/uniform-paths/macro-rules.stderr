@@ -1,0 +1,19 @@
+error[E0364]: `legacy_macro` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/macro-rules.rs:11:13
+   |
+LL |     pub use legacy_macro as _;
+   |             ^^^^^^^^^^^^^^^^^
+   |
+help: consider adding a `#[macro_export]` to the macro in the imported module
+  --> $DIR/macro-rules.rs:7:5
+   |
+LL |     macro_rules! legacy_macro { () => () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+   |
+LL |     pub(crate) use legacy_macro as _;
+   |        +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0364`.

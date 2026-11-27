@@ -1,0 +1,14 @@
+error[E0529]: expected an array or slice, found `Vec<{integer}>`
+  --> $DIR/let-else-slicing-error.rs:6:9
+   |
+LL |     let [x, y] = nums else {
+   |         ^^^^^^ pattern cannot match with input type `Vec<{integer}>`
+   |
+help: consider slicing here
+   |
+LL |     let [x, y] = nums[..] else {
+   |                      ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0529`.

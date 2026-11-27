@@ -1,0 +1,40 @@
+error[E0277]: the trait bound `fn() -> impl T<O = ()> {foo}: T` is not satisfied
+  --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:17:9
+   |
+LL |     bar(foo);
+   |     --- ^^^ the trait `T` is not implemented for fn item `fn() -> impl T<O = ()> {foo}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `bar`
+  --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:14:16
+   |
+LL | fn bar(f: impl T<O=()>) {}
+   |                ^^^^^^^ required by this bound in `bar`
+help: use parentheses to call this function
+   |
+LL |     bar(foo());
+   |            ++
+
+error[E0277]: the trait bound `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}: T` is not satisfied
+  --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:19:9
+   |
+LL |     bar(closure);
+   |     --- ^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `T` is not implemented for closure `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}`
+note: required by a bound in `bar`
+  --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:14:16
+   |
+LL | fn bar(f: impl T<O=()>) {}
+   |                ^^^^^^^ required by this bound in `bar`
+help: use parentheses to call this closure
+   |
+LL |     bar(closure());
+   |                ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

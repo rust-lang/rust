@@ -1,0 +1,34 @@
+error: implementation of `LoadQuery` is not general enough
+  --> $DIR/implementation-not-general-enough-ice-133252.rs:9:9
+   |
+LL |         force_send(async_load(&not_static));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `LoadQuery` is not general enough
+   |
+   = note: `LoadQuery<'0>` would have to be implemented for the type `&u8`, for any lifetime `'0`...
+   = note: ...but `LoadQuery<'1>` is actually implemented for the type `&'1 u8`, for some specific lifetime `'1`
+
+error[E0597]: `not_static` does not live long enough
+  --> $DIR/implementation-not-general-enough-ice-133252.rs:9:31
+   |
+LL |     async {
+   |         - return type of async block is &(dyn Owned + '1)
+LL |         let not_static = 0;
+   |             ---------- binding `not_static` declared here
+LL |         force_send(async_load(&not_static));
+   |         ----------------------^^^^^^^^^^^--
+   |         |                     |
+   |         |                     borrowed value does not live long enough
+   |         argument requires that `not_static` is borrowed for `'1`
+...
+LL |     }
+   |     - `not_static` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'1` introduced here
+  --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18
+   |
+LL | fn force_send<T: Send>(_: T) {}
+   |                  ^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

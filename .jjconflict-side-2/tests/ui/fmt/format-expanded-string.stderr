@@ -1,0 +1,18 @@
+error: invalid format string: unmatched `}` found
+  --> $DIR/format-expanded-string.rs:19:13
+   |
+LL |     format!(concat!("abc}"));
+   |             ^^^^^^^^^^^^^^^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/format-expanded-string.rs:22:34
+   |
+LL |     format!(err_with_input_span!(""));
+   |                                  ^^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 2 previous errors
+

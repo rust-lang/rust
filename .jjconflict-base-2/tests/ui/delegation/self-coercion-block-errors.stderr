@@ -1,0 +1,239 @@
+error[E0507]: cannot move out of `self` which is behind a mutable reference
+  --> $DIR/self-coercion-block-errors.rs:19:28
+   |
+LL | reuse impl Trait for S { { self.0 } }
+   |                            ^^^^^^ move occurs because `self.0` has type `F`, which does not implement the `Copy` trait
+   |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-block-errors.rs:12:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | reuse impl Trait for S { { self.0 } }
+   |                            ------ you could clone this value
+
+error[E0507]: cannot move out of `self` which is behind a shared reference
+  --> $DIR/self-coercion-block-errors.rs:19:28
+   |
+LL | reuse impl Trait for S { { self.0 } }
+   |                            ^^^^^^ move occurs because `self.0` has type `F`, which does not implement the `Copy` trait
+   |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-block-errors.rs:12:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | reuse impl Trait for S { { self.0 } }
+   |                            ------ you could clone this value
+
+error[E0507]: cannot move out of `self` which is behind a mutable reference
+  --> $DIR/self-coercion-block-errors.rs:24:37
+   |
+LL | reuse impl Trait for S1 { { { { { { self.0 } } } } } }
+   |                                     ^^^^^^ move occurs because `self.0` has type `F`, which does not implement the `Copy` trait
+   |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-block-errors.rs:12:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | reuse impl Trait for S1 { { { { { { self.0 } } } } } }
+   |                                     ------ you could clone this value
+
+error[E0507]: cannot move out of `self` which is behind a shared reference
+  --> $DIR/self-coercion-block-errors.rs:24:37
+   |
+LL | reuse impl Trait for S1 { { { { { { self.0 } } } } } }
+   |                                     ^^^^^^ move occurs because `self.0` has type `F`, which does not implement the `Copy` trait
+   |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-block-errors.rs:12:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | reuse impl Trait for S1 { { { { { { self.0 } } } } } }
+   |                                     ------ you could clone this value
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:29:1
+   |
+LL | reuse impl Trait for S2 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:29:1
+   |
+LL | reuse impl Trait for S2 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:29:1
+   |
+LL | reuse impl Trait for S2 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:35:1
+   |
+LL | reuse impl Trait for S3 { (); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:35:1
+   |
+LL | reuse impl Trait for S3 { (); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:35:1
+   |
+LL | reuse impl Trait for S3 { (); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:41:1
+   |
+LL | reuse impl Trait for S4 { println!(); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:41:1
+   |
+LL | reuse impl Trait for S4 { println!(); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:41:1
+   |
+LL | reuse impl Trait for S4 { println!(); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:47:1
+   |
+LL | reuse impl Trait for S5 { fn foo() {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:47:1
+   |
+LL | reuse impl Trait for S5 { fn foo() {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:47:1
+   |
+LL | reuse impl Trait for S5 { fn foo() {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:53:1
+   |
+LL | reuse impl Trait for S6;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:53:1
+   |
+LL | reuse impl Trait for S6;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: function cannot return without recursing
+  --> $DIR/self-coercion-block-errors.rs:53:1
+   |
+LL | reuse impl Trait for S6;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | cannot return without recursing
+   | recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors; 15 warnings emitted
+
+For more information about this error, try `rustc --explain E0507`.

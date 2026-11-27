@@ -1,0 +1,308 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:10:21
+   |
+LL | fn fuz() -> (usize, Trait) { (42, Struct) }
+   |                     ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | fn fuz() -> (usize, dyn Trait) { (42, Struct) }
+   |                     +++
+
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
+   |
+LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
+   |             ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+   = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
+   = note: the return type of a function must have a statically known size
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
+   |
+LL | fn bap() -> Trait { Struct }
+   |             ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn bap() -> impl Trait { Struct }
+   |             ++++
+help: alternatively, you can return an owned trait object
+   |
+LL | fn bap() -> Box<dyn Trait> { Struct }
+   |             +++++++      +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:22:13
+   |
+LL | fn ban() -> dyn Trait { Struct }
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn ban() -> dyn Trait { Struct }
+LL + fn ban() -> impl Trait { Struct }
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn ban() -> Box<dyn Trait> { Box::new(Struct) }
+   |             ++++         +   +++++++++      +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:24:13
+   |
+LL | fn bak() -> dyn Trait { unimplemented!() }
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bak() -> dyn Trait { unimplemented!() }
+LL + fn bak() -> impl Trait { unimplemented!() }
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn bak() -> Box<dyn Trait> { Box::new(unimplemented!()) }
+   |             ++++         +   +++++++++                +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:26:13
+   |
+LL | fn bal() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bal() -> dyn Trait {
+LL + fn bal() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bal() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         return Box::new(Struct);
+LL |     }
+LL ~     Box::new(42)
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:32:13
+   |
+LL | fn bax() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bax() -> dyn Trait {
+LL + fn bax() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bax() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         Box::new(Struct)
+LL |     } else {
+LL ~         Box::new(42)
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:67:13
+   |
+LL | fn bat() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bat() -> dyn Trait {
+LL + fn bat() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bat() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         return Box::new(0);
+LL |     }
+LL ~     Box::new(42)
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:73:13
+   |
+LL | fn bay() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bay() -> dyn Trait {
+LL + fn bay() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bay() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         Box::new(0)
+LL |     } else {
+LL ~         Box::new(42)
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:39
+   |
+LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
+   |                                       ^^^^^^ expected `dyn Trait`, found `Struct`
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                    found struct `Struct`
+   = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:34
+   |
+LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
+   |                                  ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+   = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
+   = note: tuples must have a statically known size to be initialized
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:41:16
+   |
+LL | fn bam() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+LL |     if true {
+LL |         return Struct;
+   |                ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+              found struct `Struct`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         return Box::new(Struct);
+   |                +++++++++      +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:43:5
+   |
+LL | fn bam() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+...
+LL |     42
+   |     ^^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     Box::new(42)
+   |     +++++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:47:16
+   |
+LL | fn baq() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+LL |     if true {
+LL |         return 0;
+   |                ^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         return Box::new(0);
+   |                +++++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:49:5
+   |
+LL | fn baq() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+...
+LL |     42
+   |     ^^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     Box::new(42)
+   |     +++++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:53:9
+   |
+LL | fn baz() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+LL |     if true {
+LL |         Struct
+   |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+              found struct `Struct`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(Struct)
+   |         +++++++++      +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:55:9
+   |
+LL | fn baz() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+...
+LL |         42
+   |         ^^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(42)
+   |         +++++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:60:9
+   |
+LL | fn baw() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+LL |     if true {
+LL |         0
+   |         ^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(0)
+   |         +++++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:62:9
+   |
+LL | fn baw() -> Box<dyn Trait> {
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
+...
+LL |         42
+   |         ^^ expected `Box<dyn Trait>`, found integer
+   |
+   = note: expected struct `Box<(dyn Trait + 'static)>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(42)
+   |         +++++++++  +
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0746, E0782.
+For more information about an error, try `rustc --explain E0277`.

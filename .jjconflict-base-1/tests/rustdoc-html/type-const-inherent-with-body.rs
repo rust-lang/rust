@@ -1,0 +1,17 @@
+#![crate_name = "foo"]
+#![feature(gca_min_const_items, gca_macroless_args, inherent_associated_types)]
+#![expect(incomplete_features)]
+
+use std::gca;
+
+pub struct Foo;
+
+impl Foo {
+    const LEN: usize = gca!(4);
+}
+
+//@ has 'foo/fn.mk_array.html'
+//@ has - '//pre[@class="rust item-decl"]/code' '[u8; Foo::LEN]'
+pub fn mk_array() -> [u8; Foo::LEN] {
+    [0u8; Foo::LEN]
+}

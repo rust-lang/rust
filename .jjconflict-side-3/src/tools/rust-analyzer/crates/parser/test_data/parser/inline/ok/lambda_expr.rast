@@ -1,0 +1,248 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            RET_TYPE
+              THIN_ARROW "->"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i32"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "92"
+                WHITESPACE " "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            PARAM_LIST
+              PIPE "|"
+              PARAM
+                IDENT_PAT
+                  NAME
+                    IDENT "x"
+              PIPE "|"
+            WHITESPACE " "
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PARAM
+                IDENT_PAT
+                  NAME
+                    IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "i32"
+              COMMA ","
+              PIPE "|"
+            WHITESPACE " "
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            ASYNC_KW "async"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            ASYNC_KW "async"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            FOR_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            FOR_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

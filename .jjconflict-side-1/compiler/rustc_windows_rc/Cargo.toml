@@ -1,0 +1,9 @@
+[package]
+name = "rustc_windows_rc"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+#tidy-alphabetical-start
+find-msvc-tools = "0.1.2"
+#tidy-alphabetical-end

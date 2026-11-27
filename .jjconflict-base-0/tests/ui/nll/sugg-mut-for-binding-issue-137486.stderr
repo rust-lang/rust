@@ -1,0 +1,37 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/sugg-mut-for-binding-issue-137486.rs:9:18
+   |
+LL |     ref_s = &mut String::from("world");
+   |                  ^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |                  |
+   |                  creates a temporary value which is freed while still in use
+LL |
+LL |     print!("r1 = {}", ref_s);
+   |                       ----- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let mut binding = String::from("world");
+LL ~     ref_s = &mut binding;
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/sugg-mut-for-binding-issue-137486.rs:18:18
+   |
+LL |     ref_s = &mut Pin::new(&mut val2);
+   |                  ^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |                  |
+   |                  creates a temporary value which is freed while still in use
+LL |
+LL |     print!("r1 = {}", ref_s);
+   |                       ----- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let mut binding = Pin::new(&mut val2);
+LL ~     ref_s = &mut binding;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

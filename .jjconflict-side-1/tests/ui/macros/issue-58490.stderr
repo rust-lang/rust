@@ -1,0 +1,14 @@
+error[E0428]: the name `b` is defined multiple times
+  --> $DIR/issue-58490.rs:18:5
+   |
+LL |         macro_rules! b { () => () }
+   |         -------------- previous definition of the macro `b` here
+...
+LL |     macro_rules! b { () => () }
+   |     ^^^^^^^^^^^^^^ `b` redefined here
+   |
+   = note: `b` must be defined only once in the macro namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

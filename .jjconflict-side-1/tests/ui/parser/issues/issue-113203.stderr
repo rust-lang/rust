@@ -1,0 +1,14 @@
+error: incorrect use of `await`
+  --> $DIR/issue-113203.rs:5:5
+   |
+LL |     await {}()
+   |     ^^^^^^^^
+   |
+help: `await` is a postfix operation
+   |
+LL -     await {}()
+LL +     {}.await()
+   |
+
+error: aborting due to 1 previous error
+

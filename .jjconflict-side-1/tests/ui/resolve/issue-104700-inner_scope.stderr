@@ -1,0 +1,33 @@
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/issue-104700-inner_scope.rs:7:8
+   |
+LL |     if bar == 2 {
+   |        ^^^
+   |
+help: the binding `bar` is available in a different scope in the same function
+  --> $DIR/issue-104700-inner_scope.rs:4:13
+   |
+LL |         let bar = 2;
+   |             ^^^
+
+error[E0425]: cannot find value `baz` in this scope
+  --> $DIR/issue-104700-inner_scope.rs:14:8
+   |
+LL |     if baz == 3 {
+   |        ^^^
+   |
+help: the binding `baz` is available in a different scope in the same function
+  --> $DIR/issue-104700-inner_scope.rs:11:13
+   |
+LL |         let baz = 3;
+   |             ^^^
+
+error[E0425]: cannot find function `test_func` in this scope
+  --> $DIR/issue-104700-inner_scope.rs:17:5
+   |
+LL |     test_func(1);
+   |     ^^^^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

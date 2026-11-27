@@ -1,0 +1,11 @@
+error[E0403]: the name `'a` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/regions-name-duplicated.rs:1:16
+   |
+LL | struct Foo<'a, 'a> {
+   |            --  ^^ already used
+   |            |
+   |            first use of `'a`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0403`.

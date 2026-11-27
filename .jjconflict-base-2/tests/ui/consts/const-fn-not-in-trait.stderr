@@ -1,0 +1,21 @@
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/const-fn-not-in-trait.rs:5:5
+   |
+LL |     const fn f() -> u32;
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/const-fn-not-in-trait.rs:7:5
+   |
+LL |     const fn g() -> u32 {
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

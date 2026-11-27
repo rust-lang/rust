@@ -1,0 +1,44 @@
+- // MIR for `array_len_reborrow` before GVN
++ // MIR for `array_len_reborrow` after GVN
+  
+  fn array_len_reborrow(_1: [u8; N]) -> usize {
+      debug arr => _1;
+      let mut _0: usize;
+      let _2: &mut [u8];
+      let mut _3: &mut [u8; N];
+      let mut _4: &mut [u8; N];
+      let mut _6: &[u8];
+      scope 1 {
+          debug arr => _2;
+          let _5: &[u8];
+          scope 2 {
+              debug arr => _5;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &mut _1;
+          _3 = &mut (*_4);
+          _2 = move _3 as &mut [u8] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_3);
+          StorageDead(_4);
+          StorageLive(_5);
+          _5 = &(*_2);
+          StorageLive(_6);
+          _6 = &(*_5);
+-         _0 = PtrMetadata(move _6);
++         _0 = const N;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

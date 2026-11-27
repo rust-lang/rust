@@ -1,0 +1,37 @@
+[package]
+name = "rustfmt-config_proc_macro"
+version = "0.3.0"
+edition = "2021"
+description = "A collection of procedural macros for rustfmt"
+license = "Apache-2.0 OR MIT"
+categories = ["development-tools::procedural-macro-helpers"]
+repository = "https://github.com/rust-lang/rustfmt"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", default-features = false, features = ["full", "parsing", "proc-macro", "printing"] }
+
+[dev-dependencies]
+serde = { version = "1.0.160", features = ["derive"] }
+
+[features]
+default = []
+debug-with-rustfmt = []
+
+[lints.clippy]
+# allow all rules with a low priority ..
+all = { level = "allow", priority = -1 }
+# so we can pick out an exact subset of rules to deny
+correctness = "deny"
+char_lit_as_u8 = "deny"
+four_forward_slashes = "deny"
+non_minimal_cfg = "deny"
+print_literal = "deny"
+same_item_push = "deny"
+single_char_add_str = "deny"
+to_string_in_format_args = "deny"
+unconditional_recursion = "deny"

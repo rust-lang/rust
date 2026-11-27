@@ -1,0 +1,22 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/regions-addr-of-arg.rs:5:30
+   |
+LL | fn foo(a: isize) {
+   |        - binding `a` declared here
+LL |     let _p: &'static isize = &a;
+   |             --------------   ^^ borrowed value does not live long enough
+   |             |
+   |             type annotation requires that `a` is borrowed for `'static`
+LL | }
+   |  - `a` dropped here while still borrowed
+
+error[E0515]: cannot return reference to function parameter `a`
+  --> $DIR/regions-addr-of-arg.rs:13:5
+   |
+LL |     &a
+   |     ^^ returns a reference to data owned by the current function
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0515, E0597.
+For more information about an error, try `rustc --explain E0515`.

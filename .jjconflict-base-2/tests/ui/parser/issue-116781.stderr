@@ -1,0 +1,16 @@
+error: expected type, found `$`
+  --> $DIR/issue-116781.rs:4:16
+   |
+LL |     field: fn(($),),
+   |                ^ expected type
+
+error: expected type, found `$`
+  --> $DIR/issue-116781.rs:4:16
+   |
+LL |     field: fn(($),),
+   |                ^ expected type
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

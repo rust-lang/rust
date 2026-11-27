@@ -1,0 +1,17 @@
+warning: the item `String` is imported redundantly
+  --> $DIR/use-redundant-issue-71450.rs:26:13
+   |
+LL |         use std::string::String;
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `String` is already defined here
+note: the lint level is defined here
+  --> $DIR/use-redundant-issue-71450.rs:3:9
+   |
+LL | #![warn(redundant_imports)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

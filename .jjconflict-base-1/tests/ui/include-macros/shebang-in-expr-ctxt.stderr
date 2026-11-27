@@ -1,0 +1,33 @@
+error: expected `[`, found `/`
+  --> $DIR/auxiliary/shebang-expr.rs:1:3
+   |
+LL | #!/usr/bin/env my-rust-expr-evaluator
+   |   ^ expected `[`
+   |
+   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
+   = help: if you meant this to be a shebang interpreter directive, move it to the very start of the file
+
+error: non-expression macro in expression position: include
+  --> $DIR/shebang-in-expr-ctxt.rs:8:9
+   |
+LL |     _ = include!("auxiliary/shebang-expr.rs");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `[`, found `/`
+  --> $DIR/auxiliary/shebang-expr.rs:1:3
+   |
+LL | #!/usr/bin/env my-rust-expr-evaluator
+   |   ^ expected `[`
+   |
+   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
+   = help: if you meant this to be a shebang interpreter directive, move it to the very start of the file
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: non-statement macro in statement position: include
+  --> $DIR/shebang-in-expr-ctxt.rs:13:5
+   |
+LL |     include!("auxiliary/shebang-expr.rs");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

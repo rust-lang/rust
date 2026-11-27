@@ -1,0 +1,4 @@
+warning: `-Z pointer-authentication` is not supported for target aarch64-unknown-linux-gnu and will be ignored
+
+warning: 1 warning emitted
+

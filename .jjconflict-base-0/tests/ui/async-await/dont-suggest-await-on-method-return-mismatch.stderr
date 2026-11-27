@@ -1,0 +1,14 @@
+error[E0599]: no method named `test` found for opaque type `impl Future<Output = A>` in the current scope
+  --> $DIR/dont-suggest-await-on-method-return-mismatch.rs:18:24
+   |
+LL |     let x: u32 = foo().test();
+   |                        ^^^^ method not found in `impl Future<Output = A>`
+   |
+help: consider `await`ing on the `Future` and calling the method on its `Output`
+   |
+LL |     let x: u32 = foo().await.test();
+   |                        ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

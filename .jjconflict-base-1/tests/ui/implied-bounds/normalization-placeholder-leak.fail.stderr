@@ -1,0 +1,57 @@
+error[E0477]: the type `&'lt u8` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:31:5
+   |
+LL |     fn test_lifetime<'lt, T: Trait>(_: Foo<&'lt u8>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0477]: the type `&'lt u8` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:31:40
+   |
+LL |     fn test_lifetime<'lt, T: Trait>(_: Foo<&'lt u8>) {}
+   |                                        ^^^^^^^^^^^^
+
+error[E0477]: the type `<T as AnotherTrait>::Ty2<'lt>` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:38:5
+   |
+LL |     fn test_alias<'lt, T: AnotherTrait>(_: Foo<T::Ty2::<'lt>>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0477]: the type `<T as AnotherTrait>::Ty2<'lt>` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:38:44
+   |
+LL |     fn test_alias<'lt, T: AnotherTrait>(_: Foo<T::Ty2::<'lt>>) {}
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-placeholder-leak.rs:31:5
+   |
+LL |     fn test_lifetime<'lt, T: Trait>(_: Foo<&'lt u8>) {}
+   |     ^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |                |
+   |     |                lifetime `'lt` defined here
+   |     requires that `'lt` must outlive `'static`
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/normalization-placeholder-leak.rs:19:5
+   |
+LL |     for<'x> T::Ty<'x>: Sized;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-placeholder-leak.rs:38:5
+   |
+LL |     fn test_alias<'lt, T: AnotherTrait>(_: Foo<T::Ty2::<'lt>>) {}
+   |     ^^^^^^^^^^^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |             |
+   |     |             lifetime `'lt` defined here
+   |     requires that `'lt` must outlive `'static`
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/normalization-placeholder-leak.rs:19:5
+   |
+LL |     for<'x> T::Ty<'x>: Sized;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0477`.

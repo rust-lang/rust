@@ -1,0 +1,25 @@
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-gat-binding.rs:17:35
+   |
+LL |     fn g<'r>(_: impl Outer<Ty<'r, dyn Inner> = ()>) {}
+   |                                   ^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn g<'r>(_: impl Outer<Ty<'r, dyn Inner + /* 'a */> = ()>) {}
+   |                                             ++++++++++
+
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-gat-binding.rs:30:35
+   |
+LL |     fn g<'r>(_: impl Outer<'r, Ty<dyn Inner> = ()>) {}
+   |                                   ^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn g<'r>(_: impl Outer<'r, Ty<dyn Inner + /* 'a */> = ()>) {}
+   |                                             ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0228`.

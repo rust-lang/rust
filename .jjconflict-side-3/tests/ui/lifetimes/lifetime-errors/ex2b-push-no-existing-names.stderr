@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/ex2b-push-no-existing-names.rs:6:5
+   |
+LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
+   |        -                      - has type `Ref<'1, i32>`
+   |        |
+   |        has type `&mut Vec<Ref<'2, i32>>`
+LL |     x.push(y);
+   |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<Ref<'_, i32>>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(x: &mut Vec<Ref<'a, i32>>, y: Ref<'a, i32>) {
+   |       ++++                 +++               +++
+
+error: aborting due to 1 previous error
+

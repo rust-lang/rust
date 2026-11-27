@@ -1,0 +1,11 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/160026.
+//! Rust 2015 should explain when an available crate only needs `extern crate`.
+
+//@ edition: 2015
+//@ aux-crate: dep=missing-extern-crate-suggestion-issue-160026.rs
+//@ run-rustfix
+
+pub use dep::item;
+//~^ ERROR unresolved import `dep`
+
+fn main() {}

@@ -1,0 +1,11 @@
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/no-type-application-on-aliased-enum-variant.rs:13:27
+   |
+LL |     let _ = Alias::None::<u8>;
+   |                    ----   ^^ type argument not allowed
+   |                    |
+   |                    not allowed on this type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0109`.

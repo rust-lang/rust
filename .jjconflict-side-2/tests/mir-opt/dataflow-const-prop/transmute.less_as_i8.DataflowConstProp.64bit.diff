@@ -1,0 +1,26 @@
+- // MIR for `less_as_i8` before DataflowConstProp
++ // MIR for `less_as_i8` after DataflowConstProp
+  
+  fn less_as_i8() -> i8 {
+      let mut _0: i8;
+      let mut _1: std::cmp::Ordering;
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = Less;
+-         _0 = move _1 as i8 (Transmute);
++         _1 = const Less;
++         _0 = const std::cmp::Ordering::Less as i8 (Transmute);
+          StorageDead(_1);
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 1, align: 1) {
++     ff                                              │ .
++ }
++ 
++ ALLOC1 (size: 1, align: 1) {
++     ff                                              │ .
+  }
+  

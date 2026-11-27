@@ -1,0 +1,80 @@
+error[E0107]: missing generics for trait `Fn`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:9:18
+   |
+LL | pub fn shared<T: Fn>() {}
+   |                  ^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn shared<T: Fn<Args>>() {}
+   |                    ++++++
+
+error[E0107]: missing generics for trait `FnMut`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:13:19
+   |
+LL | pub fn mutable<T: FnMut>() {}
+   |                   ^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn mutable<T: FnMut<Args>>() {}
+   |                        ++++++
+
+error[E0107]: missing generics for trait `FnOnce`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:17:16
+   |
+LL | pub fn once<T: FnOnce>() {}
+   |                ^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn once<T: FnOnce<Args>>() {}
+   |                      ++++++
+
+error[E0107]: missing generics for trait `AsyncFn`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:21:24
+   |
+LL | pub fn async_shared<T: AsyncFn>() {}
+   |                        ^^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn async_shared<T: AsyncFn<Args>>() {}
+   |                               ++++++
+
+error[E0107]: missing generics for trait `AsyncFnMut`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:25:25
+   |
+LL | pub fn async_mutable<T: AsyncFnMut>() {}
+   |                         ^^^^^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn async_mutable<T: AsyncFnMut<Args>>() {}
+   |                                   ++++++
+
+error[E0107]: missing generics for trait `AsyncFnOnce`
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:29:22
+   |
+LL | pub fn async_once<T: AsyncFnOnce>() {}
+   |                      ^^^^^^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn async_once<T: AsyncFnOnce<Args>>() {}
+   |                                 ++++++
+
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/missing-fn-trait-args-issue-136407.rs:33:23
+   |
+LL | pub fn with_output<T: Fn<Output = ()>>() {}
+   |                       ^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | pub fn with_output<T: Fn<Args, Output = ()>>() {}
+   |                          +++++
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

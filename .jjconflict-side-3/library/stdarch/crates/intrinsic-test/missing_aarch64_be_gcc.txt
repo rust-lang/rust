@@ -1,0 +1,20 @@
+# Broken in LLVM llvm/llvm-project#196999
+vmull_p64
+vmull_high_p64
+
+# Broken in LLVM llvm/llvm-project#197083
+vcvth_n_s32_f16
+vcvth_n_u32_f16
+vcvth_n_s64_f16
+vcvth_n_u64_f16
+vcvth_n_f16_s32
+vcvth_n_f16_u32
+vcvth_n_f16_s64
+vcvth_n_f16_u64
+
+# Broken in GCC https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125279
+vmaxh_f16
+vminh_f16
+
+# Rounding errors
+vfms_n_f64

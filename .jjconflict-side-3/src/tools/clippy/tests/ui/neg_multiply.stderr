@@ -1,0 +1,107 @@
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:28:5
+   |
+LL |     x * -1;
+   |     ^^^^^^ help: consider using: `-x`
+   |
+   = note: `-D clippy::neg-multiply` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::neg_multiply)]`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:31:5
+   |
+LL |     -1 * x;
+   |     ^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:34:11
+   |
+LL |     100 + x * -1;
+   |           ^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:37:5
+   |
+LL |     (100 + x) * -1;
+   |     ^^^^^^^^^^^^^^ help: consider using: `-(100 + x)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:40:5
+   |
+LL |     -1 * 17;
+   |     ^^^^^^^ help: consider using: `-17`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:43:14
+   |
+LL |     0xcafe | 0xff00 * -1;
+   |              ^^^^^^^^^^^ help: consider using: `-0xff00`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:46:5
+   |
+LL |     3_usize as i32 * -1;
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:48:5
+   |
+LL |     (3_usize as i32) * -1;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:60:5
+   |
+LL |     x * -1.0;
+   |     ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:63:5
+   |
+LL |     -1.0 * x;
+   |     ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:66:13
+   |
+LL |     100.0 + x * -1.0;
+   |             ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:69:5
+   |
+LL |     (100.0 + x) * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^ help: consider using: `-(100.0 + x)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:72:5
+   |
+LL |     -1.0 * 17.0;
+   |     ^^^^^^^^^^^ help: consider using: `-17.0`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:75:11
+   |
+LL |     0.0 + 0.0 * -1.0;
+   |           ^^^^^^^^^^ help: consider using: `-0.0`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:78:5
+   |
+LL |     3.0_f32 as f64 * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3.0_f32 as f64)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:80:5
+   |
+LL |     (3.0_f32 as f64) * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3.0_f32 as f64)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:93:13
+   |
+LL |     let _ = ((a.delta - 0.5).abs() * -1.0).total_cmp(&1.0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(-(a.delta - 0.5).abs())`
+
+error: aborting due to 17 previous errors
+

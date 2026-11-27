@@ -1,0 +1,41 @@
+error: expected expression, found keyword `mut`
+  --> $DIR/issue-103529.rs:5:6
+   |
+LL | m! { mut x }
+   |      ^^^ expected expression
+
+error: expected a statement
+  --> $DIR/issue-103529.rs:5:10
+   |
+LL |     ($s:stmt) => {}
+   |      ------- while parsing argument for this `stmt` macro fragment
+...
+LL | m! { mut x }
+   |          ^
+
+error: invalid variable declaration
+  --> $DIR/issue-103529.rs:8:6
+   |
+LL | m! { auto x }
+   |      ^^^^
+   |
+help: write `let` instead of `auto` to introduce a new variable
+   |
+LL - m! { auto x }
+LL + m! { let x }
+   |
+
+error: invalid variable declaration
+  --> $DIR/issue-103529.rs:10:6
+   |
+LL | m! { var x }
+   |      ^^^
+   |
+help: write `let` instead of `var` to introduce a new variable
+   |
+LL - m! { var x }
+LL + m! { let x }
+   |
+
+error: aborting due to 4 previous errors
+

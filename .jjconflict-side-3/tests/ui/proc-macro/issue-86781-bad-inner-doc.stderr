@@ -1,0 +1,18 @@
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-86781-bad-inner-doc.rs:7:1
+   |
+LL | //! Inner doc comment
+   | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | pub struct Foo;
+   | --------------- the inner doc comment doesn't annotate this struct
+   |
+help: to annotate the struct, change the doc comment from inner to outer style
+   |
+LL - //! Inner doc comment
+LL + /// Inner doc comment
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0753`.

@@ -1,0 +1,45 @@
+error[E0369]: cannot multiply `&mut Foo` by `&Foo`
+  --> $DIR/borrow-suggestion-109352.rs:21:25
+   |
+LL |     let _ = ref_mut_foo * ref_foo;
+   |             ----------- ^ ------- &Foo
+   |             |
+   |             &mut Foo
+   |
+   = note: an implementation for `&Foo * &Foo` exists
+help: consider reborrowing this side
+   |
+LL |     let _ = &*ref_mut_foo * ref_foo;
+   |             ++
+
+error[E0369]: cannot multiply `&mut Foo` by `&mut Foo`
+  --> $DIR/borrow-suggestion-109352.rs:23:25
+   |
+LL |     let _ = ref_mut_foo * ref_mut_foo;
+   |             ----------- ^ ----------- &mut Foo
+   |             |
+   |             &mut Foo
+   |
+   = note: an implementation for `&Foo * &Foo` exists
+help: consider reborrowing both sides
+   |
+LL |     let _ = &*ref_mut_foo * &*ref_mut_foo;
+   |             ++              ++
+
+error[E0369]: cannot multiply `&mut Foo` by `&Foo`
+  --> $DIR/borrow-suggestion-109352.rs:25:25
+   |
+LL |     let _ = ref_mut_foo * &owned_foo;
+   |             ----------- ^ ---------- &Foo
+   |             |
+   |             &mut Foo
+   |
+   = note: an implementation for `&Foo * &Foo` exists
+help: consider reborrowing this side
+   |
+LL |     let _ = &*ref_mut_foo * &owned_foo;
+   |             ++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

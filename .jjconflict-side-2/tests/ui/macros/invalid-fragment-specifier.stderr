@@ -1,0 +1,18 @@
+error: invalid fragment specifier `id`
+  --> $DIR/invalid-fragment-specifier.rs:2:6
+   |
+LL |     ($wrong:id) => {};
+   |      ^^^^^^^^^
+   |
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+
+error: invalid fragment specifier `r#if`
+  --> $DIR/invalid-fragment-specifier.rs:7:6
+   |
+LL |     ($wrong:r#if) => {};
+   |      ^^^^^^^^^^^
+   |
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+
+error: aborting due to 2 previous errors
+

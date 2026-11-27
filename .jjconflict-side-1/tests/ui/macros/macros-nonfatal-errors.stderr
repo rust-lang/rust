@@ -1,0 +1,259 @@
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:13:5
+   |
+LL |     #[default]
+   |     ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:18:36
+   |
+LL | struct DefaultInnerAttrTupleStruct(#[default] ());
+   |                                    ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:22:1
+   |
+LL | #[default]
+   | ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:26:1
+   |
+LL | #[default]
+   | ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:36:11
+   |
+LL |     Foo = #[default] 0,
+   |           ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:37:14
+   |
+LL |     Bar([u8; #[default] 1]),
+   |              ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error[E0665]: `#[derive(Default)]` on enum with no `#[default]`
+  --> $DIR/macros-nonfatal-errors.rs:42:10
+   |
+LL |   #[derive(Default)]
+   |            ^^^^^^^
+LL | / enum NoDeclaredDefault {
+LL | |     Foo,
+LL | |     Bar,
+LL | | }
+   | |_- this enum needs a unit variant marked with `#[default]`
+   |
+help: make this unit variant default by placing `#[default]` on it
+   |
+LL |     #[default] Foo,
+   |     ++++++++++
+help: make this unit variant default by placing `#[default]` on it
+   |
+LL |     #[default] Bar,
+   |     ++++++++++
+
+error[E0665]: `#[derive(Default)]` on enum with no `#[default]`
+  --> $DIR/macros-nonfatal-errors.rs:48:10
+   |
+LL |   #[derive(Default)]
+   |            ^^^^^^^
+LL | / enum NoDeclaredDefaultWithoutUnitVariant {
+LL | |     Foo(i32),
+LL | |     Bar(i32),
+LL | | }
+   | |_- this enum needs a unit variant marked with `#[default]`
+
+error: multiple declared defaults
+  --> $DIR/macros-nonfatal-errors.rs:54:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^
+...
+LL |     Foo,
+   |     --- first default
+LL |     #[default]
+LL |     Bar,
+   |     --- additional default
+LL |     #[default]
+LL |     Baz,
+   |     --- additional default
+   |
+   = note: only one variant can be default
+
+error: `#[default]` attribute does not accept a value
+  --> $DIR/macros-nonfatal-errors.rs:66:5
+   |
+LL |     #[default = 1]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: try using `#[default]`
+
+error: multiple `#[default]` attributes
+  --> $DIR/macros-nonfatal-errors.rs:74:5
+   |
+LL |     #[default]
+   |     ---------- `#[default]` used here
+LL |     #[default]
+   |     ---------- `#[default]` used again here
+LL |     Foo,
+   |     ^^^
+   |
+   = note: only one `#[default]` attribute is needed
+help: try removing this
+  --> $DIR/macros-nonfatal-errors.rs:73:5
+   |
+LL |     #[default]
+   |     ^^^^^^^^^^
+
+error: multiple `#[default]` attributes
+  --> $DIR/macros-nonfatal-errors.rs:84:5
+   |
+LL |     #[default]
+   |     ---------- `#[default]` used here
+LL |     #[default]
+   |     ---------- `#[default]` used again here
+...
+LL |     Foo,
+   |     ^^^
+   |
+   = note: only one `#[default]` attribute is needed
+help: try removing these
+  --> $DIR/macros-nonfatal-errors.rs:81:5
+   |
+LL |     #[default]
+   |     ^^^^^^^^^^
+LL |     #[default]
+   |     ^^^^^^^^^^
+LL |     #[default]
+   |     ^^^^^^^^^^
+
+error: the `#[default]` attribute may only be used on unit enum variants
+  --> $DIR/macros-nonfatal-errors.rs:91:5
+   |
+LL |     Foo {},
+   |     ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: default variant must be exhaustive
+  --> $DIR/macros-nonfatal-errors.rs:99:5
+   |
+LL |     #[non_exhaustive]
+   |     ----------------- declared `#[non_exhaustive]` here
+LL |     Foo,
+   |     ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: asm template must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:104:10
+   |
+LL |     asm!(invalid);
+   |          ^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:107:17
+   |
+LL |     option_env!(invalid);
+   |                 ^^^^^^^
+
+error: expected string literal
+  --> $DIR/macros-nonfatal-errors.rs:108:10
+   |
+LL |     env!(invalid);
+   |          ^^^^^^^
+
+error: `env!()` takes 1 or 2 arguments
+  --> $DIR/macros-nonfatal-errors.rs:109:5
+   |
+LL |     env!(foo, abr, baz);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined at compile time
+  --> $DIR/macros-nonfatal-errors.rs:110:5
+   |
+LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var("RUST_HOPEFULLY_THIS_DOESNT_EXIST")` to read the variable at run time
+
+error: format argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:112:13
+   |
+LL |     format!(invalid);
+   |             ^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     format!("{}", invalid);
+   |             +++++
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:114:14
+   |
+LL |     include!(invalid);
+   |              ^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:116:18
+   |
+LL |     include_str!(invalid);
+   |                  ^^^^^^^
+
+error: couldn't read `$DIR/i'd be quite surprised if a file with this name existed`: $FILE_NOT_FOUND_MSG
+  --> $DIR/macros-nonfatal-errors.rs:117:5
+   |
+LL |     include_str!("i'd be quite surprised if a file with this name existed");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: argument must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:118:20
+   |
+LL |     include_bytes!(invalid);
+   |                    ^^^^^^^
+
+error: couldn't read `$DIR/i'd be quite surprised if a file with this name existed`: $FILE_NOT_FOUND_MSG
+  --> $DIR/macros-nonfatal-errors.rs:119:5
+   |
+LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trace_macros! accepts only `true` or `false`
+  --> $DIR/macros-nonfatal-errors.rs:121:5
+   |
+LL |     trace_macros!(invalid);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: default variant must be exhaustive
+  --> $DIR/macros-nonfatal-errors.rs:131:9
+   |
+LL |         #[non_exhaustive]
+   |         ----------------- declared `#[non_exhaustive]` here
+LL |         Foo,
+   |         ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: cannot find macro `llvm_asm` in this scope
+  --> $DIR/macros-nonfatal-errors.rs:105:5
+   |
+LL |     llvm_asm!(invalid);
+   |     ^^^^^^^^
+
+error: aborting due to 28 previous errors
+
+For more information about this error, try `rustc --explain E0665`.

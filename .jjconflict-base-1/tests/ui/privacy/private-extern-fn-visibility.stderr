@@ -1,0 +1,15 @@
+error[E0603]: function `bar` is private
+  --> $DIR/private-extern-fn-visibility.rs:8:14
+   |
+LL |         foo::bar();
+   |              ^^^ private function
+   |
+note: the function `bar` is defined here
+  --> $DIR/auxiliary/private-extern-fn.rs:2:5
+   |
+LL |     fn bar();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

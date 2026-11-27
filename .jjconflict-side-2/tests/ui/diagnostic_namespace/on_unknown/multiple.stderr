@@ -1,0 +1,42 @@
+error[E0432]: the same message
+  --> $DIR/multiple.rs:21:5
+   |
+LL |     x::Bar,
+   |     ^^^---
+   |        |
+   |        label x
+...
+LL |     y::Foo,
+   |     ^^^---
+   |        |
+   |        label y
+LL |
+LL |     z::Baz,
+   |     ^^^---
+   |        |
+   |        no `Baz` in `z`
+   |
+   = note: unresolved imports `x::Bar`, `y::Foo`, `z::Baz`
+   = note: note x
+   = note: note y
+   = note: note z
+
+error[E0432]: unresolved imports `different::nothing`, `x::Buz`
+  --> $DIR/multiple.rs:35:5
+   |
+LL |     different::nothing,
+   |     ^^^^^^^^^^^-------
+   |                |
+   |                label different
+...
+LL |     x::Buz,
+   |     ^^^---
+   |        |
+   |        label x
+   |
+   = note: note different
+   = note: note x
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

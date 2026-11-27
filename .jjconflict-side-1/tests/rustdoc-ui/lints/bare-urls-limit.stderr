@@ -1,0 +1,18 @@
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls-limit.rs:9:9
+   |
+LL |   #[doc = "good: <https://example.com/> \n\n"]
+   |  _________^
+LL | |
+LL | | #[doc = "bad: https://example.com/"]
+   | |___________________________________^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+note: the lint level is defined here
+  --> $DIR/bare-urls-limit.rs:3:9
+   |
+LL | #![deny(rustdoc::bare_urls)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0600]: cannot apply unary operator `-` to type `bool`
+  --> $DIR/unop-neg-bool.rs:2:5
+   |
+LL |     -true;
+   |     ^^^^^ cannot apply unary operator `-`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0600`.

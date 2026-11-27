@@ -1,0 +1,18 @@
+error: instruction requires: sha3
+   |
+note: instantiated into assembly here
+  --> <inline asm>:6:1
+   |
+LL | eor3 v0.16b, v1.16b, v2.16b, v3.16b
+   | ^
+
+error: instruction requires: i8mm
+   |
+note: instantiated into assembly here
+  --> <inline asm>:15:1
+   |
+LL | usdot   v0.4s, v2.16b, v2.4b[3]
+   | ^
+
+error: aborting due to 2 previous errors
+

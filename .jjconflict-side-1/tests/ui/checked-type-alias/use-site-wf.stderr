@@ -1,0 +1,50 @@
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/use-site-wf.rs:8:12
+   |
+LL | fn b<X>(_: B<X>) {}
+   |            ^^^^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound on the type alias `B`
+  --> $DIR/use-site-wf.rs:6:11
+   |
+LL | type B<T: Copy> = T;
+   |           ^^^^ required by this bound
+help: consider restricting type parameter `X` with trait `Copy`
+   |
+LL | fn b<X: std::marker::Copy>(_: B<X>) {}
+   |       +++++++++++++++++++
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/use-site-wf.rs:14:13
+   |
+LL | fn a<'r>(_: A<'r>) {}
+   |             ^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'r` as defined here
+  --> $DIR/use-site-wf.rs:14:6
+   |
+LL | fn a<'r>(_: A<'r>) {}
+   |      ^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/use-site-wf.rs:8:12
+   |
+LL | fn b<X>(_: B<X>) {}
+   |            ^^^^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound on the type alias `B`
+  --> $DIR/use-site-wf.rs:6:11
+   |
+LL | type B<T: Copy> = T;
+   |           ^^^^ required by this bound
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `X` with trait `Copy`
+   |
+LL | fn b<X: std::marker::Copy>(_: B<X>) {}
+   |       +++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0478.
+For more information about an error, try `rustc --explain E0277`.

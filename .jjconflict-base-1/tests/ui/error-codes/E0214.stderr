@@ -1,0 +1,15 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/E0214.rs:2:12
+   |
+LL |     let v: Vec(&str) = vec!["foo"];
+   |            ^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL -     let v: Vec(&str) = vec!["foo"];
+LL +     let v: Vec<&str> = vec!["foo"];
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0214`.

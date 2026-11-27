@@ -1,0 +1,105 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:7:13
+   |
+LL | impl Foo<T: 'a + Default> for u8 {}
+   |             ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> Foo<T: 'a + Default> for u8 {}
+   |     ++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:3:10
+   |
+LL | impl Foo<T: Default> for String {}
+   |          ^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl Foo<T: Default> for String {}
+LL + impl<T: Default> Foo<T> for String {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:7:10
+   |
+LL | impl Foo<T: 'a + Default> for u8 {}
+   |          ^^^^^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl Foo<T: 'a + Default> for u8 {}
+LL + impl<'a, T: 'a + Default> Foo<T> for u8 {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:13:13
+   |
+LL | impl<T> Foo<T: Default> for u16 {}
+   |             ^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl<T> Foo<T: Default> for u16 {}
+LL + impl<T, T: Default> Foo<T> for u16 {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:17:14
+   |
+LL | impl<'a> Foo<T: 'a + Default> for u32 {}
+   |              ^^^^^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl<'a> Foo<T: 'a + Default> for u32 {}
+LL + impl<'a, 'a, T: 'a + Default> Foo<T> for u32 {}
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:23:10
+   |
+LL | impl Bar<T: Default, K: Default> for String {}
+   |          ^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl Bar<T: Default, K: Default> for String {}
+LL + impl<T: Default> Bar<T, K: Default> for String {}
+   |
+
+error[E0107]: trait takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:27:9
+   |
+LL | impl<T> Bar<T, K: Default> for u8 {}
+   |         ^^^ - supplied 1 generic argument
+   |         |
+   |         expected 2 generic arguments
+   |
+note: trait defined here, with 2 generic parameters: `T`, `K`
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:21:7
+   |
+LL | trait Bar<T, K> {}
+   |       ^^^ -  -
+help: add missing generic argument
+   |
+LL | impl<T> Bar<T, K, K: Default> for u8 {}
+   |              +++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:27:16
+   |
+LL | impl<T> Bar<T, K: Default> for u8 {}
+   |                ^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: declare the type parameter right after the `impl` keyword
+   |
+LL - impl<T> Bar<T, K: Default> for u8 {}
+LL + impl<T, K: Default> Bar<T, K> for u8 {}
+   |
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0107, E0229, E0261.
+For more information about an error, try `rustc --explain E0107`.

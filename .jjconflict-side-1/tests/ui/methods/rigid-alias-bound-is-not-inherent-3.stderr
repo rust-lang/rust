@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/rigid-alias-bound-is-not-inherent-3.rs:22:7
+   |
+LL |     x.call_me();
+   |       ^^^^^^^ multiple `call_me` found
+   |
+note: candidate #1 is defined in an impl of the trait `Trait1` for the type `T`
+  --> $DIR/rigid-alias-bound-is-not-inherent-3.rs:4:5
+   |
+LL |     fn call_me(&self) {}
+   |     ^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Trait2` for the type `T`
+  --> $DIR/rigid-alias-bound-is-not-inherent-3.rs:10:5
+   |
+LL |     fn call_me(&self) {}
+   |     ^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     x.call_me();
+LL +     Trait1::call_me(&x);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     x.call_me();
+LL +     Trait2::call_me(&x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

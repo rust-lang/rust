@@ -1,0 +1,10 @@
+error: expected `;`, found `(`
+  --> $DIR/missing-semi.rs:6:5
+   |
+LL |     }
+   |      - expected `;`
+LL |     () => {
+   |     ^ unexpected token
+
+error: aborting due to 1 previous error
+
