@@ -12,5 +12,6 @@ error: Argument to option 'emit' missing
                                * metadata - libCRATE_NAME.rmeta
                                * mir - CRATE_NAME.mir
                                * obj - CRATE_NAME.o
+                               * offload-info - CRATE_NAME.roffload
                                * thin-link-bitcode - CRATE_NAME.indexing.o
 

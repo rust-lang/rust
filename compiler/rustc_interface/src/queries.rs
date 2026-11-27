@@ -103,18 +103,6 @@ impl Linker {
             );
         }
 
-        // The `HostMetadata` offload pass only writes the kernel manifest.
-        // Codegen was already skipped so there are no files to link.
-        if sess
-            .opts
-            .unstable_opts
-            .offload
-            .iter()
-            .any(|o| matches!(o, config::Offload::HostMetadata(_)))
-        {
-            return;
-        }
-
         if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             return;
         }

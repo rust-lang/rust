@@ -39,6 +39,7 @@ Options:
                         * metadata - libCRATE_NAME.rmeta
                         * mir - CRATE_NAME.mir
                         * obj - CRATE_NAME.o
+                        * offload-info - CRATE_NAME.roffload
                         * thin-link-bitcode - CRATE_NAME.indexing.o
         --print <INFO>[=<FILE>]
                         Compiler information to print on stdout (or to a file)

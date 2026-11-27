@@ -242,20 +242,18 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
-    /// Reads a manifest of required generic kernel instantiations
-    /// produced by a previous `HostMetadata` pass. An empty manifest
-    /// means there are no generic kernels at all, or that generic kernels are only
-    /// called from non-generic device entry points and never from the host, so we
-    /// don't need to track their instantiations.
+    /// The device step in the offload pipeline, enables kernel compilation for a gpu device
+    /// Reads a manifest of required generic kernel instantiations produced by a previous
+    /// `Host` pass. An empty manifest means there are no generic kernels at all, or that
+    /// generic kernels are only called from non-generic device entry points and never from the
+    /// host, so we don't need to track their instantiations.
     Device(String),
-    /// Third step in the offload pipeline, generates the host code to call kernels.
-    Host(String),
-    /// Test is similar to Host, but allows testing without a device artifact.
-    Test,
-    /// First step in the offload pipeline: compile for the host but only emit a manifest of
-    /// kernel instantiations required by the host code.
-    HostMetadata(String),
+    /// The host step in the offload pipeline. Generates the host code that may call kernels.
+    Host,
+    /// The device image must be provided for any host step that also performs linking.
+    /// It is passed as `-Zoffload=DeviceImage=<Absolute-Path>` and will embed
+    /// the device image in the artifact.
+    DeviceImage(String),
 }
 
 /// The different settings that the `-Z codegen-emit-retag` flag can have.
@@ -2259,6 +2257,14 @@ fn parse_output_types(
                     early_dcx.early_fatal(format!(
                         "{} requested but -Zunstable-options not specified",
                         OutputType::ThinLinkBitcode.shorthand()
+                    ));
+                }
+                if output_type == OutputType::OffloadInfo
+                    && !unstable_opts.offload.contains(&Offload::Host)
+                {
+                    early_dcx.early_fatal(format!(
+                        "{} requested but -Zoffload=Host not specified",
+                        OutputType::OffloadInfo.shorthand()
                     ));
                 }
                 output_types.insert(output_type, path);

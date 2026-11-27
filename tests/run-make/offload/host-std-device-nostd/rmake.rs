@@ -8,29 +8,30 @@ fn main() {
     rustc()
         .input("example.rs")
         .arg("-Zunstable-options")
-        .arg("-Zoffload=HostMetadata=example.manifest")
+        .arg("-Zoffload=Host")
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
-        .emit("metadata")
+        .emit("offload-info=example.roffload")
         .run();
 
     rustc()
         .input("example.rs")
         .cfg("device")
         .arg("-Zunstable-options")
-        .arg("-Zoffload=Device=example.manifest")
+        .arg("-Zoffload=Device=example.roffload")
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .arg("-Cpanic=abort")
         .emit("obj")
         .run();
 
-    rfs::write(cwd().join("device.bin"), [0u8; 8]);
+    rfs::write(cwd().join("device.elf"), [0u8; 8]);
 
     rustc()
         .input("example.rs")
         .arg("-Zunstable-options")
-        .arg(format!("-Zoffload=Host={}", cwd().join("device.bin").display()))
+        .arg("-Zoffload=Host")
+        .arg(format!("-Zoffload=DeviceImage={}", cwd().join("device.elf").display()))
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .emit("obj")

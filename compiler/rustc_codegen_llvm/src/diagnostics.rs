@@ -72,9 +72,7 @@ pub(crate) struct RustOffloadComponentMissing {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.ptx or <crate>.elf>"
-)]
+#[diag("using the offload feature requires -Z offload=<Device or Host>")]
 pub(crate) struct OffloadWithoutEnable;
 
 #[derive(Diagnostic)]
@@ -83,15 +81,21 @@ pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag requires an absolute path"
+    "using the `-Z offload=DeviceImage=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag requires an absolute path"
 )]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag must point to a .ptx or .elf file produced by the device compilation"
+    "using the `-Z offload=DeviceImage=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag must point to a .ptx or .elf file produced by the device compilation"
 )]
 pub(crate) struct OffloadWrongFileName;
+
+#[derive(Diagnostic)]
+#[diag(
+    "the device image must be provided with `-Zoffload=DeviceImage=<absolute path>` when linking"
+)]
+pub(crate) struct OffloadMissingDeviceImage;
 
 #[derive(Diagnostic)]
 #[diag(

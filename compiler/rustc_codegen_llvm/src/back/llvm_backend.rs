@@ -27,6 +27,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::{RelocModel, SplitDebuginfo, TlsModel};
 
 use crate::back::owned_target_machine::OwnedTargetMachine;
@@ -383,8 +384,15 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         use rustc_session::config::Offload;
 
+        if tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host))
+            && tcx.crate_types().iter().any(|x| x != &CrateType::Rlib)
+            && tcx.sess.lto() != rustc_session::config::Lto::Fat
+        {
+            let _ = tcx.dcx().emit_err(crate::diagnostics::OffloadWithoutFatLTO);
+        }
+
         if tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_)))
-            || tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host(_)))
+            || tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host))
         {
             match llvm::RustOffloadWrapper::get_or_init(&tcx.sess.opts.sysroot) {
                 Ok(_) => {}

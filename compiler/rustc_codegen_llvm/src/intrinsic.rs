@@ -41,7 +41,7 @@ use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::diagnostics::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
-    OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
+    OffloadWithoutEnable, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Value};
@@ -129,10 +129,6 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
                     let _ = tcx.dcx().emit_err(OffloadWithoutEnable);
-                }
-
-                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                    let _ = tcx.dcx().emit_err(OffloadWithoutFatLTO);
                 }
 
                 codegen_offload(self, tcx, instance, args);

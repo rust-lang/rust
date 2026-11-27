@@ -580,7 +580,11 @@ pub fn produce_final_output_artifacts(
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
-            OutputType::Mir | OutputType::Metadata | OutputType::Exe | OutputType::DepInfo => {}
+            OutputType::Mir
+            | OutputType::Metadata
+            | OutputType::Exe
+            | OutputType::DepInfo
+            | OutputType::OffloadInfo => {}
         }
     }
 

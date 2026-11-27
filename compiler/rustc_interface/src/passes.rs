@@ -1340,25 +1340,28 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let is_host_metadata = tcx
-        .sess
-        .opts
-        .unstable_opts
-        .offload
-        .iter()
-        .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
-
     let codegen = tcx.sess.time("codegen_crate", || {
-        if tcx.sess.opts.unstable_opts.no_codegen
-            || !tcx.sess.opts.output_types.should_codegen()
-            || is_host_metadata
-        {
+        if tcx.sess.opts.output_types.contains_key(&OutputType::OffloadInfo) {
+            let out_filename = tcx.output_filenames(()).path(OutputType::OffloadInfo);
+            let partitions = tcx.collect_and_partition_mono_items(());
+            rustc_monomorphize::pick_kernels_and_write_manifest(tcx, partitions, &out_filename);
+        }
+
+        // If nothing else than `OffloadInfo` require codegen we can stop here since it requires mono collections but not the codegen backend to run.
+        let non_offload_outputs: Vec<_> = tcx
+            .sess
+            .opts
+            .output_types
+            .iter()
+            .filter(|(o, _)| o != &&OutputType::OffloadInfo)
+            .map(|(output, file)| (*output, file.clone()))
+            .collect();
+
+        let run_codegen_backend =
+            rustc_session::output::OutputTypes::new(&non_offload_outputs).should_codegen();
+
+        if tcx.sess.opts.unstable_opts.no_codegen || !run_codegen_backend {
             tcx.sess.dcx().abort_if_errors();
-
-            if is_host_metadata {
-                rustc_monomorphize::write_host_metadata_offload_manifest(tcx);
-            }
-
             // Linker::link will skip join_codegen in case of a `CompiledModules` Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
