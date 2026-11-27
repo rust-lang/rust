@@ -134,6 +134,73 @@ fn wtf8buf_from_wide() {
 }
 
 #[test]
+fn wtf8buf_from_wide_block_boundaries() {
+    fn check(input: &[u16]) {
+        let output: Vec<u16> = Wtf8Buf::from_wide(input).encode_wide().collect();
+        assert_eq!(output, input);
+    }
+
+    for len in 0..=80 {
+        let mut state = 0x2545_f491_u32;
+        let input: Vec<u16> = (0..len)
+            .map(|_| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                state as u16
+            })
+            .collect();
+        check(&input);
+    }
+
+    for boundary in [16, 32, 48, 64] {
+        let mut input = vec![0x0061; boundary + 1];
+        input[boundary - 1] = 0xd83d;
+        input[boundary] = 0xde00;
+        check(&input);
+
+        input[boundary] = 0x0062;
+        check(&input);
+
+        input[boundary - 1] = 0x0061;
+        input[boundary] = 0xdc00;
+        check(&input);
+    }
+}
+
+#[test]
+fn wtf8buf_from_wide_dense_block_boundaries() {
+    fn check(input: &[u16]) {
+        let buf = Wtf8Buf::from_wide(input);
+        assert_eq!(buf.encode_wide().collect::<Vec<_>>(), input);
+        let valid_utf8 = char::decode_utf16(input.iter().copied()).all(|unit| unit.is_ok());
+        assert_eq!(buf.is_known_utf8, valid_utf8);
+    }
+
+    for len in [15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 80] {
+        for unit in [0x0080, 0x07ff, 0x0800, 0xd7ff, 0xe000, 0xffff] {
+            check(&vec![unit; len]);
+        }
+    }
+
+    for boundary in [16, 32, 48, 64] {
+        for tail in [1, 2, 16, 17] {
+            for (lead, trail) in [(0xd800, 0xdc00), (0xdbff, 0xdfff)] {
+                let mut input = vec![0xffff; boundary + tail];
+                input[boundary - 1] = lead;
+                input[boundary] = trail;
+                check(&input);
+
+                input[boundary] = 0xffff;
+                check(&input);
+
+                input[boundary - 1] = 0xffff;
+                input[boundary] = trail;
+                check(&input);
+            }
+        }
+    }
+}
+
+#[test]
 fn wtf8buf_push_str() {
     let mut string = Wtf8Buf::new();
     assert_eq!(string.as_bytes(), b"");
