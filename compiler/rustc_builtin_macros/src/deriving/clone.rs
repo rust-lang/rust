@@ -114,9 +114,21 @@ fn clone_simple_body(
     is_union: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
-    let mut seen_type_names = FxHashSet::default();
-    let mut process_variant = |variant: &VariantData| {
-        for field in variant.fields() {
+
+    if is_union {
+        // Just a single assertion for unions, that the union impls `Copy`.
+        // let _: AssertParamIsCopy<Self>;
+        let self_ty = cx.ty_self(DUMMY_SP);
+        super::assert_ty_bounds(
+            cx,
+            &mut stmts,
+            self_ty,
+            trait_span,
+            &[sym::clone, sym::AssertParamIsCopy],
+        );
+    } else {
+        let mut seen_type_names = FxHashSet::default();
+        for field in cx.fields_iter(item) {
             // This basic redundancy checking only prevents duplication of
             // assertions like `AssertParamIsClone<Foo>` where the type is a
             // simple name. That's enough to get a lot of cases, though.
@@ -136,31 +148,6 @@ fn clone_simple_body(
                     &[sym::clone, sym::AssertParamIsClone],
                 );
             }
-        }
-    };
-
-    if is_union {
-        // Just a single assertion for unions, that the union impls `Copy`.
-        // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_self(DUMMY_SP);
-        super::assert_ty_bounds(
-            cx,
-            &mut stmts,
-            self_ty,
-            trait_span,
-            &[sym::clone, sym::AssertParamIsCopy],
-        );
-    } else {
-        match &item.kind {
-            ast::ItemKind::Struct(.., vdata) => {
-                process_variant(vdata);
-            }
-            ast::ItemKind::Enum(.., enum_def) => {
-                for variant in &enum_def.variants {
-                    process_variant(&variant.data);
-                }
-            }
-            _ => unreachable!(),
         }
     }
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))

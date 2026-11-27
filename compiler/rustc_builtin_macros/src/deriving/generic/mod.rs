@@ -252,7 +252,6 @@ impl<'a> TraitDef<'a> {
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
         );
 
-        let fields: Box<dyn Iterator<Item = &ast::FieldDef>>;
         let methods;
         let (ident, generics) = match &item.kind {
             ast::ItemKind::Union(..) if !self.supports_unions => {
@@ -261,11 +260,10 @@ impl<'a> TraitDef<'a> {
             }
             ast::ItemKind::Struct(ident, generics, struct_def)
             | ast::ItemKind::Union(ident, generics, struct_def) => {
-                fields = Box::new(struct_def.fields().iter());
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|mut method_def| {
+                    .map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
                         } else {
@@ -285,12 +283,10 @@ impl<'a> TraitDef<'a> {
                 if is_packed {
                     return;
                 }
-                fields =
-                    Box::new(enum_def.variants.iter().flat_map(|variant| variant.data.fields()));
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|mut method_def| {
+                    .map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
                         } else {
@@ -388,7 +384,7 @@ impl<'a> TraitDef<'a> {
         }));
 
         if !ty_param_names.is_empty() {
-            for field in fields {
+            for field in cx.fields_iter(item) {
                 let field_ty_params = find_type_parameters(&field.ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
@@ -492,17 +488,7 @@ impl<'a> TraitDef<'a> {
 }
 
 impl<'a> MethodDef<'a> {
-    fn create_method(
-        self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        body: BlockOrExpr,
-    ) -> Option<Box<ast::AssocItem>> {
-        // `assert_fields_are_eq` has an empty default implementation
-        if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
-            return None;
-        }
-
+    fn create_method(self, cx: &ExtCtxt<'_>, span: Span, body: BlockOrExpr) -> Box<ast::AssocItem> {
         let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
@@ -518,7 +504,7 @@ impl<'a> MethodDef<'a> {
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
 
         // Create the method.
-        Some(Box::new(ast::AssocItem {
+        Box::new(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes,
             span,
@@ -530,7 +516,7 @@ impl<'a> MethodDef<'a> {
                 Some(body_block),
             )),
             tokens: None,
-        }))
+        })
     }
 
     /// The normal case uses field access.
