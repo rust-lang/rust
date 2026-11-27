@@ -2297,16 +2297,27 @@ pub(super) fn compare_const_directness<'tcx>(
     }
 
     let guar = if trait_is_gca {
-        tcx.dcx()
-            .struct_span_err(
+        let diag = if tcx.features().gca_macroless_items() {
+            // When `#![feature(gca_macroless_items)]` is enabled,
+            // expressions that are allowed in `gca!` are considered to be direct.
+            // We are here because the expression is not allowed in `gca!`.
+            let err = "the expression of this associated constant was unable to be \
+                treated as a gca constant";
+            let note = "`#![feature(gca_macroless_items)]` only supports expressions \
+                that are allowed in `gca!`";
+            tcx.dcx().struct_span_err(tcx.def_span(impl_const_item.def_id), err).with_note(note)
+        } else {
+            tcx.dcx().struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
                 "implementation of a `#[rustc_always_gca]` must have a `gca!` RHS",
             )
-            .with_span_note(
-                tcx.def_span(trait_const_item.def_id),
-                "trait declaration of const is marked as `#[rustc_always_gca]`",
-            )
-            .emit_err()
+        };
+
+        diag.with_span_note(
+            tcx.def_span(trait_const_item.def_id),
+            "trait declaration of const is marked as `#[rustc_always_gca]`",
+        )
+        .emit_err()
     } else {
         tcx.dcx()
             .struct_span_err(
