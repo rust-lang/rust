@@ -662,6 +662,62 @@ impl Slice {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum FloatRange {
+    F16Range(IeeeFloat<HalfS>, IeeeFloat<HalfS>, RangeEnd),
+    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
+    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
+    F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
+}
+
+impl FloatRange {
+    pub(crate) fn is_subrange<Cx: PatCx>(&self, cx: &Cx, other: &Self) -> Result<bool, Cx::Error> {
+        use self::FloatRange::*;
+        Ok(match (self, other) {
+            (F16Range(self_from, self_to, self_end), F16Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (
+                F128Range(self_from, self_to, self_end),
+                F128Range(other_from, other_to, other_end),
+            ) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            _ => {
+                return Err(cx.delayed_bug(format_args!(
+                    "trying to compare incompatible float ranges {self:?} and {other:?}"
+                )));
+            }
+        })
+    }
+}
+
 /// A globally unique id to distinguish `Opaque` patterns.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpaqueId(u32);
@@ -698,10 +754,7 @@ pub enum Constructor<Cx: PatCx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    F16Range(IeeeFloat<HalfS>, IeeeFloat<HalfS>, RangeEnd),
-    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
-    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
-    F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
+    FloatRange(FloatRange),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Cx::StrLit),
     /// Deref patterns (enabled by the `deref_patterns` feature) provide a way of matching on a
@@ -747,10 +800,7 @@ impl<Cx: PatCx> Clone for Constructor<Cx> {
             Constructor::UnionField => Constructor::UnionField,
             Constructor::Bool(b) => Constructor::Bool(*b),
             Constructor::IntRange(range) => Constructor::IntRange(*range),
-            Constructor::F16Range(lo, hi, end) => Constructor::F16Range(*lo, *hi, *end),
-            Constructor::F32Range(lo, hi, end) => Constructor::F32Range(*lo, *hi, *end),
-            Constructor::F64Range(lo, hi, end) => Constructor::F64Range(*lo, *hi, *end),
-            Constructor::F128Range(lo, hi, end) => Constructor::F128Range(*lo, *hi, *end),
+            Constructor::FloatRange(range) => Constructor::FloatRange(*range),
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::DerefPattern(ty) => Constructor::DerefPattern(ty.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
@@ -827,40 +877,8 @@ impl<Cx: PatCx> Constructor<Cx> {
             (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
-            (F16Range(self_from, self_to, self_end), F16Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (
-                F128Range(self_from, self_to, self_end),
-                F128Range(other_from, other_to, other_end),
-            ) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
+            (FloatRange(self_range), FloatRange(other_range)) => {
+                self_range.is_subrange(cx, other_range)?
             }
             (Str(self_val), Str(other_val)) => {
                 // FIXME Once valtrees are available we can directly use the bytes
@@ -892,6 +910,7 @@ impl<Cx: PatCx> Constructor<Cx> {
         ty: &Cx::Ty,
         mut fields: impl Iterator<Item = impl fmt::Debug>,
     ) -> fmt::Result {
+        use self::FloatRange::*;
         let mut first = true;
         let mut start_or_continue = |s| {
             if first {
@@ -944,10 +963,10 @@ impl<Cx: PatCx> Constructor<Cx> {
             Bool(b) => write!(f, "{b}")?,
             // Best-effort, will render signed ranges incorrectly
             IntRange(range) => write!(f, "{range:?}")?,
-            F16Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F16Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F32Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F64Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F128Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
             Str(value) => write!(f, "{value:?}")?,
             DerefPattern(_) => write!(f, "deref!({:?})", fields.next().unwrap())?,
             Opaque(..) => write!(f, "<constant pattern>")?,
