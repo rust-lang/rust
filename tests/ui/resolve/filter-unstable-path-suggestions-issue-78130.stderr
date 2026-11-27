@@ -1,0 +1,14 @@
+error[E0425]: cannot find function `assert_zero_valid` in this scope
+  --> $DIR/filter-unstable-path-suggestions-issue-78130.rs:5:13
+   |
+LL |     let _ = assert_zero_valid::<()>();
+   |             ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::intrinsics::assert_zero_valid;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
