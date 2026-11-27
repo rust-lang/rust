@@ -85,9 +85,11 @@ cfg_select! {
         mod wasip1;
         pub use wasip1::fill_bytes;
     }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+    any(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")), target_os = "web",) => {
         mod wasi;
-        pub use wasi::{fill_bytes, hashmap_random_keys};
+        pub use wasi::fill_bytes;
+        #[cfg(not(target_os = "web"))]
+        pub use wasi::hashmap_random_keys;
     }
     target_os = "zkvm" => {
         mod zkvm;

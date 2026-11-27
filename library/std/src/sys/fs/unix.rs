@@ -45,18 +45,20 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
-#[cfg(not(target_os = "wasi"))]
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+#[cfg(not(any(target_os = "wasi", target_os = "web")))]
 pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::prelude::*;
+#[cfg(target_os = "web")]
+use crate::os::web::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "web"))]
 pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
@@ -563,6 +565,7 @@ impl FileAttr {
     target_os = "qnx",
     target_os = "aix",
     target_os = "wasi",
+    target_os = "web",
     target_os = "l4re"
 )))]
 impl FileAttr {
@@ -689,7 +692,13 @@ impl FileAttr {
     }
 }
 
-#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi", target_os = "l4re"))]
+#[cfg(any(
+    target_os = "nto",
+    target_os = "qnx",
+    target_os = "wasi",
+    target_os = "web",
+    target_os = "l4re"
+))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
@@ -726,7 +735,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "web")))]
     pub fn mode(&self) -> u32 {
         self.mode as u32
     }
@@ -1150,7 +1159,7 @@ impl OpenOptions {
     pub fn custom_flags(&mut self, flags: i32) {
         self.custom_flags = flags;
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "web")))]
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1733,7 +1742,7 @@ impl DirBuilder {
         run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "web")))]
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1967,9 +1976,10 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         let mut options = OpenOptions::new();
         options.read(true);
 
-        // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
-        // Their filesystems do not have symbolic links, so no special handling is required.
-        #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+        // ESP-IDF, Horizon, and the web do not support O_NOFOLLOW, so we skip
+        // setting it. Their filesystems do not have symbolic links, so no
+        // special handling is required.
+        #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "web")))]
         {
             #[cfg(not(target_os = "wasi"))]
             use crate::os::unix::fs::OpenOptionsExt;
@@ -2267,7 +2277,7 @@ pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
     set_times_impl(p, times, false)
 }
 
-#[cfg(any(target_os = "espidf", target_os = "wasi"))]
+#[cfg(any(target_os = "espidf", target_os = "wasi", target_os = "web"))]
 fn open_to_and_set_permissions(
     to: &Path,
     _reader_metadata: &crate::fs::Metadata,
@@ -2278,7 +2288,7 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
+#[cfg(not(any(target_os = "espidf", target_os = "wasi", target_os = "web")))]
 fn open_to_and_set_permissions(
     to: &Path,
     reader_metadata: &crate::fs::Metadata,
@@ -2426,7 +2436,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "web")))]
 pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2434,13 +2444,13 @@ pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     })
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "web")))]
 pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
     cvt(unsafe { libc::fchown(fd, uid as libc::uid_t, gid as libc::gid_t) })?;
     Ok(())
 }
 
-#[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(target_os = "vxworks", target_os = "wasi", target_os = "web")))]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2454,7 +2464,12 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
-#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(
+    target_os = "fuchsia",
+    target_os = "vxworks",
+    target_os = "wasi",
+    target_os = "web"
+)))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
 }
@@ -2465,7 +2480,7 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "web")))]
 pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())

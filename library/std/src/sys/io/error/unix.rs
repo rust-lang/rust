@@ -8,7 +8,8 @@ unsafe extern "C" {
         target_os = "dragonfly",
         target_os = "vxworks",
         target_os = "rtems",
-        target_os = "wasi"
+        target_os = "wasi",
+        target_os = "web",
     )))]
     #[cfg_attr(
         any(
@@ -49,7 +50,8 @@ unsafe extern "C" {
     target_os = "dragonfly",
     target_os = "vxworks",
     target_os = "rtems",
-    target_os = "wasi"
+    target_os = "wasi",
+    target_os = "web",
 )))]
 #[inline]
 pub fn errno() -> i32 {
@@ -66,6 +68,7 @@ pub fn errno() -> i32 {
     target_os = "rtems",
     target_os = "vxworks",
     target_os = "wasi",
+    target_os = "web",
 )))]
 #[inline]
 pub fn set_errno(e: i32) {
@@ -111,19 +114,19 @@ pub fn set_errno(e: i32) {
     unsafe { errno = e };
 }
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "web"))]
 unsafe extern "C" {
     #[thread_local]
     #[link_name = "errno"]
     static mut libc_errno: libc::c_int;
 }
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "web"))]
 pub fn errno() -> i32 {
     unsafe { libc_errno as i32 }
 }
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "web"))]
 pub fn set_errno(val: i32) {
     unsafe {
         libc_errno = val;
@@ -194,9 +197,10 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 }
 
 /// Gets a detailed string description for the given error number.
-#[cfg(any(target_family = "unix", target_os = "wasi"))]
+#[cfg(any(target_family = "unix", target_os = "wasi", target_os = "web"))]
 pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    const TMPBUF_SZ: usize = if cfg!(target_os = "wasi") { 1024 } else { 128 };
+    const TMPBUF_SZ: usize =
+        if cfg!(target_os = "wasi") || cfg!(target_os = "web") { 1024 } else { 128 };
 
     unsafe extern "C" {
         #[cfg_attr(

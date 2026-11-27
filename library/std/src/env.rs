@@ -1167,6 +1167,7 @@ pub mod consts {
     /// * `"vxworks"`
     /// * `"wasi"`
     /// * `"watchos"`
+    /// * `"web"`
     /// * `"windows"`
     /// * `"xous"`
     // tidy-alphabetical-end
