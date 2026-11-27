@@ -567,7 +567,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 let align = Align::from_bytes(align).unwrap_or_else(|err| {
                     match err {
-                        AlignFromBytesError::NotPowerOfTwo(_) => unreachable!(),
+                        AlignFromBytesError::NotPowerOfTwo(_)
+                        | AlignFromBytesError::NotWholeNumberOfBytes(_) => unreachable!(),
                         // When the alignment is a power of 2 but too big, clamp it to MAX.
                         AlignFromBytesError::TooLarge(_) => Align::MAX,
                     }
