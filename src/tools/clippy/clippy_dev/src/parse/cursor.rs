@@ -2,7 +2,7 @@ use crate::utils::{StrBuf, VecBuf};
 use crate::{DiagCx, SourceFile, Span};
 use core::{ptr, slice};
 use rustc_arena::DroplessArena;
-use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
+use rustc_lexer::{self as lex, DocStyle, LiteralKind, Token, TokenKind};
 
 /// A token pattern used for searching and matching by the [`Cursor`].
 ///
@@ -257,17 +257,14 @@ impl<'txt> Cursor<'txt> {
                     return true;
                 },
 
-                (Pat::CaptureDocLines, TokenKind::LineComment { doc_style: Some(_) }) => {
+                (
+                    Pat::CaptureDocLines,
+                    TokenKind::LineComment {
+                        doc_style: Some(DocStyle::Outer),
+                    },
+                ) => {
                     let pos = self.pos;
-                    loop {
-                        self.step();
-                        if !matches!(
-                            self.next_token.kind,
-                            TokenKind::Whitespace | TokenKind::LineComment { doc_style: Some(_) }
-                        ) {
-                            break;
-                        }
-                    }
+                    self.eat_doc_lines();
                     *captures.next().unwrap() = Capture {
                         pos,
                         len: self.pos - pos,
@@ -325,6 +322,18 @@ impl<'txt> Cursor<'txt> {
                 _ => self.step(),
             }
         }
+    }
+
+    /// Finds the next call to a macro with the specified name and returns it's captured
+    /// name.
+    #[must_use]
+    pub fn find_mac_call(&mut self, name: &str) -> Option<Capture> {
+        while let Some(mac) = self.find_capture_ident() {
+            if self.eat_bang() && self.get_text(mac) == name {
+                return Some(mac);
+            }
+        }
+        None
     }
 
     /// Consumes and captures the text of a path without any internal whitespace. Returns
@@ -404,6 +413,130 @@ impl<'txt> Cursor<'txt> {
                 arena.alloc_slice(buf)
             })
         })
+    }
+
+    /// Consumes all doc line comments until another non-whitespace token is found.
+    pub fn eat_doc_lines(&mut self) {
+        while matches!(
+            self.next_token.kind,
+            TokenKind::Whitespace
+                | TokenKind::LineComment {
+                    doc_style: Some(DocStyle::Outer)
+                }
+        ) {
+            self.step();
+        }
+    }
+
+    /// Consumes and captures all doc line comments until another non-whitespace token is
+    /// found.
+    pub fn capture_doc_lines(&mut self) -> Capture {
+        loop {
+            match self.next_token.kind {
+                TokenKind::Whitespace => self.step(),
+                TokenKind::LineComment {
+                    doc_style: Some(DocStyle::Outer),
+                } => {
+                    let pos = self.pos;
+                    self.step();
+                    self.eat_doc_lines();
+                    return Capture {
+                        pos,
+                        len: self.pos - pos,
+                    };
+                },
+                _ => return Capture { pos: self.pos, len: 0 },
+            }
+        }
+    }
+
+    /// Consumes and captures the next outer attribute. Returns `Err` is the attribute
+    /// could not be parsed and `None` if the next token does not start an attribute.
+    pub fn capture_opt_attr_start(&mut self) -> Result<Option<(u32, Capture)>, &'static str> {
+        if !self.eat_pound() {
+            return Ok(None);
+        }
+        let start = self.pos - 1;
+        self.eat_open_bracket()
+            .ok_or("`[`")
+            .and_then(|()| self.capture_ident().ok_or("an identifier"))
+            .map(|name| Some((start, name)))
+    }
+
+    /// Consumes everything until the end of a list item indicated by either an unwrapped
+    /// comma or an unmatched closing delimiter.
+    pub fn eat_list_item(&mut self) {
+        let mut depth: u32 = 0;
+        loop {
+            match self.next_token.kind {
+                TokenKind::OpenBrace | TokenKind::OpenBracket | TokenKind::OpenParen => depth += 1,
+                TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen if depth > 0 => depth -= 1,
+                TokenKind::Comma if depth > 0 => {},
+                TokenKind::Eof
+                | TokenKind::Comma
+                | TokenKind::CloseBrace
+                | TokenKind::CloseBracket
+                | TokenKind::CloseParen => break,
+                _ => {},
+            }
+            self.step();
+        }
+    }
+
+    /// Consumes a (possibly invalid) type by consuming all tokens up to, but not
+    /// including, a follow-set token. Returns `Err` if a type could not be read.
+    pub fn eat_ty(&mut self) -> Result<(), &'static str> {
+        let mut has_non_ws = false;
+        let mut depth: u32 = 0;
+        loop {
+            match self.next_token.kind {
+                TokenKind::OpenBrace if depth > 1 => {
+                    self.step();
+                    self.eat_remaining_tt();
+                },
+                TokenKind::OpenBracket | TokenKind::OpenParen | TokenKind::Lt => {
+                    depth += 1;
+                    has_non_ws = true;
+                },
+                TokenKind::CloseBracket | TokenKind::CloseParen | TokenKind::Gt if depth > 0 => depth -= 1,
+                TokenKind::Colon | TokenKind::Comma | TokenKind::Eq | TokenKind::Or | TokenKind::Semi if depth > 0 => {
+                },
+                TokenKind::Eof
+                | TokenKind::Colon
+                | TokenKind::Comma
+                | TokenKind::CloseBrace
+                | TokenKind::CloseBracket
+                | TokenKind::CloseParen
+                | TokenKind::Eq
+                | TokenKind::Gt
+                | TokenKind::Or
+                | TokenKind::OpenBrace
+                | TokenKind::Semi => break,
+                TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } => {},
+                _ => has_non_ws = true,
+            }
+            self.step();
+        }
+        if has_non_ws { Ok(()) } else { Err("a type") }
+    }
+
+    /// Eats the remainder of the current token tree.
+    pub fn eat_remaining_tt(&mut self) {
+        let mut depth: u32 = 0;
+        loop {
+            match self.next_token.kind {
+                TokenKind::OpenBrace | TokenKind::OpenBracket | TokenKind::OpenParen => depth += 1,
+                TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen if depth > 0 => depth -= 1,
+                TokenKind::Comma if depth > 0 => {},
+                TokenKind::Eof => break,
+                TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen => {
+                    self.step();
+                    break;
+                },
+                _ => {},
+            }
+            self.step();
+        }
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether
@@ -494,14 +627,26 @@ mk_tk_methods! {
     close_brace(&mut self) { TokenKind::CloseBrace }
     ["`]`"]
     close_bracket(&mut self) { TokenKind::CloseBracket }
+    ["`:`"]
+    colon(&mut self) { TokenKind::Colon }
     ["`,`"]
     comma(&mut self) { TokenKind::Comma }
     ["`::`"]
     double_colon(&mut self) {
         TokenKind::Colon if self.inner.as_str().starts_with(':') => { self.step(); }
     }
+    ["`=`"]
+    eq(&mut self) { TokenKind::Eq }
     ["the specified identifier"]
     ident(&mut self, s: &str) { TokenKind::Ident if self.peek_text() == s }
+    ["`{`"]
+    open_brace(&mut self) { TokenKind::OpenBrace }
+    ["`[`"]
+    open_bracket(&mut self) { TokenKind::OpenBracket }
+    ["`(`"]
+    open_paren(&mut self) { TokenKind::OpenParen }
+    ["`#`"]
+    pound(&mut self) { TokenKind::Pound }
     ["`;`"]
     semi(&mut self) { TokenKind::Semi }
 }

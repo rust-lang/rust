@@ -181,9 +181,10 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = cx
-                .tcx
-                .struct_tail_for_codegen(pointee_ty, ty::TypingEnv::post_analysis_no_rigid_aliases(cx.tcx, def_id));
+            let unsized_ty = cx.tcx.struct_tail_for_codegen(
+                pointee_ty,
+                ty::TypingEnv::post_analysis_no_rigid_aliases(cx.tcx, def_id),
+            );
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(cx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.

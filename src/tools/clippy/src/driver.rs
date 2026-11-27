@@ -24,7 +24,7 @@ use rustc_span::symbol::Symbol;
 
 use std::env;
 use std::fs::read_to_string;
-use std::io::Write as _;
+use std::io::{self, Write as _};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -199,11 +199,7 @@ fn main() -> ExitCode {
     rustc_driver::init_rustc_env_logger(&early_dcx);
 
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
-        // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
-        // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
-        // accept a generic closure.
-        let version_info = rustc_tools_util::get_version_info!();
-        dcx.note(format!("Clippy version: {version_info}"));
+        dcx.note(concat!("Clippy version: ", env!("PKG_VERSION_STR")));
     });
 
     rustc_driver::catch_with_exit_code(move || {
@@ -248,9 +244,7 @@ fn main() -> ExitCode {
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
-            let version_info = rustc_tools_util::get_version_info!();
-
-            return match writeln!(&mut anstream::stdout().lock(), "{version_info}") {
+            return match io::stdout().write_all(concat!("clippy ", env!("PKG_VERSION_STR"), "\n").as_bytes()) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(_) => ExitCode::FAILURE,
             };

@@ -592,7 +592,12 @@ define_Conf! {
     #[lints(large_futures)]
     future_size_threshold("future-size-threshold"): u64 = 16 * 1024,
     /// A list of paths to types that should be treated as if they do not contain interior mutability
-    #[lints(borrow_interior_mutable_const, declare_interior_mutable_const, ifs_same_cond, mutable_key_type)]
+    #[lints(
+        borrow_interior_mutable_const,
+        declare_interior_mutable_const,
+        ifs_same_cond,
+        mutable_key_type,
+    )]
     ignore_interior_mutability("ignore-interior-mutability"): Vec<String> = DEFAULT_IGNORE_INTERIOR_MUTABILITY,
     /// Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
     #[lints(multiple_inherent_impl)]

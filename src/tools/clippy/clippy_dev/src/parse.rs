@@ -173,7 +173,114 @@ impl<'cx> ParsedLints<'cx> {
     }
 }
 
+pub struct ConfOpt<'cx> {
+    pub name: &'cx str,
+    pub decl_range: Range<u32>,
+    pub lints: &'cx mut [&'cx str],
+    pub lints_range: Range<u32>,
+}
+
+pub struct ConfDef<'cx> {
+    pub decl_sp: Span<'cx>,
+    pub opts: Vec<ConfOpt<'cx>>,
+}
+
 impl<'cx> ParseCxImpl<'cx> {
+    pub fn parse_conf_mac(&mut self) -> ConfDef<'cx> {
+        #[allow(clippy::enum_glob_use)]
+        use cursor::Pat::*;
+
+        let file = &*self.source_files.alloc(SourceFile::load(self.str_buf.alloc_collect(
+            self.arena,
+            [
+                "clippy_config",
+                path::MAIN_SEPARATOR_STR,
+                "src",
+                path::MAIN_SEPARATOR_STR,
+                "conf.rs",
+            ],
+        )));
+
+        let mut data = ConfDef {
+            decl_sp: Span::new(file, 0..0),
+            opts: Vec::with_capacity(100),
+        };
+        let mut cursor = Cursor::new(&file.contents);
+        let mut captures = [Capture::EMPTY; 2];
+
+        if let Err(expected) = cursor
+            .find_mac_call("define_Conf")
+            .ok_or("`define_Conf!`")
+            .and_then(|name| {
+                data.decl_sp.range.start = name.pos;
+                cursor.eat_open_brace().ok_or("`{`")
+            })
+            .and_then(|()| {
+                cursor.eat_list(|cursor| {
+                    let docs = cursor.capture_doc_lines();
+                    let mut lints: &mut [_] = &mut [];
+                    let mut lints_range = None;
+                    let mut started = docs.len != 0;
+                    while let Some((attr_start, name)) = cursor.capture_opt_attr_start()? {
+                        started = true;
+                        if cursor.get_text(name) == "lints" {
+                            cursor
+                                .eat_open_paren()
+                                .ok_or("`(`")
+                                .and_then(|()| {
+                                    cursor.capture_list(&mut self.str_list_buf, self.arena, |cursor| {
+                                        Ok(cursor.capture_ident().map(|x| cursor.get_text(x)))
+                                    })
+                                })
+                                .and_then(|res| {
+                                    lints = res;
+                                    cursor.match_all(&[CloseParen, CloseBracket], &mut [])
+                                })?;
+                            lints_range = Some(attr_start..cursor.pos());
+                        } else {
+                            cursor.find_close_bracket().ok_or("`]`")?;
+                        }
+                    }
+                    match cursor.opt_match_all(&[CaptureIdent, OpenParen, CaptureLitStr, CloseParen], &mut captures) {
+                        Ok(true) => {},
+                        Ok(false) if started => return Err("an identifier"),
+                        Ok(false) => return Ok(false),
+                        Err(e) => return Err(e),
+                    }
+                    let name = cursor.get_text(captures[0]);
+                    let name_str_sp = captures[1].mk_sp(file);
+                    if let Some(name_str) = self.parse_str_lit(cursor.get_text(captures[1]), name_str_sp)
+                        && name_str
+                            .bytes()
+                            .ne(name.bytes().map(|x| if x == b'_' { b'-' } else { x }))
+                    {
+                        self.dcx
+                            .emit_spanned_err(name_str_sp, "the name string does not match the identifier");
+                    }
+                    if cursor.eat_colon() {
+                        cursor.eat_ty()?;
+                        if cursor.eat_eq() {
+                            cursor.eat_list_item();
+                        }
+                    }
+                    data.opts.push(ConfOpt {
+                        name: cursor.get_text(captures[0]),
+                        decl_range: docs.pos..cursor.pos(),
+                        lints,
+                        lints_range: lints_range.unwrap_or(captures[0].pos..captures[0].pos),
+                    });
+                    Ok(true)
+                })
+            })
+            .and_then(|()| cursor.eat_close_brace().ok_or("`}`"))
+        {
+            cursor.emit_unexpected(&mut self.dcx, file, expected);
+        }
+
+        data.decl_sp.range.end = cursor.pos();
+        data
+    }
+
     /// Finds and parses all lint declarations.
     pub fn parse_lint_decls(&mut self) -> ParsedLints<'cx> {
         let mut data = ParsedLints {
