@@ -252,6 +252,10 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("`-Zcf-protection=return` and `full` require `-Ctarget-feature=+zimop` on RISC-V")]
+pub(crate) struct CfProtectionReturnRequiresZimop;
+
+#[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is incompatible with `-Cforce-frame-pointers` on s390x")]
 #[note(
     "`-Zpacked-stack` and `-Cforce-frame-pointers` is incompatible with the default s390x ABI (note that force-frame-pointers is implemented via backchain)"
