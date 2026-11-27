@@ -12,13 +12,12 @@ fn main() -> () {
     let _2: ();
     let mut _3: *const Test;
     let mut _4: *mut Test;
-    let _6: &&&&*mut Test;
-    let _7: &&&*mut Test;
-    let _8: &&*mut Test;
-    let _9: &*mut Test;
-    let _10: ();
-    let mut _11: *const Test;
-    let mut _12: *mut Test;
+    let _6: &&&*mut Test;
+    let _7: &&*mut Test;
+    let _8: &*mut Test;
+    let _9: ();
+    let mut _10: *const Test;
+    let mut _11: *mut Test;
     scope 1 {
         debug ptr => _1;
         let _5: &&&&*mut Test as UserTypeProjection { base: UserType(2), projs: [] };
@@ -51,31 +50,28 @@ fn main() -> () {
         StorageLive(_6);
         StorageLive(_7);
         StorageLive(_8);
-        StorageLive(_9);
-        _9 = &_1;
-        _8 = &_9;
+        _8 = &_1;
         _7 = &_8;
         _6 = &_7;
-        _5 = &(*_6);
+        _5 = &_6;
         FakeRead(ForLet(None), _5);
         AscribeUserType(_5, o, UserTypeProjection { base: UserType(3), projs: [] });
-        StorageDead(_6);
+        StorageLive(_9);
         StorageLive(_10);
         StorageLive(_11);
-        StorageLive(_12);
-        _12 = copy (*(*(*(*_5))));
-        _11 = move _12 as *const Test (PointerCoercion(MutToConstPointer, Implicit));
-        StorageDead(_12);
-        _10 = Test::x(move _11) -> [return: bb3, unwind: bb4];
+        _11 = copy (*(*(*(*_5))));
+        _10 = move _11 as *const Test (PointerCoercion(MutToConstPointer, Implicit));
+        StorageDead(_11);
+        _9 = Test::x(move _10) -> [return: bb3, unwind: bb4];
     }
 
     bb3: {
-        StorageDead(_11);
         StorageDead(_10);
-        _0 = const ();
         StorageDead(_9);
+        _0 = const ();
         StorageDead(_8);
         StorageDead(_7);
+        StorageDead(_6);
         StorageDead(_5);
         StorageDead(_1);
         return;

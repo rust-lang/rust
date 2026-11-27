@@ -6,29 +6,23 @@
       let mut _0: ();
       let _2: <T as std::marker::DiscriminantKind>::Discriminant;
       let mut _3: &T;
-      let _4: &T;
-      let _5: u8;
-      let mut _6: &i32;
-      let _7: &i32;
-      let _8: i32;
-      let _9: u8;
-      let mut _10: &();
-      let _11: &();
-      let _12: ();
-      let _13: isize;
-      let mut _14: &E;
-      let _15: &E;
-      let _16: E;
-      let mut _17: &E;
-      let mut _18: &();
-      let mut _19: &i32;
+      let _4: u8;
+      let mut _5: &i32;
+      let _6: i32;
+      let _7: u8;
+      let mut _8: &();
+      let _9: ();
+      let _10: isize;
+      let mut _11: &E;
+      let _12: E;
+      let mut _13: &E;
+      let mut _14: &();
+      let mut _15: &i32;
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
-          _4 = &_1;
-          _3 = &(*_4);
+          _3 = &_1;
 -         _2 = discriminant_value::<T>(move _3) -> [return: bb1, unwind unreachable];
 +         _2 = discriminant((*_3));
 +         goto -> bb1;
@@ -36,53 +30,43 @@
   
       bb1: {
           StorageDead(_3);
-          StorageDead(_4);
           StorageDead(_2);
+          StorageLive(_4);
           StorageLive(_5);
-          StorageLive(_6);
-          StorageLive(_7);
-          _19 = const discriminant::<T>::promoted[2];
-          _7 = &(*_19);
-          _6 = &(*_7);
--         _5 = discriminant_value::<i32>(move _6) -> [return: bb2, unwind unreachable];
-+         _5 = discriminant((*_6));
+          _15 = const discriminant::<T>::promoted[2];
+          _5 = &(*_15);
+-         _4 = discriminant_value::<i32>(move _5) -> [return: bb2, unwind unreachable];
++         _4 = discriminant((*_5));
 +         goto -> bb2;
       }
   
       bb2: {
-          StorageDead(_6);
-          StorageDead(_7);
           StorageDead(_5);
-          StorageLive(_9);
-          StorageLive(_10);
-          StorageLive(_11);
-          _18 = const discriminant::<T>::promoted[1];
-          _11 = &(*_18);
-          _10 = &(*_11);
--         _9 = discriminant_value::<()>(move _10) -> [return: bb3, unwind unreachable];
-+         _9 = discriminant((*_10));
+          StorageDead(_4);
+          StorageLive(_7);
+          StorageLive(_8);
+          _14 = const discriminant::<T>::promoted[1];
+          _8 = &(*_14);
+-         _7 = discriminant_value::<()>(move _8) -> [return: bb3, unwind unreachable];
++         _7 = discriminant((*_8));
 +         goto -> bb3;
       }
   
       bb3: {
-          StorageDead(_10);
-          StorageDead(_11);
-          StorageDead(_9);
-          StorageLive(_13);
-          StorageLive(_14);
-          StorageLive(_15);
-          _17 = const discriminant::<T>::promoted[0];
-          _15 = &(*_17);
-          _14 = &(*_15);
--         _13 = discriminant_value::<E>(move _14) -> [return: bb4, unwind unreachable];
-+         _13 = discriminant((*_14));
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_10);
+          StorageLive(_11);
+          _13 = const discriminant::<T>::promoted[0];
+          _11 = &(*_13);
+-         _10 = discriminant_value::<E>(move _11) -> [return: bb4, unwind unreachable];
++         _10 = discriminant((*_11));
 +         goto -> bb4;
       }
   
       bb4: {
-          StorageDead(_14);
-          StorageDead(_15);
-          StorageDead(_13);
+          StorageDead(_11);
+          StorageDead(_10);
           _0 = const ();
           drop(_1) -> [return: bb5, unwind: bb6];
       }

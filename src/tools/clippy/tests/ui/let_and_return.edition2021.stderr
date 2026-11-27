@@ -72,10 +72,10 @@ help: return the expression directly
    |
 LL ~             
 LL |
-LL ~             (match self {
+LL ~             match self {
 LL +                 E::A(x) => x,
 LL +                 E::B(x) => x,
-LL +             }) as _
+LL +             }
    |
 
 error: returning the result of a `let` binding from a block

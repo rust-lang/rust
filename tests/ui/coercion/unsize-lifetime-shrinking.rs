@@ -52,6 +52,12 @@ fn ref_to_ref_shorten_in_dyn<'a>(x: Cell<&'a (dyn Trait + 'static)>) -> Cell<&'a
     x
 }
 
+fn outer_ref_to_ref_shorten_in_dyn<'a: 'b, 'b, 'c>(
+    x: &'c Cell<dyn Trait + 'a>,
+) -> &'c Cell<dyn Trait + 'b> {
+    x
+}
+
 //////////////////////////////////////////////////
 
 // &mut T -> &U has a CoerceUnsized impl that allows shortening lifetimes
