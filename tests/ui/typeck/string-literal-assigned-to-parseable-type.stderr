@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/string-literal-assigned-to-parseable-type.rs:3:21
+   |
+LL |     let str1: u16 = "29";
+   |               ---   ^^^^ expected `u16`, found `&str`
+   |               |
+   |               expected due to this
+   |
+help: consider parsing the string literal to numeric type
+   |
+LL |     let str1: u16 = "29".parse::<u16>().unwrap_or_default();
+   |                         +++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/string-literal-assigned-to-parseable-type.rs:6:21
+   |
+LL |     let str2: i32 = String::from("129");
+   |               ---   ^^^^^^^^^^^^^^^^^^^ expected `i32`, found `String`
+   |               |
+   |               expected due to this
+   |
+help: consider parsing the string to numeric type
+   |
+LL |     let str2: i32 = String::from("129").parse::<i32>().unwrap_or_default();
+   |                                        +++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/string-literal-assigned-to-parseable-type.rs:8:21
+   |
+LL |     let str4: i32 = &str3;
+   |               ---   ^^^^^ expected `i32`, found `&String`
+   |               |
+   |               expected due to this
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
