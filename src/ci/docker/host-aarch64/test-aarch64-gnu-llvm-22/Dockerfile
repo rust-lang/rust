@@ -42,6 +42,9 @@ RUN sh /scripts/sccache.sh
 ENV NO_DOWNLOAD_CI_LLVM="1"
 ENV EXTERNAL_LLVM="1"
 
+# Ubuntu LLVM 22 does not have support for experimental targets like csky.
+ENV TARGET_DOCS_SKIP_TARGETS="csky-unknown-linux-gnuabiv2,csky-unknown-linux-gnuabiv2hf"
+
 # Override the default debugger `discover` behavior
 ENV LLDB_PATH="lldb-22"
 
