@@ -18,6 +18,9 @@ pub trait QueryCache: Sized {
     type Key: QueryKey;
     type Value: Copy;
 
+    /// Whether [`Self::for_each`] visits entries in an order that is stable from run-to-run.
+    const HAS_STABLE_ORDER: bool;
+
     /// Create the query cache for the case where we don't need to track present entries.
     ///
     /// The default implementation ignores this; override this method for a cache that can use it
@@ -69,6 +72,8 @@ where
     type Key = K;
     type Value = V;
 
+    const HAS_STABLE_ORDER: bool = false;
+
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         self.cache.get(key)
@@ -110,6 +115,8 @@ where
 {
     type Key = ();
     type Value = V;
+
+    const HAS_STABLE_ORDER: bool = true;
 
     #[inline(always)]
     fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
@@ -156,6 +163,8 @@ where
     type Key = DefId;
     type Value = V;
 
+    const HAS_STABLE_ORDER: bool = true;
+
     fn without_track_present() -> Self {
         DefIdCache { local: VecCache::without_track_present(), foreign: Default::default() }
     }
@@ -197,6 +206,9 @@ where
 {
     type Key = K;
     type Value = V;
+
+    // Iterates in insertion order.
+    const HAS_STABLE_ORDER: bool = true;
 
     fn without_track_present() -> Self {
         VecCache::without_track_present()

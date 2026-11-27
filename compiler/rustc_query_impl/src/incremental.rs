@@ -36,11 +36,37 @@ fn encode_query_values_inner<'tcx, C, V>(
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
+
+    if C::HAS_STABLE_ORDER {
+        query.cache.for_each(&mut |key, value, dep_node| {
+            if query.will_cache_on_disk_for_key(*key) {
+                encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
+            }
+        });
+        return;
+    }
+
+    let len = query.cache.len();
+    let mut values = Vec::with_capacity(len);
+    let mut order = Vec::with_capacity(len);
     query.cache.for_each(&mut |key, value, dep_node| {
         if query.will_cache_on_disk_for_key(*key) {
-            encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
+            order.push((u64::from(dep_node.as_u32()) << 32) | values.len() as u64);
+            values.push(*value);
         }
     });
+    sort_encoding_order(&mut order);
+    for packed in order {
+        let dep_node = DepNodeIndex::from_u32((packed >> 32) as u32);
+        let value = &values[packed as u32 as usize];
+        encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
+    }
+}
+
+fn sort_encoding_order(order: &mut [u64]) {
+    // DepNodeIndex is unique, so positions in the low half are ignored.
+    order.sort_unstable();
+    debug_assert!(order.is_sorted_by(|a, b| (a >> 32) < (b >> 32)));
 }
 
 pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
