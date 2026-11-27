@@ -2090,6 +2090,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.unreachable();
                 }
             } else {
+                // FIXME use `__fastfail(FAST_FAIL_GUARD_ICALL_CHECK_FAILURE)` on Windows
                 self.abort_immediate();
                 self.unreachable();
             }

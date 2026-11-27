@@ -341,9 +341,15 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
     match intrinsic {
         sym::abort_immediate => {
-            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
-            fx.bcx.ins().trap(TrapCode::user(2).unwrap());
-            return Ok(());
+            if let Some(def) = fx.tcx.intrinsic(instance.def_id())
+                && !def.must_be_overridden
+            {
+                return Err(Instance::new_raw(instance.def_id(), GenericArgs::empty()));
+            } else {
+                fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+                fx.bcx.ins().trap(TrapCode::user(2).unwrap());
+                return Ok(());
+            }
         }
         sym::breakpoint | sym::resumable_breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);

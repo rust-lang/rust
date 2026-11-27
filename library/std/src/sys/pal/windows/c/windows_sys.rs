@@ -2445,7 +2445,6 @@ pub const ExceptionNestedException: EXCEPTION_DISPOSITION = 2;
 pub const FACILITY_NT_BIT: i32 = 268435456;
 pub const FALSE: i32 = 0;
 pub type FARPROC = Option<unsafe extern "system" fn() -> isize>;
-pub const FAST_FAIL_FATAL_APP_EXIT: i32 = 7;
 pub type FD_SET = fd_set;
 #[repr(C)]
 #[derive(Clone, Copy, Default)]

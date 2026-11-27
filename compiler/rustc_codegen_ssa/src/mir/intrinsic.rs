@@ -1,6 +1,6 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
-use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
@@ -175,8 +175,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let op_val: OperandValue<_> = match name {
             sym::abort_immediate => {
-                bx.abort_immediate();
-                OperandValue::ZeroSized
+                if let Some(def) = bx.tcx().intrinsic(instance.def_id())
+                    && !def.must_be_overridden
+                {
+                    return IntrinsicResult::Fallback(ty::Instance::new_raw(
+                        instance.def_id(),
+                        GenericArgs::empty(),
+                    ));
+                } else {
+                    bx.abort_immediate();
+                    OperandValue::ZeroSized
+                }
             }
 
             sym::caller_location => {
