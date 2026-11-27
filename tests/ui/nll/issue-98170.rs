@@ -1,3 +1,6 @@
+//@run-rustfix
+#![allow(unused)]
+
 pub struct MyStruct<'a> {
     field: &'a [u32],
 }

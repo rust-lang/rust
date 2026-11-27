@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-98170.rs:7:9
+  --> $DIR/issue-98170.rs:10:9
    |
 LL | impl MyStruct<'_> {
    |               -- lifetime `'1` appears in the `impl`'s self type
@@ -9,17 +9,25 @@ LL |         Self { field }
    |         ^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-98170.rs:7:16
+  --> $DIR/issue-98170.rs:10:16
    |
 LL | impl MyStruct<'_> {
    |               -- lifetime `'1` appears in the `impl`'s self type
 LL |     pub fn new<'a>(field: &'a [u32]) -> MyStruct<'a> {
    |                -- lifetime `'a` defined here
 LL |         Self { field }
-   |                ^^^^^ this usage requires that `'a` must outlive `'1`
+   |         ----   ^^^^^ this usage requires that `'a` must outlive `'1`
+   |         |
+   |         requires lifetime `'1` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         Self { field }
+LL +         MyStruct { field }
+   |
 
 error: lifetime may not live long enough
-  --> $DIR/issue-98170.rs:19:9
+  --> $DIR/issue-98170.rs:22:9
    |
 LL | impl<'a> Trait<'a> for MyStruct<'_> {
    |      --                         -- lifetime `'1` appears in the `impl`'s self type
@@ -30,7 +38,7 @@ LL |         Self { field }
    |         ^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-98170.rs:19:16
+  --> $DIR/issue-98170.rs:22:16
    |
 LL | impl<'a> Trait<'a> for MyStruct<'_> {
    |      --                         -- lifetime `'1` appears in the `impl`'s self type
@@ -38,7 +46,15 @@ LL | impl<'a> Trait<'a> for MyStruct<'_> {
    |      lifetime `'a` defined here
 LL |     fn new(field: &'a [u32]) -> MyStruct<'a> {
 LL |         Self { field }
-   |                ^^^^^ this usage requires that `'a` must outlive `'1`
+   |         ----   ^^^^^ this usage requires that `'a` must outlive `'1`
+   |         |
+   |         requires lifetime `'1` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         Self { field }
+LL +         MyStruct { field }
+   |
 
 error: aborting due to 4 previous errors
 
