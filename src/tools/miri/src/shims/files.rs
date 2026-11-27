@@ -790,10 +790,10 @@ pub fn open_file_or_dir(
                 // Convert back to file so it always has the same type.
                 Ok(dir) => Ok(File::from(OwnedHandle::from(dir))),
                 Err(err2) => {
-                    // If this 2nd attempt says "not a directory", preserve the original error. It's
-                    // possible that we lost a race twice if this keeps being changed from directory
-                    // to file and back. However, in that case it was entirely non-existent for a
-                    // little while, so returning an error is still fine.
+                    // It's possible that we lost a race twice if this keeps being changed from
+                    // directory to file and back. However, in that case it was entirely
+                    // non-existent for a little while, so returning an error is still fine.
+                    // If this 2nd attempt says "not a directory", preserve the original error.
                     Err(if err2.kind() == io::ErrorKind::NotADirectory { err } else { err2 })
                 }
             }
@@ -804,8 +804,9 @@ pub fn open_file_or_dir(
     let file = file?;
 
     let metadata = file.metadata().expect("just-opened file/dir should have metadata");
+    #[cfg(not(bootstrap))]
+    assert!(!metadata.is_symlink()); // we either follow symlinks or error, never open them
     if metadata.is_dir() {
-        assert!(!metadata.is_symlink()); // Rust makes this mutually exclusive with `is_dir`
         // Convert to dir.
         cfg_select! {
             unix => {

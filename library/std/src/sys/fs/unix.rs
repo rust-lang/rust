@@ -428,6 +428,7 @@ pub struct OpenOptions {
     truncate: bool,
     create: bool,
     create_new: bool,
+    pub(super) nofollow: bool,
     // system-specific
     custom_flags: i32,
     mode: mode_t,
@@ -1122,6 +1123,7 @@ impl OpenOptions {
             truncate: false,
             create: false,
             create_new: false,
+            nofollow: false,
             // system-specific
             custom_flags: 0,
             mode: 0o666,
@@ -1145,6 +1147,9 @@ impl OpenOptions {
     }
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
+    }
+    pub fn nofollow(&mut self, nofollow: bool) {
+        self.nofollow = nofollow;
     }
 
     pub fn custom_flags(&mut self, flags: i32) {
@@ -1209,12 +1214,36 @@ impl OpenOptions {
             (_, _, true) => libc::O_CREAT | libc::O_EXCL,
         })
     }
+
+    fn get_open_flags(&self) -> io::Result<c_int> {
+        let mut flags = self.get_access_mode()?
+            | self.get_creation_mode()?
+            | (self.custom_flags as c_int & !libc::O_ACCMODE);
+
+        // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+        // Their filesystems do not have symbolic links, so no special handling is required.
+        #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+        if self.nofollow {
+            flags |= libc::O_NOFOLLOW;
+        }
+
+        Ok(flags)
+    }
 }
 
 impl fmt::Debug for OpenOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let OpenOptions { read, write, append, truncate, create, create_new, custom_flags, mode } =
-            self;
+        let OpenOptions {
+            read,
+            write,
+            append,
+            truncate,
+            create,
+            create_new,
+            custom_flags,
+            nofollow,
+            mode,
+        } = self;
         f.debug_struct("OpenOptions")
             .field("read", read)
             .field("write", write)
@@ -1222,6 +1251,7 @@ impl fmt::Debug for OpenOptions {
             .field("truncate", truncate)
             .field("create", create)
             .field("create_new", create_new)
+            .field("nofollow", nofollow)
             .field("custom_flags", custom_flags)
             .field("mode", &Mode(*mode))
             .finish()
@@ -1234,10 +1264,7 @@ impl File {
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
-        let flags = libc::O_CLOEXEC
-            | opts.get_access_mode()?
-            | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        let flags = libc::O_CLOEXEC | opts.get_open_flags()?;
         // The third argument of `open64` is documented to have type `mode_t`. On
         // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
         // However, since this is a variadic function, C integer promotion rules mean that on
@@ -1965,19 +1992,7 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         use crate::fs::{OpenOptions, Permissions};
 
         let mut options = OpenOptions::new();
-        options.read(true);
-
-        // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
-        // Their filesystems do not have symbolic links, so no special handling is required.
-        #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
-        {
-            #[cfg(not(target_os = "wasi"))]
-            use crate::os::unix::fs::OpenOptionsExt;
-            #[cfg(target_os = "wasi")]
-            use crate::os::wasi::fs::OpenOptionsExt;
-
-            options.custom_flags(libc::O_NOFOLLOW);
-        }
+        options.read(true).nofollow(true);
 
         // SAFETY: Since this function is called with `with_native_path`
         // and that successfully converted the `&Path` to a `CString`,

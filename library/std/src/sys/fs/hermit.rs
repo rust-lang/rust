@@ -121,6 +121,7 @@ pub struct OpenOptions {
     truncate: bool,
     create: bool,
     create_new: bool,
+    pub(super) nofollow: bool,
     // system-specific
     mode: i32,
 }
@@ -330,6 +331,7 @@ impl OpenOptions {
             truncate: false,
             create: false,
             create_new: false,
+            nofollow: false,
             // system-specific
             mode: 0o777,
         }
@@ -352,6 +354,9 @@ impl OpenOptions {
     }
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
+    }
+    pub fn nofollow(&mut self, nofollow: bool) {
+        self.nofollow = nofollow;
     }
 
     fn get_access_mode(&self) -> io::Result<i32> {
@@ -398,6 +403,19 @@ impl File {
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        if opts.nofollow {
+            // No O_NOFOLLOW on hermit, so we have to do a racy check manually.
+            let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+            cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
+            let attr = FileAttr { stat_val };
+            if attr.file_type().is_symlink() {
+                return Err(io::const_error!(
+                    ErrorKind::FilesystemLoop,
+                    "opening a symlink in nofollow mode"
+                ));
+            }
+        }
+
         let mut flags = opts.get_access_mode()?;
         flags = flags | opts.get_creation_mode()?;
 

@@ -27,6 +27,9 @@ fn to_u16s_without_nul(path: &Path) -> io::Result<Vec<u16>> {
 /// A wrapper around a raw NtCreateFile call.
 ///
 /// This isn't completely safe because `OBJECT_ATTRIBUTES` contains raw pointers.
+///
+/// Does NOT perform the `nofollow` check! If `opts.nofollow` is set, will open a
+/// reparse point rather than following it.
 unsafe fn nt_create_file(
     opts: &OpenOptions,
     object_attributes: &c::OBJECT_ATTRIBUTES,
@@ -36,8 +39,10 @@ unsafe fn nt_create_file(
     let mut io_status = c::IO_STATUS_BLOCK::PENDING;
     // SYNCHRONIZE is included in FILE_GENERIC_READ, but not GENERIC_READ, so we add it manually
     let access = opts.get_access_mode()? | c::SYNCHRONIZE;
-    // one of FILE_SYNCHRONOUS_IO_{,NON}ALERT is required for later operations to succeed.
-    let options = create_options | c::FILE_SYNCHRONOUS_IO_NONALERT;
+    let options = create_options
+        // one of FILE_SYNCHRONOUS_IO_{,NON}ALERT is required for later operations to succeed.
+        | c::FILE_SYNCHRONOUS_IO_NONALERT
+        | if opts.nofollow { c::FILE_OPEN_REPARSE_POINT } else { 0 };
     let status = unsafe {
         c::NtCreateFile(
             &mut handle,
@@ -82,7 +87,16 @@ impl Dir {
             return File::open(path, opts);
         }
         let path = to_u16s_without_nul(path)?;
-        self.open_file_native(&path, opts, c::FILE_NON_DIRECTORY_FILE).map(|handle| File { handle })
+        let file = self
+            .open_file_native(&path, opts, c::FILE_NON_DIRECTORY_FILE)
+            .map(|handle| File { handle })?;
+        if opts.nofollow && file.file_attr()?.file_type().is_symlink() {
+            return Err(io::const_error!(
+                io::ErrorKind::FilesystemLoop,
+                "opening a symlink in nofollow mode"
+            ));
+        }
+        Ok(file)
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
@@ -106,7 +120,16 @@ impl Dir {
 
     pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         let path = to_u16s_without_nul(&path)?;
-        self.open_file_native(&path, &opts, c::FILE_DIRECTORY_FILE).map(|handle| Self { handle })
+        let dir = self
+            .open_file_native(&path, &opts, c::FILE_DIRECTORY_FILE)
+            .map(|handle| Self { handle })?;
+        if opts.nofollow && dir.self_metadata()?.file_type().is_symlink() {
+            return Err(io::const_error!(
+                io::ErrorKind::FilesystemLoop,
+                "opening a symlink in nofollow mode"
+            ));
+        }
+        Ok(dir)
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
@@ -133,12 +156,22 @@ impl Dir {
                 ptr::null_mut(),
             )
         };
-        match OwnedHandle::try_from(unsafe { HandleOrInvalid::from_raw_handle(handle) }) {
-            Ok(handle) => Ok(Self { handle: Handle::from_inner(handle) }),
-            Err(_) => Err(io::Error::last_os_error()),
+        let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
+        let Ok(handle) = OwnedHandle::try_from(handle) else {
+            return Err(io::Error::last_os_error());
+        };
+        let dir = Self { handle: Handle::from_inner(handle) };
+        if opts.nofollow && dir.self_metadata()?.file_type().is_symlink() {
+            return Err(io::const_error!(
+                io::ErrorKind::FilesystemLoop,
+                "opening a symlink in nofollow mode"
+            ));
         }
+        Ok(dir)
     }
 
+    /// Does NOT perform the `nofollow` check! If `opts.nofollow` is set, will open a
+    /// reparse point rather than following it.
     fn open_file_native(
         &self,
         path: &[u16],
@@ -157,8 +190,8 @@ impl Dir {
     fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let mut create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
-        create_opt |= c::FILE_OPEN_REPARSE_POINT;
+        opts.nofollow(true);
+        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
         let handle = self.open_file_native(path, &opts, create_opt)?;
         File::from_inner(handle).delete().io_result()
     }
@@ -166,8 +199,8 @@ impl Dir {
     fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16]) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let handle =
-            self.open_file_native(from, &opts, /* create_opt */ c::FILE_OPEN_REPARSE_POINT)?;
+        opts.nofollow(true);
+        let handle = self.open_file_native(from, &opts, /* create_opt */ 0)?;
         // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =
@@ -260,7 +293,9 @@ impl Dir {
         let mut opts = OpenOptions::new();
         // the NT functions need at least c::FILE_READ_ATTRIBUTES
         opts.access_mode(c::FILE_READ_ATTRIBUTES);
-        let create_opt = if reparse == ReparsePoint::Open { c::FILE_OPEN_REPARSE_POINT } else { 0 };
+        if reparse == ReparsePoint::Open {
+            opts.nofollow(true);
+        }
 
         let name = UnicodeStrRef::from_slice(path);
         let object_attributes = c::OBJECT_ATTRIBUTES {
@@ -268,7 +303,9 @@ impl Dir {
             ObjectName: name.as_ptr().cast_mut(),
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
-        let handle = unsafe { nt_create_file(&opts, &object_attributes, create_opt)? };
+        let handle = unsafe {
+            nt_create_file(&opts, &object_attributes, /* create_opt */ 0)?
+        };
         File { handle }.file_attr()
     }
 }

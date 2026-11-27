@@ -80,6 +80,7 @@ pub struct OpenOptions {
     truncate: bool,
     create: bool,
     create_new: bool,
+    pub(super) nofollow: bool,
     // system-specific
     custom_flags: u32,
     access_mode: Option<u32>,
@@ -214,6 +215,7 @@ impl OpenOptions {
             truncate: false,
             create: false,
             create_new: false,
+            nofollow: false,
             // system-specific
             custom_flags: 0,
             access_mode: None,
@@ -243,6 +245,9 @@ impl OpenOptions {
     }
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
+    }
+    pub fn nofollow(&mut self, nofollow: bool) {
+        self.nofollow = nofollow;
     }
 
     pub fn custom_flags(&mut self, flags: u32) {
@@ -324,7 +329,9 @@ impl OpenOptions {
         self.custom_flags
             | self.attributes
             | self.security_qos_flags
-            | if self.create_new { c::FILE_FLAG_OPEN_REPARSE_POINT } else { 0 }
+            // By default, on Windows, CREATE_NEW would follow a symlink and create what it points
+            // to. Prevent that from happening.
+            | if self.nofollow || self.create_new { c::FILE_FLAG_OPEN_REPARSE_POINT } else { 0 }
     }
 }
 
@@ -355,40 +362,49 @@ impl File {
             )
         };
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
-        if let Ok(handle) = OwnedHandle::try_from(handle) {
-            if opts.freeze_last_access_time || opts.freeze_last_write_time {
-                let file_time =
-                    c::FILETIME { dwLowDateTime: 0xFFFFFFFF, dwHighDateTime: 0xFFFFFFFF };
-                cvt(unsafe {
-                    c::SetFileTime(
-                        handle.as_raw_handle(),
-                        core::ptr::null(),
-                        if opts.freeze_last_access_time { &file_time } else { core::ptr::null() },
-                        if opts.freeze_last_write_time { &file_time } else { core::ptr::null() },
-                    )
-                })?;
-            }
-            // Manual truncation. See #115745.
-            if opts.truncate
-                && creation == c::OPEN_ALWAYS
-                && api::get_last_error() == WinError::ALREADY_EXISTS
-            {
-                // This first tries `FileAllocationInfo` but falls back to
-                // `FileEndOfFileInfo` in order to support WINE.
-                // If WINE gains support for FileAllocationInfo, we should
-                // remove the fallback.
-                let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
-                set_file_information_by_handle(handle.as_raw_handle(), &alloc)
-                    .or_else(|_| {
-                        let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
-                        set_file_information_by_handle(handle.as_raw_handle(), &eof)
-                    })
-                    .io_result()?;
-            }
-            Ok(File { handle: Handle::from_inner(handle) })
-        } else {
-            Err(Error::last_os_error())
+        let Ok(handle) = OwnedHandle::try_from(handle) else {
+            return Err(Error::last_os_error());
+        };
+        if opts.freeze_last_access_time || opts.freeze_last_write_time {
+            let file_time = c::FILETIME { dwLowDateTime: 0xFFFFFFFF, dwHighDateTime: 0xFFFFFFFF };
+            cvt(unsafe {
+                c::SetFileTime(
+                    handle.as_raw_handle(),
+                    core::ptr::null(),
+                    if opts.freeze_last_access_time { &file_time } else { core::ptr::null() },
+                    if opts.freeze_last_write_time { &file_time } else { core::ptr::null() },
+                )
+            })?;
         }
+        // Manual truncation. See #115745.
+        if opts.truncate
+            && creation == c::OPEN_ALWAYS
+            && api::get_last_error() == WinError::ALREADY_EXISTS
+        {
+            // This first tries `FileAllocationInfo` but falls back to
+            // `FileEndOfFileInfo` in order to support WINE.
+            // If WINE gains support for FileAllocationInfo, we should
+            // remove the fallback.
+            let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
+            set_file_information_by_handle(handle.as_raw_handle(), &alloc)
+                .or_else(|_| {
+                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                    set_file_information_by_handle(handle.as_raw_handle(), &eof)
+                })
+                .io_result()?;
+        }
+        let file = File { handle: Handle::from_inner(handle) };
+        if opts.nofollow {
+            // The flag we set just means we open the reparse point, but `nofollow` says
+            // we have to fail if it was a symlink.
+            if file.file_attr()?.file_type().is_symlink() {
+                return Err(io::const_error!(
+                    io::ErrorKind::FilesystemLoop,
+                    "opening a symlink in nofollow mode"
+                ));
+            }
+        }
+        Ok(file)
     }
 
     pub fn fsync(&self) -> io::Result<()> {

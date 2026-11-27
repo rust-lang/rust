@@ -99,11 +99,7 @@ impl Dir {
     }
 
     fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
-        let flags = libc::O_CLOEXEC
-            | libc::O_DIRECTORY
-            | opts.get_access_mode()?
-            | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        let flags = libc::O_CLOEXEC | libc::O_DIRECTORY | opts.get_open_flags()?;
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
@@ -120,11 +116,7 @@ impl Dir {
         opts: &OpenOptions,
         extra_flags: c_int,
     ) -> io::Result<OwnedFd> {
-        let flags = libc::O_CLOEXEC
-            | opts.get_access_mode()?
-            | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE)
-            | extra_flags;
+        let flags = libc::O_CLOEXEC | opts.get_open_flags()? | extra_flags;
         let fd = cvt_r(|| unsafe {
             openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
         })?;

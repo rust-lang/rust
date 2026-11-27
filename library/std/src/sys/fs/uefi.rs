@@ -36,6 +36,7 @@ pub struct OpenOptions {
     append: bool,
     truncate: bool,
     create_new: bool,
+    pub(super) nofollow: bool,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -209,7 +210,7 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { mode: 0, append: false, create_new: false, truncate: false }
+        OpenOptions { mode: 0, append: false, create_new: false, truncate: false, nofollow: false }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -257,6 +258,10 @@ impl OpenOptions {
         }
     }
 
+    pub fn nofollow(&mut self, nofollow: bool) {
+        self.nofollow = nofollow;
+    }
+
     const fn is_mode_valid(&self) -> bool {
         // Valid Combinations: Read, Read/Write, Read/Write/Create
         self.mode == file::MODE_READ
@@ -273,6 +278,10 @@ impl File {
 
         if opts.create_new && exists(path)? {
             return Err(io::const_error!(io::ErrorKind::AlreadyExists, "File already exists"));
+        }
+
+        if opts.nofollow {
+            // Nothing to check here as UEFI does not support symlinks.
         }
 
         let f = uefi_fs::File::from_path(path, opts.mode, 0).map(Self)?;

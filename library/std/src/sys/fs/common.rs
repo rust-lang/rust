@@ -67,7 +67,13 @@ pub struct Dir {
 }
 
 impl Dir {
-    pub fn open(path: &Path, _opts: &OpenOptions) -> io::Result<Self> {
+    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+        if opts.nofollow && path.is_symlink() {
+            return Err(io::const_error!(
+                ErrorKind::FilesystemLoop,
+                "opening a symlink in nofollow mode"
+            ));
+        }
         path.canonicalize().map(|path| Self { path })
     }
 
