@@ -226,19 +226,22 @@ pub(crate) fn query_feed<'tcx, C: QueryCache>(
     key: C::Key,
     value: C::Value,
 ) {
-    let create_dep_node_index = || {
-        let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
-        tcx.dep_graph.with_feed_task(dep_node, tcx, &value, query.hash_value_fn, query.format_value)
-    };
-
     if !sync::is_dyn_thread_safe() {
         match try_get_cached(tcx, &query.cache, key) {
             Some(existing) => {
                 check_feedable_consistency(tcx, query, key, &value, &existing);
             }
             None => {
-                let dep_node_index = create_dep_node_index();
-                query.cache.complete(key, value, dep_node_index);
+                let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
+                let index = tcx.dep_graph.with_feed_task(
+                    dep_node,
+                    tcx,
+                    &value,
+                    query.hash_value_fn,
+                    query.format_value,
+                );
+
+                query.cache.complete(key, value, index);
             }
         }
 
@@ -265,8 +268,16 @@ pub(crate) fn query_feed<'tcx, C: QueryCache>(
 
                 let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
 
-                let dep_node_index = create_dep_node_index();
-                job_guard.complete(&query.cache, value, dep_node_index);
+                let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
+                let index = tcx.dep_graph.with_feed_task(
+                    dep_node,
+                    tcx,
+                    &value,
+                    query.hash_value_fn,
+                    query.format_value,
+                );
+
+                job_guard.complete(&query.cache, value, index);
             }
         },
         Entry::Occupied(mut entry) => match &mut entry.get_mut().1 {
