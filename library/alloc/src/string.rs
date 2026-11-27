@@ -413,7 +413,7 @@ pub struct FromUtf8Error {
 /// assert!(String::from_utf16(v).is_err());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FromUtf16Error {
     kind: FromUtf16ErrorKind,
 }
