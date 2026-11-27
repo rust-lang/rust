@@ -13,6 +13,7 @@ extern crate minicore;
 //@[DEFAULT] compile-flags: --target=aarch64-unknown-linux-pauthtest
 //@[ALL] needs-llvm-components: aarch64
 //@[ALL] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=+aarch64-jump-table-hardening,+auth-traps,+calls,+indirect-gotos,+return-addresses
+//@[ALL] filecheck-flags: --check-prefix=DEFAULT
 //@[DISABLE_JUMP] needs-llvm-components: aarch64
 //@[DISABLE_JUMP] compile-flags: --target=aarch64-unknown-linux-pauthtest -Zpointer-authentication=-aarch64-jump-table-hardening
 //@[DISABLE_AUTH_TRAPS] needs-llvm-components: aarch64
@@ -45,43 +46,44 @@ pub fn main() {}
 // DEFAULT: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
 // DEFAULT-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1791}
 
+// DISABLE_JUMP: attributes [[ATTR_MAIN]] = {
 // DISABLE_JUMP-NOT: aarch64-jump-table-hardening
-// DISABLE_JUMP: attributes [[ATTR_MAIN]] = { {{.*}}"ptrauth-auth-traps"
+// DISABLE_JUMP-SAME: "ptrauth-auth-traps"
 // DISABLE_JUMP-SAME: "ptrauth-calls"
 // DISABLE_JUMP-SAME: "ptrauth-indirect-gotos"
 // DISABLE_JUMP-SAME: "ptrauth-returns"
 // DISABLE_JUMP: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
 // DISABLE_JUMP-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1791}
 
-// DISABLE_AUTH_TRAPS-NOT: ptrauth-auth-traps
 // DISABLE_AUTH_TRAPS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
+// DISABLE_AUTH_TRAPS-NOT: ptrauth-auth-traps
 // DISABLE_AUTH_TRAPS-SAME: "ptrauth-calls"
 // DISABLE_AUTH_TRAPS-SAME: "ptrauth-indirect-gotos"
 // DISABLE_AUTH_TRAPS-SAME: "ptrauth-returns"
 // DISABLE_AUTH_TRAPS: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
-// DISABLE_AUTH_TRAPS-NEXT !{i32 1, !"aarch64-elf-pauthabi-version", i32 1783}
+// DISABLE_AUTH_TRAPS-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1783}
 
-// DISABLE_CALLS-NOT: ptrauth-calls
 // DISABLE_CALLS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
 // DISABLE_CALLS-SAME: "ptrauth-auth-traps"
+// DISABLE_CALLS-NOT: ptrauth-calls
 // DISABLE_CALLS-SAME: "ptrauth-indirect-gotos"
 // DISABLE_CALLS-SAME: "ptrauth-returns"
 // DISABLE_CALLS: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
-// DISABLE_CALLS-SAME-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1789}
+// DISABLE_CALLS-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1789}
 
-// DISABLE_INDIRCT_GOTOS-NOT: ptrauth-indirect-gotos
 // DISABLE_INDIRCT_GOTOS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
 // DISABLE_INDIRCT_GOTOS-SAME: "ptrauth-auth-traps"
 // DISABLE_INDIRCT_GOTOS-SAME: "ptrauth-calls"
+// DISABLE_INDIRCT_GOTOS-NOT: ptrauth-indirect-gotos
 // DISABLE_INDIRCT_GOTOS-SAME: "ptrauth-returns"
 // DISABLE_INDIRCT_GOTOS: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1279}
 // DISABLE_INDIRCT_GOTOS-NEXT: !{i32 1, !"ptrauth-sign-personality", i32 1}
 
-// DISABLE_RETURNS-NOT: ptrauth-returns
 // DISABLE_RETURNS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
 // DISABLE_RETURNS-SAME: "ptrauth-auth-traps"
 // DISABLE_RETURNS-SAME: "ptrauth-calls"
 // DISABLE_RETURNS-SAME: "ptrauth-indirect-gotos"
+// DISABLE_RETURNS-NOT: ptrauth-returns
 // DISABLE_RETURNS: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
 // DISABLE_RETURNS-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1787}
 
