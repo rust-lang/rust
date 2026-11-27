@@ -50,4 +50,12 @@ fn main() {
     #[cfg(target_arch = "x86_64")]
     let _ = arch::is_x86_feature_detected!("xop");
     //[X86]~^ ERROR: use of unstable library feature `xop_target_feature`
+
+    // Check gating of boolean syntax in feature detection macros.
+    #[cfg(target_arch = "aarch64")]
+    let _ = arch::is_aarch64_feature_detected!("neon" && "sve");
+    //[AARCH64]~^ ERROR: use of unstable library feature `feature_detection_boolean_syntax`
+    #[cfg(target_arch = "x86_64")]
+    let _ = arch::is_x86_feature_detected!("sse" && "sse2");
+    //[X86]~^ ERROR: use of unstable library feature `feature_detection_boolean_syntax`
 }

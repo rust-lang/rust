@@ -1,0 +1,119 @@
+error: unknown x86 target feature: not-a-feature
+  --> $DIR/is_arch_feature_detected_boolean.rs:31:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse" && "not-a-feature");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_x86_feature_detected` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))`.
+  --> $DIR/is_arch_feature_detected_boolean.rs:34:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" || "not-a-feature");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unknown aarch64 target feature: not-a-feature
+  --> $DIR/is_arch_feature_detected_boolean.rs:34:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" || "not-a-feature");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))`.
+  --> $DIR/is_arch_feature_detected_boolean.rs:44:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" && "sve");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))`.
+  --> $DIR/is_arch_feature_detected_boolean.rs:44:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" && "sve");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))`.
+  --> $DIR/is_arch_feature_detected_boolean.rs:55:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" && "ras");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: "ras" feature cannot be detected at run-time
+  --> $DIR/is_arch_feature_detected_boolean.rs:55:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" && "ras");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::is_aarch64_feature_detected` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected `&&` or `||` between target features
+  --> $DIR/is_arch_feature_detected_boolean.rs:68:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse", "sse2");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__detect_feature_bool` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected target feature after `&&`
+  --> $DIR/is_arch_feature_detected_boolean.rs:70:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse" &&);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__detect_feature_bool` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected target feature before `&&`
+  --> $DIR/is_arch_feature_detected_boolean.rs:72:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!(&&"sse");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__detect_feature_bool` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected target feature in parentheses
+  --> $DIR/is_arch_feature_detected_boolean.rs:74:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!(());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__detect_feature_bool` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: use of deprecated macro `deprecated_feature`: the `avx512gfni` feature has been renamed to `gfni`
+  --> $DIR/is_arch_feature_detected_boolean.rs:49:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse" && "avx512gfni");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+   = note: this warning originates in the macro `$crate::is_x86_feature_detected` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `xop_target_feature`
+  --> $DIR/is_arch_feature_detected_boolean.rs:64:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse" && "xop");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #127208 <https://github.com/rust-lang/rust/issues/127208> for more information
+   = help: add `#![feature(xop_target_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `$crate::detect_feature` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 12 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.

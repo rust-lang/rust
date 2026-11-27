@@ -2,6 +2,7 @@
 #![allow(internal_features)]
 #![feature(
     stdarch_internal,
+    feature_detection_boolean_syntax,
     x86_amx_intrinsics,
     xop_target_feature,
     movrs_target_feature,
@@ -97,4 +98,49 @@ fn x86_deprecated() {
     println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
     println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
     println!("avx512vpclmulqdq {:?}", is_x86_feature_detected!("avx512vpclmulqdq"));
+}
+
+#[test]
+#[allow(deprecated)]
+fn x86_boolean_syntax() {
+    assert_eq!(
+        is_x86_feature_detected!("avx2" && "bmi2"),
+        is_x86_feature_detected!("avx2") && is_x86_feature_detected!("bmi2"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("avx2" || "sse2"),
+        is_x86_feature_detected!("avx2") || is_x86_feature_detected!("sse2"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!(("avx2" && "bmi2") || "sse4.2"),
+        (is_x86_feature_detected!("avx2") && is_x86_feature_detected!("bmi2"))
+            || is_x86_feature_detected!("sse4.2"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("avx512f" && "sse2" || "sse"),
+        (is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("sse2"))
+            || is_x86_feature_detected!("sse"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("sse" || "avx512f" && "bmi2"),
+        is_x86_feature_detected!("sse")
+            || (is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("bmi2")),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("sse2" && "ermsb"),
+        is_x86_feature_detected!("sse2") && is_x86_feature_detected!("ermsb"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("tsc" && "mmx"),
+        is_x86_feature_detected!("tsc") && is_x86_feature_detected!("mmx"),
+    );
+    assert_eq!(
+        is_x86_feature_detected!("abm" && "avx512gfni"),
+        is_x86_feature_detected!("abm") && is_x86_feature_detected!("avx512gfni"),
+    );
+    assert_eq!(is_x86_feature_detected!(("sse2")), is_x86_feature_detected!("sse2"));
+    assert_eq!(
+        is_x86_feature_detected!("sse" && "sse2",),
+        is_x86_feature_detected!("sse") && is_x86_feature_detected!("sse2"),
+    );
 }
