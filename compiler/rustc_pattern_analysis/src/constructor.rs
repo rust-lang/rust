@@ -1021,6 +1021,9 @@ impl RowId {
     }
 }
 
+/// Identifies a (sorted) set of matrix rows.
+pub type RowSet = SmallVec<[RowId; 1]>;
+
 /// Describes the result of analyzing the constructors in a column of a match.
 ///
 /// `present` is morally the set of constructors present in the column, and `missing` is the set of
@@ -1044,7 +1047,8 @@ impl RowId {
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
 pub struct SplitConstructorSet<Cx: PatCx> {
-    pub present: SmallVec<[Constructor<Cx>; 1]>,
+    /// For each present constructor, we remember which matrix rows cover it.
+    pub present: SmallVec<[(Constructor<Cx>, RowSet); 1]>,
     pub missing: Vec<Constructor<Cx>>,
     pub missing_empty: Vec<Constructor<Cx>>,
 }
@@ -1056,12 +1060,13 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
     /// and its invariants.
     pub fn split<'a>(
         &self,
-        ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> SplitConstructorSet<Cx>
+        cx: &Cx,
+        ctors: impl Iterator<Item = (RowId, &'a Constructor<Cx>)> + Clone,
+    ) -> Result<SplitConstructorSet<Cx>, Cx::Error>
     where
         Cx: 'a,
     {
-        let mut present: SmallVec<[_; 1]> = SmallVec::new();
+        let mut present: SmallVec<[(_, RowSet); 1]> = SmallVec::new();
         // Empty constructors found missing.
         let mut missing_empty = Vec::new();
         // Nonempty constructors found missing.
@@ -1071,15 +1076,16 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
         // If we see a deref pattern, it must be the only non-wildcard non-opaque constructor; we
         // ensure this prior to analysis.
         let mut deref_pat_present = false;
-        for ctor in ctors.cloned() {
+        for (_, ctor) in ctors.clone() {
+            let ctor = ctor.clone();
             match ctor {
                 DerefPattern(..) => {
                     if !deref_pat_present {
                         deref_pat_present = true;
-                        present.push(ctor);
+                        present.push((ctor, Default::default()));
                     }
                 }
-                Opaque(..) => present.push(ctor),
+                Opaque(..) => present.push((ctor, Default::default())),
                 Wildcard => {} // discard wildcards
                 _ => seen.push(ctor),
             }
@@ -1091,7 +1097,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             }
             ConstructorSet::Struct { empty } => {
                 if !seen.is_empty() {
-                    present.push(Struct);
+                    present.push((Struct, Default::default()));
                 } else if *empty {
                     missing_empty.push(Struct);
                 } else {
@@ -1100,14 +1106,14 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             }
             ConstructorSet::Ref => {
                 if !seen.is_empty() {
-                    present.push(Ref);
+                    present.push((Ref, Default::default()));
                 } else {
                     missing.push(Ref);
                 }
             }
             ConstructorSet::Union => {
                 if !seen.is_empty() {
-                    present.push(UnionField);
+                    present.push((UnionField, Default::default()));
                 } else {
                     missing.push(UnionField);
                 }
@@ -1122,7 +1128,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 for (idx, visibility) in variants.iter_enumerated() {
                     let ctor = Variant(idx);
                     if seen_set.contains(idx) {
-                        present.push(ctor);
+                        present.push((ctor, Default::default()));
                     } else {
                         // We only put visible variants directly into `missing`.
                         match visibility {
@@ -1151,12 +1157,12 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                     }
                 }
                 if seen_true {
-                    present.push(Bool(true));
+                    present.push((Bool(true), Default::default()));
                 } else {
                     missing.push(Bool(true));
                 }
                 if seen_false {
-                    present.push(Bool(false));
+                    present.push((Bool(false), Default::default()));
                 } else {
                     missing.push(Bool(false));
                 }
@@ -1167,14 +1173,18 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
                     match seen {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),
-                        Presence::Seen => present.push(IntRange(splitted_range)),
+                        Presence::Seen => {
+                            present.push((IntRange(splitted_range), Default::default()))
+                        }
                     }
                 }
                 if let Some(range_2) = range_2 {
                     for (seen, splitted_range) in range_2.split(seen_ranges.into_iter()) {
                         match seen {
                             Presence::Unseen => missing.push(IntRange(splitted_range)),
-                            Presence::Seen => present.push(IntRange(splitted_range)),
+                            Presence::Seen => {
+                                present.push((IntRange(splitted_range), Default::default()))
+                            }
                         }
                     }
                 }
@@ -1185,7 +1195,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 for (seen, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
                     match seen {
-                        Presence::Seen => present.push(ctor),
+                        Presence::Seen => present.push((ctor, Default::default())),
                         Presence::Unseen => {
                             if *subtype_is_empty && splitted_slice.arity() != 0 {
                                 // We have subpatterns of an empty type, so the constructor is
@@ -1201,7 +1211,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             ConstructorSet::Unlistable => {
                 // Since we can't list constructors, we take the ones in the column. This might list
                 // some constructors several times but there's not much we can do.
-                present.extend(seen);
+                present.extend(seen.into_iter().map(|ctor| (ctor, Default::default())));
                 missing.push(NonExhaustive);
             }
             ConstructorSet::NoConstructors => {
@@ -1212,7 +1222,15 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             }
         }
 
-        SplitConstructorSet { present, missing, missing_empty }
+        for (present_ctor, covered_rows) in &mut present {
+            for (i, input_ctor) in ctors.clone() {
+                if present_ctor.is_covered_by(cx, input_ctor)? {
+                    covered_rows.push(i);
+                }
+            }
+        }
+
+        Ok(SplitConstructorSet { present, missing, missing_empty })
     }
 
     /// Whether this set only contains empty constructors.

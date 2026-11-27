@@ -934,6 +934,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         span_bug!(self.scrut_span, "{}", fmt)
     }
 
+    #[track_caller]
     fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         self.tcx.dcx().span_delayed_bug(self.scrut_span, format!("{fmt}"))
     }
