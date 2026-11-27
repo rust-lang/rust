@@ -860,6 +860,7 @@ impl Input {
                 FileName::CliCrateAttr(_) => None,
                 FileName::Custom(_) => None,
                 FileName::DocTest(path, _) => path.local_path(),
+                FileName::IntraDocLink(_) => None,
                 FileName::InlineAsm(_) => None,
             },
         }

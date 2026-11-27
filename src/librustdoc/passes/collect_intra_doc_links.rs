@@ -19,6 +19,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Mutability, Safety};
 use rustc_lint::Lint;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_parse::exp;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::parser::PathStyle;
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
@@ -358,13 +359,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             });
         }
 
-        if path_str.contains("::") {
-            if let Ok(path) = parse_path(&self.psess, path_str) {
-                let candidates =
-                    self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
-                if !candidates.is_empty() {
-                    return Ok(candidates.into_iter().map(|(res, did)| (res, Some(did))).collect());
-                }
+        if let Ok(path) = parse_path(&self.psess, path_str) {
+            let candidates =
+                self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
+            if !candidates.is_empty() {
+                return Ok(candidates.into_iter().map(|(res, did)| (res, Some(did))).collect());
             }
         }
 
@@ -483,7 +482,7 @@ fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
 }
 
 fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
-    let file_name = FileName::anon_source_code(path_str);
+    let file_name = FileName::intra_doc_link_source_code(path_str);
     let mut parser = match rustc_parse::new_parser_from_source_str(
         psess,
         file_name,
@@ -497,6 +496,7 @@ fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
         }
     };
     let path = parser.parse_path(PathStyle::Type).map_err(|e| e.cancel())?;
+    parser.expect(exp!(Eof)).map_err(|e| e.cancel())?;
     for s in &path.segments {
         if let Some(args) = &s.args {
             // FIXME: angle-bracketed args are stripped earlier, but we don't handle parenthesized
