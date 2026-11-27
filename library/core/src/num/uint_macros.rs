@@ -142,7 +142,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b01001100", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b0100_1100", stringify!($SelfT), ";")]
         /// assert_eq!(n.count_ones(), 3);
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
@@ -237,7 +237,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b0101000", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b010_1000", stringify!($SelfT), ";")]
         /// assert_eq!(n.trailing_zeros(), 3);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
@@ -284,7 +284,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b1010111", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b101_0111", stringify!($SelfT), ";")]
         /// assert_eq!(n.trailing_ones(), 3);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
@@ -2811,8 +2811,8 @@ macro_rules! uint_impl {
         /// Please note that this example is shared among integer types, which is why `u8` is used.
         ///
         /// ```
-        /// assert_eq!(10u8.wrapping_mul(12), 120);
-        /// assert_eq!(25u8.wrapping_mul(12), 44);
+        /// assert_eq!(10_u8.wrapping_mul(12), 120);
+        /// assert_eq!(25_u8.wrapping_mul(12), 44);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -3051,7 +3051,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(3", stringify!($SelfT), ".wrapping_pow(5), 243);")]
-        /// assert_eq!(3u8.wrapping_pow(6), 217);
+        /// assert_eq!(3_u8.wrapping_pow(6), 217);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".wrapping_pow(0), 1);")]
         /// ```
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
@@ -3295,8 +3295,8 @@ macro_rules! uint_impl {
         /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
-        /// assert_eq!(5u32.overflowing_mul(2), (10, false));
-        /// assert_eq!(1_000_000_000u32.overflowing_mul(10), (1410065408, true));
+        /// assert_eq!(5_u32.overflowing_mul(2), (10, false));
+        /// assert_eq!(1_000_000_000_u32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -3325,10 +3325,10 @@ macro_rules! uint_impl {
         /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
-        /// assert_eq!(5u32.carrying_mul(2, 0), (10, 0));
-        /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
-        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
-        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 10), (1410065418, 2));
+        /// assert_eq!(5_u32.carrying_mul(2, 0), (10, 0));
+        /// assert_eq!(5_u32.carrying_mul(2, 10), (20, 0));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 0), (1410065408, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 10), (1410065418, 2));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
@@ -3353,7 +3353,7 @@ macro_rules! uint_impl {
         /// scalar_mul_eq(&mut v, 3);
         /// assert_eq!(v, [30, 60]);
         ///
-        /// assert_eq!(0x87654321_u64 * 0xFEED, 0x86D3D159E38D);
+        /// assert_eq!(0x8765_4321_u64 * 0xFEED, 0x86D3_D159_E38D);
         /// let mut v = vec![0x4321, 0x8765];
         /// scalar_mul_eq(&mut v, 0xFEED);
         /// assert_eq!(v, [0xE38D, 0xD159, 0x86D3]);
@@ -3413,10 +3413,10 @@ macro_rules! uint_impl {
         /// which explains why `u32` is used here.
         ///
         /// ```
-        /// assert_eq!(5u32.carrying_mul_add(2, 0, 0), (10, 0));
-        /// assert_eq!(5u32.carrying_mul_add(2, 10, 10), (30, 0));
-        /// assert_eq!(1_000_000_000u32.carrying_mul_add(10, 0, 0), (1410065408, 2));
-        /// assert_eq!(1_000_000_000u32.carrying_mul_add(10, 10, 10), (1410065428, 2));
+        /// assert_eq!(5_u32.carrying_mul_add(2, 0, 0), (10, 0));
+        /// assert_eq!(5_u32.carrying_mul_add(2, 10, 10), (30, 0));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 0, 0), (1410065408, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 10, 10), (1410065428, 2));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul_add(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX));"
@@ -3443,10 +3443,10 @@ macro_rules! uint_impl {
         /// // -1 * -1 == 1
         /// assert_eq!(quadratic_mul([0xFF; 3], [0xFF; 3]), [1, 0, 0]);
         ///
-        /// assert_eq!(u32::wrapping_mul(0x9e3779b9, 0x7f4a7c15), 0xcffc982d);
+        /// assert_eq!(u32::wrapping_mul(0x9e37_79b9, 0x7f4a_7c15), 0xcffc_982d);
         /// assert_eq!(
-        ///     quadratic_mul(u32::to_le_bytes(0x9e3779b9), u32::to_le_bytes(0x7f4a7c15)),
-        ///     u32::to_le_bytes(0xcffc982d)
+        ///     quadratic_mul(u32::to_le_bytes(0x9e37_79b9), u32::to_le_bytes(0x7f4a_7c15)),
+        ///     u32::to_le_bytes(0xcffc_982d)
         /// );
         /// ```
         #[stable(feature = "unsigned_bigint_helpers", since = "1.91.0")]
@@ -3647,7 +3647,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(3", stringify!($SelfT), ".overflowing_pow(5), (243, false));")]
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".overflowing_pow(0), (1, false));")]
-        /// assert_eq!(3u8.overflowing_pow(6), (217, true));
+        /// assert_eq!(3_u8.overflowing_pow(6), (217, true));
         /// ```
         #[stable(feature = "no_panic_pow", since = "1.34.0")]
         #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
@@ -4279,7 +4279,7 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".truncate());")]
-        /// assert_eq!(120u8, 376u32.truncate());
+        /// assert_eq!(120_u8, 376_u32.truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_widen_truncate", issue = "154330")]
@@ -4299,7 +4299,7 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".saturating_truncate());")]
-        /// assert_eq!(255u8, 376u32.saturating_truncate());
+        /// assert_eq!(255_u8, 376_u32.saturating_truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_widen_truncate", issue = "154330")]
@@ -4319,7 +4319,7 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(Some(120u8), 120", stringify!($SelfT), ".checked_truncate());")]
-        /// assert_eq!(None, 376u32.checked_truncate::<u8>());
+        /// assert_eq!(None, 376_u32.checked_truncate::<u8>());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_widen_truncate", issue = "154330")]
