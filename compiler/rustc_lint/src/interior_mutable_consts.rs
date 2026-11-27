@@ -46,7 +46,7 @@ declare_lint! {
     /// of prudence to avoid false-positive and may be extended in the future.
     pub CONST_ITEM_INTERIOR_MUTATIONS,
     Warn,
-    "checks for calls which mutates a interior mutable const-item"
+    "checks for calls which mutates a interior mutable const-item",
 }
 
 declare_lint_pass!(InteriorMutableConsts => [CONST_ITEM_INTERIOR_MUTATIONS]);

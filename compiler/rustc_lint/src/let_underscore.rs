@@ -51,7 +51,7 @@ declare_lint! {
     /// intent.
     pub LET_UNDERSCORE_DROP,
     Allow,
-    "non-binding let on a type that has a destructor"
+    "non-binding let on a type that has a destructor",
 }
 
 declare_lint! {
@@ -92,7 +92,7 @@ declare_lint! {
     /// intent.
     pub LET_UNDERSCORE_LOCK,
     Deny,
-    "non-binding let on a synchronization lock"
+    "non-binding let on a synchronization lock",
 }
 
 declare_lint! {
@@ -128,7 +128,7 @@ declare_lint! {
     /// intent.
     pub LET_UNDERSCORE_DROP_GUARD,
     Deny,
-    "non-binding let on a `DropGuard`"
+    "non-binding let on a `DropGuard`",
 }
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_DROP_GUARD]);

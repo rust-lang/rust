@@ -26,13 +26,13 @@ declare_lint! {
     pub UNMARKED_UNCHECKED_TYPE_ALIASES,
     Allow,
     "suggest adding `#[rustc_unchecked_type_aliases]` to unchecked type aliases",
-    @feature_gate = marked_unchecked_type_aliases;
+    @feature_gate = marked_unchecked_type_aliases,
     @future_incompatible = FutureIncompatibleInfo {
         // FIXME(checked_type_aliases): The generated URL obviously points to nothing which is fine
         //     for now. However, once a proper edition has been assigned to us, actually write a
         //     chapter in the edition guide.
         reason: fcw!(EditionSemanticsChange future "checked-type-aliases"),
-    };
+    },
 }
 
 declare_lint_pass!(UnmarkedUncheckedTypeAliases => [UNMARKED_UNCHECKED_TYPE_ALIASES]);

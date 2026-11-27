@@ -38,7 +38,7 @@ declare_lint! {
     /// is likely what was intended.
     pub DROPPING_REFERENCES,
     Warn,
-    "calls to `drop` and `drop_in_place` where the dropped type is a reference instead of an owned value"
+    "calls to `drop` and `drop_in_place` where the dropped type is a reference instead of an owned value",
 }
 
 declare_lint! {
@@ -61,7 +61,7 @@ declare_lint! {
     /// referenced value, which is likely what was intended.
     pub FORGETTING_REFERENCES,
     Warn,
-    "calls to `std::mem::forget` with a reference instead of an owned value"
+    "calls to `std::mem::forget` with a reference instead of an owned value",
 }
 
 declare_lint! {
@@ -85,7 +85,7 @@ declare_lint! {
     /// value will be copied and moved into the function on invocation.
     pub DROPPING_COPY_TYPES,
     Warn,
-    "calls to `drop` and `drop_in_place` where the dropped value implements Copy"
+    "calls to `drop` and `drop_in_place` where the dropped value implements Copy",
 }
 
 declare_lint! {
@@ -113,7 +113,7 @@ declare_lint! {
     /// destructor, there is nothing for `std::mem::forget` to ignore.
     pub FORGETTING_COPY_TYPES,
     Warn,
-    "calls to `std::mem::forget` with a value that implements Copy"
+    "calls to `std::mem::forget` with a value that implements Copy",
 }
 
 declare_lint! {
@@ -136,7 +136,7 @@ declare_lint! {
     /// not drop the inner value of the `ManuallyDrop` either.
     pub UNDROPPED_MANUALLY_DROPS,
     Deny,
-    "calls to `drop` and `drop_in_place` where the dropped value is `std::mem::ManuallyDrop`"
+    "calls to `drop` and `drop_in_place` where the dropped value is `std::mem::ManuallyDrop`",
 }
 
 declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES, UNDROPPED_MANUALLY_DROPS]);

@@ -84,7 +84,7 @@ declare_lint! {
     /// [`unused_must_use` lint]: warn-by-default.html#unused-must-use
     pub UNUSED_RESULTS,
     Allow,
-    "unused result of an expression in a statement"
+    "unused result of an expression in a statement",
 }
 
 declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
