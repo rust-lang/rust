@@ -8,6 +8,7 @@
 #![register_tool(lint)]
 // tidy-alphabetical-end
 
+mod _if;
 mod _match;
 mod autoderef;
 mod callee;
