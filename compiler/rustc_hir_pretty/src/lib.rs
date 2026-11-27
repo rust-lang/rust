@@ -220,8 +220,6 @@ impl<'a> State<'a> {
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
             Node::NestedUseTree(tree) => self.print_use_tree(tree),
-            Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
-            Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
             Node::TestBinderBoundTypeConstraint(_) => {
                 panic!("cannot print Node::TestBinderBoundTypeConstraint")
             }

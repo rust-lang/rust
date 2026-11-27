@@ -35,16 +35,16 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<'c, T>
     where
-        for<'a, 'b> T: Trait<'a, 'b>,
+        for<'a, 'd> T: Trait<'a, 'd>,
     {
         forall<'a>
         where
-            for<'b> <T as Trait<'a, 'b>>::Assoc: 'c,
+            for<'d> <T as Trait<'a, 'd>>::Assoc: 'c,
         {
             forall<'b> {
                 predicates Carrier<T>: Require<'a, 'b, 'c, T>
             } expect {
-                for<'b> <T as Trait<'a, 'b>>::Assoc: 'c
+                for<'d> <T as Trait<'a, 'd>>::Assoc: 'c
             }
         } expect {}
     }
@@ -53,18 +53,18 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<'c, T>
     where
-        for<'a, 'b> T: Trait<'a, 'b>,
+        for<'a, 'd> T: Trait<'a, 'd>,
     {
         forall<'a>
         where
-            for<'b> <T as Trait<'a, 'b>>::Assoc: 'c,
+            for<'d> <T as Trait<'a, 'd>>::Assoc: 'c,
         {
             forall<'b> {
                 exists<X> {
                     predicates Carrier<X>: Require<'a, 'b, 'c, T>
                 }
             } expect {
-                for<'b> <T as Trait<'a, 'b>>::Assoc: 'c
+                for<'d> <T as Trait<'a, 'd>>::Assoc: 'c
             }
         } expect {}
     }
