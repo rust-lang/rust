@@ -29,3 +29,28 @@ fn test_cycle() {
     iter.nth(9);
     assert_eq!(iter.take(3).sum::<i32>(), 3);
 }
+
+#[test]
+fn cycle_try_fold_with_shared_state_clone() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    let state = Rc::new(Cell::new(0usize));
+
+    let iter = std::iter::from_fn(move || match state.get() {
+        0 => {
+            state.set(1);
+            None
+        }
+        1 => {
+            state.set(2);
+            Some(())
+        }
+        2 => None,
+        _ => unreachable!(),
+    });
+
+    let result = iter.cycle().try_fold(0, |acc, _| Some(acc + 1));
+
+    assert_eq!(result, Some(1));
+}
