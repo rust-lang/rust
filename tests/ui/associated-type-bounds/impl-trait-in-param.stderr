@@ -1,0 +1,22 @@
+error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
+  --> $DIR/impl-trait-in-param.rs:10:17
+   |
+LL | trait Super<T> {
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Super<i32>`
+   |     ambiguous `Assoc` from `Super<u32>`
+...
+LL | fn foo<T: Trait<Assoc = u32>>() {}
+   |                 ^^^^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: consider being explicit about the bounds
+   |
+LL - fn foo<T: Trait<Assoc = u32>>() {}
+LL + fn foo<T: Trait + Super<i32, Assoc = u32> + Super<u32, Assoc = u32>>() {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0222`.

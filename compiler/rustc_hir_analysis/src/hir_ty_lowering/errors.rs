@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -9,6 +11,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -120,6 +123,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        constraints: &[hir::AssocItemConstraint<'_>],
     ) -> ErrorGuaranteed
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -325,12 +329,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // If we still couldn't find any associated item, and only one associated item exists,
         // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
-            err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Other {
-                span: assoc_ident.span,
-                qself: &qself_str,
-                assoc_kind,
-                suggested_name: *candidate_name,
-            });
+            if constraints.iter().find(|c| c.ident.name == *candidate_name).is_none() {
+                // We do not suggest specifying an assoc type if it is already present in the
+                // constraint list.
+                err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Other {
+                    span: assoc_ident.span,
+                    qself: &qself_str,
+                    assoc_kind,
+                    suggested_name: *candidate_name,
+                });
+            }
         } else {
             err.label = Some(diagnostics::AssocItemNotFoundLabel::NotFound {
                 span: assoc_ident.span,
@@ -440,9 +448,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        outer_span: Span,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
+        let generics = tcx.hir_get_generics(self.item_def_id());
+        let param_name = if let Some(generics) = tcx.hir_get_generics(self.item_def_id()) {
+            "TUV"
+                .chars()
+                .map(|c| c.to_string())
+                .chain((0..).map(|i| format!("P{i}")))
+                .find(|s| !generics.params.iter().any(|param| param.name.ident().as_str() == s))
+                .expect("we definitely can find at least one param name to generate")
+        } else {
+            "T".to_string()
+        };
         let assoc_kind_str = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
         let mut err = self.dcx().create_err(crate::diagnostics::AmbiguousAssocItem {
@@ -462,10 +482,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             },
         );
 
-        // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
-        // predicates!).
-        // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
+        let mut suggestions = vec![];
         for &bound in matching_candidates {
             let bound_id = bound.def_id();
             let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
@@ -474,69 +492,42 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_tag,
                 bound_id,
             );
-            let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
+            let bound_span = assoc_item.map(|item| {
+                (tcx.def_span(item.def_id), tcx.def_span(tcx.parent(item.def_id)).shrink_to_lo())
+            });
 
-            if let Some(bound_span) = bound_span {
+            if let Some((bound_span, parent_span)) = bound_span {
                 err.span_label(
                     bound_span,
                     format!("ambiguous `{assoc_ident}` from `{}`", bound.print_trait_sugared(),),
                 );
+                err.span_context(parent_span);
                 if let Some(constraint) = constraint {
-                    match constraint.kind {
-                        hir::AssocItemConstraintKind::Equality { term } => {
-                            let term: ty::Term<'_> = match term {
-                                hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                                hir::Term::Const(ct) => {
-                                    let assoc_item =
-                                        assoc_item.expect("assoc_item should be present");
-                                    let projection_term = bound.map_bound(|trait_ref| {
-                                        let item_segment = hir::PathSegment {
-                                            ident: constraint.ident,
-                                            hir_id: constraint.hir_id,
-                                            res: Res::Err,
-                                            args: Some(constraint.gen_args),
-                                            infer_args: false,
-                                            delegation_child_segment: false,
-                                        };
-
-                                        let alias_args = self.lower_generic_args_of_assoc_item(
-                                            constraint.ident.span,
-                                            assoc_item.def_id,
-                                            &item_segment,
-                                            trait_ref.args,
-                                        );
-                                        let kind = ty::AliasTermKind::ProjectionConst {
-                                            def_id: assoc_item.def_id,
-                                        };
-                                        ty::AliasTerm::new_from_args(tcx, kind, alias_args)
-                                    });
-
-                                    // FIXME(mgca): code duplication with other places we lower
-                                    // the rhs' of associated const bindings
-                                    let ty = projection_term.map_bound(|alias| {
-                                        alias.expect_ct().type_of(tcx).skip_norm_wip()
-                                    });
-                                    let ty = super::bounds::check_assoc_const_binding_type(
-                                        self,
-                                        constraint.ident,
-                                        ty,
-                                        constraint.hir_id,
-                                    );
-
-                                    self.lower_const_arg(ct, ty).into()
+                    // FIXME: come up with a better way to generate the snippet.
+                    let tr = bound.print_only_trait_path().to_string();
+                    let constraint =
+                        tcx.sess.source_map().span_to_snippet(constraint.span).unwrap_or_else(
+                            |_| match constraint.kind {
+                                hir::AssocItemConstraintKind::Equality { term } => {
+                                    let term = match term {
+                                        hir::Term::Ty(ty) => self.lower_ty(ty).to_string(),
+                                        hir::Term::Const(_) => "/* const */".to_string(),
+                                    };
+                                    format!("{assoc_ident} = {term}")
                                 }
-                            };
-                            if term.references_error() {
-                                continue;
-                            }
-                            // FIXME(#97583): This isn't syntactically well-formed!
-                            where_bounds.push(format!(
-                                "        T: {trait}::{assoc_ident} = {term}",
-                                trait = bound.print_only_trait_path(),
-                            ));
-                        }
-                        // FIXME: Provide a suggestion.
-                        hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
+                                hir::AssocItemConstraintKind::Bound { bounds: _ } => {
+                                    format!("{assoc_ident}: /* bounds */")
+                                }
+                            },
+                        );
+                    let sugg = if tr.ends_with(">") {
+                        format!("{}, {constraint}>", &tr[..tr.len() - 1])
+                    } else {
+                        format!("{tr}<{constraint}>")
+                    };
+                    where_bounds.push(format!("        {param_name}: {sugg}"));
+                    if let ty::Param(_) = bound.self_ty().skip_binder().kind() {
+                        suggestions.push((outer_span.shrink_to_hi(), format!(" + {sugg}")));
                     }
                 } else {
                     err.span_suggestion_verbose(
@@ -553,12 +544,98 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ));
             }
         }
-        if !where_bounds.is_empty() {
-            err.help(format!(
-                "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {qself_str},\n{}",
-                where_bounds.join(",\n"),
-            ));
+        if !suggestions.is_empty() {
+            struct RemovalSpan(Span);
+            impl<'v> Visitor<'v> for RemovalSpan {
+                type Result = ControlFlow<Span>;
+                fn visit_generic_args(
+                    &mut self,
+                    generic_args: &'v hir::GenericArgs<'v>,
+                ) -> Self::Result {
+                    let mut spans: Vec<Span> = generic_args
+                        .args
+                        .iter()
+                        .map(|arg| arg.span())
+                        .chain(generic_args.constraints.iter().map(|c| c.span))
+                        .collect();
+                    spans.sort_by_key(|s| (s.lo(), s.hi()));
+                    if spans.len() == 1 {
+                        // We have `Trait<Param = Ty>`, we'll leave behind `Trait`.
+                        return ControlFlow::Break(generic_args.span_ext().unwrap());
+                    }
+                    if let Some((i, span)) =
+                        spans.iter().enumerate().find(|(_, span)| **span == self.0)
+                    {
+                        if let Some(next) = spans.get(i + 1) {
+                            // We have `Trait<Param = Ty, Other = Ty>`, we'll leave behind
+                            // `Trait<Other = Ty>`.
+                            return ControlFlow::Break(span.until(*next));
+                        } else if i > 0
+                            && let Some(prev) = spans.get(i - 1)
+                        {
+                            // We have `Trait<Other = Ty, Param = Ty>` or `Trait<Other, Param = Ty>`
+                            // we'll leave  `Trait<Other = Ty>` or `Trait<Other>`.
+                            return ControlFlow::Break(prev.shrink_to_hi().to(*span));
+                        }
+                    }
+                    hir::intravisit::walk_generic_args(self, generic_args)
+                }
+            }
+            let remove = generics
+                .and_then(|generics| RemovalSpan(span).visit_generics(generics).break_value())
+                .unwrap_or(span);
+            suggestions.push((remove, String::new()));
+            err.multipart_suggestion(
+                "consider being explicit about the bounds",
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+        } else if !where_bounds.is_empty() {
+            if tcx.def_span(self.item_def_id()).overlaps(span) {
+                // ^ HACK: if the trait comes from a function argument like in
+                // `fn foo(_: &dyn Trait<Assoc = X>) {}`, then the `span` will be pointing at the
+                // argument, so suggesting `fn foo<T>(_: T) where T: Trait, T: Super<Assoc = X>`...
+                // would be appropriate, but if we encounter something like
+                // `_: &dyn Trait<Assoc = X>`, then the spans don't overlap and would not be
+                // reasonable to suggest adding a new type parameter to the enclosing function.
+                let msg = format!(
+                    "consider introducing a new type parameter `{param_name}` and adding `where` constraints"
+                );
+                if let Some(generics) = generics {
+                    // help: consider introducing a new type parameter `U` and adding `where` constraints
+                    //    |
+                    // LL ~ fn foo<T>(_: U, _: T) where
+                    // LL +         U: Trait,
+                    // LL +         U: Super<i32, Assoc = u32>,
+                    // LL ~         U: Super<u32, Assoc = u32>
+                    //    |
+                    err.multipart_suggestion(
+                        msg,
+                        vec![
+                            if let Some(span) = generics.span_for_param_suggestion() {
+                                (span, format!(", {param_name}"))
+                            } else {
+                                (generics.span, format!("<{param_name}>"))
+                            },
+                            (outer_span, param_name.clone()),
+                            (
+                                generics.tail_span_for_predicate_suggestion(),
+                                format!(
+                                    "{}\n        {param_name}: {qself_str},\n{}\n",
+                                    generics.add_where_or_trailing_comma(),
+                                    where_bounds.join(",\n"),
+                                ),
+                            ),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.help(format!(
+                        "{msg}:\n    where\n        {param_name}: {qself_str},\n{}",
+                        where_bounds.join(",\n"),
+                    ));
+                }
+            }
         }
         err.emit_err()
     }
@@ -1251,9 +1328,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
-            if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
-                err.span_label(sp, format!("`{prefix}{name}` defined here{rename_message}"));
-            }
+            err.span_label(
+                tcx.def_span(item.def_id),
+                format!("`{prefix}{name}` defined here{rename_message}"),
+            );
+            err.span_context(tcx.def_span(tcx.parent(item.def_id)));
         }
         if potential_assoc_items.len() == missing_assoc_items.len() {
             // When the amount of missing associated types equals the number of
@@ -1307,7 +1386,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //        bindings were provided).
         let where_msg = "consider introducing a new type parameter, adding `where` constraints \
                          using the fully-qualified path to the associated types";
-        if !where_constraints.is_empty() && suggestions.is_empty() {
+        if !where_constraints.is_empty()
+            && suggestions.is_empty()
+            && !(tcx.def_kind(self.item_def_id()) == DefKind::Fn
+                && !tcx.def_span(self.item_def_id()).overlaps(principal_span))
+        {
             // If there are duplicates associated type names and a single trait bound do not
             // use structured suggestion, it means that there are multiple supertraits with
             // the same associated type name.
