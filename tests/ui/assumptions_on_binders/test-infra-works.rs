@@ -86,8 +86,16 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<TParam: Trait> {
         forall<'a> where TParam: 'a { },
-        forall<'a> where TParam::Assoc: 'a { },
-        forall<'a, T> where T: 'a { },
+        forall<'b> where TParam::Assoc: 'b { },
+        forall<'c, T> where T: 'c { },
+    }
+}
+
+core::test_binder_constraints! {
+    impl {
+        forall<'a> {},
+        // leaking 'a
+        'static: 'a,
     }
 }
 

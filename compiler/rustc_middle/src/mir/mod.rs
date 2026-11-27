@@ -1324,13 +1324,6 @@ pub struct BasicBlockData<'tcx> {
     pub after_last_stmt_debuginfos: StmtDebugInfos<'tcx>,
 
     /// Terminator for this block.
-    ///
-    /// N.B., this should generally ONLY be `None` during construction.
-    /// Therefore, you should generally access it via the
-    /// `terminator()` or `terminator_mut()` methods. The only
-    /// exception is that certain passes, such as `simplify_cfg`, swap
-    /// out the terminator temporarily with `None` while they continue
-    /// to recurse over the set of basic blocks.
     pub terminator: Terminator<'tcx>,
 
     /// If true, this block lies on an unwind path. This is used
@@ -1358,10 +1351,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         }
     }
 
-    /// Accessor for terminator.
-    ///
-    /// Terminator may not be None after construction of the basic block is complete. This accessor
-    /// provides a convenient way to reach the terminator.
     #[inline]
     pub fn terminator(&self) -> &Terminator<'tcx> {
         &self.terminator

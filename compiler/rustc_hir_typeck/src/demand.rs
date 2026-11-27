@@ -13,7 +13,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 use tracing::instrument;
 
-use super::method::probe;
+use super::method::{MethodCallee, probe};
 use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -283,6 +283,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Err(err)
     }
 
+    fn method_call_arg_formal_ty(
+        &self,
+        method: MethodCallee<'tcx>,
+        arg_idx: usize,
+    ) -> Option<Ty<'tcx>> {
+        let param_pos = arg_idx + 1;
+        let generics = self.tcx.generics_of(method.def_id);
+        if !generics.has_arg_pos_consts {
+            return method.sig.inputs().get(param_pos).copied();
+        }
+
+        let mut sig_idx = param_pos;
+        for (param, pos) in generics.own_arg_pos_consts() {
+            let pos = pos as usize;
+            if pos == param_pos {
+                let ty = self.tcx.type_of(param.def_id).instantiate(self.tcx, method.args);
+                return Some(ty.skip_norm_wip());
+            } else if pos < param_pos {
+                sig_idx -= 1;
+            }
+        }
+        method.sig.inputs().get(sig_idx).copied()
+    }
+
     /// Notes the point at which a variable is constrained to some type incompatible
     /// with some expectation given by `source`.
     pub(crate) fn note_source_of_type_mismatch_constraint(
@@ -400,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
-                    let Some(input_arg) = method.sig.inputs().get(idx + 1) else {
+                    let Some(input_arg) = self.method_call_arg_formal_ty(method, idx) else {
                         if method.sig.splatted().is_some() {
                             // FIXME(splat): when the arg is splatted, adjust its index, to handle the type mismatch properly
                             return None;
@@ -418,7 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             &ObligationCause::dummy(),
                             self.param_env,
                             DefineOpaqueTypes::Yes,
-                            *input_arg,
+                            input_arg,
                             arg_ty,
                         )
                         .ok()?;
@@ -514,15 +538,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Find what argument caused our rcvr to become incompatible
                 // with the expected ty.
-                for (idx, (expected_arg_ty, arg_expr)) in
-                    std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
-                {
+                for (idx, arg_expr) in args.iter().enumerate() {
+                    let Some(expected_arg_ty) = self.method_call_arg_formal_ty(method, idx) else {
+                        continue;
+                    };
                     let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else {
                         continue;
                     };
                     let arg_ty = arg_ty.fold_with(&mut fudger);
-                    let _ =
-                        self.coerce(arg_expr, arg_ty, *expected_arg_ty, AllowTwoPhase::No, None);
+                    let _ = self.coerce(arg_expr, arg_ty, expected_arg_ty, AllowTwoPhase::No, None);
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
                         errs.clear();
@@ -553,8 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .typeck_results
                                 .borrow()
                                 .type_dependent_def_id(parent_expr.hir_id)
-                        && let ideal_arg_ty =
-                            self.deeply_resolve_ignoring_regions(ideal_method.sig.inputs()[idx + 1])
+                        && let Some(ideal_arg_ty) =
+                            self.method_call_arg_formal_ty(ideal_method, idx)
+                        && let ideal_arg_ty = self.deeply_resolve_ignoring_regions(ideal_arg_ty)
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(

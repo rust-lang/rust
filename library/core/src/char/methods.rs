@@ -823,7 +823,7 @@ impl char {
     /// assert!(!'京'.is_cased());
     /// ```
     #[must_use]
-    #[stable(feature = "cased", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "titlecase", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn is_cased(self) -> bool {
         match self {
