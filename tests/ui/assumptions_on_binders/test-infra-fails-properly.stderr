@@ -47,7 +47,7 @@ LL |         dyn for<'b> Trait<'b>: 'a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: it is a (dyn for<'b> Trait<'b> + 'static)
-   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:15 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }] + 'static
+   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:17 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }] + 'static
 
 error: the lhs of a forall where clause must be an alias, placeholder, or lifetime
   --> $DIR/test-infra-fails-properly.rs:48:9
@@ -143,7 +143,19 @@ error: unable to satisfy constraints involving placeholders due to unknown impli
 LL |         forall<'a> where 'a: 'static {
    |         ^^^^^^
 
-error: aborting due to 17 previous errors
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-fails-properly.rs:138:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-fails-properly.rs:157:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0403, E0658.
 For more information about an error, try `rustc --explain E0403`.
