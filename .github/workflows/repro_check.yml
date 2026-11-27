@@ -1,0 +1,98 @@
+# Workflow that runs after a merge to master, builds toolchain in 2 different
+# directories to check for reproducible builds. This check helps track which
+# commits cause reproducibility issues. This check should pass before stable
+# releases are made.
+
+name: Reproducibility check
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build_and_compare:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and store toolchains
+        run: |
+          # Define build function
+          build_toolchain() {
+            local dir_name="$1"
+            echo "Building in $dir_name..."
+
+            mkdir "../$dir_name"
+            cp -r . "../$dir_name/rust"
+            pushd "../$dir_name"
+
+            # Find source directory
+            SOURCE_DIR="./rust"
+
+            # Build rust till stage 2
+            $SOURCE_DIR/x.py build --stage 2
+
+            # Remove copy of source directory to save space
+            rm -rf "$SOURCE_DIR"
+
+            # Save stage2 directory
+            STAGE2_DIR=$(find build -name stage2)
+            cp -r "$STAGE2_DIR" .
+            echo "Contents of stage2 dir in $dir_name: $(ls stage2)"
+
+            # Clean up to save space
+            rm -rf build
+            popd
+          }
+
+          # Build both
+          build_toolchain buildA
+          build_toolchain buildA_extended
+
+# Compare the two builds
+      - name: Compare builds
+        id: compare
+        run: |
+          # Ensure the directories exist
+          if [[ ! -d "../buildA" || ! -d "../buildA_extended" ]]; then
+            echo "Error: Build directories not found!"
+            exit 1
+          fi
+          mv ../buildA ../buildA_extended .
+          # Perform a recursive diff between the stage2 directories of both builds
+          # If there are differences, record the result so we can upload artifacts and then fail later
+          # The binaries should be identical, so the cause of difference should be analysed and fixed
+          # appropriately.
+          if diff -r buildA/stage2 buildA_extended/stage2; then
+            echo "No differences found."
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          else
+            echo "Differences found!"
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+          fi
+
+# Upload buildA and buildA_extended directories as an artifact (for debugging purposes)
+# The artifacts contain the stage2 folder from both builds. The artifact are
+# helpful to debug the reproducibility issue when this test fails.
+      - name: Upload buildA artifact
+        if: steps.compare.outputs.has_diff == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA
+          path: buildA
+
+      - name: Upload buildA_extended artifact
+        if: steps.compare.outputs.has_diff == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA_extended
+          path: buildA_extended
+
+# Fail the job if differences were found between the builds
+      - name: Fail the job if there are differences
+        if: steps.compare.outputs.has_diff == 'true'
+        run: |
+          echo "Differences found between buildA and buildA_extended, Reproducibility check failed"
+          exit 1
