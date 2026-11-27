@@ -711,3 +711,30 @@ pub fn getgid() -> u32 {
 pub fn getegid() -> u32 {
     unsafe { libc::getegid() as u32 }
 }
+
+pub fn getgroups() -> io::Result<Vec<u32>> {
+    getgroups_with(|groups| {
+        cvt_r(|| unsafe { libc::getgroups(groups.len() as c_int, groups.as_mut_ptr()) })
+    })
+}
+
+fn getgroups_with(
+    mut query: impl FnMut(&mut [gid_t]) -> io::Result<c_int>,
+) -> io::Result<Vec<u32>> {
+    loop {
+        let size = query(&mut [])?;
+        if size == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut groups = vec![0; size as usize];
+        match query(&mut groups) {
+            Ok(count) => {
+                groups.truncate(count as usize);
+                return Ok(groups.into_iter().map(|gid| gid as u32).collect());
+            }
+            Err(e) if e.raw_os_error() == Some(libc::EINVAL) => continue,
+            Err(e) => return Err(e),
+        }
+    }
+}

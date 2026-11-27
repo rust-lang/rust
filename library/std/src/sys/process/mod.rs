@@ -36,7 +36,7 @@ pub use imp::{
     getpid, read_output,
 };
 #[cfg(target_family = "unix")]
-pub use imp::{getegid, geteuid, getgid, getppid, getuid};
+pub use imp::{getegid, geteuid, getgid, getgroups, getppid, getuid};
 
 #[cfg(any(
     all(
