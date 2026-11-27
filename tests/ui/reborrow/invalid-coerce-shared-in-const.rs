@@ -12,7 +12,7 @@ struct MyRef<'a> {
 }
 
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-//~^ ERROR implementing `CoerceShared` requires source and target structs to use the same field style
+//~^ ERROR implementing `CoerceShared` requires source and target types to use the same field style
 const {
     let value = 1;
     foo(MyMut(&value));

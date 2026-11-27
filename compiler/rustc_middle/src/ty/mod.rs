@@ -1595,6 +1595,10 @@ impl VariantDef {
     pub fn has_unsafe_fields(&self) -> bool {
         self.fields.iter().any(|x| x.safety.is_unsafe())
     }
+
+    pub fn find_field(&self, name: Symbol) -> Option<(FieldIdx, &FieldDef)> {
+        self.fields.iter_enumerated().find(|(_, def)| def.name == name)
+    }
 }
 
 impl PartialEq for VariantDef {

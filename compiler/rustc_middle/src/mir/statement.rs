@@ -3,8 +3,10 @@
 use std::fmt::Debug;
 use std::ops;
 
+use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::outline;
 use rustc_span::bug;
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -438,18 +440,41 @@ impl<'tcx> Place<'tcx> {
 
     /// Return a place that projects to a field of the current place.
     ///
-    /// The type of the current place must be an ADT.
+    /// The type of the current place must be a Struct or Union.
     pub fn project_to_field(
         self,
         idx: FieldIdx,
         local_decls: &(impl HasLocalDecls<'tcx> + ?Sized),
         tcx: TyCtxt<'tcx>,
     ) -> Self {
+        assert!(!self.ty(local_decls, tcx).ty.is_enum());
+        self.project_to_variant_field(FIRST_VARIANT, idx, local_decls, tcx)
+    }
+
+    /// Return a place that projects to an field of the current place.
+    ///
+    /// The type of the current place must be an ADT.
+    pub fn project_to_variant_field(
+        self,
+        variant_idx: VariantIdx,
+        field_idx: FieldIdx,
+        local_decls: &(impl HasLocalDecls<'tcx> + ?Sized),
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
         let ty = self.ty(local_decls, tcx).ty;
         let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
-        let field = &adt.non_enum_variant().fields[idx];
+
+        let variant = adt.variant(variant_idx);
+        let field = &variant.fields[field_idx];
         let field_ty = field.ty(tcx, *args).skip_norm_wip();
-        self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+
+        let mut more_projections = SmallVec::<[PlaceElem<'tcx>; 2]>::new();
+        if adt.is_enum() {
+            more_projections.push(ProjectionElem::Downcast(Some(variant.name), variant_idx));
+        };
+        more_projections.push(ProjectionElem::Field(field_idx, field_ty));
+
+        self.project_deeper(&more_projections, tcx)
     }
 
     pub fn ty_from<D>(

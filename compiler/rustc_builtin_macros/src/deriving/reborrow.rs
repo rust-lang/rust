@@ -63,10 +63,8 @@ fn struct_def<'a>(
     trait_name: Symbol,
 ) -> Option<(Ident, &'a Generics)> {
     match &item.kind {
-        ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
-        ItemKind::Enum(..) => {
-            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
-            None
+        ItemKind::Struct(ident, generics, _) | ItemKind::Enum(ident, generics, _) => {
+            Some((*ident, generics))
         }
         ItemKind::Union(..) => {
             cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
@@ -230,7 +228,7 @@ fn push_marker_impl(
 }
 
 #[derive(Diagnostic)]
-#[diag("`derive({$trait_name})` is only supported for structs, not {$kind}s", code = E0802)]
+#[diag("`derive({$trait_name})` is only supported for structs or enums, not {$kind}s", code = E0802)]
 struct UnsupportedItem {
     #[primary_span]
     span: Span,

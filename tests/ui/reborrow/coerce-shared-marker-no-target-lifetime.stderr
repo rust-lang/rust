@@ -1,4 +1,4 @@
-error: implementing `CoerceShared` requires source and target structs to use the same field style
+error: implementing `CoerceShared` requires source and target types to use the same field style
   --> $DIR/coerce-shared-marker-no-target-lifetime.rs:13:1
    |
 LL | impl<'a> CoerceShared<CustomMarkerRef> for CustomMarker<'a> {}
