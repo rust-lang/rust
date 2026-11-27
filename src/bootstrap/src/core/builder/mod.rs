@@ -1053,7 +1053,7 @@ impl<'a> Builder<'a> {
                 run::GenerateHelp,
             ),
             Kind::Setup => {
-                describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
+                describe!(setup::BootstrapToml, setup::Hook, setup::Link, setup::Editor)
             }
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
