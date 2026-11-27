@@ -43,7 +43,7 @@ use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::{ContextOrd, Decodable, Decoder, Encodable};
 use tracing::{debug, trace};
 
-use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, ModId, StableCrateId};
+use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, ModId, StableCrateId};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
@@ -1083,8 +1083,9 @@ impl SyntaxContext {
                 | DesugaringKind::OpaqueTy
                 | DesugaringKind::Async
                 | DesugaringKind::Await,
+                ..,
             ) => false,
-            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
+            ExpnKind::AstPass(_) | ExpnKind::Desugaring(..) => true, // well, it's "external"
             ExpnKind::Macro(MacroKind::Bang, _) => {
                 // Dummy span for the `def_site` means it's an external macro.
                 expn_data.def_site.is_dummy() || sm.is_imported(expn_data.def_site)
@@ -1101,12 +1102,13 @@ impl Span {
         self,
         allow_internal_unstable: Option<Arc<[Symbol]>>,
         reason: DesugaringKind,
+        def_id: LocalDefId, /* see doc for `ExpnKind::Desugaring` */
         edition: Edition,
         hcx: impl StableHashCtxt,
     ) -> Span {
         let expn_data = ExpnData {
             allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None, None)
+            ..ExpnData::default(ExpnKind::Desugaring(reason, def_id), self, edition, None, None)
         };
         let expn_id = LocalExpnId::fresh(expn_data, hcx);
         self.apply_mark(expn_id.to_expn_id(), Transparency::Transparent)
@@ -1272,7 +1274,14 @@ pub enum ExpnKind {
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
     /// Desugaring done by the compiler during AST lowering.
-    Desugaring(DesugaringKind),
+    /// When parallel AST -> HIR lowering is enabled, we may encounter
+    /// non-deterministic hashes due to using disambiguators for expansions
+    /// of the same kind across different owners. The def id of an owner
+    /// makes hashes different without disambiguators, and if we encounter
+    /// same desugarings in a single owner then disambiguators will be
+    /// deterministic as lowering of a single owner is deterministic at the
+    /// moment of writing.
+    Desugaring(DesugaringKind, LocalDefId),
 }
 
 impl ExpnKind {
@@ -1285,7 +1294,7 @@ impl ExpnKind {
                 MacroKind::Derive => format!("#[derive({name})]"),
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
-            ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
+            ExpnKind::Desugaring(kind, ..) => format!("desugaring of {}", kind.descr()),
         }
     }
 }
@@ -1713,14 +1722,15 @@ impl SyntaxContext {
 
             let get_hashing_data = |data: &HygieneData| {
                 let (expn_id, transparency) = data.outer_mark(self);
-                (data.expn_hash(expn_id).0, transparency)
+                (data.parent_ctxt(self), data.expn_hash(expn_id).0, transparency)
             };
 
-            let (hash, transparency) = match data {
+            let (parent, hash, transparency) = match data {
                 Some(data) => get_hashing_data(data),
                 None => HygieneData::with(|data| get_hashing_data(data)),
             };
 
+            parent.stable_hash_internal(data, hcx, hasher);
             hash.stable_hash(hcx, hasher);
             transparency.stable_hash(hcx, hasher);
         }

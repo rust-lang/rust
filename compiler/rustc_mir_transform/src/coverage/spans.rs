@@ -134,7 +134,7 @@ fn single_covspan_for_child_context(
     let bcb = match node.expn_kind {
         // For bang-macros (e.g. `assert!`, `trace!`) and for `await`, taking
         // the "first" BCB in dominator order seems to give good results.
-        ExpnKind::Macro(MacroKind::Bang, _) | ExpnKind::Desugaring(DesugaringKind::Await) => {
+        ExpnKind::Macro(MacroKind::Bang, _) | ExpnKind::Desugaring(DesugaringKind::Await, ..) => {
             minmax_bcbs.min
         }
         // For other kinds of expansion, taking the "last" (most-dominated) BCB

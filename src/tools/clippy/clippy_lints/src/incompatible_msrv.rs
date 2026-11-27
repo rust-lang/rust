@@ -183,7 +183,7 @@ impl IncompatibleMsrv {
             match expn.kind {
                 // FIXME(@Jarcho): Check that the actual desugaring or std macro is supported by the
                 // current MSRV. Note that nested expansions need to be handled as well.
-                ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return,
+                ExpnKind::AstPass(_) | ExpnKind::Desugaring(..) => return,
                 ExpnKind::Macro(..) if expn.macro_def_id.is_some_and(|did| self.std_crates.contains(did.krate)) => {
                     return;
                 },

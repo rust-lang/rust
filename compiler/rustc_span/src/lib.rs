@@ -789,7 +789,7 @@ impl Span {
     pub fn is_from_async_await(self) -> bool {
         matches!(
             self.ctxt().outer_expn_data().kind,
-            ExpnKind::Desugaring(DesugaringKind::Async | DesugaringKind::Await),
+            ExpnKind::Desugaring(DesugaringKind::Async | DesugaringKind::Await, ..),
         )
     }
 
@@ -1036,7 +1036,7 @@ impl Span {
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
     pub fn is_desugaring(self, kind: DesugaringKind) -> bool {
         match self.ctxt().outer_expn_data().kind {
-            ExpnKind::Desugaring(k) => k == kind,
+            ExpnKind::Desugaring(k, ..) => k == kind,
             _ => false,
         }
     }
@@ -1045,7 +1045,7 @@ impl Span {
     /// if this span is not from a desugaring.
     pub fn desugaring_kind(self) -> Option<DesugaringKind> {
         match self.ctxt().outer_expn_data().kind {
-            ExpnKind::Desugaring(k) => Some(k),
+            ExpnKind::Desugaring(k, ..) => Some(k),
             _ => None,
         }
     }
