@@ -214,15 +214,16 @@ The order of these command line arguments is taken into account. The following a
 $ rustc lib.rs --crate-type=lib -D unused-variables -A unused-variables
 ```
 
-You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group (forbid still trumps everything regardless of ordering):
+You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group (this does not work for `forbid`, see below):
 
 ```bash
 $ rustc lib.rs --crate-type=lib -D unused -A unused-variables
 ```
 
-Since `force-warn` and `forbid` cannot be overridden, setting
-one of them will prevent any later level for the same lint from
-taking effect.
+Since `force-warn` cannot be overridden, setting it will prevent
+any later level for the same lint from taking effect. A later `-A`,
+`-W` or `--force-warn` for a lint set to `forbid` is an error, and a
+later `-D` is ignored.
 
 ### Via an attribute
 
