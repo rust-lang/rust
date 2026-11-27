@@ -106,12 +106,12 @@ error: type `S2` is private
 LL |     adjust::S1.method_s3();
    |     ^^^^^^^^^^ private type
 
-error: type `fn() {priv_fn}` is private
+error: function `priv_fn` is private
   --> $DIR/private-inferred-type.rs:39:9
    |
 LL |     pub macro m() {
 LL |         priv_fn;
-   |         ^^^^^^^ private type
+   |         ^^^^^^^ private function
 ...
 LL |     m::m!();
    |     ------- in this macro invocation
@@ -127,13 +127,13 @@ LL |         PrivEnum::Variant;
 LL |     m::m!();
    |     ------- in this macro invocation
 
-error: type `fn() {<u8 as PrivTrait>::method}` is private
+error: associated function `PrivTrait::method` is private
   --> $DIR/private-inferred-type.rs:43:9
    |
 LL |     pub macro m() {
 ...
 LL |         <u8 as PrivTrait>::method;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ private associated function
 ...
 LL |     m::m!();
    |     ------- in this macro invocation
@@ -160,13 +160,13 @@ LL |         PubTupleStruct;
 LL |     m::m!();
    |     ------- in this macro invocation
 
-error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+error: method `Pub::<u8>::priv_method` is private
   --> $DIR/private-inferred-type.rs:49:18
    |
 LL |     pub macro m() {
 ...
 LL |         Pub(0u8).priv_method();
-   |                  ^^^^^^^^^^^ private type
+   |                  ^^^^^^^^^^^ private method
 ...
 LL |     m::m!();
    |     ------- in this macro invocation

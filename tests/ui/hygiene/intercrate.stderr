@@ -1,8 +1,8 @@
-error: type `fn() -> u32 {foo::bar::f}` is private
+error: function `foo::bar::f` is private
   --> $DIR/intercrate.rs:8:16
    |
 LL |     assert_eq!(intercrate::foo::m!(), 1);
-   |                ^^^^^^^^^^^^^^^^^^^^^ private type
+   |                ^^^^^^^^^^^^^^^^^^^^^ private function
    |
    = note: this error originates in the macro `intercrate::foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
