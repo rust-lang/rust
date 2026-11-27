@@ -95,7 +95,6 @@
 #![feature(const_select_unpredictable)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
-#![feature(disjoint_bitor)]
 #![feature(io_const_error)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
