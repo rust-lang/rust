@@ -3,6 +3,7 @@
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::marker::PhantomData;
+use crate::ptr::Metadata;
 
 /// Field Representing Type
 #[unstable(feature = "field_representing_type_raw", issue = "none")]
@@ -167,4 +168,100 @@ pub unsafe trait Field: Send + Sync + Copy {
     /// The offset of the field in bytes.
     #[lang = "field_offset"]
     const OFFSET: usize = crate::intrinsics::field_offset::<Self>();
+}
+
+// TODO: make a supertrait of `Field`
+pub unsafe trait Subplace {
+    type Source: ?Sized;
+
+    type Target: ?Sized;
+
+    fn offset(self, metadata: Metadata<Self::Source>) -> (usize, Metadata<Self::Target>);
+}
+
+unsafe impl<F: Field> Subplace for F {
+    type Source = F::Base;
+    type Target = F::Type;
+
+    fn offset(self, base_meta: Metadata<F::Base>) -> (usize, Metadata<F::Type>) {
+        (F::OFFSET, base_meta)
+    }
+}
+
+pub struct ConstArrayIndex<T, const SIZE: usize, const IDX: usize>(PhantomData<T>);
+
+unsafe impl<T, const SIZE: usize, const IDX: usize> Subplace for ConstArrayIndex<T, SIZE, IDX> {
+    type Source = [T; SIZE];
+    type Target = T;
+
+    fn offset(self, (): Metadata<[T; SIZE]>) -> (usize, Metadata<T>) {
+        (IDX * size_of::<T>(), ())
+    }
+}
+
+pub struct DynArrayIndex<T, const SIZE: usize>(usize, PhantomData<T>);
+
+unsafe impl<T, const SIZE: usize> Subplace for DynArrayIndex<T, SIZE> {
+    type Source = [T; SIZE];
+    type Target = T;
+
+    fn offset(self, (): Metadata<[T; SIZE]>) -> (usize, Metadata<T>) {
+        (self.0 * size_of::<T>(), ())
+    }
+}
+
+pub struct ConstArraySlice<T, const SIZE: usize, const START: usize, const END: usize>(
+    PhantomData<T>,
+);
+
+unsafe impl<T, const SIZE: usize, const START: usize, const END: usize> Subplace
+    for ConstArraySlice<T, SIZE, START, END>
+{
+    type Source = [T; SIZE];
+    type Target = [T];
+
+    fn offset(self, (): Metadata<[T; SIZE]>) -> (usize, Metadata<[T]>) {
+        (START * size_of::<T>(), END - START)
+    }
+}
+
+pub struct DynArraySlice<T, const SIZE: usize> {
+    pub start: usize,
+    pub end: usize,
+    pub _phantom: PhantomData<T>,
+}
+
+unsafe impl<T, const SIZE: usize> Subplace for DynArraySlice<T, SIZE> {
+    type Source = [T; SIZE];
+    type Target = [T];
+
+    fn offset(self, (): Metadata<[T; SIZE]>) -> (usize, Metadata<[T]>) {
+        (self.start * size_of::<T>(), self.end - self.start)
+    }
+}
+
+pub struct SliceIndex<T>(usize, PhantomData<T>);
+
+unsafe impl<T> Subplace for SliceIndex<T> {
+    type Source = [T];
+    type Target = T;
+
+    fn offset(self, len: Metadata<[T]>) -> (usize, Metadata<T>) {
+        (self.0 * size_of::<T>(), ())
+    }
+}
+
+pub struct Subslice<T> {
+    pub start: usize,
+    pub end: usize,
+    pub _phantom: PhantomData<T>,
+}
+
+unsafe impl<T> Subplace for Subslice<T> {
+    type Source = [T];
+    type Target = [T];
+
+    fn offset(self, len: Metadata<[T]>) -> (usize, Metadata<[T]>) {
+        (self.start * size_of::<T>(), self.end - self.start)
+    }
 }
