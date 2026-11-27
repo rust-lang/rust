@@ -384,7 +384,9 @@ where
                             self.b.next_back();
                         }
                     }
-                    debug_assert_eq!(self.a.size(), self.b.size());
+                    if A::MAY_HAVE_SIDE_EFFECT && B::MAY_HAVE_SIDE_EFFECT {
+                        debug_assert_eq!(self.a.size(), self.b.size());
+                    }
                 }
             }
             let i = self.len;
