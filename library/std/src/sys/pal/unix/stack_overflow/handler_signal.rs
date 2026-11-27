@@ -168,6 +168,7 @@ fn get_stack() -> libc::stack_t {
         target_os = "netbsd",
         target_os = "linux",
         target_os = "dragonfly",
+        target_os = "serenity",
     ))]
     let flags = MAP_PRIVATE | MAP_ANON | libc::MAP_STACK;
     #[cfg(not(any(
@@ -175,6 +176,7 @@ fn get_stack() -> libc::stack_t {
         target_os = "netbsd",
         target_os = "linux",
         target_os = "dragonfly",
+        target_os = "serenity",
     )))]
     let flags = MAP_PRIVATE | MAP_ANON;
 
@@ -341,6 +343,17 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
     Some(stack_ptr.with_addr(stackaddr))
 }
 
+#[cfg(target_os = "serenity")]
+fn get_stack_start() -> Option<*mut libc::c_void> {
+    let mut user_stack_base: *mut libc::c_void = crate::ptr::null_mut();
+    let mut user_stack_size: libc::size_t = 0;
+    // SAFETY:
+    // The pointers are valid for writing a `*mut libc::c_void` and a `size_t`.
+    assert_eq!(unsafe { libc::get_stack_bounds(&mut user_stack_base, &mut user_stack_size) }, 0);
+
+    Some(user_stack_base)
+}
+
 #[cfg(any(
     target_os = "android",
     target_os = "freebsd",
@@ -433,7 +446,7 @@ unsafe fn install_main_guard() -> Option<Range<usize>> {
         // The FreeBSD code cannot be checked on non-BSDs.
         #[cfg(target_os = "freebsd")]
         install_main_guard_freebsd(page_size)
-    } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
+    } else if cfg!(any(target_os = "netbsd", target_os = "openbsd", target_os = "serenity")) {
         install_main_guard_bsds(page_size)
     } else {
         // SAFETY: guaranteed by caller.
@@ -504,7 +517,7 @@ fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
     }
     // OpenBSD stack already includes a guard page, and stack is
     // immutable.
-    // NetBSD stack includes the guard page.
+    // NetBSD and SerenityOS stack includes the guard page.
     //
     // We'll just note where we expect rlimit to start
     // faulting, so our handler can report "stack overflow", and
@@ -565,6 +578,7 @@ unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
     target_os = "openbsd",
     target_os = "solaris",
     target_os = "illumos",
+    target_os = "serenity",
 ))]
 fn current_guard() -> Option<Range<usize>> {
     let stackptr = get_stack_start()?;

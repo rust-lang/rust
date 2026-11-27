@@ -22,7 +22,8 @@ pub fn pipe() -> io::Result<(Pipe, Pipe)> {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "cygwin",
-            target_os = "redox"
+            target_os = "redox",
+            target_os = "serenity",
         ) => unsafe {
             cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;
             Ok((Pipe::from_raw_fd(fds[0]), Pipe::from_raw_fd(fds[1])))
