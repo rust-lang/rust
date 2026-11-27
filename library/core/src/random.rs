@@ -113,8 +113,34 @@ lemire_sample!(bounded32(u32));
 lemire_sample!(bounded64(u64));
 lemire_sample!(bounded128(u128));
 
+#[inline(always)] // We really want the conversions to be eliminated...
+fn bounded(bound: u128, source: &mut (impl Rng + ?Sized)) -> u128 {
+    if let Ok(bound) = u32::try_from(bound) {
+        if bound.is_power_of_two() {
+            let sample: u32 = RangeFull.sample(source);
+            (sample & (bound - 1)).into()
+        } else {
+            bounded32(bound, source).into()
+        }
+    } else if let Ok(bound) = u64::try_from(bound) {
+        if bound.is_power_of_two() {
+            let sample: u64 = RangeFull.sample(source);
+            (sample & (bound - 1)).into()
+        } else {
+            bounded64(bound, source).into()
+        }
+    } else {
+        if bound.is_power_of_two() {
+            let sample: u128 = RangeFull.sample(source);
+            sample & (bound - 1)
+        } else {
+            bounded128(bound, source)
+        }
+    }
+}
+
 macro_rules! impl_range {
-    ($unsigned:ty, $signed:ty as $base:ty => $bounded:ident) => {
+    ($unsigned:ty, $signed:ty) => {
         impl Distribution<$unsigned> for RangeInclusive<$unsigned> {
             /// Chooses a random number within the range.
             ///
@@ -169,14 +195,8 @@ macro_rules! impl_range {
                     return RangeFull.sample(source);
                 };
 
-                let offset = if bound.is_power_of_two() {
-                    let sample: $unsigned = RangeFull.sample(source);
-                    sample & (bound - 1)
-                } else {
-                    $bounded(bound as $base, source) as $unsigned
-                };
-
-                self.start + offset
+                let offset = bounded(bound as u128, source) as $unsigned;
+                self.start.wrapping_add(offset)
             }
         }
 
@@ -235,28 +255,16 @@ macro_rules! impl_range {
                     return RangeFull.sample(source);
                 };
 
-                let offset = if bound.is_power_of_two() {
-                    let sample: $unsigned = RangeFull.sample(source);
-                    sample & (bound - 1)
-                } else {
-                    $bounded(bound as $base, source) as $unsigned
-                };
-
+                let offset = bounded(bound as u128, source) as $unsigned;
                 self.start.wrapping_add_unsigned(offset)
             }
         }
     };
 }
 
-// Use 32-bit integers for small integers since it reduces the likelihood of
-// sample rejections.
-impl_range!(u8, i8 as u32 => bounded32);
-impl_range!(u16, i16 as u32 => bounded32);
-
-impl_range!(u32, i32 as u32 => bounded32);
-impl_range!(u64, i64 as u64 => bounded64);
-impl_range!(u128, i128 as u128 => bounded128);
-#[cfg(any(target_pointer_width = "16", target_pointer_width = "32",))]
-impl_range!(usize, isize as u32 => bounded32);
-#[cfg(target_pointer_width = "64")]
-impl_range!(usize, isize as u64 => bounded64);
+impl_range!(u8, i8);
+impl_range!(u16, i16);
+impl_range!(u32, i32);
+impl_range!(u64, i64);
+impl_range!(u128, i128);
+impl_range!(usize, isize);
