@@ -82,12 +82,13 @@ pub(crate) mod destructors {
             mod linux_like;
             mod list;
             pub(super) use linux_like::register;
+            pub(crate) use list::disable;
             pub(super) use list::run;
         }
         _ => {
             mod list;
             pub(super) use list::register;
-            pub(crate) use list::run;
+            pub(crate) use list::{disable, run};
         }
     }
 }
