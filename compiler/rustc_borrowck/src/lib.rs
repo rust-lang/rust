@@ -344,7 +344,13 @@ fn borrowck_collect_region_constraints<'tcx>(
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
-    let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
+    let borrow_set = BorrowSet::build(
+        tcx,
+        body,
+        locals_are_invalidated_at_exit,
+        &move_data,
+        universal_regions.fr_static,
+    );
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 

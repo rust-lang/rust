@@ -686,6 +686,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
                 // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.regioncx.to_error_region_vid(borrow_region_vid) {
+                    // An inherently static borrow has no outlives constraint to blame.
+                    if region == borrow_region_vid {
+                        return BorrowExplanation::Unexplained;
+                    }
+
                     let best_blame = self.regioncx.best_blame_constraint(
                         borrow_region_vid,
                         NllRegionVariableOrigin::FreeRegion,

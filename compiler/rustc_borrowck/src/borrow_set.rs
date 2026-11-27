@@ -52,10 +52,12 @@ impl<'tcx> BorrowSet<'tcx> {
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
+        fr_static: RegionVid,
     ) -> Self {
         let mut visitor = GatherBorrows {
             tcx,
             body,
+            fr_static,
             borrows: Default::default(),
             location_map: Default::default(),
             activation_map: Default::default(),
@@ -233,6 +235,7 @@ impl LocalsStateAtExit {
 struct GatherBorrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
+    fr_static: RegionVid,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, SmallVec<[BorrowIndex; 1]>>,
     activation_map: FxHashMap<Location, SmallVec<[BorrowIndex; 1]>>,
@@ -290,6 +293,10 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         idxs
     }
 
+    fn reborrow_region_vid(&self, region: ty::Region<'tcx>) -> RegionVid {
+        if region.is_static() { self.fr_static } else { region.as_var() }
+    }
+
     fn gather_reborrows(
         &mut self,
         v: &mut SmallVec<[BorrowData<'tcx>; 1]>,
@@ -306,12 +313,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         for (source_idx, source_field) in source_adt.all_fields().enumerate() {
             let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
             match source_field_ty.kind() {
-                ty::Ref(source_region, _, source_mutability) if source_mutability.is_mut() => {
-                    if source_region.is_static() {
-                        bug!(
-                            "Cannot implement Reborrow on a type containing a &'static mut T field"
-                        );
-                    }
+                ty::Ref(_, _, source_mutability) if source_mutability.is_mut() => {
                     let Some((target_idx, target_field)) = target_adt
                         .all_fields()
                         .enumerate()
@@ -340,7 +342,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                     );
                     v.push(BorrowData {
                         kind,
-                        region: target_region.as_var(),
+                        region: self.reborrow_region_vid(*target_region),
                         reserve_location: location,
                         activation_location: TwoPhaseActivation::NotTwoPhase,
                         borrowed_place: source_field_deref_place,
@@ -403,7 +405,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
             // the borrow should be tied to, so borrow the whole source under each of them.
             let mut target_regions: SmallVec<[RegionVid; 1]> = SmallVec::new();
             for region in target_args.regions() {
-                let region = region.as_var();
+                let region = self.reborrow_region_vid(region);
                 if !target_regions.contains(&region) {
                     target_regions.push(region);
                 }
