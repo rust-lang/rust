@@ -2732,6 +2732,97 @@ fn test_cursor() {
 }
 
 #[test]
+fn test_cursor_find() {
+    // This BTreeMap should:
+    // - Contain keys sequentially from (1, 1) through (144, 144).
+    // - Should have three levels
+    // - 73 should be the (rounded) median of this BTreeMap. 73 +- 11 keys should
+    //   be enough to test traversal from both the root node, an internal node,
+    //   and leaf node.
+    let vec = Vec::from_iter((1..=144).map(|i| (i, i)));
+    let map = BTreeMap::from_iter(vec);
+
+    // Start from leftmost leaf node
+    let mut cur = map.lower_bound(Bound::Unbounded);
+    assert_eq!(cur.peek_next(), Some((&1, &1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Going from leftmost leaf node to rightmost leaf node
+    assert_eq!(cur.find_upper(Bound::Unbounded), None);
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&144, &144)));
+
+    // Going from rightmost leaf node to leftmost leaf node
+    assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &1)));
+    assert_eq!(cur.peek_next(), Some((&1, &1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Tests both traversal with an included lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 62..=73 {
+        assert_eq!(cur.find_lower(Bound::Included(&key)), Some((&key, &key)));
+        assert_eq!(cur.peek_next(), Some((&key, &key)));
+        let prev_key = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&prev_key, &prev_key)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &1)));
+        assert_eq!(cur.peek_next(), Some((&1, &1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an excluded lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 62..=73 {
+        let next_key = key + 1;
+        assert_eq!(cur.find_lower(Bound::Excluded(&key)), Some((&next_key, &next_key)));
+        assert_eq!(cur.peek_next(), Some((&next_key, &next_key)));
+        assert_eq!(cur.peek_prev(), Some((&key, &key)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &1)));
+        assert_eq!(cur.peek_next(), Some((&1, &1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an included upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 73..=84 {
+        let next_key = key + 1;
+        assert_eq!(cur.find_upper(Bound::Included(&key)), Some((&next_key, &next_key)));
+        assert_eq!(cur.peek_next(), Some((&next_key, &next_key)));
+        assert_eq!(cur.peek_prev(), Some((&key, &key)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&144, &144)));
+    }
+
+    // Tests both traversal with an excluded upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 73..=84 {
+        assert_eq!(cur.find_upper(Bound::Excluded(&key)), Some((&key, &key)));
+        assert_eq!(cur.peek_next(), Some((&key, &key)));
+        let prev_key = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&prev_key, &prev_key)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&144, &144)));
+    }
+}
+
+#[test]
 fn test_cursor_mut() {
     let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
     let mut cur = map.lower_bound_mut(Bound::Excluded(&3));
@@ -2763,6 +2854,105 @@ fn test_cursor_mut() {
 }
 
 #[test]
+fn test_cursor_mut_find() {
+    // This BTreeMap should:
+    // - Contain keys sequentially from (1, 1) through (144, 144).
+    // - Should have three levels
+    // - 73 should be the (rounded) median of this BTreeMap. 73 +- 11 keys should
+    //   be enough to test traversal from both the root node, an internal node,
+    //   and leaf node.
+    let vec = Vec::from_iter((1..=144).map(|i| (i, i)));
+    let mut map = BTreeMap::from_iter(vec);
+
+    // Start from leftmost leaf node
+    let mut cur = map.lower_bound_mut(Bound::Unbounded);
+    assert_eq!(cur.peek_next(), Some((&1, &mut 1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Going from leftmost leaf node to rightmost leaf node
+    assert_eq!(cur.find_upper(Bound::Unbounded), None);
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&144, &mut 144)));
+
+    // Going from rightmost leaf node to leftmost leaf node
+    assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &mut 1)));
+    assert_eq!(cur.peek_next(), Some((&1, &mut 1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Tests both traversal with an included lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 62..=73 {
+        let mut val = key;
+        assert_eq!(cur.find_lower(Bound::Included(&key)), Some((&key, &mut val)));
+        assert_eq!(cur.peek_next(), Some((&key, &mut val)));
+        let prev_key = key - 1;
+        let mut prev_val = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&prev_key, &mut prev_val)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &mut 1)));
+        assert_eq!(cur.peek_next(), Some((&1, &mut 1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an excluded lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 62..=73 {
+        let next_key = key + 1;
+        let mut next_val = key + 1;
+        assert_eq!(cur.find_lower(Bound::Excluded(&key)), Some((&next_key, &mut next_val)));
+        assert_eq!(cur.peek_next(), Some((&next_key, &mut next_val)));
+        let mut val = key;
+        assert_eq!(cur.peek_prev(), Some((&key, &mut val)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&1, &mut 1)));
+        assert_eq!(cur.peek_next(), Some((&1, &mut 1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an included upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 73..=84 {
+        let next_key = key + 1;
+        let mut next_val = key + 1;
+        assert_eq!(cur.find_upper(Bound::Included(&key)), Some((&next_key, &mut next_val)));
+        assert_eq!(cur.peek_next(), Some((&next_key, &mut next_val)));
+        let mut val = key;
+        assert_eq!(cur.peek_prev(), Some((&key, &mut val)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&144, &mut 144)));
+    }
+
+    // Tests both traversal with an excluded upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for key in 73..=84 {
+        let mut val = key;
+        assert_eq!(cur.find_upper(Bound::Excluded(&key)), Some((&key, &mut val)));
+        assert_eq!(cur.peek_next(), Some((&key, &mut val)));
+        let prev_key = key - 1;
+        let mut prev_val = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&prev_key, &mut prev_val)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&144, &mut 144)));
+    }
+}
+
+#[test]
 fn test_cursor_mut_key() {
     let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
     let mut cur = unsafe { map.lower_bound_mut(Bound::Excluded(&3)).with_mutable_key() };
@@ -2791,6 +2981,105 @@ fn test_cursor_mut_key() {
     assert_eq!(cur.peek_prev(), Some((&mut 3, &mut 'c')));
     assert_eq!(cur.remove_next(), Some((4, 'd')));
     assert_eq!(map, BTreeMap::from([(1, 'a'), (3, 'c')]));
+}
+
+#[test]
+fn test_cursor_mut_key_find() {
+    // This BTreeMap should:
+    // - Contain keys sequentially from (1, 1) through (144, 144).
+    // - Should have three levels
+    // - 73 should be the (rounded) median of this BTreeMap. 73 +- 11 keys should
+    //   be enough to test traversal from both the root node, an internal node,
+    //   and leaf node.
+    let vec = Vec::from_iter((1..=144).map(|i| (i, i)));
+    let mut map = BTreeMap::from_iter(vec);
+
+    // Start from leftmost leaf node
+    let mut cur = unsafe { map.lower_bound_mut(Bound::Unbounded).with_mutable_key() };
+    assert_eq!(cur.peek_next(), Some((&mut 1, &mut 1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Going from leftmost leaf node to rightmost leaf node
+    assert_eq!(cur.find_upper(Bound::Unbounded), None);
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&mut 144, &mut 144)));
+
+    // Going from rightmost leaf node to leftmost leaf node
+    assert_eq!(cur.find_lower(Bound::Unbounded), Some((&mut 1, &mut 1)));
+    assert_eq!(cur.peek_next(), Some((&mut 1, &mut 1)));
+    assert_eq!(cur.peek_prev(), None);
+
+    // Tests both traversal with an included lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for mut key in 62..=73 {
+        let mut val = key;
+        assert_eq!(cur.find_lower(Bound::Included(&key)), Some((&mut key, &mut val)));
+        assert_eq!(cur.peek_next(), Some((&mut key, &mut val)));
+        let mut prev_key = key - 1;
+        let mut prev_val = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&mut prev_key, &mut prev_val)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&mut 1, &mut 1)));
+        assert_eq!(cur.peek_next(), Some((&mut 1, &mut 1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an excluded lower bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for mut key in 62..=73 {
+        let mut next_key = key + 1;
+        let mut next_val = key + 1;
+        assert_eq!(cur.find_lower(Bound::Excluded(&key)), Some((&mut next_key, &mut next_val)));
+        assert_eq!(cur.peek_next(), Some((&mut next_key, &mut next_val)));
+        let mut val = key;
+        assert_eq!(cur.peek_prev(), Some((&mut key, &mut val)));
+
+        // Reset back to leftmost leaf node
+        assert_eq!(cur.find_lower(Bound::Unbounded), Some((&mut 1, &mut 1)));
+        assert_eq!(cur.peek_next(), Some((&mut 1, &mut 1)));
+        assert_eq!(cur.peek_prev(), None);
+    }
+
+    // Tests both traversal with an included upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for mut key in 73..=84 {
+        let mut next_key = key + 1;
+        let mut next_val = key + 1;
+        assert_eq!(cur.find_upper(Bound::Included(&key)), Some((&mut next_key, &mut next_val)));
+        assert_eq!(cur.peek_next(), Some((&mut next_key, &mut next_val)));
+        let mut val = key;
+        assert_eq!(cur.peek_prev(), Some((&mut key, &mut val)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&mut 144, &mut 144)));
+    }
+
+    // Tests both traversal with an excluded upper bound from:
+    // - Leaf Node to Root Node (and vice versa)
+    // - Leaf Node to Internal Node (and vice versa)
+    // - Leaf Node to sibling Leaf Node (and vice versa)
+    for mut key in 73..=84 {
+        let mut val = key;
+        assert_eq!(cur.find_upper(Bound::Excluded(&key)), Some((&mut key, &mut val)));
+        assert_eq!(cur.peek_next(), Some((&mut key, &mut val)));
+        let mut prev_key = key - 1;
+        let mut prev_val = key - 1;
+        assert_eq!(cur.peek_prev(), Some((&mut prev_key, &mut prev_val)));
+
+        // Reset back to rightmost leaf node
+        assert_eq!(cur.find_upper(Bound::Unbounded), None);
+        assert_eq!(cur.peek_next(), None);
+        assert_eq!(cur.peek_prev(), Some((&mut 144, &mut 144)));
+    }
 }
 
 #[test]
