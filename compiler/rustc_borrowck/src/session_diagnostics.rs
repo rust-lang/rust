@@ -504,6 +504,16 @@ pub(crate) enum CaptureReasonLabel<'a> {
         #[primary_span]
         var_span: Span,
     },
+    #[suggestion(
+        "consider calling `.take()` to replace the value and return the old",
+        applicability = "maybe-incorrect",
+        code = ".take()",
+        style = "verbose"
+    )]
+    OptionTake {
+        #[primary_span]
+        var_span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]
