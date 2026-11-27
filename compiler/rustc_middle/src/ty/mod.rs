@@ -109,7 +109,9 @@ pub use self::typeck_results::{
     UserTypeKind,
 };
 use crate::diagnostics::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
-use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
+use crate::mir::{
+    Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, QueriedCoroutineLayout, SourceInfo,
+};
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -2121,13 +2123,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgs<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<QueriedCoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
         let ty = || Ty::new_coroutine(self, def_id, args);
         // Regular coroutine
         if coroutine_kind_ty.is_unit() {
-            mir.coroutine_layout_raw().ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
+            mir.coroutine_layout_raw()
+                .map(|layout| QueriedCoroutineLayout::new(layout, Some(args)))
+                .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
         } else {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
@@ -2141,6 +2145,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // a by-ref coroutine.
             if identity_kind_ty == coroutine_kind_ty {
                 mir.coroutine_layout_raw()
+                    .map(|layout| QueriedCoroutineLayout::new(layout, Some(args)))
                     .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             } else {
                 assert_matches!(coroutine_kind_ty.to_opt_closure_kind(), Some(ClosureKind::FnOnce));
@@ -2150,6 +2155,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 );
                 self.optimized_mir(self.coroutine_by_move_body_def_id(def_id))
                     .coroutine_layout_raw()
+                    .map(|layout| QueriedCoroutineLayout::new(layout, Some(args)))
                     .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
             }
         }
@@ -2162,7 +2168,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgs<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<QueriedCoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
             return Err(self.layout_error(LayoutError::TooGeneric(ty())));
@@ -2170,6 +2176,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let instance = ShimKind::AsyncDropGlue(def_id, Ty::new_coroutine(self, def_id, args));
         self.mir_shims(instance)
             .coroutine_layout_raw()
+            .map(|layout| QueriedCoroutineLayout::new(layout, Some(args)))
             .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
     }
 
@@ -2179,7 +2186,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgs<'tcx>,
-    ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    ) -> Result<QueriedCoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
             // when T is a coroutine, contains this internal coroutine's ptr in upvars
@@ -2202,7 +2209,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     // FIXME(-Zpack-coroutine-layout): Stop ignoring the flag here.
                     pack: rustc_abi::PackCoroutineLayout::Classic,
                 };
-                return Ok(self.arena.alloc(proxy_layout));
+                let layout = self.arena.alloc(proxy_layout);
+                let queried_layout = QueriedCoroutineLayout::new(layout, Some(args));
+                return Ok(queried_layout);
             } else {
                 self.async_drop_coroutine_layout(def_id, args)
             }
