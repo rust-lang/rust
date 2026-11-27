@@ -1,6 +1,6 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
-//@run-native
+//@run-native: ignore-output
 
 use std::time::{Duration, Instant};
 use std::{env, mem, ptr};

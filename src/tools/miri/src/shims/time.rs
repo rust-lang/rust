@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::sync::atomic;
 use std::time::{Duration, SystemTime};
 
 use jiff::Timestamp;
@@ -144,10 +145,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timestamp = Timestamp::new(sec_since_epoch, 0).expect("timestamp should be valid");
 
         // Figure out what time zone is in use
-        let tz = ecx
-            .get_env_var(OsStr::new("TZ"))?
-            .and_then(|tz| TimeZone::get(tz.to_str()?).ok())
-            .unwrap_or(TimeZone::UTC);
+        let tz_name = ecx.get_env_var(OsStr::new("TZ"))?;
+        let tz =
+            tz_name.as_ref().and_then(|tz| TimeZone::get(tz.to_str()?).ok()).unwrap_or_else(|| {
+                // jiff does not support this timezone. That also happens for obsolete timezones
+                // that typically work on POSIX systems, like "PST8PDT". So let's emit a warning to
+                // make the user aware of this possible discrepancy.
+                if let Some(tz_name) = &tz_name {
+                    static DEDUP: atomic::AtomicBool = atomic::AtomicBool::new(false);
+                    if !DEDUP.swap(true, atomic::Ordering::Relaxed) {
+                        ecx.emit_diagnostic(NonHaltingDiagnostic::UnknownTimezone {
+                            timezone: tz_name.to_string_lossy().into_owned(),
+                        });
+                    }
+                }
+                TimeZone::UTC
+            });
 
         // Put the two together. Looks like we have to do this twice to get all the information.
         let dt = timestamp.to_zoned_datetime(tz.clone());
