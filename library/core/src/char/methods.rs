@@ -731,6 +731,7 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
     #[inline]
+    #[must_use]
     pub const fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
         unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
