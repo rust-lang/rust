@@ -3,7 +3,8 @@
 //!
 //! The `[perf]` table contains options specific to
 //! benchmarking using the `./x perf` command.
-#![expect(unused)]
+
+use std::path::PathBuf;
 
 use crate::core::config::macros::define_config;
 
@@ -11,6 +12,6 @@ define_config! {
     /// TOML representation of how rustc-perf is configured
     #[derive(Default)]
     struct Perf {
-
+        rustc_perf_path: Option<PathBuf> = "rustc-perf-path",
     }
 }

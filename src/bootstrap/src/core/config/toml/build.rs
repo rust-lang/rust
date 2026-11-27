@@ -76,7 +76,6 @@ define_config! {
         record_failed_tests_path: Option<String> = "record-failed-tests-path",
         sde: Option<String> = "sde",
         allocator: Option<Allocator> = "allocator",
-        rustc_perf_path: Option<PathBuf> = "rustc-perf-path",
     }
 }
 
