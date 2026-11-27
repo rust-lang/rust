@@ -4,13 +4,13 @@ use std::clone::Clone;
 /// [Clone](
 pub fn split_outer_inner() {
     //! std::clone::Clone)
-//~^^^ ERROR redundant_explicit_links
+    //~^^^ ERROR redundant_explicit_links
 }
 
 /// [Clone](std::clone::Clone
 pub fn split_outer_inner_b() {
     //! )
-//~^^^ ERROR redundant_explicit_links
+    //~^^^ ERROR redundant_explicit_links
 }
 
 /// [Clone](

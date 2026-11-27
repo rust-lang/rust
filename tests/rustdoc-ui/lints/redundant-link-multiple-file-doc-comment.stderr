@@ -1,0 +1,39 @@
+error: redundant explicit link target
+  --> $DIR/auxiliary/redundant-link-multiple-file-doc-comment.rs:1:17
+   |
+LL | //! See [`Foo`](crate::m::Foo).
+   |          -----  ^^^^^^^^^^^^^ explicit target is redundant
+   |          |
+   |          because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+note: the lint level is defined here
+  --> $DIR/redundant-link-multiple-file-doc-comment.rs:5:9
+   |
+LL | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove explicit link target
+   |
+LL - //! See [`Foo`](crate::m::Foo).
+LL + //! See [`Foo`].
+   |
+
+error: redundant explicit link target
+  --> $DIR/redundant-link-multiple-file-doc-comment.rs:15:19
+   |
+LL |     //! See [`A`](crate::a::A).
+   |              ---  ^^^^^^^^^^^ explicit target is redundant
+   |              |
+   |              because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL -     //! See [`A`](crate::a::A).
+LL +     //! See [`A`].
+   |
+
+error: aborting due to 2 previous errors
+

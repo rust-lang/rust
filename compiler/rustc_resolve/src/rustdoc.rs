@@ -682,27 +682,94 @@ pub fn source_span_for_markdown_range_inner(
         return None;
     }
 
-    let snippet = map.span_to_snippet(span_of_fragments(fragments)?).ok()?;
+    let mut md_lines = markdown.split_terminator('\n').enumerate().peekable();
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();
 
+    if let Some(inner_fragments_pos) =
+        fragments.iter().position(|frag| frag.style == AttrStyle::Inner)
+    {
+        match get_span_from_fragments(
+            map,
+            md_range,
+            &fragments[..inner_fragments_pos],
+            starting_line,
+            ending_line,
+            &mut md_lines,
+            0,
+        )? {
+            FragmentSpanLocation::Found { span, from_expansion } => Some((span, from_expansion)),
+            FragmentSpanLocation::NotFound { offset } => get_span_from_fragments(
+                map,
+                md_range,
+                &fragments[inner_fragments_pos..],
+                starting_line,
+                ending_line,
+                &mut md_lines,
+                offset,
+            )?
+            .to_option(),
+        }
+    } else {
+        get_span_from_fragments(
+            map,
+            md_range,
+            fragments,
+            starting_line,
+            ending_line,
+            &mut md_lines,
+            0,
+        )?
+        .to_option()
+    }
+}
+
+enum FragmentSpanLocation {
+    Found { span: Span, from_expansion: bool },
+    NotFound { offset: usize },
+}
+
+impl FragmentSpanLocation {
+    fn to_option(self) -> Option<(Span, bool)> {
+        match self {
+            Self::Found { span, from_expansion } => Some((span, from_expansion)),
+            Self::NotFound { .. } => None,
+        }
+    }
+}
+
+fn get_span_from_fragments<'a, I: Iterator<Item = (usize, &'a str)>>(
+    map: &SourceMap,
+    md_range: &Range<usize>,
+    fragments: &[DocFragment],
+    starting_line: usize,
+    ending_line: usize,
+    md_lines: &mut std::iter::Peekable<I>,
+    start_offset: usize,
+) -> Option<FragmentSpanLocation> {
+    if fragments.is_empty() || start_offset > md_range.start {
+        return Some(FragmentSpanLocation::NotFound { offset: 0 });
+    }
+    let span_of_all_fragments: Span = span_of_fragments(fragments)?;
+    let snippet = map.span_to_snippet(span_of_all_fragments).ok()?;
     // We use `split_terminator('\n')` instead of `lines()` when counting bytes so that we treat
     // CRLF and LF line endings the same way.
     let mut src_lines = snippet.split_terminator('\n');
-    let md_lines = markdown.split_terminator('\n');
 
     // The number of bytes from the source span to the markdown span that are not part
     // of the markdown, like comment markers.
     let mut start_bytes = 0;
     let mut end_bytes = 0;
 
-    let span_of_all_fragments: Span = span_of_fragments(fragments)?;
+    let mut md_offset = 0;
 
     let mut prev_lines_bytes = 0;
-    'outer: for (line_no, md_line) in md_lines.enumerate() {
+    'outer: while let Some(&(line_no, md_line)) = md_lines.peek() {
         loop {
-            let source_line = src_lines.next()?;
+            let Some(source_line) = src_lines.next() else {
+                return Some(FragmentSpanLocation::NotFound { offset: md_offset });
+            };
             let source_line_len = u32::try_from(source_line.len()).unwrap();
             let source_line_span =
                 span_of_all_fragments.split_at(prev_lines_bytes).1.split_at(source_line_len).0;
@@ -710,7 +777,7 @@ pub fn source_span_for_markdown_range_inner(
                 .iter()
                 // `source_line_span` might contain indentation that `fragment.span` doesn't contain
                 .find(|fragment| fragment.span.overlaps(source_line_span));
-            // Since we're counting bytes, `prev_line_bytes` includes the "\n".
+            // Since we're counting bytes, `prev_lines_bytes` includes the "\n".
             prev_lines_bytes += source_line_len + 1;
             if let Some(fragment) = fragment
                 && let Some(offset) = source_line.find(md_line)
@@ -731,7 +798,7 @@ pub fn source_span_for_markdown_range_inner(
                     //        | this
                     //
                     //     3| fn foo() {}
-                    return None;
+                    return Some(FragmentSpanLocation::NotFound { offset: md_offset });
                 }
                 if fragment.span.hi() < source_line_span.hi()
                     && source_line
@@ -748,7 +815,7 @@ pub fn source_span_for_markdown_range_inner(
                     //
                     //     2| /** doc2 */
                     //     3| fn foo() {}
-                    return None;
+                    return Some(FragmentSpanLocation::NotFound { offset: md_offset });
                 }
                 if line_no == starting_line {
                     start_bytes += offset;
@@ -781,20 +848,24 @@ pub fn source_span_for_markdown_range_inner(
                     //          | this
                     //     3| /** doc2 */
                     //     4| fn foo() {}
-                    return None;
+                    return Some(FragmentSpanLocation::NotFound { offset: md_offset });
                 } else {
                     end_bytes += source_line.len() + 1;
                 }
             }
         }
+        md_offset += md_line.len() + 1;
+        md_lines.next();
     }
 
     let src_span = span_of_all_fragments.from_inner(InnerSpan::new(
-        md_range.start + start_bytes,
-        md_range.end + start_bytes + end_bytes,
+        md_range.start.saturating_sub(start_offset) + start_bytes,
+        md_range.end.saturating_sub(start_offset) + start_bytes + end_bytes,
     ));
-    Some((
-        src_span,
-        fragments.iter().any(|frag| frag.span.overlaps(src_span) && frag.from_expansion),
-    ))
+    Some(FragmentSpanLocation::Found {
+        span: src_span,
+        from_expansion: fragments
+            .iter()
+            .any(|frag| frag.span.overlaps(src_span) && frag.from_expansion),
+    })
 }
