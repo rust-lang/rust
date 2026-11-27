@@ -99,6 +99,8 @@ mod c_char_definition {
         //   are promoted to int as if from type signed char by default, unless the /J compilation
         //   option is used."
         //   https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#character-types
+        // UEFI:
+        //   Matches the corresponding Windows target.
         // Vita:
         //   Chars are signed by default on the Vita, and VITASDK follows that convention.
         //   https://github.com/vitasdk/buildscripts/blob/09c533b771591ecde88864b6acad28ffb688dbd4/patches/gcc/0001-gcc-10.patch#L33-L34
@@ -110,6 +112,7 @@ mod c_char_definition {
         //   https://github.com/rust-lang/rust/pull/132975#issuecomment-2484645240
         all(
             not(windows),
+            not(target_os = "uefi"),
             not(target_vendor = "apple"),
             not(target_os = "vita"),
             any(
@@ -138,7 +141,7 @@ mod c_char_definition {
 mod c_long_definition {
     crate::cfg_select! {
         any(
-            all(target_pointer_width = "64", not(windows)),
+            all(target_pointer_width = "64", not(windows), not(target_os = "uefi")),
             // wasm32 Linux ABI uses 64-bit long
             all(target_arch = "wasm32", target_os = "linux")
         ) => {
