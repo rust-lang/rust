@@ -94,7 +94,7 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
         ty::Uint(uint) => uint.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
         ty::Int(int) => int.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
         ty::Char => 32,
-        ty::Bool => 1,
+        ty::Bool => 8,
         other => bug!("unhandled type: {:?}", other),
     });
 
