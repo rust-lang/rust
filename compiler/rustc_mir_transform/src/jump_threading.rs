@@ -297,7 +297,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         debug_assert!(self.entry_states[bb].is_empty());
 
         let state_len =
-            bbdata.terminator().successors().map(|succ| self.entry_states[succ].active.len()).sum();
+            bbdata.terminator.successors().map(|succ| self.entry_states[succ].active.len()).sum();
         let mut state = ConditionSet {
             active: Vec::with_capacity(state_len),
             targets: IndexVec::with_capacity(state_len),
@@ -326,7 +326,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
 
         // A given block may have several times the same successor.
         let mut seen = FxHashSet::default();
-        for succ in bbdata.terminator().successors() {
+        for succ in bbdata.terminator.successors() {
             if !seen.insert(succ) {
                 continue;
             }
@@ -640,7 +640,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     /// Execute the terminator for block `bb` into state `entry_states[bb]`.
     #[instrument(level = "trace", skip(self, state))]
     fn process_terminator(&mut self, bb: BasicBlock, state: &mut ConditionSet) {
-        let term = self.body.basic_blocks[bb].terminator();
+        let term = &self.body.basic_blocks[bb].terminator;
         let place_to_flood = match term.kind {
             // Disallowed during optimizations.
             TerminatorKind::FalseEdge { .. }
@@ -782,7 +782,7 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
     let mut predecessors = IndexVec::from_elem(0, &entry_states);
     predecessors[START_BLOCK] = 1; // Account for the implicit entry edge.
     for &bb in reverse_postorder {
-        let term = basic_blocks[bb].terminator();
+        let term = &basic_blocks[bb].terminator;
         for s in term.successors() {
             predecessors[s] += 1;
         }
@@ -828,7 +828,7 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
         trace!(?targets);
 
         // We may modify the set of successors by applying edges, so track them here.
-        let mut successors = basic_blocks[bb].terminator().successors().collect::<Vec<_>>();
+        let mut successors = basic_blocks[bb].terminator.successors().collect::<Vec<_>>();
 
         targets.reverse();
         while let Some(target) = targets.pop() {
@@ -978,7 +978,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
             // `apply_once` may have modified the terminator of `bb`.
             // Only visit actual successors.
-            worklist.extend(self.basic_blocks[bb].terminator().successors());
+            worklist.extend(self.basic_blocks[bb].terminator.successors());
         }
     }
 
@@ -1003,15 +1003,15 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
         targets.reverse();
         while let Some(target) = targets.pop() {
             debug!(?target);
-            trace!(term = ?self.basic_blocks[bb].terminator().kind);
+            trace!(term = ?self.basic_blocks[bb].terminator.kind);
 
             // By construction, `target.block()` is a successor of `bb`.
             // When applying targets, we may change the set of successors.
             // The match below updates the set of targets for consistency.
             debug_assert!(
-                self.basic_blocks[bb].terminator().successors().contains(&target.block()),
+                self.basic_blocks[bb].terminator.successors().contains(&target.block()),
                 "missing {target:?} in successors for {bb:?}, term={:?}",
-                self.basic_blocks[bb].terminator(),
+                &self.basic_blocks[bb].terminator,
             );
 
             match target {
@@ -1043,13 +1043,13 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
                 }
             }
 
-            trace!(post_term = ?self.basic_blocks[bb].terminator().kind);
+            trace!(post_term = ?self.basic_blocks[bb].terminator.kind);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
     fn apply_goto(&mut self, bb: BasicBlock, target: BasicBlock) {
-        self.basic_blocks[bb].terminator_mut().kind = TerminatorKind::goto(target);
+        self.basic_blocks[bb].terminator.kind = TerminatorKind::goto(target);
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
         // Replace `target` by `new_target` where it appears.
         // This changes exactly `direct_count` edges.
-        self.basic_blocks[bb].terminator_mut().successors_mut(|s| {
+        self.basic_blocks[bb].terminator.successors_mut(|s| {
             if *s == target {
                 *s = new_target;
             }
@@ -1110,7 +1110,7 @@ fn maybe_loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
     for (bb, bbdata) in traversal::postorder(body) {
         // Post-order means we visit successors before the block for acyclic CFGs.
         // If the successor is not visited yet, consider it a loop header.
-        for succ in bbdata.terminator().successors() {
+        for succ in bbdata.terminator.successors() {
             if !visited.contains(succ) {
                 maybe_loop_headers.insert(succ);
             }

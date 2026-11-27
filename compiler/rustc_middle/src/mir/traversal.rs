@@ -127,7 +127,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         let successors = if let Some(extra) = self.extra {
             data.mono_successors(extra.0, extra.1)
         } else {
-            data.terminator().successors()
+            data.terminator.successors()
         };
         self.visit_stack.push((bb, successors));
     }

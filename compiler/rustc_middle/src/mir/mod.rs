@@ -516,7 +516,7 @@ impl<'tcx> Body<'tcx> {
             &stmts[idx].source_info
         } else {
             assert_eq!(idx, stmts.len());
-            &block.terminator().source_info
+            &block.terminator.source_info
         }
     }
 
@@ -545,7 +545,7 @@ impl<'tcx> Body<'tcx> {
             .statements
             .get(statement_index)
             .map(Either::Left)
-            .unwrap_or_else(|| Either::Right(block_data.terminator()))
+            .unwrap_or_else(|| Either::Right(&block_data.terminator))
     }
 
     #[inline]
@@ -627,7 +627,7 @@ impl<'tcx> Body<'tcx> {
             mono_literal.try_eval_bits(tcx, typing_env)
         };
 
-        let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
+        let TerminatorKind::SwitchInt { discr, targets } = &block.terminator.kind else {
             return None;
         };
 
@@ -1351,20 +1351,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         }
     }
 
-    #[inline]
-    pub fn terminator(&self) -> &Terminator<'tcx> {
-        &self.terminator
-    }
-
-    #[inline]
-    pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
-        &mut self.terminator
-    }
-
     /// Does the block have no statements and an unreachable terminator?
     #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
-        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
+        self.statements.is_empty() && matches!(self.terminator.kind, TerminatorKind::Unreachable)
     }
 
     /// Like [`Terminator::successors`] but tries to use information available from the [`Instance`]
@@ -1376,7 +1366,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         if let Some((bits, targets)) = Body::try_const_mono_switchint(tcx, instance, self) {
             targets.successors_for_value(bits)
         } else {
-            self.terminator().successors()
+            self.terminator.successors()
         }
     }
 

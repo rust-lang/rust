@@ -415,17 +415,17 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     // can no longer attribute their code to a particular location in the
     // source.
     if deduplicated_unreachable {
-        basic_blocks[kept_unreachable.unwrap()].terminator_mut().source_info =
+        basic_blocks[kept_unreachable.unwrap()].terminator.source_info =
             SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE };
     }
 
     for block in basic_blocks {
-        block.terminator_mut().successors_mut(|target| *target = replacements[target.index()]);
+        block.terminator.successors_mut(|target| *target = replacements[target.index()]);
     }
 }
 
 fn has_dummy_terminator(bbdata: &BasicBlockData<'_>) -> bool {
-    match bbdata.terminator().kind {
+    match bbdata.terminator.kind {
         TerminatorKind::Goto { target, .. } => target == BasicBlock::MAX,
         _ => false,
     }

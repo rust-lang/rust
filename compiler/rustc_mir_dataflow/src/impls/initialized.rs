@@ -630,14 +630,14 @@ impl EverInitializedPlaces<'_, '_> {
         } else if init.kind == InitKind::OnReturn {
             // This case mirrors `apply_call_return_effect`.
             let TerminatorEdges::AssignOnReturn { return_, .. } =
-                init_block_data.terminator().edges()
+                init_block_data.terminator.edges()
             else {
                 bug!("`NonPanicPathOnly` should only be seen on terminators with return edges");
             };
             queue.extend(return_.into_iter().map(BasicBlock::start_location));
         } else {
             // This case mirrors `apply_primary_terminator_effect`.
-            queue.extend(init_block_data.terminator().successors().map(BasicBlock::start_location));
+            queue.extend(init_block_data.terminator.successors().map(BasicBlock::start_location));
         }
 
         let mut visited = FxIndexSet::default();
@@ -659,7 +659,7 @@ impl EverInitializedPlaces<'_, '_> {
                 }
             }
 
-            queue.extend(block_data.terminator().successors().map(BasicBlock::start_location));
+            queue.extend(block_data.terminator.successors().map(BasicBlock::start_location));
         }
         false
     }

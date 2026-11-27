@@ -155,7 +155,7 @@ let mut results = MyAnalysis::new()
 
 // Inspect the fixpoint state immediately before each `Drop` terminator.
 for (bb, block) in body.basic_blocks().iter_enumerated() {
-    if let TerminatorKind::Drop { .. } = block.terminator().kind {
+    if let TerminatorKind::Drop { .. } = block.terminator.kind {
         results.seek_before_primary_effect(body.terminator_loc(bb));
         let state = results.get();
         println!("state before drop: {:#?}", state);

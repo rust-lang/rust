@@ -233,7 +233,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     if mir::traversal::mono_reachable(&mir, tcx, instance).any(|(bb, block)| {
         (block.is_cleanup && !nop_landing_pads.contains(bb))
-            || matches!(block.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
+            || matches!(block.terminator.unwind(), Some(mir::UnwindAction::Terminate(_)))
     }) {
         start_bx.set_personality_fn(cx.eh_personality());
     }
@@ -296,7 +296,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let block = &mir.basic_blocks[next];
             let successors = block.mono_successors(tcx, instance);
 
-            if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator().unwind()
+            if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator.unwind()
                 && fx.nop_landing_pads.contains(*target)
             {
                 // This edge will not be followed when we actually codegen, so skip generating it here.
@@ -402,7 +402,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 target,
                 call_source: mir::CallSource::Use,
                 ..
-            } = &bb.terminator().kind
+            } = &bb.terminator.kind
             else {
                 continue;
             };
@@ -426,7 +426,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let destination_block = target.unwrap();
 
             bb.statements.push(mir::Statement::new(
-                bb.terminator().source_info,
+                bb.terminator.source_info,
                 mir::StatementKind::Assign(Box::new((
                     *destination,
                     mir::Rvalue::Use(
@@ -438,7 +438,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 ))),
             ));
 
-            bb.terminator_mut().kind = mir::TerminatorKind::goto(destination_block);
+            bb.terminator.kind = mir::TerminatorKind::goto(destination_block);
         }
     }
 
@@ -676,7 +676,7 @@ fn find_cold_blocks<'tcx>(
 
     // Traverse all basic blocks from end of the function to the start.
     for (bb, bb_data) in traversal::postorder(mir) {
-        let terminator = bb_data.terminator();
+        let terminator = &bb_data.terminator;
 
         match terminator.kind {
             // If a BB ends with a call to a cold function, mark it as cold.

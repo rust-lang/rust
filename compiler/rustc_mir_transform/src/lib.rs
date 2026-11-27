@@ -844,7 +844,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable
     // predicates, it will shrink the MIR to a single `unreachable` terminator.
     // More generally, if MIR is a lone `unreachable`, there is nothing to optimize.
-    if let TerminatorKind::Unreachable = body.basic_blocks[START_BLOCK].terminator().kind
+    if let TerminatorKind::Unreachable = body.basic_blocks[START_BLOCK].terminator.kind
         && body.basic_blocks[START_BLOCK].statements.is_empty()
     {
         return body;

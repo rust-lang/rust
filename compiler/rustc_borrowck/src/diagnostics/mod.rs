@@ -243,7 +243,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         }
 
         // Check if we are attempting to call a closure after it has been invoked.
-        let terminator = self.body[location.block].terminator();
+        let terminator = &self.body[location.block].terminator;
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
             func: Operand::Constant(ConstOperand { const_, .. }),
@@ -1124,7 +1124,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // drop and replace might have moved the assignment to the next block
         let maybe_additional_statement =
             if let TerminatorKind::Drop { target: drop_target, .. } =
-                self.body[location.block].terminator().kind
+                self.body[location.block].terminator.kind
             {
                 self.body[drop_target].statements.first()
             } else {

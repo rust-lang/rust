@@ -37,7 +37,7 @@ pub fn codegen_naked_asm<
         line_spans,
         targets: _,
         unwind: _,
-    } = mir.basic_blocks[START_BLOCK].terminator().kind
+    } = mir.basic_blocks[START_BLOCK].terminator.kind
     else {
         bug!("#[naked] functions should always terminate with an asm! block")
     };

@@ -100,7 +100,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
-            let terminator = bb.terminator_mut();
+            let terminator = &mut bb.terminator;
             terminator.kind =
                 TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }
@@ -118,7 +118,7 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 // find switch
-                let (discr, targets) = bb.terminator().kind.as_switch()?;
+                let (discr, targets) = bb.terminator.kind.as_switch()?;
                 let place_switched_on = discr.place()?;
                 // Make sure that the place is not modified.
                 if !ssa.is_ssa(place_switched_on.local) || !place_switched_on.is_stable_offset() {

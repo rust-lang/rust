@@ -359,7 +359,7 @@ pub(super) fn gather_moves<'tcx>(
         }
 
         builder.loc = Location { block: bb, statement_index: block.statements.len() };
-        builder.gather_terminator(block.terminator());
+        builder.gather_terminator(&block.terminator);
     }
 
     builder.finalize()

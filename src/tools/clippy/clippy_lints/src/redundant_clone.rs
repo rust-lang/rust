@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         let mut possible_borrower = PossibleBorrowerMap::new(cx, mir);
 
         for (bb, bbdata) in mir.basic_blocks.iter_enumerated() {
-            let terminator = bbdata.terminator();
+            let terminator = &bbdata.terminator;
 
             if terminator.source_info.span.from_expansion() {
                 continue;
@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 if ps.len() != 1 {
                     continue;
                 }
-                let pred_terminator = mir[ps[0]].terminator();
+                let pred_terminator = &mir[ps[0]].terminator;
 
                 // receiver of the `deref()` call
                 let (pred_arg, deref_clone_ret) = if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =

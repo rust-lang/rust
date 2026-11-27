@@ -20,11 +20,11 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub(crate) fn assert_terminator(&self, bb: BasicBlock) -> &Terminator<'tcx> {
-        self.block_data(bb).as_ref().left().unwrap().terminator()
+        &self.block_data(bb).as_ref().left().unwrap().terminator
     }
 
     pub(crate) fn assert_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
-        self.block_data_mut(bb).as_mut().left().unwrap().terminator_mut()
+        &mut self.block_data_mut(bb).as_mut().left().unwrap().terminator
     }
 
     pub(crate) fn statements(&self, blk: BasicBlock) -> &[Statement<'tcx>] {
@@ -153,7 +153,7 @@ impl<'tcx> CFG<'tcx> {
             Terminator { source_info, kind },
             *is_cleanup,
         ));
-        self.block_data_mut(block).as_mut().left().unwrap().terminator_mut()
+        &mut self.block_data_mut(block).as_mut().left().unwrap().terminator
     }
 
     /// In the `origin` block, push a `goto -> target` terminator.

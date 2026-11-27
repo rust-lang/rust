@@ -64,7 +64,7 @@ impl<'tcx> crate::MirPass<'tcx> for TailCopyToMove {
         // backward through assignments records the locals accessed later on
         // this path.
         for (bb, data) in body.basic_blocks.iter_enumerated() {
-            if matches!(data.terminator().kind, TerminatorKind::Return) {
+            if matches!(data.terminator.kind, TerminatorKind::Return) {
                 let mut used_after = DenseBitSet::new_empty(body.local_decls.len());
                 used_after.insert(RETURN_PLACE);
                 stack.push(TailState { block: bb, used_after });
@@ -85,7 +85,7 @@ impl<'tcx> crate::MirPass<'tcx> for TailCopyToMove {
             // control-flow or effect boundaries.
             let mut first = None;
             for pred in predecessors[state.block].iter().copied() {
-                let terminator = body.basic_blocks[pred].terminator();
+                let terminator = &body.basic_blocks[pred].terminator;
                 if let TerminatorKind::Goto { target, .. } = terminator.kind {
                     debug_assert_eq!(target, state.block);
                     if first.is_none() {

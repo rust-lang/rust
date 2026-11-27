@@ -30,7 +30,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
 
         let mut to_remove = vec![];
         for (bb, block) in body.basic_blocks.iter_enumerated() {
-            let terminator = block.terminator();
+            let terminator = &block.terminator;
             let TerminatorKind::Drop { place, .. } = &terminator.kind else { continue };
 
             maybe_inits.seek_before_primary_effect(body.terminator_loc(bb));
@@ -57,12 +57,12 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
         for bb in to_remove {
             let block = &mut body.basic_blocks_mut()[bb];
 
-            let TerminatorKind::Drop { target, .. } = &block.terminator().kind else {
+            let TerminatorKind::Drop { target, .. } = &block.terminator.kind else {
                 unreachable!()
             };
 
             // Replace block terminator with `Goto`.
-            block.terminator_mut().kind = TerminatorKind::goto(*target);
+            block.terminator.kind = TerminatorKind::goto(*target);
         }
     }
 

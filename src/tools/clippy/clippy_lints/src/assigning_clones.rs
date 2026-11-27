@@ -171,13 +171,13 @@ fn clone_source_borrows_from_dest(cx: &LateContext<'_>, lhs: &Expr<'_>, call_spa
     // bb2:
     //  s = s_temp
     if let Some(terminator) = mir.basic_blocks.iter()
-            .map(mir::BasicBlockData::terminator)
+            .map(|bb| &bb.terminator)
             .find(|term| term.source_info.span == call_span)
         && let mir::TerminatorKind::Call { ref args, target: Some(assign_bb), .. } = terminator.kind
         && let [source] = &**args
         && let mir::Operand::Move(source) = &source.node
         && let assign_bb = &mir.basic_blocks[assign_bb]
-        && let assign_bb = match assign_bb.terminator().kind {
+        && let assign_bb = match assign_bb.terminator.kind {
             // Skip the drop of the assignment's destination.
             mir::TerminatorKind::Drop { target, .. } => &mir.basic_blocks[target],
             _ => assign_bb,

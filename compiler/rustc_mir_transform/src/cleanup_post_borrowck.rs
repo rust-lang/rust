@@ -61,7 +61,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
             }
 
             // If we change any terminator, we need to ensure that we invalidated the CFG cache.
-            let terminator = basic_block.terminator_mut();
+            let terminator = &mut basic_block.terminator;
             match terminator.kind {
                 TerminatorKind::FalseEdge { real_target, .. }
                 | TerminatorKind::FalseUnwind { real_target, .. } => {

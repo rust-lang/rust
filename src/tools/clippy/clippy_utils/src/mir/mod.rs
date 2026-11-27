@@ -123,7 +123,7 @@ fn reachable_while_storage_live<const N: usize>(
     // refer to the values being tracked.
     // A local declared inside a loop is therefore treated as distinct on each iteration.
     if result != 0 {
-        for succ in bb_data.terminator().successors() {
+        for succ in bb_data.terminator.successors() {
             if succ == location.block {
                 return None;
             }
@@ -138,7 +138,7 @@ fn reachable_while_storage_live<const N: usize>(
         let bb_data = &mir.basic_blocks[bb];
         let result = apply_deaths(bb_data, 0, states[bb]);
         if result != 0 {
-            for succ in bb_data.terminator().successors() {
+            for succ in bb_data.terminator.successors() {
                 if succ == location.block {
                     return None;
                 }
@@ -194,7 +194,7 @@ pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
     seen.insert(block);
     let mut next = block;
     loop {
-        for succ in body.basic_blocks[next].terminator().successors() {
+        for succ in body.basic_blocks[next].terminator.successors() {
             if seen.insert(succ) {
                 to_visit.push(succ);
             } else if succ == block {

@@ -197,7 +197,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 continue;
             }
             let bb = get_post_contract_node(bb);
-            for s in bb_data.terminator().successors() {
+            for s in bb_data.terminator.successors() {
                 let s = get_post_contract_node(s);
                 if s == bb {
                     continue;

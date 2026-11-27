@@ -67,7 +67,7 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        let terminator = block_data.terminator();
+        let terminator = &block_data.terminator;
         let location = Location { block, statement_index: block_data.statements.len() };
         analysis.apply_early_terminator_effect(state, terminator, location);
         analysis.apply_primary_terminator_effect(state, terminator, location);
@@ -79,7 +79,7 @@ impl Direction for Backward {
 
         let exit_state = state;
         for pred in body.basic_blocks.predecessors()[block].iter().copied() {
-            match body[pred].terminator().edges() {
+            match body[pred].terminator.edges() {
                 // Apply terminator-specific edge effects.
                 TerminatorEdges::AssignOnReturn { return_, place, .. }
                     if return_.contains(&block) =>
@@ -114,7 +114,7 @@ impl Direction for Backward {
         A: Analysis<'tcx>,
     {
         let loc = Location { block, statement_index: block_data.statements.len() };
-        let term = block_data.terminator();
+        let term = &block_data.terminator;
         analysis.apply_early_terminator_effect(state, term, loc);
         vis.visit_after_early_terminator_effect(state, term, loc);
         analysis.apply_primary_terminator_effect(state, term, loc);
@@ -165,7 +165,7 @@ impl Direction for Forward {
             analysis.apply_early_statement_effect(state, statement, location);
             analysis.apply_primary_statement_effect(state, statement, location);
         }
-        let terminator = block_data.terminator();
+        let terminator = &block_data.terminator;
         let location = Location { block, statement_index: block_data.statements.len() };
         analysis.apply_early_terminator_effect(state, terminator, location);
         // Edges are obtained *before* calling `apply_primary_terminator_effect`.
@@ -239,7 +239,7 @@ impl Direction for Forward {
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
-        let term = block_data.terminator();
+        let term = &block_data.terminator;
         analysis.apply_early_terminator_effect(state, term, loc);
         vis.visit_after_early_terminator_effect(state, term, loc);
         analysis.apply_primary_terminator_effect(state, term, loc);

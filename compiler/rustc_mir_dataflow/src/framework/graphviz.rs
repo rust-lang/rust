@@ -166,7 +166,7 @@ struct CfgEdge {
 
 fn dataflow_successors(body: &Body<'_>, bb: BasicBlock) -> Vec<CfgEdge> {
     body[bb]
-        .terminator()
+        .terminator
         .successors()
         .enumerate()
         .map(|(index, _)| CfgEdge { source: bb, index })
@@ -208,7 +208,7 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
+        let label = &self.body[e.source].terminator.kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
@@ -243,7 +243,7 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
+        self.body[edge.source].terminator.successors().nth(edge.index).unwrap()
     }
 }
 
@@ -333,7 +333,7 @@ where
 
         // F: State at end of block
 
-        let terminator = self.cursor.body()[block].terminator();
+        let terminator = &self.cursor.body()[block].terminator;
 
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
@@ -495,7 +495,7 @@ where
         assert!(diffs_after.is_empty());
         assert!(diffs_before.as_ref().is_none_or(ExactSizeIterator::is_empty));
 
-        let terminator = self.cursor.body()[block].terminator();
+        let terminator = &self.cursor.body()[block].terminator;
         let mut terminator_str = String::new();
         terminator.kind.fmt_head(&mut terminator_str).unwrap();
 

@@ -108,7 +108,7 @@ impl<'tcx> MirPass<'tcx> for ImpossibleClauses {
             let bbs = body.basic_blocks.as_mut();
             bbs.raw.truncate(1);
             bbs[START_BLOCK].statements.clear();
-            bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
+            bbs[START_BLOCK].terminator.kind = TerminatorKind::Unreachable;
             body.var_debug_info.clear();
             body.local_decls.raw.truncate(body.arg_count + 1);
         }

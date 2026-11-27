@@ -601,7 +601,7 @@ fn save_as_intervals<'tcx>(
         // Setup the new block.
         state.start_block(&entry_states[block]);
 
-        let term = block_data.terminator();
+        let term = &block_data.terminator;
 
         // Ensure we have a non-zero live range even for dead stores. This is done by marking all
         // the written-to locals as live in the second half of the statement.

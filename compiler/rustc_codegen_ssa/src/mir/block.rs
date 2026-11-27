@@ -1636,7 +1636,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             self.codegen_stmt_debuginfos(bx, &data.after_last_stmt_debuginfos);
 
-            let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
+            let merging_succ = self.codegen_terminator(bx, bb, &data.terminator);
             if let MergingSucc::False = merging_succ {
                 break;
             }
@@ -1648,7 +1648,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Note: we must not have already generated code for the successor.
             // This is implicitly ensured by the reverse postorder traversal,
             // and the assertion explicitly guarantees that.
-            let mut successors = data.terminator().successors();
+            let mut successors = data.terminator.successors();
             let succ = successors.next().unwrap();
             assert!(matches!(self.cached_llbbs[succ], CachedLlbb::None));
             self.cached_llbbs[succ] = CachedLlbb::Skip;
