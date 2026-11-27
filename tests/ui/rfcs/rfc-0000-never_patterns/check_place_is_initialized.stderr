@@ -1,10 +1,10 @@
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/check_place_is_initialized.rs:10:15
+  --> $DIR/check_place_is_initialized.rs:10:11
    |
 LL |     let x: Void;
    |         - binding declared here but left uninitialized
 LL |     match x { ! }
-   |               ^ `x` used here but it isn't initialized
+   |           ^ `x` used here but it isn't initialized
    |
 help: consider assigning a value
    |
