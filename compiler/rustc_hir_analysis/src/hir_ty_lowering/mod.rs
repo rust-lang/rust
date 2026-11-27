@@ -2440,8 +2440,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
+            //
+            // Late-bound regions, like the elided one in `fn foo(_: S<{}>)`, would escape once fed
+            // as the anon const's `type_of`. Vars bound inside the type itself are fine.
             if tcx.features().generic_const_parameter_types()
-                && (ty.has_free_regions() || ty.has_erased_regions())
+                && (ty.has_free_regions()
+                    || ty.has_erased_regions()
+                    || ty.has_escaping_bound_vars())
             {
                 let e = self.dcx().span_err(
                     const_arg.span,
