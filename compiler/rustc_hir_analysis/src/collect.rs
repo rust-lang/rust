@@ -511,10 +511,12 @@ impl<'tcx> ItemCtxt<'tcx> {
                 };
                 let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
                 SolverRegionConstraint::new_leaf(
-                    LeafRegionConstraint::AliasTyOutlivesViaEnv(ty::Binder::bind_with_vars(
-                        (lhs, rhs),
-                        bound_vars,
-                    )),
+                    LeafRegionConstraint::AliasTyOutlivesViaEnv(
+                        self.tcx().anonymize_bound_vars(ty::Binder::bind_with_vars(
+                            (lhs, rhs),
+                            bound_vars,
+                        )),
+                    ),
                     *span,
                 )
             }
