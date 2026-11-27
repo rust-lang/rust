@@ -89,11 +89,19 @@ pub(crate) struct ContextInfo {
     pub(crate) include_sources: bool,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
+    /// Counter increased every time a module is reexported so its children can correctly display
+    /// the "reexported from" information.
+    pub(crate) ancestor_reexported: u8,
 }
 
 impl ContextInfo {
     fn new(include_sources: bool) -> Self {
-        Self { render_redirect_pages: false, include_sources, is_inside_inlined_module: false }
+        Self {
+            render_redirect_pages: false,
+            include_sources,
+            is_inside_inlined_module: false,
+            ancestor_reexported: 0,
+        }
     }
 }
 
@@ -274,7 +282,7 @@ impl<'tcx> Context<'tcx> {
                 tyname.as_str()
             };
 
-            let content = print_item(self, it);
+            let content = print_item(self, it, self.info.ancestor_reexported != 0);
             let page = layout::Page {
                 css_class: tyname_s,
                 root_path: &self.root_path(),
@@ -723,6 +731,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
+        if item.inner.inline_stmt_id.is_some() {
+            self.info.ancestor_reexported += 1;
+        }
+
         let buf = self.render_item(item, true);
         // buf will be empty if the module is stripped and there is no redirect for it
         if !buf.is_empty() {
@@ -752,8 +764,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok(())
     }
 
-    fn mod_item_out(&mut self) -> Result<(), Error> {
+    fn mod_item_out(&mut self, item: &clean::Item) -> Result<(), Error> {
         info!("Recursed; leaving {}", self.dst.display());
+
+        if item.inner.inline_stmt_id.is_some() {
+            self.info.ancestor_reexported -= 1;
+        }
 
         // Go back to where we were at
         self.dst.pop();
