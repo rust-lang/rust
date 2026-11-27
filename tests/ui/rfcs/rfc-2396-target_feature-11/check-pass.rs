@@ -46,3 +46,5 @@ fn main() {
     }
     let sse2_ptr: unsafe fn() = sse2;
 }
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions

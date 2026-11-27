@@ -21,3 +21,5 @@ fn main() {
     assert_eq!(optimized_size(), 42);
     assert_eq!(optimized_none(), 42);
 }
+
+//@ reference: attributes.codegen.optimize.modes

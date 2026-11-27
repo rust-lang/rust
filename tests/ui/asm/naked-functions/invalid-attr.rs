@@ -61,3 +61,5 @@ fn main() {
 extern "C" fn issue_140082() {
     naked_asm!("")
 }
+
+//@ reference: attributes.codegen.naked.allowed-positions

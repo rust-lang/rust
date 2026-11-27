@@ -50,3 +50,5 @@ impl UnsafeFnPtr for unsafe fn() {}
 fn is_unsafe_fnptr<T: UnsafeFnPtr>(_: T) {}
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions

@@ -39,3 +39,5 @@ fn main() {
     assert_eq!(CONTAINED.line(), 22);
     assert_eq!(CONTAINED.column(), 5);
 }
+
+//@ reference: attributes.codegen.track_caller.behavior

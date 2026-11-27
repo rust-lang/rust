@@ -59,3 +59,6 @@ fn main() {
     let boxed: Box<dyn Tracked> = Box::new(());
     boxed.track_caller_through_self(line!(), 11);
 }
+
+//@ reference: attributes.codegen.track_caller.decay
+//@ reference: attributes.codegen.track_caller.traits

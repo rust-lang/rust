@@ -42,3 +42,5 @@ fn no_features_enabled_on_this_function() {
 
 #[target_feature(enable = "nontrapping-fptoint")]
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.wasm

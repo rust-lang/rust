@@ -20,3 +20,5 @@ fn main() {
     }
     let foo: fn() = foo; //~ ERROR mismatched types
 }
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions

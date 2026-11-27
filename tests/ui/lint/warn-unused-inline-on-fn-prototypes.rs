@@ -13,3 +13,5 @@ extern "C" {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.inline.allowed-positions

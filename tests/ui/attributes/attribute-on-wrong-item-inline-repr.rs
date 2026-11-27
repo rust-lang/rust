@@ -38,3 +38,6 @@ fn main() {
     let _z = #[repr] 1;
     //~^ ERROR malformed `repr` attribute
 }
+
+//@ reference: attributes.codegen.inline.allowed-positions
+//@ reference: attributes.codegen.inline.syntax

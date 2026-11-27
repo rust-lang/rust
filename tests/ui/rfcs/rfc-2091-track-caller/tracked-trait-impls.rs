@@ -75,3 +75,5 @@ fn main() {
     0u8.default_tracked();
     0u8.blanket_tracked();
 }
+
+//@ reference: attributes.codegen.track_caller.traits

@@ -25,3 +25,5 @@ impl S {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.naked.track_caller

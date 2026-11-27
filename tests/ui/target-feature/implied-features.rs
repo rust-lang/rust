@@ -21,3 +21,6 @@ fn test_fma() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions
+//@ reference: attributes.codegen.target_feature.x86

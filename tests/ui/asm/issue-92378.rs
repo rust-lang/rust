@@ -27,3 +27,4 @@ pub fn thumb() {
 }
 
 //@ reference: asm.register-names.not-for-io
+//@ reference: attributes.codegen.instruction_set.inline-asm

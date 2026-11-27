@@ -70,3 +70,7 @@ trait T {
 enum E {
 
 }
+
+//@ reference: attributes.codegen.inline.syntax
+//@ reference: attributes.codegen.instruction_set.syntax
+//@ reference: attributes.codegen.optimize.syntax

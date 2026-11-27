@@ -14,3 +14,6 @@ fn use_avx() -> Box<dyn Fn()> {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.closures
+//@ reference: attributes.codegen.target_feature.fn-traits

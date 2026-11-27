@@ -25,3 +25,5 @@ fn main() {
     assert_eq!(loc2.line(), 23);
     assert_eq!(loc2.column(), 16);
 }
+
+//@ reference: attributes.codegen.track_caller.behavior
