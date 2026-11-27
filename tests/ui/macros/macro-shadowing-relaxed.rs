@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 //@ aux-build:macro-in-other-crate.rs
 
 #![feature(decl_macro)]
