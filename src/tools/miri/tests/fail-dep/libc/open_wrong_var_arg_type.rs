@@ -1,4 +1,4 @@
-//@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: windows # testing POSIX API
 //@compile-flags: -Zmiri-disable-isolation
 //@normalize-stderr-test: "to have type `(u32|i32)`" -> "to have type `$$TYPE`"
 

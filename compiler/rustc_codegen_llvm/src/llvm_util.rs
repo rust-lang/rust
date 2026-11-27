@@ -139,6 +139,32 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         // Use non-zero `import-instr-limit` multiplier for cold callsites.
         add("-import-cold-multiplier=0.1", false);
 
+        // LLVM has an "auto-upgrade" mechanism: newer LLVM versions can handle bitcode (needed for
+        // LTO) produced by older LLVM versions. If debuginfo is present in the bitcode, the
+        // debuginfo part of this mechanism (`UpgradeDebugInfo`) will run `verifyModule`, an
+        // expensive check which (oddly enough) verifies all parts of the bitcode. On verification
+        // failure, LLVM will warn in some cases and abort in others.
+        //
+        // The following flag tells LLVM to skip the debuginfo-triggered bitcode verification step.
+        // This is ok for Rust because rlibs involved in Rust compilation will always be produced
+        // by the same LLVM version. (Except possibly in very strange scenarios, such as mixing
+        // rlibs from different builds of the same rustc version linked against different LLVMs,
+        // and that would only cause problems if those different LLVMs used different debuginfo
+        // formats.)
+        //
+        // This is a small compile-time win for (non-default) release + debuginfo configurations.
+        // The protection against malformed bitcode is also eliminated in that configuration, but
+        // since the bitcode verifier doesn't run in other, more common configurations, this hardly
+        // matters.
+        //
+        // Note that Rust was a motivating example in the design of this flag. See
+        // https://reviews.llvm.org/D143229.
+        if get_version() >= (24, 0, 0) {
+            add("-auto-upgrade-debug-info=false", false);
+        } else {
+            add("-disable-auto-upgrade-debug-info", false);
+        }
+
         if sess.print_llvm_stats() || sess.print_llvm_stats_json().is_some() {
             add("-stats", false);
         }

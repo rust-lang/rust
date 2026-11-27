@@ -1,0 +1,13 @@
+error: Undefined Behavior: incorrect c-variadic argument type for `fcntl(fd, F_DUPFD, ...)`: argument #3 has value `4294967295_u32` which cannot be represented in expected type `i32`
+  --> tests/fail-dep/libc/fcntl_wrong_var_arg_type.rs:LL:CC
+   |
+LL |         libc::fcntl(0, libc::F_DUPFD, /* should be i32 */ u32::MAX)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

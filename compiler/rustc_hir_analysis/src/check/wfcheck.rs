@@ -2568,16 +2568,9 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     self.check_test_binder_exists(exist);
                 }
                 TestBinderItem::Constraint(constraint) => {
-                    let constraint = match validate(self.tcx(), &constraint) {
-                        Ok(()) => constraint,
-                        Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
-                    };
-                    if constraint.is_false() {
-                        self.tcx()
-                            .dcx()
-                            .span_err(span, "top level false constraints are not supported");
-                    } else {
-                        self.infcx.register_solver_region_constraint(constraint);
+                    match validate(self.tcx(), &constraint, span) {
+                        Ok(()) => self.infcx.register_solver_region_constraint(constraint),
+                        Err(_guar) => (),
                     }
                 }
                 TestBinderItem::Predicate { clause, span } => {
@@ -2606,40 +2599,46 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         fn validate<'tcx>(
             tcx: TyCtxt<'tcx>,
             constraint: &SolverRegionConstraint<'tcx>,
+            span: Span,
         ) -> Result<(), ErrorGuaranteed> {
-            let mut r = Ok(());
-
-            let mut validate_and = |and: &And<TyCtxt<'_>, _>| {
-                for (c, span) in and.iter() {
-                    match c {
-                        LeafRegionConstraint::Ambiguity
-                        | LeafRegionConstraint::RegionOutlives(..)
-                        | LeafRegionConstraint::AliasTyOutlivesViaEnv(..) => (), // OK
-                        LeafRegionConstraint::PlaceholderTyOutlives(ty, _) => {
-                            // we can't check this during lowering, because the ty is a ty::Bound that gets
-                            // instantiated with a placeholder when entering the containing forall.
-                            if let ty::Placeholder(_) | ty::Param(_) = ty.kind() {
-                                // all OK
-                            } else {
-                                let mut err = tcx.dcx().struct_span_err(
-                                    *span,
-                                    "the lhs of a ty outlives must be a placeholder",
-                                );
-                                err.note(format!("it is a {ty}"));
-                                err.note(format!("and here it is `Debug`ged :3 {ty:?}"));
-                                r = Err(err.emit_err());
-                            }
-                        }
+            if constraint.is_false() {
+                let guar =
+                    tcx.dcx().span_err(span, "top level false constraints are not supported");
+                Err(guar)
+            } else {
+                constraint
+                    .and_constraint
+                    .iter()
+                    .chain(constraint.or_constraint.iter().flatten())
+                    .map(|(c, span)| validate_constraint(tcx, c, *span))
+                    .collect()
+            }
+        }
+        fn validate_constraint<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            constraint: &LeafRegionConstraint<TyCtxt<'tcx>>,
+            span: Span,
+        ) -> Result<(), ErrorGuaranteed> {
+            match constraint {
+                LeafRegionConstraint::Ambiguity
+                | LeafRegionConstraint::RegionOutlives(..)
+                | LeafRegionConstraint::AliasTyOutlivesViaEnv(..) => Ok(()),
+                LeafRegionConstraint::PlaceholderTyOutlives(ty, _) => {
+                    // we can't check this during lowering, because the ty is a ty::Bound that gets
+                    // instantiated with a placeholder when entering the containing forall.
+                    if let ty::Placeholder(_) | ty::Param(_) = ty.kind() {
+                        Ok(())
+                    } else {
+                        let mut err = tcx.dcx().struct_span_err(
+                            span,
+                            "the lhs of a ty outlives must be a placeholder",
+                        );
+                        err.note(format!("it is a {ty}"));
+                        err.note(format!("and here it is `Debug`ged :3 {ty:?}"));
+                        Err(err.emit_err())
                     }
                 }
-            };
-
-            validate_and(&constraint.and_constraint);
-            for and in constraint.or_constraint.iter() {
-                validate_and(and);
             }
-
-            r
         }
     }
 

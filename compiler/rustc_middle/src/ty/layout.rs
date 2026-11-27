@@ -1051,6 +1051,8 @@ where
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
+                            // Below we call `layout_of` which performs normalization, so we do not
+                            // need it here.
                             TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
                         }
                         Variants::Empty => panic!("there is no field in Variants::Empty types"),
@@ -1291,6 +1293,10 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    fn has_trivial_abi(this: TyAndLayout<'tcx>) -> bool {
+        this.is_1zst() && !this.is_repr_c()
     }
 
     /// Is this type `core::num::Complex<T>`?

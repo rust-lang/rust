@@ -94,24 +94,41 @@ fn test_abi_newtype<T: Copy>(t: T) {
     test_abi_compat(t, mem::MaybeUninit::new(t));
 }
 
-/// The `#[cfi_encoding]` has the ability of changing the C struct tag,
-/// like `typedef struct Foo { int x; int y; } Bar;`, where `Foo` is the important name for ABI.
-/// In the future, we may want to use a better syntax for this mechanism which is not CFI specific,
-/// like `#[repr(C, tag = "Foo")]`
-fn test_abi_cfi_encoding() {
+fn test_identical_c_types() {
+    mod m1 {
+        #[repr(C)]
+        #[derive(Copy, Clone)]
+        pub struct C {
+            pub x: i32,
+        }
+    }
+    mod m2 {
+        #[repr(C)]
+        #[derive(Copy, Clone)]
+        pub struct C<T> {
+            pub x: T,
+        }
+    }
+    test_abi_compat(m1::C { x: 1 }, m2::C { x: 1 });
+    test_abi_compat(m1::C { x: 1 }, m2::C { x: Wrapper(1) });
+
+    // The `#[cfi_encoding]` has the ability of changing the C struct tag,
+    // like `typedef struct Foo { int x; int y; } Bar;`, where `Foo` is the important name for ABI.
+    // In the future, we may want to use a better syntax for this mechanism which is not CFI specific,
+    // like `#[repr(C, tag = "Foo")]`
     #[repr(C)]
     #[derive(Copy, Clone)]
     #[cfi_encoding = "10CfiEncoded"] // CFI encodings say that we should prefix the struct tag with its length
-    pub struct CfiEncoded1 {
-        pub x: i32,
-        pub y: i32,
+    struct CfiEncoded1 {
+        x: i32,
+        y: i32,
     }
     #[repr(C)]
     #[derive(Copy, Clone)]
     #[cfi_encoding = "10CfiEncoded"]
-    pub struct CfiEncoded2 {
-        pub x: i32,
-        pub y: i32,
+    struct CfiEncoded2 {
+        x: i32,
+        y: i32,
     }
     test_abi_compat(CfiEncoded1 { x: 2, y: 6 }, CfiEncoded2 { x: 2, y: 6 });
 }
@@ -204,6 +221,6 @@ fn main() {
     let non_capturing_closure = || {};
     test_abi_compat(non_capturing_closure.clone(), Wrapper(non_capturing_closure));
 
-    // Check that we take the CFI tag into account.
-    test_abi_cfi_encoding();
+    // Test "identical C types" check.
+    test_identical_c_types();
 }

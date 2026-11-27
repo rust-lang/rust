@@ -124,4 +124,47 @@ core::test_binder_constraints! {
     }
 }
 
+trait HasAssoc {
+    type Assoc;
+}
+
+// FIXME(-Zassumptions-on-binders): this probably shouldn't compile, the exit for the top-level
+// `impl` should fail because the constraints asserted in `expect` should fail to prove true. Might
+// be https://github.com/rust-lang/project-assumptions-on-binders/issues/26
+//
+// for<> syntax does direct insert into constraint storage
+core::test_binder_constraints! {
+    impl<T: HasAssoc> {
+        forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
+            for<> T::Assoc: 'a
+        } expect {
+            or {
+                for<'b> T::Assoc: 'b,
+                for<> T::Assoc: 'static
+            }
+        }
+    }
+}
+
+// FIXME(-Zassumptions-on-binders): this probably shouldn't compile, the exit for the top-level
+// `impl` should fail because the constraints asserted in `expect` should fail to prove true. Might
+// be https://github.com/rust-lang/project-assumptions-on-binders/issues/26
+//
+// `predicates` syntax goes through the full clause destructuring and register_obligation pipeline
+core::test_binder_constraints! {
+    impl<T: HasAssoc> {
+        forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
+            predicates T::Assoc: 'a
+        } expect {
+            or {
+                for<'b> T::Assoc: 'b,
+                for<> T::Assoc: 'static,
+                T: 'static
+            }
+        }
+    }
+}
+
 fn main() {}
