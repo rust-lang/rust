@@ -890,7 +890,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             }
             RiscV(RiscVInlineAsmRegClass::reg) => "r",
             RiscV(RiscVInlineAsmRegClass::freg) => "f",
-            RiscV(RiscVInlineAsmRegClass::vreg) => unreachable!("clobber-only"),
+            // The `^` prefix makes LLVM treat the multi-letter `vr` as one
+            // constraint; otherwise it is parsed as `v` plus `r`.
+            RiscV(RiscVInlineAsmRegClass::vreg) => "^vr",
             X86(X86InlineAsmRegClass::reg) => "r",
             X86(X86InlineAsmRegClass::reg_abcd) => "Q",
             X86(X86InlineAsmRegClass::reg_byte) => "q",
@@ -1003,7 +1005,7 @@ fn modifier_to_llvm(
         }
         PowerPC(_) => None,
         RiscV(RiscVInlineAsmRegClass::reg) | RiscV(RiscVInlineAsmRegClass::freg) => None,
-        RiscV(RiscVInlineAsmRegClass::vreg) => unreachable!("clobber-only"),
+        RiscV(RiscVInlineAsmRegClass::vreg) => None,
         X86(X86InlineAsmRegClass::reg) | X86(X86InlineAsmRegClass::reg_abcd) => match modifier {
             None if arch == InlineAsmArch::X86_64 => Some('q'),
             None => Some('k'),
@@ -1120,7 +1122,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> Ty
         }
         RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
         RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
-        RiscV(RiscVInlineAsmRegClass::vreg) => unreachable!("clobber-only"),
+        RiscV(RiscVInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i8(), 32),
         X86(X86InlineAsmRegClass::reg) | X86(X86InlineAsmRegClass::reg_abcd) => cx.type_i32(),
         X86(X86InlineAsmRegClass::reg_byte) => cx.type_i8(),
         X86(X86InlineAsmRegClass::xmm_reg)
