@@ -12,12 +12,12 @@
 //! * [`discriminant`]
 //!   allows comparing the variants of [`enum`] values while ignoring their fields.
 //!
-//! * [`forget`] and [`ManuallyDrop`]
-//!   prevent destructors from running, which is used in certain kinds of ownership transfer.
-//!   [`needs_drop`]
-//!   tells you whether a type’s destructor even does anything.
+//! * [`DropGuard`] adds ad-hoc destructors;
+//!   [`forget`] and [`ManuallyDrop`] prevent destructors from running,
+//!   which is used in certain kinds of ownership transfer; and
+//!   [`needs_drop`]  tells you whether a type’s destructor even does anything.
 //!
-//! * [`transmute`], [`transmute_copy`], and [`MaybeUninit`]
+//! * [`transmute`], [`transmute_copy`], [`MaybeUninit`], and [`conjure_zst`]
 //!   convert and construct values in [`unsafe`] ways.
 //!
 //! See also the [`alloc`] and [`ptr`] modules for more primitive operations on memory.
