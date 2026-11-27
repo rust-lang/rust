@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
-    TargetMetadata, TargetOptions,
+    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, StdCrate,
+    StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./thumbv7a_vex_v5_linker_script.ld");
@@ -39,6 +39,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crate(StdCrate::Std)),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
