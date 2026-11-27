@@ -719,7 +719,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // the analysis for which destructors may be invoked relies on `&impl Freeze` references not
         // being able to change what gets dropped.
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
-            && *mutbl == Mutability::Not
+            && mutbl == Mutability::Not
             && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.

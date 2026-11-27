@@ -53,7 +53,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     }
 
     fn maybe_to_pointee_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        Some(match *ty.kind() {
+        Some(match ty.kind() {
             ty::RawPtr(pointee, _) => pointee,
             ty::Adt(adt, args)
                 if self.tcx().is_lang_item(adt.did(), LangItem::NonNull)
@@ -92,7 +92,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             width => bug!("unsupported pointer width: {width}"),
         };
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Ok(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Ok(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Ok(InlineAsmType::I32),
@@ -127,7 +127,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 let field = &fields[FieldIdx::ZERO];
                 let elem_ty = field.ty(self.tcx(), args).skip_norm_wip();
 
-                let (size, ty) = match *elem_ty.kind() {
+                let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
                         // FIXME: `try_structurally_resolve_const` doesn't eval consts
                         // in the old solver.
@@ -258,7 +258,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
 
-        let eff_ty = match *ty.kind() {
+        let eff_ty = match ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
@@ -268,7 +268,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             _ => ty,
         };
 
-        let asm_ty = match *eff_ty.kind() {
+        let asm_ty = match eff_ty.kind() {
             // `NonNull<T>` is allowed as input but not as output.
             ty::Adt(adt, _)
                 if !is_input && self.tcx().is_lang_item(adt.did(), LangItem::NonNull) =>
@@ -621,7 +621,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             }
                         }
                         ty::RawPtr(pointee, _) | ty::Ref(_, pointee, _)
-                            if self.is_thin_ptr_ty(*pointee) =>
+                            if self.is_thin_ptr_ty(pointee) =>
                         {
                             if !self.tcx().features().asm_const_ptr() {
                                 self.tcx()

@@ -22,7 +22,7 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => may_slice(cx, boxed),
             ty::Adt(..) => ty.is_diag_item(cx, sym::Vec),
             ty::Array(_, size) => size.try_to_target_usize(cx.tcx).is_some(),
-            ty::Ref(_, inner, _) => may_slice(cx, *inner),
+            ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }
     }
@@ -38,7 +38,7 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Slice(_) => Some(expr),
             _ if ty.boxed_ty().is_some_and(|boxed| may_slice(cx, boxed)) => Some(expr),
             ty::Ref(_, inner, _) => {
-                if may_slice(cx, *inner) {
+                if may_slice(cx, inner) {
                     Some(expr)
                 } else {
                     None

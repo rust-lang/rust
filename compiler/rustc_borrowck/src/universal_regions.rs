@@ -148,7 +148,7 @@ impl<'tcx> DefiningTy<'tcx> {
                 } else {
                     defining_ty
                 };
-                match *defining_ty.kind() {
+                match defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
                     ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
                     ty::CoroutineClosure(def_id, args) => {
@@ -262,7 +262,7 @@ impl<'tcx> DefiningTy<'tcx> {
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();
                 assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
+                let ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
                     bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
                 };
 
@@ -1022,7 +1022,7 @@ fn for_each_late_bound_region_in_item<'tcx>(
         // that we discover during typeck.
         DefKind::Closure => {
             let ty = tcx.type_of(mir_def_id).instantiate_identity().skip_norm_wip();
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Closure(_, args) => args.as_closure().sig().bound_vars(),
                 ty::CoroutineClosure(_, args) => {
                     args.as_coroutine_closure().coroutine_closure_sig().bound_vars()

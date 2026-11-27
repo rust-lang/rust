@@ -111,11 +111,11 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
         match ty.kind() {
             ty::FnPtr(sig, header) => {
                 let sig = sig.skip_binder();
-                Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig, header))
+                Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig, &header))
             }
 
             ty::FnDef(def_id, args) => {
-                let sig = tcx.fn_sig(*def_id).instantiate(tcx, args.skip_binder()).skip_binder();
+                let sig = tcx.fn_sig(def_id).instantiate(tcx, args.skip_binder()).skip_binder();
 
                 Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
             }
@@ -289,7 +289,7 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 #[derive(Debug)]
 enum ClangDiscTy<'tcx> {
     Int,
-    Float(&'tcx ty::FloatTy),
+    Float(ty::FloatTy),
     Bool,
     Char,
 
@@ -384,12 +384,12 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         }
 
         // arrays ignore size
-        ty::Array(elem, _) => ClangDiscTy::Array { elem: *elem },
+        ty::Array(elem, _) => ClangDiscTy::Array { elem },
 
         // enums to integer collapse
         ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
         // simd vectors
-        ty::Adt(def, args) if def.repr().simd() => {
+        ty::Adt(def, _) if def.repr().simd() => {
             // Clang encodes SIMD vectors by their total size
             let input = ty::PseudoCanonicalInput {
                 typing_env: ty::TypingEnv::fully_monomorphized(),

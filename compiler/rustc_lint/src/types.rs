@@ -305,7 +305,7 @@ fn lint_nan<'tcx>(
             return InvalidNanComparisonsSuggestion::Spanless;
         };
         let mut deref_count = 0;
-        while let ty::Ref(_, inner, _) = *ty.kind() {
+        while let ty::Ref(_, inner, _) = ty.kind() {
             deref_count += 1;
             ty = inner;
         }
@@ -338,7 +338,7 @@ fn lint_nan<'tcx>(
     if ![l, r].into_iter().all(|operand| {
         typeck_results
             .expr_ty_opt(operand)
-            .is_some_and(|ty| matches!(*ty.peel_refs().kind(), ty::Float(fty) if fty == float_ty))
+            .is_some_and(|ty| matches!(ty.peel_refs().kind(), ty::Float(fty) if fty == float_ty))
     }) {
         return;
     }
@@ -377,14 +377,14 @@ fn lint_wide_pointer<'tcx>(
         // here we remove any "implicit" references and count the number
         // of them to correctly suggest the right number of deref
         while let ty::Ref(_, inner_ty, _) = ty.kind() {
-            ty = *inner_ty;
+            ty = inner_ty;
             refs += 1;
         }
 
         // get the inner type of a pointer (or akin)
         let mut modifiers = String::new();
         ty = match ty.kind() {
-            ty::RawPtr(ty, _) => *ty,
+            ty::RawPtr(ty, _) => ty,
             ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::NonNull) => {
                 modifiers.push_str(".as_ptr()");
                 args.type_at(0)
@@ -513,7 +513,7 @@ fn lint_fn_pointer<'tcx>(
         let mut refs = 0;
 
         while let ty::Ref(_, inner_ty, _) = ty.kind() {
-            ty = *inner_ty;
+            ty = inner_ty;
             refs += 1;
         }
 
@@ -726,7 +726,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match *cx.typeck_results().node_type(expr.hir_id).kind() {
+            match cx.typeck_results().node_type(expr.hir_id).kind() {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
@@ -821,7 +821,7 @@ fn ty_is_known_nonnull<'tcx>(
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
-            let marked_non_null = nonnull_optimization_guaranteed(tcx, *def);
+            let marked_non_null = nonnull_optimization_guaranteed(tcx, def);
 
             if marked_non_null {
                 return true;
@@ -833,12 +833,12 @@ fn ty_is_known_nonnull<'tcx>(
             }
 
             def.variants().iter().filter_map(|variant| transparent_newtype_field(tcx, variant)).any(
-                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, *args).skip_norm_wip()),
+                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args).skip_norm_wip()),
             )
         }
         ty::Pat(base, pat) => {
-            ty_is_known_nonnull(tcx, typing_env, *base)
-                || pat_ty_is_known_nonnull(tcx, typing_env, *pat)
+            ty_is_known_nonnull(tcx, typing_env, base)
+                || pat_ty_is_known_nonnull(tcx, typing_env, pat)
         }
         _ => false,
     }
@@ -877,7 +877,7 @@ fn get_nullable_type<'tcx>(
 ) -> Option<Ty<'tcx>> {
     let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
-    Some(match *ty.kind() {
+    Some(match ty.kind() {
         ty::Adt(field_def, field_args) => {
             let inner_field_ty = {
                 let mut first_non_zst_ty =
@@ -955,10 +955,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         ty::Adt(ty_def, args) => {
             let field_ty = match &ty_def.variants().raw[..] {
                 [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                    ([], [field]) | ([field], []) => field.ty(tcx, *args).skip_norm_wip(),
+                    ([], [field]) | ([field], []) => field.ty(tcx, args).skip_norm_wip(),
                     ([field1], [field2]) => {
-                        let ty1 = field1.ty(tcx, *args).skip_norm_wip();
-                        let ty2 = field2.ty(tcx, *args).skip_norm_wip();
+                        let ty1 = field1.ty(tcx, args).skip_norm_wip();
+                        let ty2 = field2.ty(tcx, args).skip_norm_wip();
 
                         if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                             ty2
@@ -1014,7 +1014,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             }
             None
         }
-        ty::Pat(base, pat) => get_nullable_type_from_pat(tcx, typing_env, *base, *pat),
+        ty::Pat(base, pat) => get_nullable_type_from_pat(tcx, typing_env, base, pat),
         _ => None,
     }
 }

@@ -101,7 +101,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     // the MIR body will be constructed well.
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let ty::Coroutine(_, args) = *coroutine_ty.kind() else {
+    let ty::Coroutine(_, args) = coroutine_ty.kind() else {
         bug!("tried to create by-move body of non-coroutine receiver");
     };
     let args = args.as_coroutine();
@@ -110,7 +110,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
     let parent_def_id = tcx.local_parent(coroutine_def_id);
     let ty::CoroutineClosure(_, parent_args) =
-        *tcx.type_of(parent_def_id).instantiate_identity().skip_norm_wip().kind()
+        tcx.type_of(parent_def_id).instantiate_identity().skip_norm_wip().kind()
     else {
         bug!("coroutine's parent was not a coroutine-closure");
     };

@@ -933,7 +933,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 interp_ok(true)
             }
             ty::Ref(_, _ty, mutbl) => {
-                self.check_safe_pointer(value, ty, PtrKind::Ref(*mutbl))?;
+                self.check_safe_pointer(value, ty, PtrKind::Ref(mutbl))?;
                 interp_ok(true)
             }
             ty::FnPtr(..) => {
@@ -1419,7 +1419,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // This is the length of the array/slice.
                 let len = val.len(self.ecx)?;
                 // This is the element type size.
-                let layout = self.ecx.layout_of(*tys)?;
+                let layout = self.ecx.layout_of(tys)?;
                 // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
                 // If the size is 0, there is nothing to check.
@@ -1488,7 +1488,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
             // of an array and not all of them, because there's only a single value of a specific
             // ZST type, so either validation fails for all elements or none.
-            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(*tys)?.is_zst() => {
+            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
                 // Validate just the first element (if any).
                 if val.len(self.ecx)? > 0 {
                     self.visit_field(val, 0, &self.ecx.project_index(val, 0)?)?;
@@ -1496,10 +1496,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
             ty::Pat(base, pat) => {
                 // First check that the base type is valid
-                self.visit_value(&val.transmute(self.ecx.layout_of(*base)?, self.ecx)?)?;
+                self.visit_value(&val.transmute(self.ecx.layout_of(base)?, self.ecx)?)?;
                 // When you extend this match, make sure to also add tests to
                 // tests/ui/type/pattern_types/validity.rs
-                match **pat {
+                match *pat {
                     // Range and non-null patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
                     ty::PatternKind::Range { .. } => {},

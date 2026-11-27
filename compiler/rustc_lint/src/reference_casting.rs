@@ -166,7 +166,7 @@ fn is_invalid_cast_from_ref_to_mut_ptr<'tcx>(
         // For optimization purpose we first check that the type has no generics
         // (as it's impossible to make it safe).
         let inner_ty_has_interior_mutability =
-            inner_ty.has_concrete_skeleton() && is_ty_fully_unsafe_celled(cx, *inner_ty);
+            inner_ty.has_concrete_skeleton() && is_ty_fully_unsafe_celled(cx, inner_ty);
 
         !inner_ty_has_interior_mutability
     } else {
@@ -214,7 +214,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
         return None;
     }
 
-    let from_layout = cx.layout_of(*inner_start_ty).ok()?;
+    let from_layout = cx.layout_of(inner_start_ty).ok()?;
 
     // if the type isn't sized, we bail out, instead of potentially giving
     // the user a meaningless warning.
@@ -223,7 +223,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     }
 
     let alloc_layout = cx.layout_of(alloc_ty).ok()?;
-    let to_layout = cx.layout_of(*inner_end_ty).ok()?;
+    let to_layout = cx.layout_of(inner_end_ty).ok()?;
 
     if to_layout.layout.size() > from_layout.layout.size()
         && to_layout.layout.size() > alloc_layout.layout.size()
@@ -276,7 +276,7 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
                 }
 
                 variant.fields.iter().all(|field| {
-                    let field_ty = field.ty(cx.tcx, *args).skip_norm_wip();
+                    let field_ty = field.ty(cx.tcx, args).skip_norm_wip();
                     inner(cx, field_ty, depth + 1)
                 })
             }
@@ -284,7 +284,7 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
             ty::Tuple(fields) => fields.iter().all(|field_ty| inner(cx, field_ty, depth + 1)),
 
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) | ty::Pat(elem_ty, _) => {
-                inner(cx, *elem_ty, depth + 1)
+                inner(cx, elem_ty, depth + 1)
             }
 
             // Primitive, slices, references, pointers and closures are not

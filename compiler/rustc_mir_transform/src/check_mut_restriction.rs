@@ -37,7 +37,7 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
 
     // Tuple constructors used as values can bypass field mut restrictions if not checked here.
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        if let ty::FnDef(def_id, _) = *constant.const_.ty().kind()
+        if let ty::FnDef(def_id, _) = constant.const_.ty().kind()
             && let DefKind::Ctor(ctor_of, _) = self.tcx.def_kind(def_id)
         {
             let body_did = self.body.source.instance.def_id();
@@ -89,7 +89,7 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                 // separate field projection whose base type is that ADT.
                 // Therefore, it is sufficient to check for ADT base types.
                 // Generic arguments do not affect the field's restriction, so we ignore them.
-                let ty::Adt(adt_def, _args) = *base_ty.ty.kind() else {
+                let ty::Adt(adt_def, _args) = base_ty.ty.kind() else {
                     continue;
                 };
 

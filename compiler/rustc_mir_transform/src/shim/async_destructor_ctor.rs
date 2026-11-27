@@ -186,7 +186,7 @@ pub(super) fn build_future_drop_poll_shim<'tcx>(
 
     let span = tcx.def_span(def_id);
 
-    if tcx.is_async_drop_in_place_coroutine(*coroutine_def_id) {
+    if tcx.is_async_drop_in_place_coroutine(coroutine_def_id) {
         build_adrop_for_adrop_shim(tcx, proxy_ty, impl_ty, span, shim)
     } else {
         build_adrop_for_coroutine_shim(tcx, proxy_ty, impl_ty, span, shim)
@@ -207,21 +207,21 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     let ty::Coroutine(coroutine_def_id, impl_args) = impl_ty.kind() else {
         bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", shim);
     };
-    let ty::Coroutine(_, id_args) = *tcx.type_of(*coroutine_def_id).skip_binder().kind() else {
+    let ty::Coroutine(_, id_args) = tcx.type_of(coroutine_def_id).skip_binder().kind() else {
         bug!()
     };
     let source_info = SourceInfo::outermost(span);
 
     // If the kind tys differ, we must use the by-move body
     let def_id = if id_args.as_coroutine().kind_ty() == impl_args.as_coroutine().kind_ty() {
-        *coroutine_def_id
+        coroutine_def_id
     } else {
         assert_eq!(
             impl_args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
             ty::ClosureKind::FnOnce
         );
 
-        tcx.coroutine_by_move_body_def_id(*coroutine_def_id)
+        tcx.coroutine_by_move_body_def_id(coroutine_def_id)
     };
     let body = tcx.optimized_mir(def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =

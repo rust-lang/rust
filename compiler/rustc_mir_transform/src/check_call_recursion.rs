@@ -55,7 +55,7 @@ impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
             if let ty::Ref(_, dropped_ty, _) =
                 tcx.liberate_late_bound_regions(def_id.to_def_id(), sig.input(0)).kind()
             {
-                check_recursion(tcx, body, RecursiveDrop { drop_for: *dropped_ty });
+                check_recursion(tcx, body, RecursiveDrop { drop_for: dropped_ty });
             }
         }
     }
@@ -140,7 +140,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx, '_> {
         }
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(callee, args) = *func_ty.kind() {
+        if let ty::FnDef(callee, args) = func_ty.kind() {
             // Another check to avoid resolving if we can: to be recursive either the callee is the
             // caller itself, or the callee is the trait method the caller implements. The second
             // part of the check works because `try_resolve` can only return the trait item or an

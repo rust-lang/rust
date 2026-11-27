@@ -49,14 +49,14 @@ impl LargeConstArrays {
         match ty.kind() {
             ty::Adt(adt_def, args) => adt_def
                 .all_fields()
-                .any(|f| self.check_impl(cx, f.ty(cx.tcx, *args).skip_norm_wip())),
+                .any(|f| self.check_impl(cx, f.ty(cx.tcx, args).skip_norm_wip())),
             ty::Array(element_type, cst) => {
                 let normalized = cx
                     .tcx
-                    .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(*cst))
-                    .unwrap_or(*cst);
+                    .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(cst))
+                    .unwrap_or(cst);
                 if let Some(element_count) = normalized.try_to_target_usize(cx.tcx)
-                    && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+                    && let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes())
                     && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
                 {
                     true

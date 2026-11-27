@@ -438,7 +438,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like intrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
+    let instance = if let ty::FnDef(def_id, fn_args) = func.layout().ty.kind() {
         let instance = ty::Instance::expect_resolve(
             fx.tcx,
             fx.typing_env(),

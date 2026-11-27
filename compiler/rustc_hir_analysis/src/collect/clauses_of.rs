@@ -512,7 +512,7 @@ pub(super) fn explicit_clauses_of<'tcx>(
             //     identity args of the trait.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let &ty::Alias(
+            if let ty::Alias(
                 _,
                 ty::AliasTy { kind: ty::Projection { def_id: projection_def_id }, args, .. },
             ) = ty.kind()

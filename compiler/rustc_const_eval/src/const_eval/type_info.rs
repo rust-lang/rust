@@ -109,7 +109,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         place: &impl Writeable<'tcx, CtfeProvenance>,
         ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
-        let generics: ty::Binder<'_, ty::GenericArgs<'_>> = match *ty.kind() {
+        let generics: ty::Binder<'_, ty::GenericArgs<'_>> = match ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

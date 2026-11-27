@@ -32,7 +32,7 @@ fn is_host_unary_float_op(
         _ => return None,
     };
 
-    let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+    let ty::Float(float_ty) = generic_args.type_at(0).kind() else {
         bug!("`{intrinsic_name}` intrinsic called on non-float type");
     };
     Some((float_ty, host_float_op))
@@ -101,7 +101,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match intrinsic_name {
             // Operations we can do with soft-floats.
             "sqrt" => {
-                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                let ty::Float(float_ty) = generic_args.type_at(0).kind() else {
                     bug!("`sqrt` intrinsic called on non-float type");
                 };
                 match float_ty {
@@ -195,7 +195,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "powf" => {
-                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                let ty::Float(float_ty) = generic_args.type_at(0).kind() else {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {
@@ -207,7 +207,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "powi" => {
-                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                let ty::Float(float_ty) = generic_args.type_at(0).kind() else {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {

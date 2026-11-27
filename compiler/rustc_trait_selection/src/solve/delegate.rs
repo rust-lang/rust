@@ -287,7 +287,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
-                    (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                    (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
                         goal_stalled_on_args(thin_vec![
                             TyOrConstInferVar::Ty(a_vid),

@@ -114,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
 
-        match *autoderef.final_ty().kind() {
+        match autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
                 let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi();
                 self.check_call_abi(abi, call_expr.span);
@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.deeply_resolve_ignoring_regions_with_obligations(autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
-        match *adjusted_ty.kind() {
+        match adjusted_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
@@ -434,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let ty::Ref(_, _, mutbl) = *method.sig.inputs()[0].kind() else {
+                    let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() else {
                         bug!("Expected `FnMut`/`Fn` to take receiver by-ref/by-mut")
                     };
 
@@ -457,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn is_scalable_vector_ctor(&self, callee_ty: Ty<'_>) -> bool {
-        if let ty::FnDef(def_id, _) = *callee_ty.kind()
+        if let ty::FnDef(def_id, _) = callee_ty.kind()
             && let def::DefKind::Ctor(def::CtorOf::Struct, _) = self.tcx.def_kind(def_id)
         {
             self.tcx
@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_id, callee_generic_args) = match *callee_ty.kind() {
+        let (fn_sig, def_id, callee_generic_args) = match callee_ty.kind() {
             ty::FnDef(def_id, args) => {
                 let args = args.no_bound_vars().unwrap();
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);

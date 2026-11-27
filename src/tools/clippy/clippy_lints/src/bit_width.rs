@@ -128,8 +128,8 @@ impl LateLintPass<'_> for ManualBitWidth {
 fn get_int_kind<'a>(cx: &LateContext<'a>, ty: Ty<'a>) -> Option<IntKind<'a>> {
     match ty.kind() {
         // int::BITS or uint::BITS
-        ty::Int(int_ty) => Some(IntKind::Int(*int_ty)),
-        ty::Uint(uint_ty) => Some(IntKind::Uint(*uint_ty)),
+        ty::Int(int_ty) => Some(IntKind::Int(int_ty)),
+        ty::Uint(uint_ty) => Some(IntKind::Uint(uint_ty)),
         // NonZero::<int/uint>::BITS
         ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::NonZero, adt.did()) => {
             let arg = args.type_at(0);

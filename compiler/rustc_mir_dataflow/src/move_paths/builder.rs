@@ -245,7 +245,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     );
                     drop(iter); // drop for borrowck
 
-                    let (&elem_ty, len) = match place_ty.kind() {
+                    let (elem_ty, len) = match place_ty.kind() {
                         ty::Array(ty, size) => (
                             ty,
                             size.try_to_target_usize(self.tcx)

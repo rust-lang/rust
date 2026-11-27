@@ -322,7 +322,7 @@ fn needs_inferred_result_ty(
         _ => return false,
     };
     let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().skip_binder();
-    if let ty::Param(output_ty) = *sig.output().kind() {
+    if let ty::Param(output_ty) = sig.output().kind() {
         let args: Vec<&Expr<'_>> = if let Some(receiver) = receiver {
             std::iter::once(receiver).chain(args.iter()).collect()
         } else {

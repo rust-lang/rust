@@ -69,7 +69,7 @@ impl LateLintPass<'_> for UninhabitedReferences {
             && let sig = cx.tcx.fn_sig(def_id).instantiate_identity()
             && let ty = sig.map(|x| cx.tcx.instantiate_bound_regions_with_erased(x.output()))
             && let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty)
-            && let ty::Ref(_, ty, _) = *ty.kind()
+            && let ty::Ref(_, ty, _) = ty.kind()
             && ty.is_privately_uninhabited(cx.tcx, cx.typing_env())
             && !span.in_external_macro(cx.tcx.sess.source_map())
         {

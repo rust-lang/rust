@@ -202,7 +202,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 };
                 let tcx = self.fx.cx.tcx();
                 let func_ty = func.ty(&self.fx.mir.local_decls, tcx);
-                if let ty::FnDef(def_id, _args) = *func_ty.kind()
+                if let ty::FnDef(def_id, _args) = func_ty.kind()
                     && let Some(intrinsic) = tcx.intrinsic(def_id)
                     && self.fx.cx.intrinsic_call_expects_place_always(intrinsic.name)
                 {

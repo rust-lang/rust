@@ -230,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                 let needs_const = is_in_const_context(cx);
                 let def_id = if let Some(def_id) = cx.qpath_res(&qpath, callee.hir_id).opt_def_id() {
                     def_id
-                } else if needs_const && let ty::FnDef(def_id, _) = *cx.typeck_results().expr_ty(callee).kind() {
+                } else if needs_const && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(callee).kind() {
                     // Edge case where a function is first assigned then called.
                     // We previously would have warned for the non-const MSRV, when
                     // checking the path, but now that it's called the const MSRV

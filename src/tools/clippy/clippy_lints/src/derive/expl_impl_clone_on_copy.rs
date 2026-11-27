@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
     let Some(copy_id) = cx.tcx.lang_items().copy_trait() else {
         return;
     };
-    let (ty_adt, ty_subs) = match *ty.kind() {
+    let (ty_adt, ty_subs) = match ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
         _ => return,

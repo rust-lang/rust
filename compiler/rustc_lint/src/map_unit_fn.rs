@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
         {
             return;
         }
-        let (id, sig) = match *cx.typeck_results().expr_ty(arg).kind() {
+        let (id, sig) = match cx.typeck_results().expr_ty(arg).kind() {
             ty::Closure(id, subs) => (id, subs.as_closure().sig()),
             ty::FnDef(id, _) => (id, cx.tcx.fn_sig(id).skip_binder()),
             _ => return,

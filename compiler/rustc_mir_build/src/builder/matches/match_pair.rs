@@ -63,7 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         element_count: usize,
     ) -> Option<ty::Value<'tcx>> {
         let value = pattern.extra.as_deref()?.expanded_const_value?;
-        let (ty::Array(element_ty, _) | ty::Slice(element_ty)) = *pattern.ty.kind() else {
+        let (ty::Array(element_ty, _) | ty::Slice(element_ty)) = pattern.ty.kind() else {
             span_bug!(pattern.span, "expanded constant value on a non-aggregate pattern");
         };
         if element_count >= AGGREGATE_EQ_MIN_LEN

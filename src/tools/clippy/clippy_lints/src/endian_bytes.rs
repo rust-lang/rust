@@ -99,7 +99,7 @@ impl LateLintPass<'_> for EndianBytes {
             _ => return,
         };
         if let Some(ty) = cx.ty_based_def(e.hir_id).opt_parent(cx).opt_impl_ty(cx)
-            && let ty::Uint(_) | ty::Int(_) | ty::Float(_) = *ty.instantiate_identity().skip_normalization().kind()
+            && let ty::Uint(_) | ty::Int(_) | ty::Float(_) = ty.instantiate_identity().skip_normalization().kind()
             // Only check where the name itself comes from. The point of the lints is to
             // catch when the wrong byte order is used so we only care if the current crate
             // decided on the byte order. Which crate actually assembled the path/call

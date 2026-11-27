@@ -52,7 +52,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let upvar_index =
             self.universal_regions().defining_ty.upvar_tys().iter().position(|upvar_ty| {
                 debug!("get_upvar_index_for_region: upvar_ty={upvar_ty:?}");
-                tcx.any_free_region_meets(&upvar_ty, |r| {
+                tcx.any_free_region_meets(upvar_ty, |r| {
                     let r = r.as_var();
                     debug!("get_upvar_index_for_region: r={r:?} fr={fr:?}");
                     r == fr

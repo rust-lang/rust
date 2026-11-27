@@ -23,13 +23,13 @@ pub(super) fn check<'tcx>(
         && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
-        && !has_non_exhaustive_attr(cx.tcx, *adt)
+        && !has_non_exhaustive_attr(cx.tcx, adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let typing_env = typing_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
-            .map(|f| f.ty(cx.tcx, *args))
+            .map(|f| f.ty(cx.tcx, args))
             .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty.skip_norm_wip(), eq_trait_def_id, None, &[]))
     {
         span_lint_hir_and_then(

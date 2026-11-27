@@ -27,7 +27,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `callback` returns true for every region appearing free in `value`.
     pub fn all_free_regions_meet(
         self,
-        value: &impl TypeVisitable<TyCtxt<'tcx>>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         mut callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
         !self.any_free_region_meets(value, |r| !callback(r))
@@ -36,7 +36,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `callback` returns true for some region appearing free in `value`.
     pub fn any_free_region_meets(
         self,
-        value: &impl TypeVisitable<TyCtxt<'tcx>>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
         struct RegionVisitor<F> {

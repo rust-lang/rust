@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: Symbol, expr: &Ex
         && let Some(slice) = derefs_to_slice(cx, recv, recv_ty)
         && let Some(iter_item_ty) = get_iterator_item_ty(cx, recv_ty)
         && let ty::Ref(_, iter_item_ty, _) = iter_item_ty.kind()
-        && *iter_item_ty == args.type_at(0)
+        && iter_item_ty == args.type_at(0)
         && let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite())
     {
         span_lint_and_then(

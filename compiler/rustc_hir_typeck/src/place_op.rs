@@ -139,7 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
-                if let ty::Array(element_ty, ct) = *adjusted_ty.kind() {
+                if let ty::Array(element_ty, ct) = adjusted_ty.kind() {
                     self.register_predicate(Obligation::new(
                         self.tcx,
                         self.cause(
@@ -170,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                        target: Ty::new_imm_ref(self.tcx, *region, adjusted_ty),
+                        target: Ty::new_imm_ref(self.tcx, region, adjusted_ty),
                     });
                 } else {
                     span_bug!(expr.span, "input to index is not a ref?");
@@ -311,7 +311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         let method = self.register_infer_ok_obligations(ok);
-                        let ty::Ref(_, _, mutbl) = *method.sig.output().kind() else {
+                        let ty::Ref(_, _, mutbl) = method.sig.output().kind() else {
                             span_bug!(
                                 self.tcx.def_span(method.def_id),
                                 "expected DerefMut to return a &mut"
@@ -418,7 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(mutbl));
-                    adjustment.target = Ty::new_ref(self.tcx, *region, source, mutbl.into());
+                    adjustment.target = Ty::new_ref(self.tcx, region, source, mutbl.into());
                 }
                 source = adjustment.target;
             }
