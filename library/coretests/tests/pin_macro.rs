@@ -25,9 +25,9 @@ fn extension_works_through_unsafe_block() {
 
 #[test]
 fn unsize_coercion() {
-    let slice: Pin<&mut [PhantomPinned]> = pin!([PhantomPinned; 2]);
+    let slice: Pin<&mut [PhantomPinned]> = pin!([const { PhantomPinned }; 2]);
     stuff(slice);
-    let dyn_obj: Pin<&mut dyn Send> = pin!([PhantomPinned; 2]);
+    let dyn_obj: Pin<&mut dyn Send> = pin!([const { PhantomPinned }; 2]);
     stuff(dyn_obj);
 }
 
