@@ -2093,6 +2093,7 @@ symbols! {
         std_panic_macro,
         stmt,
         stmt_expr_attributes,
+        stmt_expr_attributes_soft,
         stop_after_dataflow,
         store,
         str,

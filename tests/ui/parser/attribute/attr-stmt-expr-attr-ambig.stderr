@@ -1,0 +1,295 @@
+error: attributes are not allowed on range expressions starting with `..`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:34:13
+   |
+LL |     #[attr] .. x;
+   |             ^^
+
+error: const blocks cannot be used as patterns
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:48:29
+   |
+LL |     match 0 { #[attr] const { x } => y }
+   |                             ^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: expected pattern, found `#`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:51:16
+   |
+LL |     match 0 { (#[attr] x .. y) => {} }
+   |                ^ expected pattern
+
+error: expected one of `=>`, `if`, or `|`, found `#`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:52:20
+   |
+LL |     match 0 { x .. #[attr] y => {} }
+   |                    ^ expected one of `=>`, `if`, or `|`
+
+error: expected pattern, found `#`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:53:16
+   |
+LL |     match 0 { (#[attr] x ..) => {} }
+   |                ^ expected pattern
+
+error: expected pattern, found `#`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:54:16
+   |
+LL |     match 0 { (#[attr] .. x) => {} }
+   |                ^ expected pattern
+
+error: expected one of `=>`, `if`, or `|`, found `#`
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:55:18
+   |
+LL |     match 0 { .. #[attr] x => {} }
+   |                  ^ expected one of `=>`, `if`, or `|`
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:58:12
+   |
+LL |     path::<#[attr] 1>;
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:59:12
+   |
+LL |     path::<#[attr] const { 1 }>;
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:60:12
+   |
+LL |     path::<#[attr] { 1 }>;
+   |            ^^^^^^^ attributes are not allowed here
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:8:9
+   |
+LL |     x = #[attr] y;
+   |         ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:11:7
+   |
+LL |     & #[attr] x + y;
+   |       ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:12:10
+   |
+LL |     &mut #[attr] x + y;
+   |          ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:13:16
+   |
+LL |     &raw const #[attr] x + y;
+   |                ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:14:14
+   |
+LL |     &raw mut #[attr] x + y;
+   |              ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:15:16
+   |
+LL |     &pin const #[attr] x + y;
+   |                ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:16:14
+   |
+LL |     &pin mut #[attr] x + y;
+   |              ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:19:16
+   |
+LL |     if let x = #[attr] y {}
+   |                ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:22:20
+   |
+LL |     match 0 { _ if #[attr] x => y };
+   |                    ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:23:14
+   |
+LL |     for _ if #[attr] x in z {}
+   |              ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:26:5
+   |
+LL |     #[attr] x += y;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:27:10
+   |
+LL |     x += #[attr] y;
+   |          ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:28:10
+   |
+LL |     x += #[attr] y += z;
+   |          ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:31:5
+   |
+LL |     #[attr] x .. y;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:32:10
+   |
+LL |     x .. #[attr] y;
+   |          ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:33:5
+   |
+LL |     #[attr] x ..;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:35:8
+   |
+LL |     .. #[attr] x;
+   |        ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:38:7
+   |
+LL |     * #[attr] x + y;
+   |       ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:39:7
+   |
+LL |     ! #[attr] x + y;
+   |       ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:40:7
+   |
+LL |     - #[attr] x + y;
+   |       ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:43:5
+   |
+LL |     #[attr] x + y;
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:44:9
+   |
+LL |     x + #[attr] y;
+   |         ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: ambiguous expression attributes are unstable
+  --> $DIR/attr-stmt-expr-attr-ambig.rs:45:9
+   |
+LL |     x + #[attr] y + z;
+   |         ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 33 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
