@@ -701,13 +701,12 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_ext)]
     /// use std::alloc::System;
     ///
     /// let x = Box::pin_in(1, System);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[stable(feature = "box_pin_in", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline(always)]
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
