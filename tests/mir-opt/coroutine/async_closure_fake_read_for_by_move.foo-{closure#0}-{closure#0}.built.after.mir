@@ -47,8 +47,6 @@ yields ()
 
     bb7: {
         StorageDead(_6);
-        FakeRead(ForMatchGuard, _3);
-        FakeRead(ForMatchGuard, _4);
         _0 = const ();
         goto -> bb10;
     }
@@ -59,6 +57,8 @@ yields ()
 
     bb9: {
         StorageDead(_6);
+        FakeRead(ForMatchGuard, _3);
+        FakeRead(ForMatchGuard, _4);
         goto -> bb6;
     }
 
