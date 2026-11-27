@@ -1101,6 +1101,12 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 llvm::AttributePlace::Function,
                 attributes::target_features_attr(self, self.tcx, vec![]).as_slice(),
             );
+            if self.sess().target.os != Os::Uefi && self.sess().target.main_needs_argc_argv {
+                let noundef = llvm::AttributeKind::NoUndef.create_attr(self.llcx);
+                for i in 0..llvm::count_params(llfn) {
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[noundef]);
+                }
+            }
             Some(llfn)
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote

@@ -8,4 +8,4 @@
 
 fn main() {}
 
-// CHECK: define{{( hidden| noundef)*}} i32 @main(i32{{( %0)?}}, ptr{{( %1)?}})
+// CHECK: define{{( hidden| noundef)*}} i32 @main(i32 noundef{{( %0)?}}, ptr noundef{{( %1)?}})
