@@ -2974,7 +2974,7 @@ written to standard error output)"),
           `default` contains: generic-activity, query-provider, query-cache-hit-count, \
                             query-blocked, incr-cache-load, incr-result-hashing, artifact-sizes
              `args` contains: query-keys, function-args
-        remaining (ungrouped) options: query-cache-hit, llvm"),
+        remaining (ungrouped) options: query-cache-hit, llvm, resident-set-size"),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     shell_argfiles: bool = (false, parse_bool, [UNTRACKED],
