@@ -21,9 +21,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             && self.supports_128bit_integers
             && match sess.target.arch {
                 Arch::AArch64 => true,
-                Arch::X86_64 => {
-                    sess.internal_target_features.contains(&Symbol::intern("cmpxchg16b"))
-                }
+                Arch::X86_64 => sess.rust_target_features.contains(&Symbol::intern("cmpxchg16b")),
                 _ => false,
             }
     }

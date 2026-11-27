@@ -297,9 +297,9 @@ pub struct CrateInfo {
 ///
 /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
 pub struct TargetConfig {
-    /// Options to be set in `sess.internal_target_features`. This is also used to populate
+    /// Options to be set in `sess.rust_target_features`. This is also used to populate
     /// `cfg(target_feature)`.
-    pub internal_target_features: UnordSet<Symbol>,
+    pub rust_target_features: UnordSet<Symbol>,
     /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.

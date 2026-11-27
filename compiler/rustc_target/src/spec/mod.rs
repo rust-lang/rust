@@ -3030,7 +3030,7 @@ impl Target {
 
     pub fn object_architecture(
         &self,
-        internal_target_features: &FxIndexSet<Symbol>,
+        rust_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
         Some(match self.arch {
@@ -3073,7 +3073,7 @@ impl Target {
             Arch::RiscV32 => (Architecture::Riscv32, None),
             Arch::RiscV64 => (Architecture::Riscv64, None),
             Arch::Sparc => {
-                if internal_target_features.contains(&sym::v8plus) {
+                if rust_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
                 } else {

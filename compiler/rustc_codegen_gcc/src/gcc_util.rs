@@ -277,7 +277,7 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         context.add_command_line_option("-mavx");
     }
 
-    add_feature_options(&context, &sess.target.arch, &sess.global_backend_features);
+    add_feature_options(&context, &sess.target.arch, &sess.backend_target_features);
 
     for arg in &sess.opts.cg.llvm_args {
         context.add_command_line_option(arg);

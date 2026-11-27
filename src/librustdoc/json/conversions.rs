@@ -1283,13 +1283,13 @@ fn format_integer_type(it: rustc_abi::IntegerType) -> String {
 pub(super) fn target(sess: &rustc_session::Session) -> Target {
     // Build a set of which features are enabled on this target
     let globally_enabled_features: FxHashSet<&str> =
-        sess.internal_target_features.iter().map(|name| name.as_str()).collect();
+        sess.rust_target_features.iter().map(|name| name.as_str()).collect();
 
     // Build a map of target feature stability by feature name
     use rustc_target::target_features::Stability;
     let feature_stability: FxHashMap<&str, Stability> = sess
         .target
-        .rust_target_features()
+        .existing_rust_target_features()
         .iter()
         .copied()
         .map(|(name, stability, _)| (name, stability))
@@ -1299,7 +1299,7 @@ pub(super) fn target(sess: &rustc_session::Session) -> Target {
         triple: sess.opts.target_triple.tuple().into(),
         target_features: sess
             .target
-            .rust_target_features()
+            .existing_rust_target_features()
             .iter()
             .copied()
             .filter(|(_, stability, _)| {

@@ -41,7 +41,7 @@ pub trait CodegenBackend {
         (
             Default::default(),
             TargetConfig {
-                internal_target_features: Default::default(),
+                rust_target_features: Default::default(),
                 // `true` is used as a default so backends need to acknowledge when they do not
                 // support the float types, rather than accidentally quietly skipping all tests.
                 has_reliable_f16: true,

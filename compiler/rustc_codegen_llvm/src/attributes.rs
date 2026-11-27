@@ -187,7 +187,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let features = &tcx.sess.global_backend_features;
+        let features = &tcx.sess.backend_target_features;
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
@@ -439,7 +439,7 @@ fn s390x_fn_attrs<'ll>(
         return attrs;
     }
 
-    let have_softfloat = sess.internal_target_features.contains(&sym::soft_float)
+    let have_softfloat = sess.rust_target_features.contains(&sym::soft_float)
         || fn_target_features.iter().any(|f| f.name == sym::soft_float);
 
     // If both, backchain and packedstack, are enabled LLVM cannot generate valid function entry points
@@ -470,7 +470,7 @@ pub(crate) fn target_features_attr<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     function_features: Vec<String>,
 ) -> Option<Attribute<'ll>> {
-    let global_features = tcx.sess.global_backend_features.iter().map(String::as_str);
+    let global_features = tcx.sess.backend_target_features.iter().map(String::as_str);
     let function_features = function_features.iter().map(String::as_str);
     let target_features =
         global_features.chain(function_features).intersperse(",").collect::<String>();

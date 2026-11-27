@@ -11,7 +11,7 @@ use rustc_ast as ast;
 use rustc_attr_parsing::ShouldEmit;
 use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
-use rustc_codegen_ssa::target_features::internal_target_features;
+use rustc_codegen_ssa::target_features::rust_target_features;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
@@ -54,7 +54,7 @@ pub(crate) fn add_configuration(
     // Add some of the target features to `cfg`.
     cfg.extend(
         target
-            .rust_target_features()
+            .existing_rust_target_features()
             .iter()
             .filter_map(|(feature, stab, _)| {
                 if stab.in_cfg()
@@ -65,7 +65,7 @@ pub(crate) fn add_configuration(
                     None
                 }
             })
-            .filter(|feature| target_config.internal_target_features.contains(&feature))
+            .filter(|feature| target_config.rust_target_features.contains(&feature))
             .map(|feature| (sym::target_feature, Some(feature))),
     );
 
@@ -101,11 +101,11 @@ pub(crate) fn add_target_modifiers(
     // Join all target-modifier target features into a single comma-separated string,
     // sorted by the order they appear in in `rust_target_features`.
     let target_feature_modifier = target
-        .rust_target_features()
+        .existing_rust_target_features()
         .iter()
         .filter(|(_, stab, _)| stab.is_target_modifier())
         .map(|(feature, ..)| *feature)
-        .filter(|feature| target_config.internal_target_features.contains(&Symbol::intern(feature)))
+        .filter(|feature| target_config.rust_target_features.contains(&Symbol::intern(feature)))
         .collect::<Vec<_>>()
         .join(",");
     tmod.insert(OptionsTargetModifiers::TargetFeatures, target_feature_modifier);
@@ -115,17 +115,17 @@ pub(crate) fn add_target_modifiers(
 }
 
 /// Ensures that all target features required by the ABI are present.
-/// Must be called after `internal_target_features` has been populated!
+/// Must be called after `rust_target_features` has been populated!
 pub(crate) fn check_abi_required_features(sess: &Session) {
     let abi_feature_constraints = sess.target.abi_required_features();
-    // We check this against `internal_target_features` as that is conveniently already
+    // We check this against `rust_target_features` as that is conveniently already
     // back-translated to rustc feature names, taking into account `-Ctarget-cpu` and `-Ctarget-feature`.
     // Just double-check that the features we care about are actually on our list.
     for feature in
         abi_feature_constraints.required.iter().chain(abi_feature_constraints.incompatible.iter())
     {
         assert!(
-            sess.target.rust_target_features().iter().any(|(name, ..)| feature == name),
+            sess.target.existing_rust_target_features().iter().any(|(name, ..)| feature == name),
             "target feature {feature} is required/incompatible for the current ABI but not a recognized feature for this target"
         );
     }
@@ -137,7 +137,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
     let hard_error = matches!(sess.target.arch, Arch::AArch64 | Arch::Arm | Arch::X86);
 
     for feature in abi_feature_constraints.required {
-        if !sess.internal_target_features.contains(&Symbol::intern(feature)) {
+        if !sess.rust_target_features.contains(&Symbol::intern(feature)) {
             let diag = diagnostics::AbiRequiredTargetFeature {
                 feature,
                 enabled: "enabled",
@@ -151,7 +151,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
         }
     }
     for feature in abi_feature_constraints.incompatible {
-        if sess.internal_target_features.contains(&Symbol::intern(feature)) {
+        if sess.rust_target_features.contains(&Symbol::intern(feature)) {
             let diag = diagnostics::AbiRequiredTargetFeature {
                 feature,
                 enabled: "disabled",
@@ -440,7 +440,7 @@ impl CodegenBackend for DummyCodegenBackend {
         let init = CodegenBackendInit::default();
 
         let abi_required_features = sess.target.abi_required_features();
-        let internal_target_features = internal_target_features::<0>(
+        let rust_target_features = rust_target_features::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
@@ -453,7 +453,7 @@ impl CodegenBackend for DummyCodegenBackend {
         );
 
         let config = TargetConfig {
-            internal_target_features,
+            rust_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
             has_reliable_f16b: true,

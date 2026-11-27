@@ -186,13 +186,13 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Target features: first compute just the base set, as that's what `target_config` needs.
         // Then add `-Ctarget-feature`.
-        let mut global_backend_features = llvm_util::base_llvm_features(sess);
-        let config = target_config(sess, &global_backend_features);
+        let mut backend_target_features = llvm_util::base_llvm_features(sess);
+        let config = target_config(sess, &backend_target_features);
         target_features::flag_to_backend_features(
             sess,
             llvm_util::extend_with_llvm_features_for_rust_feature(
                 sess,
-                &mut global_backend_features,
+                &mut backend_target_features,
             ),
         );
 
@@ -296,7 +296,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         let fallback_intrinsics = vec![sym::type_id_eq];
 
         let init = CodegenBackendInit {
-            global_backend_features,
+            backend_target_features,
             replaced_rustc_intrinsics: replaced_intrinsics,
             fallback_rustc_intrinsics: fallback_intrinsics,
             thin_lto_supported: true,

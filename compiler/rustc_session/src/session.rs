@@ -444,8 +444,8 @@ impl EarlySession {
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
 #[derive(Default)]
 pub struct CodegenBackendInit {
-    /// See `Session::global_backend_features`.
-    pub global_backend_features: Vec<String>,
+    /// See `Session::backend_target_features`.
+    pub backend_target_features: Vec<String>,
 
     /// See `Session::replaced_intrinsics`.
     pub replaced_rustc_intrinsics: Vec<Symbol>,
@@ -509,17 +509,16 @@ pub struct Session {
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
 
-    /// Set of actually enabled features for the current target, including ones that are not
-    /// in `cfg(target_feature)` because they are unstable or internal-only.
+    /// Set of actually enabled *Rust* target features for the current target, including ones that
+    /// are not in `cfg(target_feature)` because they are unstable or internal-only.
     /// This is used by the compiler itself when it needs to know which target features are actually
     /// going to be enabled in the backend (e.g. for knowing which registers inline asm can use).
-    pub internal_target_features: FxIndexSet<Symbol>,
+    pub rust_target_features: FxIndexSet<Symbol>,
 
     /// The list of backend target features for this session. Not used by Rust itself because the
-    /// concrete feature names can be backend-specific. This is computed from the target's base
-    /// features, `-Ctarget-cpu`, `-Ctarget-feature`, and other flags that the current backend
-    /// models as target features (but that are not considered target features in Rust).
-    pub global_backend_features: Vec<String>,
+    /// concrete feature names can be backend-specific. This is basically just a cache so the
+    /// backend can compute this list during initialization and later use it during codegen
+    pub backend_target_features: Vec<String>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -1504,9 +1503,9 @@ pub fn build_session(
     let sanitizers = early_sess.sanitizers();
 
     let CodegenBackendInit {
-        global_backend_features,
-        replaced_rustc_intrinsics: replaced_intrinsics,
-        fallback_rustc_intrinsics: fallback_intrinsics,
+        backend_target_features,
+        replaced_rustc_intrinsics,
+        fallback_rustc_intrinsics,
         thin_lto_supported,
     } = codegen_backend_init;
 
@@ -1528,8 +1527,8 @@ pub fn build_session(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
-        internal_target_features: Default::default(),
-        global_backend_features,
+        rust_target_features: Default::default(),
+        backend_target_features,
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),
@@ -1537,8 +1536,8 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         wasm_proc_macro_filesearch,
-        replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
-        fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
+        replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_rustc_intrinsics),
+        fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_rustc_intrinsics),
         thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
