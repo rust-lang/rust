@@ -200,7 +200,6 @@ denied_partial_mitigations! {
         // The mitigation name should match the option name in rustc_session::options,
         // to allow for resetting the mitigation
 
-        // stack-protector is an unstable option, so it can be denied-partial
         (StackProtector, "stack-protector", Edition2015, self.stack_protector()),
         (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
