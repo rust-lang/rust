@@ -13,5 +13,6 @@ define_config! {
     #[derive(Default)]
     struct Perf {
         rustc_perf_path: Option<PathBuf> = "rustc-perf-path",
+        prepare_jobs: Option<usize> = "prepare-jobs",
     }
 }

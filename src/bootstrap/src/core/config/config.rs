@@ -127,6 +127,7 @@ pub(crate) struct Config {
     pub record_failed_tests_path: PathBuf,
     /// Path to an external checkout of rustc-perf, for running custom benchmarks.
     pub rustc_perf_path: Option<PathBuf>,
+    pub rustc_perf_prepare_jobs: Option<usize>,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -692,7 +693,8 @@ impl Config {
             llvm: pgo_llvm,
         } = toml_pgo.unwrap_or_default();
 
-        let Perf { rustc_perf_path: perf_rustc_perf_path } = toml_perf.unwrap_or_default();
+        let Perf { rustc_perf_path: perf_rustc_perf_path, prepare_jobs: perf_prepare_jobs } =
+            toml_perf.unwrap_or_default();
 
         // Backcompat: flags have priority over config
         if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
@@ -1599,6 +1601,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
             rustc_perf_path: perf_rustc_perf_path,
+            rustc_perf_prepare_jobs: perf_prepare_jobs,
             rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
