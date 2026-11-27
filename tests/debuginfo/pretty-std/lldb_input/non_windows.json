@@ -12,7 +12,7 @@
     "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
-     "type": "int",
+     "type": "const int",
      "vals": [
       0,
       1,
@@ -42,7 +42,7 @@
     "synthetic": "lldb_lookup.StdSliceSyntheticProvider",
     "summary": "lldb_lookup.StdStrSummaryProvider",
     "children": {
-     "type": "unsigned char",
+     "type": "const unsigned char",
      "vals": [
       73,
       65,
@@ -157,7 +157,7 @@
    "fields": [
     {
      "name": "data_ptr",
-     "type": "int *",
+     "type": "const int *",
      "offset": 0
     },
     {
@@ -173,7 +173,7 @@
    "fields": [
     {
      "name": "data_ptr",
-     "type": "unsigned char *",
+     "type": "const unsigned char *",
      "offset": 0
     },
     {
@@ -301,6 +301,24 @@
     "unsigned long",
     "alloc::alloc::Global"
    ]
+  },
+  "const int": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 13
+  },
+  "const int *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "const unsigned char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 4
+  },
+  "const unsigned char *": {
+   "size": 8,
+   "type_class": 4096
   },
   "core::marker::PhantomData<unsigned char>": {
    "size": 0,
@@ -493,22 +511,13 @@
    "fields": [
     {
      "name": "pointer",
-     "type": "unsigned char *",
+     "type": "const unsigned char *",
      "offset": 0
     }
    ],
    "generic_params": [
     "unsigned char"
    ]
-  },
-  "int": {
-   "size": 4,
-   "type_class": 4,
-   "basic_type": 13
-  },
-  "int *": {
-   "size": 8,
-   "type_class": 4096
   },
   "long": {
    "size": 8,
@@ -546,10 +555,6 @@
    "size": 1,
    "type_class": 4,
    "basic_type": 4
-  },
-  "unsigned char *": {
-   "size": 8,
-   "type_class": 4096
   },
   "unsigned long": {
    "size": 8,

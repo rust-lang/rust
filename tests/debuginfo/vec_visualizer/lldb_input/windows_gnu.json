@@ -23,18 +23,18 @@
     }
    },
    "vec_ref": {
-    "type": "alloc::vec::Vec<unsigned int *, alloc::alloc::Global>",
+    "type": "alloc::vec::Vec<const unsigned int *, alloc::alloc::Global>",
     "pretty_print": "size=4",
     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
-     "type": "unsigned int *",
+     "type": "const unsigned int *",
      "vals": [
       {
        "children": [
         {
          "name": "*[0]",
-         "type": "unsigned int",
+         "type": "const unsigned int",
          "value": 0
         }
        ]
@@ -43,7 +43,7 @@
        "children": [
         {
          "name": "*[1]",
-         "type": "unsigned int",
+         "type": "const unsigned int",
          "value": 1
         }
        ]
@@ -52,7 +52,7 @@
        "children": [
         {
          "name": "*[2]",
-         "type": "unsigned int",
+         "type": "const unsigned int",
          "value": 2
         }
        ]
@@ -61,7 +61,7 @@
        "children": [
         {
          "name": "*[3]",
-         "type": "unsigned int",
+         "type": "const unsigned int",
          "value": 4294967295
         }
        ]
@@ -278,7 +278,7 @@
     }
    },
    "ref_vec": {
-    "type": "alloc::vec::Vec<int, alloc::alloc::Global> *",
+    "type": "const alloc::vec::Vec<int, alloc::alloc::Global> *",
     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
@@ -293,7 +293,7 @@
     }
    },
    "ptr_vec": {
-    "type": "alloc::vec::Vec<int, alloc::alloc::Global> *",
+    "type": "const alloc::vec::Vec<int, alloc::alloc::Global> *",
     "synthetic": "lldb_lookup.StdVecSyntheticProvider",
     "summary": "lldb_lookup.SizeSummaryProvider",
     "children": {
@@ -377,6 +377,26 @@
   "alloc::alloc::Global": {
    "size": 0,
    "type_class": 16384
+  },
+  "alloc::raw_vec::RawVec<const unsigned int *, alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "_marker",
+     "type": "core::marker::PhantomData<const unsigned int *>",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "const unsigned int *",
+    "alloc::alloc::Global"
+   ]
   },
   "alloc::raw_vec::RawVec<int, alloc::alloc::Global>": {
    "size": 16,
@@ -478,26 +498,6 @@
     "alloc::alloc::Global"
    ]
   },
-  "alloc::raw_vec::RawVec<unsigned int *, alloc::alloc::Global>": {
-   "size": 16,
-   "type_class": 16384,
-   "fields": [
-    {
-     "name": "inner",
-     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
-     "offset": 0
-    },
-    {
-     "name": "_marker",
-     "type": "core::marker::PhantomData<unsigned int *>",
-     "offset": 16
-    }
-   ],
-   "generic_params": [
-    "unsigned int *",
-    "alloc::alloc::Global"
-   ]
-  },
   "alloc::raw_vec::RawVecInner<alloc::alloc::Global>": {
    "size": 16,
    "type_class": 16384,
@@ -519,6 +519,26 @@
     }
    ],
    "generic_params": [
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<const unsigned int *, alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<const unsigned int *, alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "const unsigned int *",
     "alloc::alloc::Global"
    ]
   },
@@ -626,24 +646,28 @@
     "alloc::alloc::Global"
    ]
   },
-  "alloc::vec::Vec<unsigned int *, alloc::alloc::Global>": {
-   "size": 24,
+  "const alloc::vec::Vec<int, alloc::alloc::Global> *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "const unsigned char *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "const unsigned int": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 14
+  },
+  "const unsigned int *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "core::marker::PhantomData<const unsigned int *>": {
+   "size": 0,
    "type_class": 16384,
-   "fields": [
-    {
-     "name": "buf",
-     "type": "alloc::raw_vec::RawVec<unsigned int *, alloc::alloc::Global>",
-     "offset": 0
-    },
-    {
-     "name": "len",
-     "type": "unsigned long long",
-     "offset": 16
-    }
-   ],
    "generic_params": [
-    "unsigned int *",
-    "alloc::alloc::Global"
+    "const unsigned int *"
    ]
   },
   "core::marker::PhantomData<int>": {
@@ -679,13 +703,6 @@
    "type_class": 16384,
    "generic_params": [
     "main::Point<double>"
-   ]
-  },
-  "core::marker::PhantomData<unsigned int *>": {
-   "size": 0,
-   "type_class": 16384,
-   "generic_params": [
-    "unsigned int *"
    ]
   },
   "core::num::niche_types::UsizeNoHighBit": {
@@ -780,7 +797,7 @@
    "fields": [
     {
      "name": "pointer",
-     "type": "unsigned char *",
+     "type": "const unsigned char *",
      "offset": 0
     }
    ],
@@ -873,18 +890,10 @@
    "type_class": 4,
    "basic_type": 4
   },
-  "unsigned char *": {
-   "size": 8,
-   "type_class": 4096
-  },
   "unsigned int": {
    "size": 4,
    "type_class": 4,
    "basic_type": 14
-  },
-  "unsigned int *": {
-   "size": 8,
-   "type_class": 4096
   },
   "unsigned long long": {
    "size": 8,
