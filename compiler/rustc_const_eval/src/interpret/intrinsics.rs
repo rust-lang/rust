@@ -839,7 +839,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // guaranteed by our `VaList::next_arg` docs, but it is needed for Miri itself when it
         // checks whether shims were called with the right arguments. We should eventually put this
         // into the docs as well.
-        if self.identical_c_types(caller_type, callee_type) {
+        if self.identical_c_types(caller_type, callee_type)? {
             return interp_ok(VarArgCompatible::Compatible);
         }
 

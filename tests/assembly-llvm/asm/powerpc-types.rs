@@ -4,32 +4,32 @@
 //@ revisions: powerpc powerpc_altivec powerpc_vsx powerpc_power9 powerpc64 powerpc64_vsx powerpc64_power9 powerpc64le powerpc64le_power9
 //@ assembly-output: emit-asm
 
-//@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
+//@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu -C target-cpu=generic
 //@[powerpc] needs-llvm-components: powerpc
-//@[powerpc_altivec] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec --cfg altivec
+//@[powerpc_altivec] compile-flags: --target powerpc-unknown-linux-gnu -C target-cpu=generic -C target-feature=+altivec --cfg altivec
 //@[powerpc_altivec] needs-llvm-components: powerpc
 //@[powerpc_altivec] filecheck-flags: --check-prefix altivec
-//@[powerpc_vsx] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx --cfg altivec --cfg vsx
+//@[powerpc_vsx] compile-flags: --target powerpc-unknown-linux-gnu -C target-cpu=generic -C target-feature=+altivec,+vsx --cfg altivec --cfg vsx
 //@[powerpc_vsx] needs-llvm-components: powerpc
 //@[powerpc_vsx] filecheck-flags: --check-prefix altivec --check-prefix vsx
-//@[powerpc_power9] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx,+power9-vector --cfg altivec --cfg vsx --cfg power9 --cfg power9be
+//@[powerpc_power9] compile-flags: --target powerpc-unknown-linux-gnu -C target-cpu=generic -C target-feature=+altivec,+vsx,+power9-vector --cfg altivec --cfg vsx --cfg power9 --cfg power9be
 //@[powerpc_power9] needs-llvm-components: powerpc
 //@[powerpc_power9] filecheck-flags: --check-prefix altivec --check-prefix vsx --check-prefix power9 --check-prefix power9be
 
-//@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu --cfg altivec
+//@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu -C target-cpu=ppc64 --cfg altivec
 //@[powerpc64] needs-llvm-components: powerpc
 //@[powerpc64] filecheck-flags: --check-prefix altivec
-//@[powerpc64_vsx] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx --cfg powerpc64 --cfg altivec --cfg vsx
+//@[powerpc64_vsx] compile-flags: --target powerpc64-unknown-linux-gnu -C target-cpu=ppc64 -C target-feature=+vsx --cfg powerpc64 --cfg altivec --cfg vsx
 //@[powerpc64_vsx] needs-llvm-components: powerpc
 //@[powerpc64_vsx] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx
-//@[powerpc64_power9] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx,+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9 --cfg power9be
+//@[powerpc64_power9] compile-flags: --target powerpc64-unknown-linux-gnu -C target-cpu=ppc64 -C target-feature=+vsx,+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9 --cfg power9be
 //@[powerpc64_power9] needs-llvm-components: powerpc
 //@[powerpc64_power9] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx --check-prefix power9 --check-prefix=power9be
 
-//@[powerpc64le] compile-flags: --target powerpc64le-unknown-linux-gnu --cfg powerpc64 --cfg altivec --cfg vsx
+//@[powerpc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-cpu=ppc64le --cfg powerpc64 --cfg altivec --cfg vsx
 //@[powerpc64le] needs-llvm-components: powerpc
 //@[powerpc64le] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx
-//@[powerpc64le_power9] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-feature=+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9
+//@[powerpc64le_power9] compile-flags: --target powerpc64le-unknown-linux-gnu -C target-cpu=ppc64le -C target-feature=+power9-vector --cfg powerpc64 --cfg altivec --cfg vsx --cfg power9
 //@[powerpc64le_power9] needs-llvm-components: powerpc
 //@[powerpc64le_power9] filecheck-flags: --check-prefix powerpc64 --check-prefix altivec --check-prefix vsx --check-prefix power9
 
