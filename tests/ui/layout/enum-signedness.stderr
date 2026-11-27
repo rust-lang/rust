@@ -1,4 +1,4 @@
-warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/enum-signedness.rs:87:5
    |
 LL |     A = i64::MIN as isize,
@@ -8,9 +8,9 @@ LL |     A = i64::MIN as isize,
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
-   = note: `#[warn(repr_c_enums_larger_than_int)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[deny(repr_c_enums_larger_than_int)]` (part of `#[deny(future_incompatible)]`) on by default
 
-warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/enum-signedness.rs:90:5
    |
 LL |     B = i64::MIN as isize + 1,
@@ -21,7 +21,7 @@ LL |     B = i64::MIN as isize + 1,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
-warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/enum-signedness.rs:107:5
    |
 LL |     A = i64::MAX as isize - 1,
@@ -32,7 +32,7 @@ LL |     A = i64::MAX as isize - 1,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
-warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/enum-signedness.rs:110:5
    |
 LL |     B = i64::MAX as isize,
@@ -115,5 +115,57 @@ error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u64, valid_rang
 LL | enum Positive64BitC {
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors; 4 warnings emitted
+error: aborting due to 16 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:87:5
+   |
+LL |     A = i64::MIN as isize,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `#[deny(repr_c_enums_larger_than_int)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:90:5
+   |
+LL |     B = i64::MIN as isize + 1,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `#[deny(repr_c_enums_larger_than_int)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:107:5
+   |
+LL |     A = i64::MAX as isize - 1,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `#[deny(repr_c_enums_larger_than_int)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:110:5
+   |
+LL |     B = i64::MAX as isize,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `#[deny(repr_c_enums_larger_than_int)]` (part of `#[deny(future_incompatible)]`) on by default
 

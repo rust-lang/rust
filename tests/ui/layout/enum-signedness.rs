@@ -85,10 +85,10 @@ enum Negative64BitRust {
 enum Negative64BitC {
     //~^ ERROR: value: i64, valid_range: 9223372036854775808..=9223372036854775809
     A = i64::MIN as isize,
-    //~^ WARN: enum discriminant does not fit into C
+    //~^ ERROR: enum discriminant does not fit into C
     //~| WARN: previously accepted
     B = i64::MIN as isize + 1,
-    //~^ WARN: enum discriminant does not fit into C
+    //~^ ERROR: enum discriminant does not fit into C
     //~| WARN: previously accepted
 }
 
@@ -105,9 +105,9 @@ enum Positive64BitRust {
 enum Positive64BitC {
     //~^ ERROR: value: u64, valid_range: 9223372036854775806..=9223372036854775807
     A = i64::MAX as isize - 1,
-    //~^ WARN: enum discriminant does not fit into C
+    //~^ ERROR: enum discriminant does not fit into C
     //~| WARN: previously accepted
     B = i64::MAX as isize,
-    //~^ WARN: enum discriminant does not fit into C
+    //~^ ERROR: enum discriminant does not fit into C
     //~| WARN: previously accepted
 }
