@@ -12,11 +12,9 @@ use std::{
     slice::{from_ptr_range, from_raw_parts},
 };
 
-// Null is never valid for references
+// Null is valid for references if length is zero
 pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: null reference
 pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: null reference
 
 // Out of bounds
 pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
@@ -46,7 +44,7 @@ pub static S8: &[u64] = unsafe {
 };
 
 pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
-//~^ ERROR encountered a null reference
+
 pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
 //~^ ERROR 0 < pointee_size && pointee_size <= isize::MAX as usize
 pub static R2: &[u32] = unsafe {
