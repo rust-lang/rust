@@ -39,8 +39,9 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         is_cleanup: bool,
     ) -> Self::Value;
 
-    /// Ungracefully stop execution in the simplest way possible.
-    fn abort_immediate(&mut self);
+    /// Implementation of `abort_immediate`
+    /// when not overwritten by the `crash_impl` lang item
+    fn abort_immediate_impl(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
     /// Returns the number of bits set. The return type must be `u32`.

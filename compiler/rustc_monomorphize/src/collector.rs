@@ -1375,6 +1375,15 @@ fn collect_items_of_instance<'tcx>(
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
         }
+
+        // The backend may insert calls to this lang item at any time,
+        // so collect it unconditionally.
+        if let Some(def_id) = tcx.lang_items().get(LangItem::CrashImpl) {
+            let crash_impl_instance = Instance::mono(tcx, def_id);
+            if tcx.should_codegen_locally(crash_impl_instance) {
+                collector.used_items.push(create_fn_mono_item(tcx, crash_impl_instance, DUMMY_SP));
+            }
+        }
     }
 
     // Always visit all `required_consts`, so that we evaluate them and abort compilation if any of

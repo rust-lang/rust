@@ -2,14 +2,14 @@ use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
-use rustc_attr_ir::UnrollAttr;
+use rustc_attr_ir::{LangItem, UnrollAttr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::typetree::typetree_from_ty;
 use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::callconv::FnAbi;
 
 use super::abi::AbiBuilderMethods;
@@ -22,7 +22,9 @@ use super::misc::MiscCodegenMethods;
 use super::type_::{ArgAbiBuilderMethods, BaseTypeCodegenMethods, LayoutTypeCodegenMethods};
 use super::{CodegenMethods, StaticBuilderMethods};
 use crate::MemFlags;
-use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
+use crate::common::{
+    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, build_langcall,
+};
 use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 
@@ -685,4 +687,23 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);
+
+    fn abort_immediate(&mut self) {
+        if self.tcx().lang_items().crash_impl().is_some() {
+            let (fn_abi, fn_val, instance) = build_langcall(self, DUMMY_SP, LangItem::CrashImpl);
+            let fn_ty = self.fn_decl_backend_type(fn_abi);
+            self.call(
+                fn_ty,
+                None,
+                Some(fn_abi),
+                fn_val,
+                ReturnSlot::Direct,
+                &[],
+                None,
+                Some(instance),
+            );
+        } else {
+            self.abort_immediate_impl();
+        }
+    }
 }
