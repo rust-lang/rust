@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
+use rustc_span::bug;
 use serde::Serialize;
 
 use crate::abi::{FnAbi, Layout};
@@ -727,6 +728,12 @@ impl std::ops::Index<ParamConst> for GenericArgs {
     }
 }
 
+impl GenericArgs {
+    pub fn as_closure(&self) -> ClosureArgs {
+        with(|cx| cx.as_closure(&self))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum GenericArgKind {
     Lifetime(Region),
@@ -761,6 +768,46 @@ impl GenericArgKind {
             GenericArgKind::Type(ty) => Some(ty),
             _ => None,
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct ClosureArgs {
+    pub args: GenericArgs,
+}
+
+pub struct ClosureArgsParts<'a> {
+    pub parent_args: &'a [GenericArgKind],
+    pub closure_kind_ty: &'a Ty,
+    pub closure_sig_as_fn_ptr_ty: &'a Ty,
+    pub tupled_upvars_ty: &'a Ty,
+}
+
+impl ClosureArgs {
+    pub fn split(&self) -> ClosureArgsParts<'_> {
+        match self.args.0.as_slice() {
+            [parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+                ClosureArgsParts {
+                    parent_args,
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    closure_sig_as_fn_ptr_ty: closure_sig_as_fn_ptr_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                }
+            }
+            _ => bug!("closure args missing synthetics"),
+        }
+    }
+
+    pub fn tupled_upvars_ty(&self) -> Ty {
+        *self.split().tupled_upvars_ty
+    }
+
+    pub fn kind_ty(&self) -> Ty {
+        *self.split().closure_kind_ty
+    }
+
+    pub fn sig_as_fn_ptr_ty(&self) -> Ty {
+        *self.split().closure_sig_as_fn_ptr_ty
     }
 }
 

@@ -1,6 +1,6 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Interner, Ty};
 use rustc_middle::{mir, ty};
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
@@ -206,6 +206,21 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         GenericArgs(self.iter().map(|arg| arg.kind().stable(tables, cx)).collect())
+    }
+}
+
+impl<'tcx, S> Stable<'tcx> for ty::ClosureArgs<S>
+where
+    S: Interner<GenericArgs = ty::GenericArgs<'tcx>>,
+{
+    type T = crate::ty::ClosureArgs;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        crate::ty::ClosureArgs { args: self.args.stable(tables, cx) }
     }
 }
 
