@@ -30,6 +30,7 @@ cfg_select! {
         all(target_vendor = "fortanix", target_env = "sgx"),
         all(target_os = "wasi", panic = "unwind"),
         target_os = "xous",
+        target_os = "qtee",
     ) => {
         mod libunwind;
         pub use libunwind::*;

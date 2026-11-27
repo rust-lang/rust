@@ -19,6 +19,9 @@ libc = { version = "0.2.140", features = ['rustc-dep-of-std'], default-features 
 [target.'cfg(target_os = "xous")'.dependencies]
 unwinding = { version = "0.2.7", features = ['rustc-dep-of-std', 'unwinder', 'fde-custom'], default-features = false }
 
+[target.'cfg(target_os = "qtee")'.dependencies]
+unwinding = { version = "0.2.7", features = ['rustc-dep-of-std', 'unwinder', 'fde-static'], default-features = false }
+
 [features]
 
 # Only applies for Linux and Fuchsia targets
@@ -32,4 +35,4 @@ system-llvm-libunwind = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_arch, values("loongarch32"))']
+check-cfg = ['cfg(target_arch, values("loongarch32"))', 'cfg(target_os, values("qtee"))']
