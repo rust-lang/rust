@@ -307,7 +307,7 @@ fn clean_generic_bound<'tcx>(
                 && let hir::TraitBoundModifiers::NONE = t.modifiers
                 && let Some(sizedness) = Sizedness::from_lang_item(lang_item)
             {
-                return sizedness.to_bound_where(default_sizedness, cx);
+                return sizedness.to_bound_unless_default(default_sizedness, cx);
             }
 
             if cx.tcx.features().sized_hierarchy()
@@ -447,26 +447,44 @@ fn clean_where_predicate<'tcx>(
     }
     Some(match predicate.kind {
         hir::WherePredicateKind::BoundPredicate(wbp) => {
+            // If the bounded type is a type parameter `T` defined on the nearest overarching item,
+            // then there will be an implicit `T: Sized` predicate that's a sibling to this
+            // predicate. We use that knowledge to correctly rewrite sizedness bounds.
+            let default_sizedness = if let hir::TyKind::Path(qpath) = &wbp.bounded_ty.kind
+                && let hir::QPath::Resolved(None, path) = qpath
+                && let Res::Def(DefKind::TyParam, param_def_id) = path.res
+                && let enclosing_item_owner_id = cx
+                    .tcx
+                    .hir_parent_owner_iter(predicate.hir_id)
+                    .find_map(|(owner_id, parent)| parent.generics().map(|_| owner_id))
+                    .unwrap()
+                && cx.tcx.parent(param_def_id) == enclosing_item_owner_id.to_def_id()
+            {
+                Sizedness::Sized
+            } else {
+                Sizedness::PointeeSized
+            };
+
+            let ty = clean_ty(wbp.bounded_ty, cx);
+            let bounds: Vec<_> = wbp
+                .bounds
+                .iter()
+                .filter_map(|x| clean_generic_bound(x, default_sizedness, cx))
+                .collect();
+
+            if let Type::Generic(_) = ty
+                && bounds.is_empty()
+                && wbp.bound_generic_params.is_empty()
+            {
+                return None;
+            }
+
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
                 .map(|param| clean_generic_param(cx, None, param))
                 .collect();
-            let ty = clean_ty(wbp.bounded_ty, cx);
-            // FIXME(fmease): Well, *own* param to be precise!
-            let default_sizedness = match ty {
-                Type::Generic(_) => Sizedness::Sized,
-                _ => Sizedness::PointeeSized,
-            };
-            WherePredicate::BoundPredicate {
-                ty,
-                bounds: wbp
-                    .bounds
-                    .iter()
-                    .filter_map(|x| clean_generic_bound(x, default_sizedness, cx))
-                    .collect(),
-                bound_params,
-            }
+            WherePredicate::BoundPredicate { ty, bounds, bound_params }
         }
         hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
@@ -795,22 +813,21 @@ pub(crate) fn clean_generics<'tcx>(
     gens: &hir::Generics<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Generics {
-    let impl_trait_params = gens
+    let impl_trait_params: Vec<_> = gens
         .params
         .iter()
         .filter(|param| is_impl_trait(param))
         .map(|param| {
             let param = clean_generic_param(cx, Some(gens), param);
-            match param.kind {
-                GenericParamDefKind::Lifetime { .. } => unreachable!(),
-                GenericParamDefKind::Type { ref bounds, .. } => {
-                    cx.impl_trait_bounds.insert(param.def_id.into(), bounds.to_vec());
-                }
-                GenericParamDefKind::Const { .. } => unreachable!(),
+            let GenericParamDefKind::Type { bounds, .. } = &param.kind else { unreachable!() };
+            let mut bounds = bounds.to_vec();
+            if bounds.iter().all(|b| !b.is_trait_bound()) {
+                bounds.insert(0, Sizedness::Sized.to_bound(cx));
             }
+            cx.impl_trait_bounds.insert(param.def_id.into(), bounds);
             param
         })
-        .collect::<Vec<_>>();
+        .collect();
 
     let mut bound_predicates = FxIndexMap::default();
     let mut region_predicates = FxIndexMap::default();
@@ -1599,7 +1616,7 @@ fn clean_middle_sizedness_bounds_where(
     bounds.retain(|bound| {
         Sizedness::from_bound(bound, cx).inspect(|&sz| sizedness.add(sz)).is_none()
     });
-    bounds.extend(sizedness.to_bound_where(default_sizedness, cx));
+    bounds.extend(sizedness.to_bound_unless_default(default_sizedness, cx));
 }
 
 fn first_non_private_clean_path<'tcx>(
@@ -1958,9 +1975,18 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
             Array(Box::new(clean_ty(ty, cx)), length.into())
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
-        TyKind::OpaqueDef(ty) => ImplTrait(
-            ty.bounds.iter().filter_map(|x| clean_generic_bound(x, Sizedness::Sized, cx)).collect(),
-        ),
+        TyKind::OpaqueDef(ty) => {
+            let mut bounds: Vec<_> = ty
+                .bounds
+                .iter()
+                .filter_map(|x| clean_generic_bound(x, Sizedness::Sized, cx))
+                .collect();
+            if bounds.iter().all(|b| !b.is_trait_bound()) {
+                bounds.insert(0, Sizedness::Sized.to_bound(cx));
+            }
+            ImplTrait(bounds)
+        }
+
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, lifetime) => {
             // NOTE(sized_hierarchy): We don't disguise anything here. `dyn PointeeSized` is illegal
@@ -2476,7 +2502,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    bounds.extend(sizedness.to_bound_where(Sizedness::Sized, cx));
+    bounds.extend(sizedness.to_bound_unless_default(Sizedness::Sized, cx));
 
     // Move trait bounds to the front.
     bounds.sort_by_key(|b| !b.is_trait_bound());
@@ -2506,7 +2532,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub(super) enum Sizedness {
+enum Sizedness {
     PointeeSized,
     MetaSized,
     Sized,
@@ -2542,18 +2568,25 @@ impl Sizedness {
         }
     }
 
-    fn to_bound_where(mut self, default: Self, cx: &DocContext<'_>) -> Option<GenericBound> {
+    fn to_bound_unless_default(self, default: Self, cx: &DocContext<'_>) -> Option<GenericBound> {
         let sized_hierarchy = cx.tcx.features().sized_hierarchy();
 
-        if !sized_hierarchy && self == Self::PointeeSized {
-            self = Self::MetaSized;
-        }
-        if self == default {
+        // If the sized hierarchy isn't enabled `PointeeSized` and `MetaSized` need to be
+        // indistinguishable.
+        let adjusted_self =
+            if !sized_hierarchy && let Self::PointeeSized = self { Self::MetaSized } else { self };
+
+        if adjusted_self == default {
             return None;
         }
-        if !sized_hierarchy && let Self::MetaSized = self {
+
+        // If the sized hierarchy is not enabled we want to "disguise" `PointeeSized` and `MetaSized`
+        // `MetaSized` as `?Sized` where possible. However, relaxed bound `?Sized` cannot be placed
+        // everywhere: It can only be written in places where the default is `Sized`.
+        if !sized_hierarchy && let (Self::Sized, Self::MetaSized) = (default, adjusted_self) {
             return Some(GenericBound::maybe_sized(cx));
         }
+
         Some(self.to_bound(cx))
     }
 
