@@ -1650,6 +1650,17 @@ rustc_queries! {
         desc { "finding trait impls of `{}`", tcx.def_path_str(trait_id) }
     }
 
+    /// Given a trait `trait_id`, return all known blanket `impl` blocks.
+    query blanket_impls_of(trait_id: DefId) -> &'tcx [DefId] {
+        desc { "finding blanket trait impls of `{}`", tcx.def_path_str(trait_id) }
+    }
+
+    /// Given a trait `trait_id`, return all known `impl` blocks that have a simplified
+    /// self-type that matches the given one..
+    query trait_impls_of_ty((trait_id, simp): (DefId, SimplifiedType)) -> &'tcx [DefId] {
+        desc { "finding trait impls of `{}` for `{:?}`", tcx.def_path_str(trait_id), simp }
+    }
+
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk

@@ -423,8 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                                         .is_some()
                                                         || !cx
                                                             .tcx
-                                                            .trait_impls_of(trait_.def_id)
-                                                            .blanket_impls()
+                                                            .blanket_impls_of(trait_.def_id)
                                                             .is_empty()
                                                 })
                                                 .any(|trait_| {
