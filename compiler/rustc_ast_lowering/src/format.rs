@@ -17,7 +17,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut fmt = Cow::Borrowed(fmt);
 
         let sp = self.mark_span_with_reason(
-            DesugaringKind::FormatLiteral { source: fmt.is_source_literal },
+            DesugaringKind::FormatLiteral {
+                is_source_literal_for_diagnostics_only: fmt.is_source_literal,
+            },
             sp,
             sp.ctxt().outer_expn_data().allow_internal_unstable,
         );
