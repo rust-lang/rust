@@ -47,10 +47,10 @@ LL |     !Question::Yes;
    |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
    |
 note: an implementation of `Not` might be missing for `Question`
-  --> $DIR/error-festival.rs:3:1
+  --> $DIR/error-festival.rs:3:6
    |
 LL | enum Question {
-   | ^^^^^^^^^^^^^ must implement `Not`
+   |      ^^^^^^^^ must implement `Not`
 note: the trait `Not` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 

@@ -8,7 +8,6 @@ LL |     LinkedList::new() += 1;
    |
 note: `LinkedList<_>` does not implement `AddAssign<{integer}>`
   --> $SRC_DIR/alloc/src/collections/linked_list.rs:LL:COL
-  ::: $SRC_DIR/alloc/src/collections/linked_list.rs:LL:COL
    |
    = note: `LinkedList<_>` is defined in another crate
 

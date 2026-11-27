@@ -8,10 +8,10 @@ LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
 note: an implementation of `PartialEq` might be missing for `NoCloneOrEq`
-  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
+  --> $DIR/deriving-no-inner-impl-error-message.rs:1:8
    |
 LL | struct NoCloneOrEq;
-   | ^^^^^^^^^^^^^^^^^^ must implement `PartialEq`
+   |        ^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `NoCloneOrEq` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]

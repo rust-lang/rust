@@ -7,10 +7,10 @@ LL |     let _ = owned_bar * owned_bar;
    |             Bar
    |
 note: an implementation of `Mul` might be missing for `Bar`
-  --> $DIR/borrow-suggestion-109352-2.rs:1:1
+  --> $DIR/borrow-suggestion-109352-2.rs:1:8
    |
 LL | struct Bar;
-   | ^^^^^^^^^^ must implement `Mul`
+   |        ^^^ must implement `Mul`
 note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

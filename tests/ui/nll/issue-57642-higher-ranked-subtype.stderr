@@ -6,10 +6,10 @@ LL |     let x = <fn (&())>::make_g();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `X` defines an item `make_g`, perhaps you need to implement it
-  --> $DIR/issue-57642-higher-ranked-subtype.rs:4:1
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:4:7
    |
 LL | trait X {
-   | ^^^^^^^
+   |       ^
 LL |     type G;
 LL |     fn make_g() -> Self::G;
    |
@@ -22,10 +22,10 @@ LL |     let x = <fn (&())>::make_f();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Y` defines an item `make_f`, perhaps you need to implement it
-  --> $DIR/issue-57642-higher-ranked-subtype.rs:17:1
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:17:7
    |
 LL | trait Y {
-   | ^^^^^^^
+   |       ^
 LL |     type F;
 LL |     fn make_f() -> Self::F;
    |

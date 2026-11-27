@@ -5,15 +5,15 @@ LL |         x.bar();
    |           ^^^ multiple `bar` found
    |
 note: candidate #1 is defined in an impl for the type `Bar<T>`
-  --> $DIR/method-resolution2.rs:20:5
+  --> $DIR/method-resolution2.rs:20:8
    |
 LL |     fn bar(self) {}
-   |     ^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in an impl for the type `Bar<u32>`
-  --> $DIR/method-resolution2.rs:16:5
+  --> $DIR/method-resolution2.rs:16:8
    |
 LL |     fn bar(self) {}
-   |     ^^^^^^^^^^^^
+   |        ^^^
 
 error: aborting due to 1 previous error
 

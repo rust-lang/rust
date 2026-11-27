@@ -366,8 +366,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_name
                 );
                 err.span_label(item_name.span, format!("private {kind}"));
-                let sp =
-                    self.tcx.hir_span_if_local(def_id).unwrap_or_else(|| self.tcx.def_span(def_id));
+                let sp = self
+                    .tcx
+                    .hir_span_if_local(def_id)
+                    .unwrap_or_else(|| self.tcx.item_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
                 if let Some(within_macro_span) = within_macro_span {
                     err.span_label(within_macro_span, "due to this macro variable");
@@ -1025,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rcvr_expr,
                     ) {
                         err.span_note(
-                            tcx.def_span(method.def_id),
+                            tcx.item_span(method.def_id),
                             format!("{item_kind} is available for `{rcvr_ty}`"),
                         );
                     }
@@ -2353,9 +2355,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // We found a method but either the expression is not a method call or
                     // the argument count didn't match.
-                    let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+                    let mut span: MultiSpan = tcx.item_span(similar_candidate.def_id).into();
                     span.push_span_context(
-                        tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+                        tcx.item_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
                     );
                     err.span_help(
                         span,
@@ -2377,7 +2379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.span_help(tcx.def_span(similar_candidate.def_id), msg);
+                err.span_help(tcx.item_span(similar_candidate.def_id), msg);
             }
         } else if let Mode::Path = mode
             && args.unwrap_or(&[]).is_empty()
@@ -2392,9 +2394,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // The expression is a function or method call, but the item we found is an
             // associated const or type.
-            let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+            let mut span: MultiSpan = tcx.item_span(similar_candidate.def_id).into();
             span.push_span_context(
-                tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+                tcx.item_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
             );
             err.span_help(span, msg);
         }
@@ -2451,7 +2453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return Some(name);
                         } else if let None = call_args {
                             err.span_note(
-                                self.tcx.def_span(inherent_method.def_id),
+                                self.tcx.item_span(inherent_method.def_id),
                                 format!("you might have meant to use method `{}`", name),
                             );
                             return Some(name);
@@ -2495,9 +2497,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
 
                     let note_span = if item.def_id.is_local() {
-                        Some(self.tcx.def_span(item.def_id))
+                        Some(self.tcx.item_span(item.def_id))
                     } else if impl_did.is_local() {
-                        Some(self.tcx.def_span(impl_did))
+                        Some(self.tcx.item_span(impl_did))
                     } else {
                         None
                     };
@@ -2563,7 +2565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 CandidateSource::Trait(trait_did) => {
                     let Some(item) = self.associated_value(trait_did, item_name) else { continue };
-                    let item_span = self.tcx.def_span(item.def_id);
+                    let item_span = self.tcx.item_span(item.def_id);
                     let idx = if sources.len() > 1 {
                         let msg = format!(
                             "candidate #{} is defined in the trait `{}`",
@@ -2686,7 +2688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [] => {}
             [(def_id, ret_ty)] => {
                 err.span_note(
-                    self.tcx.def_span(def_id),
+                    self.tcx.item_span(def_id),
                     format!(
                         "if you're trying to build a new `{rcvr_ty}`, consider using `{}` which \
                          returns `{ret_ty}`",
@@ -2697,7 +2699,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {
                 let span: MultiSpan = items
                     .iter()
-                    .map(|&(def_id, _)| self.tcx.def_span(def_id))
+                    .map(|&(def_id, _)| self.tcx.item_span(def_id))
                     .collect::<Vec<Span>>()
                     .into();
                 err.span_note(
@@ -3354,7 +3356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     [(_, field, pick)] => {
                         let self_ty = field.ty(tcx, *args).skip_norm_wip();
                         err.span_note(
-                            tcx.def_span(pick.item.def_id),
+                            tcx.item_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
                         );
                         let (article, kind, variant, question) = if tcx.is_diagnostic_item(sym::Result, kind.did())
@@ -3476,7 +3478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 err.span_note(
-                    tcx.def_span(pick.item.def_id),
+                    tcx.item_span(pick.item.def_id),
                     format!("the method `{item_name}` exists on the type `{ty}`"),
                 );
             }
@@ -3523,7 +3525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut local_spans: MultiSpan = local_def_ids
             .iter()
             .filter_map(|def_id| {
-                let span = self.tcx.def_span(*def_id);
+                let span = self.tcx.item_span(*def_id);
                 if span.is_dummy() { None } else { Some(span) }
             })
             .collect::<Vec<_>>()
@@ -3531,7 +3533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (_, pred) in &local_preds {
             if let ty::Adt(def, _) = pred.self_ty().kind() {
                 local_spans.push_span_label(
-                    self.tcx.def_span(def.did()),
+                    self.tcx.item_span(def.did()),
                     format!("must implement `{}`", pred.trait_ref.print_trait_sugared()),
                 );
             }
@@ -3561,7 +3563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (_, pred) in &foreign_preds {
             let ty = pred.self_ty();
             let ty::Adt(def, _) = ty.kind() else { continue };
-            let span = self.tcx.def_span(def.did());
+            let span = self.tcx.item_span(def.did());
             if span.is_dummy() {
                 continue;
             }
@@ -3683,7 +3685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let len = traits.len();
         if len > 0 {
             let span =
-                MultiSpan::from_spans(traits.iter().map(|&did| self.tcx.def_span(did)).collect());
+                MultiSpan::from_spans(traits.iter().map(|&did| self.tcx.item_span(did)).collect());
             let mut names = format!("`{}`", self.tcx.def_path_str(traits[0]));
             for (i, &did) in traits.iter().enumerate().skip(1) {
                 if len > 2 {
@@ -3990,7 +3992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Mutability::Mut => ("as_mut", "as_mut"),
             };
             err.span_note(
-                tcx.def_span(pick.item.def_id),
+                tcx.item_span(pick.item.def_id),
                 format!("the method `{item_ident}` exists on the type `{ty}`", ty = pick.self_ty),
             );
             let mut_str = ptr_mutbl.ptr_str();
@@ -4858,13 +4860,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if impls_trait(trait_info.def_id) {
                         self.suggest_valid_traits(err, item_name, vec![trait_info.def_id], false);
                     } else {
-                        let mut span: MultiSpan = self.tcx.def_span(trait_info.def_id).into();
+                        let mut span: MultiSpan = self.tcx.item_span(trait_info.def_id).into();
                         for assoc in self
                             .tcx
                             .associated_items(trait_info.def_id)
                             .filter_by_name_unhygienic(item_name.name)
                         {
-                            span.push_span_context(self.tcx.def_span(assoc.def_id).shrink_to_lo());
+                            span.push_span_context(self.tcx.item_span(assoc.def_id).shrink_to_lo());
                         }
                         err.subdiagnostic(CandidateTraitNote {
                             span,

@@ -6,10 +6,10 @@ LL |     a.test_mut();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
-  --> $DIR/vec-autoderef-autoref.rs:13:1
+  --> $DIR/vec-autoderef-autoref.rs:13:7
    |
 LL | trait MyIter {
-   | ^^^^^^^^^^^^
+   |       ^^^^^^
 LL |     fn test_mut(&mut self);
    |
 help: there is a method `get_mut` with a similar name, but with different arguments
@@ -23,10 +23,10 @@ LL |     a.test();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/vec-autoderef-autoref.rs:13:1
+  --> $DIR/vec-autoderef-autoref.rs:13:7
    |
 LL | trait MyIter {
-   | ^^^^^^^^^^^^
+   |       ^^^^^^
 LL |     fn test_mut(&mut self);
 LL |     fn test(&self);
    |
@@ -39,10 +39,10 @@ LL |     ([1]).test();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/vec-autoderef-autoref.rs:13:1
+  --> $DIR/vec-autoderef-autoref.rs:13:7
    |
 LL | trait MyIter {
-   | ^^^^^^^^^^^^
+   |       ^^^^^^
 LL |     fn test_mut(&mut self);
 LL |     fn test(&self);
    |
@@ -55,10 +55,10 @@ LL |     (&[1]).test();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test`, perhaps you need to implement it
-  --> $DIR/vec-autoderef-autoref.rs:13:1
+  --> $DIR/vec-autoderef-autoref.rs:13:7
    |
 LL | trait MyIter {
-   | ^^^^^^^^^^^^
+   |       ^^^^^^
 LL |     fn test_mut(&mut self);
 LL |     fn test(&self);
    |

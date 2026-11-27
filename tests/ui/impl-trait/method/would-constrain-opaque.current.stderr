@@ -6,10 +6,10 @@ LL |         x.method();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `method`, perhaps you need to implement it
-  --> $DIR/would-constrain-opaque.rs:17:1
+  --> $DIR/would-constrain-opaque.rs:17:7
    |
 LL | trait Trait: Sized {
-   | ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^
 LL |     fn method(self) {}
    |
 
@@ -21,10 +21,10 @@ LL |         x.method();
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `method`, perhaps you need to implement it
-  --> $DIR/would-constrain-opaque.rs:17:1
+  --> $DIR/would-constrain-opaque.rs:17:7
    |
 LL | trait Trait: Sized {
-   | ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^
 LL |     fn method(self) {}
    |
 

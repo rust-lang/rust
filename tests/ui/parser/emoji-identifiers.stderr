@@ -75,10 +75,10 @@ LL |     👀::full_of✨()
    |         ^^^^^^^^^ associated function or constant not found in `👀`
    |
 note: if you're trying to build a new `👀`, consider using `👀::full_of_✨` which returns `👀`
-  --> $DIR/emoji-identifiers.rs:4:5
+  --> $DIR/emoji-identifiers.rs:4:8
    |
 LL |     fn full_of_✨() -> 👀 {
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
 help: there is an associated function `full_of_✨` with a similar name
    |
 LL |     👀::full_of_✨()

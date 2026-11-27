@@ -5,15 +5,15 @@ LL |     S::foo(&s);
    |        ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait.rs:6:5
+  --> $DIR/disambiguate-multiple-trait.rs:6:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait.rs:12:5
+  --> $DIR/disambiguate-multiple-trait.rs:12:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     S::foo(&s);
@@ -30,15 +30,15 @@ LL |     let _ = S::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait.rs:5:5
+  --> $DIR/disambiguate-multiple-trait.rs:5:11
    |
 LL |     const CONST: usize = 1;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait.rs:11:5
+  --> $DIR/disambiguate-multiple-trait.rs:11:11
    |
 LL |     const CONST: usize = 2;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = S::CONST;

@@ -36,10 +36,10 @@ LL | impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
    |                    |
    |                    unsatisfied trait bound introduced here
 note: the trait `Raw` must be implemented
-  --> $DIR/issue-62742.rs:19:1
+  --> $DIR/issue-62742.rs:19:11
    |
 LL | pub trait Raw<T: ?Sized> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^
 
 error[E0277]: the trait bound `RawImpl<()>: Raw<()>` is not satisfied
   --> $DIR/issue-62742.rs:10:5
@@ -80,10 +80,10 @@ LL | impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
    |                    |
    |                    unsatisfied trait bound introduced here
 note: the trait `Raw` must be implemented
-  --> $DIR/issue-62742.rs:19:1
+  --> $DIR/issue-62742.rs:19:11
    |
 LL | pub trait Raw<T: ?Sized> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^
 
 error: aborting due to 4 previous errors
 

@@ -5,15 +5,15 @@ LL |     t.foo();
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `A`
-  --> $DIR/disambiguate-multiple-trait-2.rs:4:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:4:8
    |
 LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in the trait `B`
-  --> $DIR/disambiguate-multiple-trait-2.rs:10:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:10:8
    |
 LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
+   |        ^^^
 help: disambiguate the method for candidate #1
    |
 LL -     t.foo();
@@ -32,15 +32,15 @@ LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in the trait `A`
-  --> $DIR/disambiguate-multiple-trait-2.rs:3:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:3:11
    |
 LL |     const CONST: usize = 1;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #2 is defined in the trait `B`
-  --> $DIR/disambiguate-multiple-trait-2.rs:9:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:9:11
    |
 LL |     const CONST: usize;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = T::CONST;
@@ -80,15 +80,15 @@ LL |     S::foo(&s);
    |        ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:35:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:35:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:41:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:41:8
    |
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     S::foo(&s);
@@ -105,15 +105,15 @@ LL |     let _ = S::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:34:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:34:11
    |
 LL |     const CONST: usize = 1;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:40:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:40:11
    |
 LL |     const CONST: usize = 1;
-   |     ^^^^^^^^^^^^^^^^^^
+   |           ^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = S::CONST;

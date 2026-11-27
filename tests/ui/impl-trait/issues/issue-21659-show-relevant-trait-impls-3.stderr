@@ -9,10 +9,10 @@ LL |     f1.foo(1usize);
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:1:1
+  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:1:7
    |
 LL | trait Foo<A> {
-   | ^^^^^^^^^^^^
+   |       ^^^
 LL |     fn foo(&self, a: A) -> A {
    |
 

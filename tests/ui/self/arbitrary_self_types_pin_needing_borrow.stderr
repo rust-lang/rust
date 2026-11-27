@@ -22,10 +22,10 @@ LL |     Pin::new(S).x();
    |                 ^ method not found in `Pin<S>`
    |
 note: method is available for `Pin<&mut S>`
-  --> $DIR/arbitrary_self_types_pin_needing_borrow.rs:5:5
+  --> $DIR/arbitrary_self_types_pin_needing_borrow.rs:5:8
    |
 LL |     fn x(self: Pin<&mut Self>) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^
 
 error: aborting due to 2 previous errors
 

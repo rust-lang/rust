@@ -10,10 +10,10 @@ LL | |         };
    | |_________- ()
    |
 note: an implementation of `BitOr<()>` might be missing for `SingleVariant`
-  --> $DIR/span-bug-issue-121445.rs:11:1
+  --> $DIR/span-bug-issue-121445.rs:11:6
    |
 LL | enum SingleVariant {
-   | ^^^^^^^^^^^^^^^^^^ must implement `BitOr<()>`
+   |      ^^^^^^^^^^^^^ must implement `BitOr<()>`
 note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
