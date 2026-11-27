@@ -26,7 +26,7 @@ LL |         x = 42;
    |         ^^^^^^ this value is reassigned later and never used
 ...
 LL |     x = 99;
-   |     ------ `x` is overwritten here before the previous value is read
+   |     ------ `x` is overwritten here before the previous value is used
 
 warning: value assigned to `x` is never read
   --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:34:9
@@ -35,7 +35,7 @@ LL |         x = 35;
    |         ^^^^^^ this value is reassigned later and never used
 ...
 LL |     x = 99;
-   |     ------ `x` is overwritten here before the previous value is read
+   |     ------ `x` is overwritten here before the previous value is used
 
 warning: 4 warnings emitted
 
