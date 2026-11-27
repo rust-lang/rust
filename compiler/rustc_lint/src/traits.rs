@@ -90,6 +90,12 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
 
+        // Derived impls reuse the spans of the derive input, so the external macro check on the
+        // lint span alone does not catch them.
+        if item.span.in_external_macro(cx.sess().source_map()) {
+            return;
+        }
+
         let gen_clauses = cx.tcx.explicit_clauses_of(item.owner_id);
         for &(clause, span) in gen_clauses.clauses {
             let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder() else {
@@ -115,6 +121,11 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         let hir::TyKind::TraitObject(bounds, _lifetime_and_syntax_pointer) = &ty.kind else {
             return;
         };
+        // Derived impls reuse the spans of the derive input, so the external macro check on the
+        // lint span alone does not catch them.
+        if cx.tcx.def_span(ty.hir_id.owner).in_external_macro(cx.sess().source_map()) {
+            return;
+        }
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
             if def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::Drop)) {
