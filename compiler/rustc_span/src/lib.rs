@@ -526,6 +526,8 @@ pub enum FileName {
     Custom(String),
     /// Custom path for doctests
     DocTest(RealFileName, isize),
+    /// Intra-doc links being parsed
+    IntraDocLink(Hash64),
     /// Post-substitution inline assembly from LLVM.
     InlineAsm(Hash64),
 }
@@ -557,6 +559,7 @@ impl fmt::Display for FileNameDisplay<'_> {
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{s}>"),
+            IntraDocLink(_) => write!(fmt, "<intra-doc link>"),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
@@ -583,6 +586,7 @@ impl FileName {
             | Custom(_)
             | CfgSpec(_)
             | DocTest(_, _)
+            | IntraDocLink(_)
             | InlineAsm(_) => false,
         }
     }
@@ -649,6 +653,12 @@ impl FileName {
 
     pub fn doc_test_source_code(path: RealFileName, line: isize) -> FileName {
         FileName::DocTest(path, line)
+    }
+
+    pub fn intra_doc_link_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::IntraDocLink(hasher.finish())
     }
 
     pub fn inline_asm_source_code(src: &str) -> FileName {
