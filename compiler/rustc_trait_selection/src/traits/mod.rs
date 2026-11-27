@@ -332,6 +332,12 @@ where
     })
 }
 
+#[derive(Copy, Clone, Debug)]
+enum ReportErrors {
+    Yes,
+    DelayBugs,
+}
+
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -339,6 +345,7 @@ fn do_normalize_clauses<'tcx>(
     elaborated_env: ty::ParamEnv<'tcx>,
     elaborated_env_clauses: Vec<ty::Clause<'tcx>>,
     clauses: Vec<ty::Clause<'tcx>>,
+    report_errors: ReportErrors,
 ) -> Vec<ty::Clause<'tcx>> {
     // sanity check: it's a perf optimization to ask for a `ParamEnv` *and*
     // an equivalent list of clauses here to avoid a decompression. In debug
@@ -397,7 +404,12 @@ fn do_normalize_clauses<'tcx>(
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     let clauses = if let TraitErrors::HasErrors(errors) = errors {
         debug!("do_normalize_clauses: failed to normalize clauses");
-        let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
+        let guar = match report_errors {
+            ReportErrors::Yes => infcx.err_ctxt().report_fulfillment_errors(errors),
+            ReportErrors::DelayBugs => tcx
+                .dcx()
+                .span_delayed_bug(cause.span, format!("failed to normalize clauses: {errors:?}")),
+        };
         replace_infer_and_non_rigid_alias_with_error(&infcx, clauses, guar, ReplaceRegions::No)
     } else {
         clauses
@@ -445,13 +457,11 @@ fn do_normalize_clauses<'tcx>(
     }
 }
 
-// FIXME: this is gonna need to be removed ...
-/// Normalizes the parameter environment, reporting errors if they occur.
-#[instrument(level = "debug", skip(tcx))]
-pub fn normalize_param_env_or_error<'tcx>(
+fn normalize_param_env_or_optionally_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     unnormalized_env: Vec<ty::Clause<'tcx>>,
     cause: ObligationCause<'tcx>,
+    report_errors: ReportErrors,
 ) -> ty::ParamEnv<'tcx> {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -576,8 +586,14 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: clauses=(non-outlives={:?}, outlives={:?})",
         clauses, outlives_clauses
     );
-    let non_outlives_clauses =
-        do_normalize_clauses(tcx, cause.clone(), elaborated_env, elaborated_env_clauses, clauses);
+    let non_outlives_clauses = do_normalize_clauses(
+        tcx,
+        cause.clone(),
+        elaborated_env,
+        elaborated_env_clauses,
+        clauses,
+        report_errors,
+    );
 
     debug!("normalize_param_env_or_error: non-outlives clauses={:?}", non_outlives_clauses);
 
@@ -589,14 +605,42 @@ pub fn normalize_param_env_or_error<'tcx>(
     // so we don't have to decompress again.
     let outlives_env_clauses = outlives_env.collect::<Vec<_>>();
     let outlives_env = ty::ParamEnv::new(tcx, outlives_env_clauses.iter().copied());
-    let outlives_clauses =
-        do_normalize_clauses(tcx, cause, outlives_env, outlives_env_clauses, outlives_clauses);
+    let outlives_clauses = do_normalize_clauses(
+        tcx,
+        cause,
+        outlives_env,
+        outlives_env_clauses,
+        outlives_clauses,
+        report_errors,
+    );
     debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
     let mut clauses = non_outlives_clauses;
     clauses.extend(outlives_clauses);
     debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
     ty::ParamEnv::new(tcx, clauses)
+}
+
+// FIXME: this is gonna need to be removed ...
+/// Normalizes the parameter environment, reporting errors if they occur.
+#[instrument(level = "debug", skip(tcx))]
+pub fn normalize_param_env_or_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    unnormalized_env: Vec<ty::Clause<'tcx>>,
+    cause: ObligationCause<'tcx>,
+) -> ty::ParamEnv<'tcx> {
+    normalize_param_env_or_optionally_error(tcx, unnormalized_env, cause, ReportErrors::Yes)
+}
+
+/// Variant of [`normalize_param_env_or_error`] that creates delayed bugs instead of reporting
+/// errors, for use in cases where we shouldn't be reporting errors (such as normalizing the
+/// synthetic param-env used when testing whether method receivers are dispatchable).
+pub fn normalize_param_env_or_delay_bugs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    unnormalized_env: Vec<ty::Clause<'tcx>>,
+    cause: ObligationCause<'tcx>,
+) -> ty::ParamEnv<'tcx> {
+    normalize_param_env_or_optionally_error(tcx, unnormalized_env, cause, ReportErrors::DelayBugs)
 }
 
 #[derive(Debug)]
