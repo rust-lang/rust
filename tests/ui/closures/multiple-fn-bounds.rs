@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 fn foo<F: Fn(&char) -> bool + Fn(char) -> bool>(f: F) {
     //~^ NOTE required by a bound in `foo`
     //~| NOTE required by this bound in `foo`
