@@ -28,10 +28,10 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 pub(crate) use self::di_builder::DIBuilderExt;
-pub(crate) use self::metadata::build_global_var_di_node;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
+pub(crate) use self::metadata::{build_const_var_di_node, build_global_var_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;

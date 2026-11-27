@@ -82,6 +82,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>
                     let item = tcx.hir_item(item_id);
                     tcx.dcx().span_fatal(item.span, "Global asm is not supported in JIT mode");
                 }
+                MonoItem::Const(..) => {}
             }
         }
     });

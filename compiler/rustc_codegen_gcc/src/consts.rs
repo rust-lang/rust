@@ -196,6 +196,8 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.add_retained_global(global);
         }
     }
+
+    fn codegen_const(&mut self, _def_id: DefId) {}
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {

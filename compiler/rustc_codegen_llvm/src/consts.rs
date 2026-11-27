@@ -676,6 +676,30 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
+    fn codegen_const_item(&mut self, def_id: DefId) {
+        let Ok(val) = self.tcx.const_eval_poly(def_id) else {
+            return;
+        };
+
+        let const_ty = self.tcx.type_of(def_id).instantiate_identity().skip_normalization();
+        let layout = self.layout_of(const_ty);
+
+        let Some(bits) = val.try_to_bits(layout.size) else {
+            // Currently we only support integer scalars and pointers without provenance
+            return;
+        };
+        if layout.size > Size::from_bits(64) {
+            // Currently we don't support integers larger than 64 bits
+            return;
+        }
+
+        if let Ok(bits) = u64::try_from(bits) {
+            debuginfo::build_const_var_di_node(self, def_id, bits);
+        } else {
+            bug!()
+        }
+    }
+
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
     pub(crate) fn add_used_global(&mut self, global: Value<'ll>) {
         self.used_statics.push(global);
@@ -919,5 +943,9 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
 
     fn codegen_static(&mut self, def_id: DefId) {
         self.codegen_static_item(def_id)
+    }
+
+    fn codegen_const(&mut self, def_id: DefId) {
+        self.codegen_const_item(def_id)
     }
 }

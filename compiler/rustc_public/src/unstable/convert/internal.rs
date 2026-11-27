@@ -15,9 +15,9 @@ use crate::mir::mono::{Instance, MonoItem, StaticDef};
 use crate::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use crate::ty::{
     Abi, AdtDef, Asyncness, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind,
-    Constness, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
-    GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
-    TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
+    ConstDef, Constness, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy,
+    FnSig, GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy,
+    Span, TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
 use crate::unstable::{InternalCx, RustcInternal};
 use crate::{CrateItem, CrateNum, DefId, IndexedVal};
@@ -383,6 +383,7 @@ impl RustcInternal for MonoItem {
         match self {
             MonoItem::Fn(instance) => rustc_mono::MonoItem::Fn(instance.internal(tables, tcx)),
             MonoItem::Static(def) => rustc_mono::MonoItem::Static(def.internal(tables, tcx)),
+            MonoItem::Const(def) => rustc_mono::MonoItem::Const(def.internal(tables, tcx)),
             MonoItem::GlobalAsm(_) => {
                 unimplemented!()
             }
@@ -403,6 +404,18 @@ impl RustcInternal for Instance {
 }
 
 impl RustcInternal for StaticDef {
+    type T<'tcx> = rustc_span::def_id::DefId;
+
+    fn internal<'tcx>(
+        &self,
+        tables: &mut Tables<'_, BridgeTys>,
+        tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        self.0.internal(tables, tcx)
+    }
+}
+
+impl RustcInternal for ConstDef {
     type T<'tcx> = rustc_span::def_id::DefId;
 
     fn internal<'tcx>(

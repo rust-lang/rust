@@ -1563,6 +1563,52 @@ pub(crate) fn build_global_var_di_node<'ll>(
     );
 }
 
+/// Creates debug information for the given constant.
+///
+/// Adds the created debuginfo nodes directly to the crate's IR.
+pub(crate) fn build_const_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, value: u64) {
+    use crate::debuginfo::dwarf_const::{DW_OP_constu, DW_OP_stack_value};
+
+    if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return;
+    }
+
+    let tcx = cx.tcx;
+
+    let var_scope = get_namespace_for_item(cx, def_id);
+    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
+
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
+    let type_di_node = type_di_node(cx, variable_type);
+    let var_name = tcx.item_name(def_id);
+    let var_name = var_name.as_str();
+
+    let expr = DIB(cx).create_expression(&[DW_OP_constu, value, DW_OP_stack_value]);
+
+    unsafe {
+        llvm::LLVMDIBuilderCreateGlobalVariableExpression(
+            DIB(cx),
+            Some(var_scope),
+            var_name.as_ptr(),
+            var_name.len(),
+            std::ptr::null(), // Linkage, not relevant for DI-only consts
+            0,                // LinkLen, ditto
+            file_metadata,
+            line_number,
+            type_di_node,
+            llvm::TRUE, // LocalToUnit, concerns linkage, not relevant for DI-only consts
+            expr,
+            None, // Decl
+            0,    // AlignInBits, not needed for an inline value
+        );
+    }
+}
+
 /// Generates LLVM debuginfo for a vtable.
 ///
 /// The vtable type looks like a struct with a field for each function pointer and super-trait

@@ -459,6 +459,9 @@ fn collect_items_rec<'tcx>(
             // optimized, and if they did then the const-eval interpreter would have to worry about
             // mentioned_items.
         }
+        MonoItem::Const(..) => {
+            recursion_depth_reset = None;
+        }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(tcx.should_codegen_locally(instance));
@@ -565,6 +568,7 @@ fn collect_items_rec<'tcx>(
                     span: starting_item.span,
                 })
             }
+            MonoItem::Const(..) => {}
         }
     }
     // Only updating `usage_map` for used items as otherwise we may be inserting the same item
@@ -1661,16 +1665,21 @@ impl<'v> RootCollector<'_, 'v> {
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
-                // Const items only generate mono items if they are actually used somewhere.
+                if self.tcx.generics_of(id.owner_id).own_requires_monomorphization() {
+                    return;
+                }
+                let def_id = id.owner_id.to_def_id();
+                if self.tcx.sess.opts.debuginfo == DebugInfo::Full {
+                    // Const items generate a corresponding mono item used solely for debuginfo
+                    self.output.push(dummy_spanned(MonoItem::Const(def_id)));
+                }
+
+                // Const items only generate non-const mono items if they are actually used somewhere.
                 // Just declaring them is insufficient.
 
                 // If we're collecting items eagerly, then recurse into all constants.
                 // Otherwise the value is only collected when explicitly mentioned in other items.
                 if self.strategy == MonoItemCollectionStrategy::Eager {
-                    let def_id = id.owner_id.to_def_id();
-                    if self.tcx.generics_of(id.owner_id).own_requires_monomorphization() {
-                        return;
-                    }
                     let Ok(val) = self.tcx.const_eval_poly(def_id) else {
                         return;
                     };

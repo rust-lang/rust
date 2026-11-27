@@ -7,13 +7,16 @@ use serde::Serialize;
 use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty, index_impl};
+use crate::ty::{
+    Allocation, ClosureDef, ClosureKind, ConstDef, FnDef, GenericArgs, Ty, index_impl,
+};
 use crate::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, ThreadLocalIndex, with};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum MonoItem {
     Fn(Instance),
     Static(StaticDef),
+    Const(ConstDef),
     GlobalAsm(Opaque),
 }
 
@@ -249,6 +252,12 @@ impl From<Instance> for MonoItem {
 impl From<StaticDef> for MonoItem {
     fn from(value: StaticDef) -> Self {
         MonoItem::Static(value)
+    }
+}
+
+impl From<ConstDef> for MonoItem {
+    fn from(value: ConstDef) -> Self {
+        MonoItem::Const(value)
     }
 }
 
