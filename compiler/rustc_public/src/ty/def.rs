@@ -1,10 +1,11 @@
 use serde::Serialize;
 
+pub use crate::IndexedVal;
 use crate::abi::ReprOptions;
 use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::Body;
 use crate::ty::tys::*;
-use crate::{AssocItems, DefId, IndexedVal, Symbol, with};
+use crate::{AssocItems, DefId, Symbol, with};
 
 crate_def! {
     #[derive(Serialize)]
