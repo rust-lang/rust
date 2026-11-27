@@ -1,12 +1,12 @@
-error: mismatched signatures
+error[E0308]: mismatched types
   --> $DIR/ret-ty-hr-mismatch.rs:5:5
    |
 LL |     become bar();
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: `become` requires caller and callee to have matching signatures
-   = note: caller signature: `fn() -> for<'a> fn(&'a i32)`
-   = note: callee signature: `fn() -> fn(&'static i32)`
+   = note: expected fn pointer `for<'a> fn(&'a _)`
+              found fn pointer `fn(&'static _)`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0308`.

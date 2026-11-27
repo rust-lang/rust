@@ -12,39 +12,42 @@
 #![feature(explicit_tail_calls)]
 #![allow(incomplete_features)]
 
-fn foo<'a>(_: fn(&'a ())) {
-    become bar(dummy);
+struct A;
+struct B;
+
+fn foo<'a>(_: fn(&'a ()), _: A) {
+    become bar(dummy, B);
     //~^ ERROR mismatched signatures
     //~| NOTE `become` requires caller and callee to have matching signatures
-    //~| NOTE caller signature: `fn(fn(&'a ()))`
-    //~| NOTE callee signature: `fn(for<'a> fn(&'a ()))`
+    //~| NOTE caller signature: `fn(fn(&'a ()), A)`
+    //~| NOTE callee signature: `fn(for<'a> fn(&'a ()), B)`
 }
 
-fn bar(_: fn(&())) {}
+fn bar(_: fn(&()), _: B) {}
 
 fn dummy(_: &()) {}
 
-fn foo_(_: fn(&())) {
-    become bar1(dummy2);
+fn foo2(_: fn(&()), _: A) {
+    become bar2(dummy2, B);
     //~^ ERROR mismatched signatures
     //~| NOTE `become` requires caller and callee to have matching signatures
-    //~| NOTE caller signature: `fn(for<'a> fn(&'a ()))`
-    //~| NOTE callee signature: `fn(fn(&'a ()))`
+    //~| NOTE caller signature: `fn(for<'a> fn(&'a ()), A)`
+    //~| NOTE callee signature: `fn(fn(&'a ()), B)`
 }
 
-fn bar1<'a>(_: fn(&'a ())) {}
+fn bar2<'a>(_: fn(&'a ()), _: B) {}
 
 fn dummy2(_: &()) {}
 
-fn foo__(_: fn(&'static ())) {
-    become bar(dummy3);
+fn foo3(_: fn(&'static ()), _: A) {
+    become bar3(dummy3, B);
     //~^ ERROR mismatched signatures
     //~| NOTE `become` requires caller and callee to have matching signatures
-    //~| NOTE caller signature: `fn(fn(&'static ()))`
-    //~| NOTE callee signature: `fn(for<'a> fn(&'a ()))`
+    //~| NOTE caller signature: `fn(fn(&'static ()), A)`
+    //~| NOTE callee signature: `fn(for<'a> fn(&'a ()), B)`
 }
 
-fn bar2(_: fn(&())) {}
+fn bar3(_: fn(&()), _: B) {}
 
 fn dummy3(_: &()) {}
 
