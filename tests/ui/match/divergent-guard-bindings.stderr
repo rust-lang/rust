@@ -1,0 +1,76 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-bindings.rs:8:23
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         // These guards can succeed but not fail after `x = None`. We can't bind `b` if we do that.
+LL |         Some(&b) if { x = None; false } || return => {}
+   |                       ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-bindings.rs:10:33
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Some(&b) if false || ({ x = None; false } || return) => {}
+   |                                 ^^^^^^^^ cannot assign
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-bindings.rs:15:22
+   |
+LL |         Some(b) if { x = None; false } || return => {}
+   |              -       ^^^^^^^^                  - borrow later used here
+   |              |       |
+   |              |       `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-bindings.rs:17:32
+   |
+LL |         Some(b) if false || ({ x = None; false } || return) => {}
+   |              -                 ^^^^^^^^                   - borrow later used here
+   |              |                 |
+   |              |                 `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-bindings.rs:22:26
+   |
+LL |         Some(ref b) if { x = None; false } || return => { b; }
+   |              -----       ^^^^^^^^                         - borrow later used here
+   |              |           |
+   |              |           `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-bindings.rs:24:36
+   |
+LL |         Some(ref b) if false || ({ x = None; false } || return) => { b; }
+   |              -----                 ^^^^^^^^                          - borrow later used here
+   |              |                     |
+   |              |                     `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/divergent-guard-bindings.rs:33:16
+   |
+LL |     match a[0] {
+   |           ---- value is immutable in match guard
+LL |         // These guards can succeed but not fail after `a = &[]`. We can't bind `b` if we do that.
+LL |         b if { a = &[]; false } || return => {}
+   |                ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/divergent-guard-bindings.rs:35:26
+   |
+LL |     match a[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         b if false || ({ a = &[]; false } || return) => {}
+   |                          ^^^^^^^ cannot assign
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0506, E0510.
+For more information about an error, try `rustc --explain E0506`.
