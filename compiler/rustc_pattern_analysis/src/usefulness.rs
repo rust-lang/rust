@@ -1076,7 +1076,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         let head_pat = self.head();
         if head_pat.as_pat().is_some_and(|pat| pat.arity() > ctor_arity) {
             // Arity can be smaller in case of variable-length slices, but mustn't be larger.
-            return Err(cx.bug(format_args!(
+            return Err(cx.delayed_bug(format_args!(
                 "uncaught type error: pattern {:?} has inconsistent arity (expected arity <= {ctor_arity})",
                 head_pat.as_pat().unwrap()
             )));
