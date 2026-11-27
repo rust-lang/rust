@@ -11,6 +11,7 @@ struct MyType<'a>(Cell<Option<&'a mut MyType<'a>>>, PhantomPinned);
 
 impl<'a> DerefMut for &'a MyType<'a> {
     //~^ ERROR E0751
+    //~| ERROR cannot implement `DerefMut` for the fundamental type
     fn deref_mut(&mut self) -> &mut MyType<'a> {
         self.0.take().unwrap()
     }

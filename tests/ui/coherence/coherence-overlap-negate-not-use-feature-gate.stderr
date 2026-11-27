@@ -6,7 +6,7 @@ LL | impl<T: DerefMut> Foo for T {}
 LL | impl<U> Foo for &U {}
    | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
    |
-   = note: downstream crates may implement trait `std::ops::DerefMut` for type `&_`
+   = note: upstream crates may add a new impl of trait `std::ops::DerefMut` for type `&_` in future versions
 
 error: aborting due to 1 previous error
 
