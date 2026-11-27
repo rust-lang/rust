@@ -1,0 +1,75 @@
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:10:16
+   |
+LL |     match a[0] {
+   |           ---- value is immutable in match guard
+LL |         b if { a = &[]; return } => {}
+   |                ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:16:27
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+LL |             Some(&y) if { x = None; return } => {}
+   |                           ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:18:35
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+...
+LL |             Some(&y) if true || { x = None; return } => {}
+   |                                   ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:20:27
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+...
+LL |             Some(&y) if { x = None; panic!() } => {}
+   |                           ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:22:27
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+...
+LL |             Some(&y) if { x = None; break } => {}
+   |                           ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-unconditional.rs:24:27
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+...
+LL |             Some(&y) if { x = None; continue } => {}
+   |                           ^^^^^^^^ cannot assign
+
+error[E0505]: cannot move out of `non_copy` because it is borrowed
+  --> $DIR/divergent-guard-unconditional.rs:44:27
+   |
+LL |     let non_copy = None;
+   |         -------- binding `non_copy` declared here
+LL |     match &non_copy {
+   |           --------- borrow of `non_copy` occurs here
+...
+LL |         Some(_) if return non_copy => None,
+   |                           ^^^^^^^-
+   |                           |      |
+   |                           |      borrow later used here
+   |                           move out of `non_copy` occurs here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     match &non_copy.clone() {
+   |                    ++++++++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0505, E0510.
+For more information about an error, try `rustc --explain E0505`.
