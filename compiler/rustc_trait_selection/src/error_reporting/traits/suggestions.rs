@@ -4014,7 +4014,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 }
                             } else {
                                 // Check for foreign traits being reachable.
-                                tcx.visible_parent_map(()).get(&def_id).is_some()
+                                tcx.is_public_at_level(def_id, Level::Reexported)
                             };
                             if tcx.is_lang_item(def_id, LangItem::Sized) {
                                 // Check if this is an implicit bound, even in foreign crates.
