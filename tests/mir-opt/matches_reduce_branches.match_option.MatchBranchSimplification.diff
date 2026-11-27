@@ -8,25 +8,24 @@
   
       bb0: {
           _2 = discriminant((*_1));
--         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
--     }
-- 
--     bb1: {
--         unreachable;
--     }
-- 
--     bb2: {
--         _0 = Option::<i32>::None;
--         goto -> bb4;
--     }
-- 
--     bb3: {
--         _0 = copy (*_1);
--         goto -> bb4;
--     }
-- 
--     bb4: {
-+         _0 = no_retag copy (*_1);
+          switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const Option::<i32>::None;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = copy (*_1);
+          goto -> bb4;
+      }
+  
+      bb4: {
           return;
       }
   }

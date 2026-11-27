@@ -70,6 +70,21 @@ pub(crate) fn as_constant_inner<'tcx>(
 
             ConstOperand { span, user_ty, const_ }
         }
+        ExprKind::UnitEnum { variant_index, ref user_ty } => {
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
+
+            let val = ty::ValTree::from_branches(
+                tcx,
+                [ty::Const::new_value(
+                    tcx,
+                    ty::ValTree::from_scalar_int(tcx, ty::ScalarInt::from(variant_index.as_u32())),
+                    tcx.types.u32,
+                )],
+            );
+            let const_ = Const::Ty(expr.ty, ty::Const::new_value(tcx, val, expr.ty));
+
+            ConstOperand { span, user_ty, const_ }
+        }
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
             let uneval = mir::UnevaluatedConst::new(def_id, args);

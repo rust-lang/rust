@@ -351,13 +351,23 @@ where
 
     // Check the qualifs of the value of `const` items.
     let uneval = match constant.const_ {
-        Const::Ty(_, ct) => match ct.kind() {
+        Const::Ty(ty, ct) => match ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
             // Alias consts in MIR bodies don't have associated MIR (e.g. `type const`).
             ty::ConstKind::Alias(_, _) => None,
             // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
             // strict, and if instead we should be doing some kind of value-based analysis.
-            ty::ConstKind::Value(_) => None,
+            ty::ConstKind::Value(val) => {
+                if let Some(adt_def) = ty.ty_adt_def()
+                    && !adt_def.is_union()
+                    && Q::is_structural_in_adt_value(cx, adt_def)
+                    && val.destructure_adt_const().fields.is_empty()
+                {
+                    return false;
+                } else {
+                    None
+                }
+            }
             _ => bug!(
                 "expected ConstKind::Param, ConstKind::Value, ConstKind::Alias, or ConstKind::Error here, found {:?}",
                 ct

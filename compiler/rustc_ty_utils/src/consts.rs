@@ -68,6 +68,17 @@ fn recurse_build<'tcx>(
             let val = ty::ValTree::from_scalar_int(tcx, lit);
             ty::Const::new_value(tcx, val, node.ty)
         }
+        &ExprKind::UnitEnum { variant_index, user_ty: _ } => {
+            let val = ty::ValTree::from_branches(
+                tcx,
+                [ty::Const::new_value(
+                    tcx,
+                    ty::ValTree::from_scalar_int(tcx, ty::ScalarInt::from(variant_index.as_u32())),
+                    tcx.types.u32,
+                )],
+            );
+            ty::Const::new_value(tcx, val, node.ty)
+        }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
             let kind = match tcx.def_kind(def_id) {
@@ -308,6 +319,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Array { .. }
             | thir::ExprKind::Tuple { .. }
             | thir::ExprKind::Adt(_)
+            | thir::ExprKind::UnitEnum { .. }
             | thir::ExprKind::PlaceTypeAscription { .. }
             | thir::ExprKind::ValueTypeAscription { .. }
             | thir::ExprKind::PlaceUnwrapUnsafeBinder { .. }

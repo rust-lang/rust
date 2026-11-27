@@ -21,7 +21,7 @@
       }
   
       bb1: {
-          _0 = Option::<String>::None;
+          _0 = const Option::<String>::None;
           goto -> bb5;
       }
   

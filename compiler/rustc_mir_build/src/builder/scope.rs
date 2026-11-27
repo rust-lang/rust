@@ -912,7 +912,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Literal { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ZstLiteral { .. }
-            | ExprKind::NamedConst { .. } => self.as_constant(&self.thir[value]),
+            | ExprKind::NamedConst { .. }
+            | ExprKind::UnitEnum { .. } => self.as_constant(&self.thir[value]),
 
             other => {
                 use crate::diagnostics::ConstContinueNotMonomorphicConstReason as Reason;

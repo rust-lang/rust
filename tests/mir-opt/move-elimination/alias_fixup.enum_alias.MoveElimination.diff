@@ -72,7 +72,7 @@
   
       bb4: {
 +         StorageDead(_8);
-          _0 = PairEnum::Empty;
+          _0 = const PairEnum::Empty;
           goto -> bb6;
       }
   

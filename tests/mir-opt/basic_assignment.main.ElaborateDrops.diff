@@ -31,7 +31,7 @@
           _2 = move _3;
           StorageDead(_3);
           StorageLive(_4);
-          _4 = Option::<Box<u32>>::None;
+          _4 = const Option::<Box<u32>>::None;
           StorageLive(_5);
           StorageLive(_6);
           _6 = move _4;

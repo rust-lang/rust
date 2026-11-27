@@ -82,6 +82,7 @@ impl Category {
             | ExprKind::Literal { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ZstLiteral { .. }
+            | ExprKind::UnitEnum { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::NamedConst { .. } => Some(Category::Constant),

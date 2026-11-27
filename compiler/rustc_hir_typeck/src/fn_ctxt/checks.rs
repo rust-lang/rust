@@ -10,7 +10,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, Node, QPath, is_range_literal};
@@ -102,7 +102,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::ExprKind::ConstBlock(..) => return None,
                     hir::ExprKind::Path(qpath) => {
                         let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                        if let Res::Def(DefKind::Const | DefKind::AssocConst, _) = res {
+                        if let Res::Def(
+                            DefKind::Const
+                            | DefKind::AssocConst
+                            | DefKind::ConstParam
+                            | DefKind::Fn
+                            | DefKind::AssocFn
+                            | DefKind::Ctor(..),
+                            _,
+                        )
+                        | Res::SelfCtor(_) = res
+                        {
                             return None;
                         }
                     }
@@ -138,20 +148,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If someone calls a const fn or constructs a const value, they can extract that
             // out into a separate constant (or a const block in the future), so we check that
             // to tell them that in the diagnostic. Does not affect typeck.
-            let is_constable = match element.kind {
-                hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                    ty::FnDef(def_id, _) if self.tcx.is_stable_const_fn(def_id) => {
-                        traits::IsConstable::Fn
-                    }
-                    _ => traits::IsConstable::No,
-                },
-                hir::ExprKind::Path(qpath) => {
-                    match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
-                        Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
-                        _ => traits::IsConstable::No,
-                    }
-                }
-                _ => traits::IsConstable::No,
+            let is_constable = if let hir::ExprKind::Call(func, _args) = element.kind
+                && let ty::FnDef(def_id, _) = *self.node_ty(func.hir_id).kind()
+                && self.tcx.is_stable_const_fn(def_id)
+            {
+                true
+            } else {
+                false
             };
 
             let lang_item = self.tcx.require_lang_item(LangItem::Copy, element.span);

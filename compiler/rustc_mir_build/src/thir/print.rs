@@ -508,6 +508,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_adt_expr(&**adt_expr, depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
+            UnitEnum { variant_index, user_ty } => {
+                print_indented!(self, "Adt {", depth_lvl);
+                print_indented!(self, format!("variant_index: {variant_index:?}"), depth_lvl + 1);
+                print_indented!(self, format!("user_ty: {user_ty:?}"), depth_lvl + 1);
+                print_indented!(self, "}", depth_lvl);
+            }
             PlaceTypeAscription { source, user_ty, user_ty_span } => {
                 print_indented!(self, "PlaceTypeAscription {", depth_lvl);
                 print_indented!(self, format!("user_ty: {:?}", user_ty), depth_lvl + 1);

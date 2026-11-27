@@ -1,14 +1,50 @@
-error[E0282]: type annotations needed for `&[Foo<_>; _]`
+error[E0284]: type annotations needed for `&[Foo<_>; _]`
   --> $DIR/no-conservative-copy-impl-requirement.rs:15:9
    |
 LL |     let x = &[Foo::<_>; _];
    |         ^     -------- type must be known at this point
    |
+note: required by a const generic parameter in `Foo`
+  --> $DIR/no-conservative-copy-impl-requirement.rs:1:12
+   |
+LL | struct Foo<const N: usize>;
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo`
 help: consider giving `x` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let x: &[Foo<N>; N] = &[Foo::<_>; _];
    |          ++++++++++++++
 
-error: aborting due to 1 previous error
+error[E0284]: type annotations needed for `&[Foo<_>; _]`
+  --> $DIR/no-conservative-copy-impl-requirement.rs:15:9
+   |
+LL |     let x = &[Foo::<_>; _];
+   |         ^    ------------- type must be known at this point
+   |
+   = note: the length of array `[Foo<_>; _]` must be type `usize`
+help: consider giving `x` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let x: &[Foo<N>; N] = &[Foo::<_>; _];
+   |          ++++++++++++++
 
-For more information about this error, try `rustc --explain E0282`.
+error[E0284]: type annotations needed for `&[Foo<_>; _]`
+  --> $DIR/no-conservative-copy-impl-requirement.rs:15:9
+   |
+LL |     let x = &[Foo::<_>; _];
+   |         ^
+...
+LL |     _ = unify(x);
+   |         -------- type must be known at this point
+   |
+note: required by a const generic parameter in `unify`
+  --> $DIR/no-conservative-copy-impl-requirement.rs:10:10
+   |
+LL | fn unify<const N: usize>(_: &[Foo<N>; N]) {
+   |          ^^^^^^^^^^^^^^ required by this const generic parameter in `unify`
+help: consider giving `x` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let x: &[Foo<N>; N] = &[Foo::<_>; _];
+   |          ++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

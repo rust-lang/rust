@@ -41,7 +41,7 @@
       }
   
       bb2: {
-          _3 = Option::<u8>::None;
+          _3 = const Option::<u8>::None;
           goto -> bb3;
       }
   
