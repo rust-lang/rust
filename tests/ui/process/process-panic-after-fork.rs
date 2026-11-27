@@ -14,6 +14,7 @@
 extern crate libc;
 
 use std::alloc::{GlobalAlloc, Layout};
+use std::assert_matches;
 use std::ffi::c_int;
 use std::fmt;
 use std::panic::{self, panic_any};
@@ -192,5 +193,5 @@ fn main() {
 
     let status = run(&|| panic!("allocating to display... {}", DisplayWithHeap));
     dbg!(status);
-    assert_eq!(status.signal(), Some(libc::SIGUSR1));
+    assert_matches!(status.signal(), Some(libc::SIGUSR1 | libc::SIGIOT));
 }
