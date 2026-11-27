@@ -189,7 +189,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         match self.move_data.rev_lookup.find(match_place.as_ref()) {
             // Error with the match place
-            LookupResult::Parent(_) => {
+            LookupResult::Parent { .. } | LookupResult::None => {
                 for ge in &mut *grouped_errors {
                     if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge
                         && match_span == *span
@@ -219,7 +219,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let LookupResult::Parent(Some(mpi)) =
+                let LookupResult::Parent { mpi, .. } =
                     self.move_data.rev_lookup.find(move_from.as_ref())
                 else {
                     // move_from should be a projection from match_place.

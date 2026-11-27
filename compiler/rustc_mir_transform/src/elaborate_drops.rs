@@ -312,8 +312,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         }
                     });
                 }
-                LookupResult::Parent(None) => {}
-                LookupResult::Parent(Some(parent)) => {
+                LookupResult::None => {}
+                LookupResult::Parent { mpi: parent, .. } => {
                     if self.body.local_decls[place.local].is_deref_temp() {
                         continue;
                     }
@@ -385,8 +385,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         drop,
                     )
                 }
-                LookupResult::Parent(None) => {}
-                LookupResult::Parent(Some(_)) => {
+                LookupResult::None => {}
+                LookupResult::Parent { .. } => {
                     if !replace {
                         self.tcx.dcx().span_bug(
                             terminator.source_info.span,
