@@ -151,6 +151,24 @@ LL | pub struct T19Flipped(Private, NonExhaustive);
    | |                     this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
    | needs at most one non-trivial field, but has 2
 
-error: aborting due to 17 previous errors
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:130:1
+   |
+LL | pub struct T23(Sized, (NonExhaustive,));
+   | ^^^^^^^^^^^^^^ -----  ---------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:134:1
+   |
+LL | pub struct T24(Sized, InternalIndirection<Private>);
+   | ^^^^^^^^^^^^^^ -----  ---------------------------- this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0690`.
