@@ -1,10 +1,10 @@
-use std::collections::BTreeSet;
 use std::fmt::{Display, Write as _};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::Constness;
 use rustc_span::bug;
 use tracing::trace;
@@ -18,6 +18,9 @@ use crate::mir::interpret::{
 use crate::mir::visit::Visitor;
 use crate::mir::*;
 use crate::ty::CoroutineArgsExt;
+
+mod alloc_names;
+use alloc_names::{AllocationNames, MirFormat};
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -315,7 +318,9 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
 /// Write out a human-readable textual representation of this crate's MIR,
 /// with the default [`PrettyPrintMirOptions`].
 pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
-    let writer = MirWriter::new(tcx);
+    let ids = Default::default();
+    let names = AllocationNames(Some(&ids));
+    let writer = MirWriter { names, ..MirWriter::new(tcx) };
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
@@ -331,9 +336,8 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
         }
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
-            if let Some(mut extra_data) = tcx.mir_pretty_extra_data(body) {
-                let mut writer = MirWriter::new(tcx);
-                writer.extra_data = &mut *extra_data;
+            if let Some(extra_data) = tcx.mir_pretty_extra_data(body) {
+                let writer = MirWriter { extra_data: &*extra_data, ..writer };
                 writer.write_mir_fn(body, w)?;
             } else {
                 writer.write_mir_fn(body, w)?;
@@ -366,7 +370,7 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
                     // see notes on #41697 elsewhere
                     write!(w, "const {}", tcx.def_path_str(def_id))?
                 }
-                writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
+                writeln!(w, ": {} = const {};", ty, names.wrap(&Const::Val(val, ty)))?;
             } else {
                 let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()));
                 render_body(w, instance_mir)?;
@@ -378,6 +382,7 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
 
 /// Does the writing of MIR to output, e.g. a file.
 pub struct MirWriter<'a, 'tcx> {
+    names: AllocationNames<'a>,
     tcx: TyCtxt<'tcx>,
     extra_data: &'a dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
@@ -385,12 +390,18 @@ pub struct MirWriter<'a, 'tcx> {
 
 impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        MirWriter { tcx, extra_data: &|_, _| Ok(()), options: PrettyPrintMirOptions::from_cli(tcx) }
+        MirWriter {
+            names: AllocationNames(None),
+            tcx,
+            extra_data: &|_, _| Ok(()),
+            options: PrettyPrintMirOptions::from_cli(tcx),
+        }
     }
 
     /// Write out a human-readable textual representation for the given function.
     pub fn write_mir_fn(&self, body: &Body<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
-        write_mir_intro(self.tcx, body, w, self.options)?;
+        let names = self.names;
+        write_mir_intro(self.tcx, body, w, self.options, names)?;
         for block in body.basic_blocks.indices() {
             (self.extra_data)(PassWhere::BeforeBlock(block), w)?;
             self.write_basic_block(block, body, w)?;
@@ -401,7 +412,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         writeln!(w, "}}")?;
 
-        write_allocations(self.tcx, body, w)?;
+        write_body_allocations(self.tcx, body, w, names)?;
 
         Ok(())
     }
@@ -416,6 +427,7 @@ fn write_scope_tree(
     parent: SourceScope,
     depth: usize,
     options: PrettyPrintMirOptions,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
@@ -426,7 +438,8 @@ fn write_scope_tree(
             continue;
         }
 
-        let indented_debug_info = format!("{0:1$}debug {2:?};", INDENT, indent, var_debug_info);
+        let indented_debug_info =
+            format!("{0:1$}debug {2:?};", INDENT, indent, names.wrap(var_debug_info));
 
         if options.include_extra_comments {
             writeln!(
@@ -546,7 +559,7 @@ fn write_scope_tree(
             writeln!(w, "{indented_header}")?;
         }
 
-        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1, options)?;
+        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1, options, names)?;
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
@@ -555,15 +568,25 @@ fn write_scope_tree(
 
 impl Debug for VarDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(VarDebugInfoFragment { ty, ref projection }) = self.composite {
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Debug for MirFormat<'_, &VarDebugInfo<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let Self { value, names } = self;
+        if let Some(VarDebugInfoFragment { ty, ref projection }) = value.composite {
             pre_fmt_projection(&projection[..], fmt)?;
-            write!(fmt, "({}: {})", self.name, ty)?;
+            write!(fmt, "({}: {})", value.name, ty)?;
             post_fmt_projection(&projection[..], fmt)?;
         } else {
-            write!(fmt, "{}", self.name)?;
+            write!(fmt, "{}", value.name)?;
         }
 
-        write!(fmt, " => {:?}", self.value)
+        match &value.value {
+            VarDebugInfoContents::Const(c) => write!(fmt, " => {}", names.wrap(c)),
+            VarDebugInfoContents::Place(p) => write!(fmt, " => {p:?}"),
+        }
     }
 }
 
@@ -614,6 +637,7 @@ fn write_mir_intro<'tcx>(
     body: &Body<'_>,
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
@@ -633,7 +657,7 @@ fn write_mir_intro<'tcx>(
         }
     }
 
-    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1, options)?;
+    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1, options, names)?;
 
     // Add an empty line before the first block is printed.
     writeln!(w)?;
@@ -786,6 +810,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
         body: &Body<'tcx>,
         w: &mut dyn io::Write,
     ) -> io::Result<()> {
+        let names = self.names;
         let data = &body[block];
 
         // Basic block label at the top.
@@ -801,7 +826,8 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
                 writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
             }
 
-            let indented_body = format!("{INDENT}{INDENT}{statement:?};");
+            let statement_kind = names.wrap(&statement.kind);
+            let indented_body = format!("{INDENT}{INDENT}{statement_kind:?};");
             if self.options.include_extra_comments {
                 writeln!(
                     w,
@@ -824,6 +850,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
                 w,
                 &|visitor| visitor.visit_statement(statement, current_location),
                 self.options,
+                names,
             )?;
 
             (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
@@ -837,7 +864,8 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         // Terminator at the bottom.
         (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
-        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+        let indented_terminator =
+            format!("{0}{0}{1:?};", INDENT, names.wrap(&data.terminator().kind));
         if self.options.include_extra_comments {
             writeln!(
                 w,
@@ -860,6 +888,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
             w,
             &|visitor| visitor.visit_terminator(data.terminator(), current_location),
             self.options,
+            names,
         )?;
 
         (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
@@ -871,9 +900,19 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
 impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Debug for MirFormat<'_, &StatementKind<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let value = self.value;
+        let names = self.names;
         use self::StatementKind::*;
-        match *self {
-            Assign((ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
+        match *value {
+            Assign((ref place, ref rv)) => {
+                write!(fmt, "{place:?} = {:?}", names.wrap(rv))
+            }
             FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
@@ -889,7 +928,7 @@ impl Debug for StatementKind<'_> {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(ref kind) => write!(fmt, "Coverage::{kind:?}"),
-            Intrinsic(ref intrinsic) => write!(fmt, "{intrinsic}"),
+            Intrinsic(ref intrinsic) => write!(fmt, "{}", names.wrap(&**intrinsic)),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
@@ -920,11 +959,27 @@ impl Debug for StmtDebugInfo<'_> {
 }
 
 impl Display for NonDivergingIntrinsic<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Display for MirFormat<'_, &NonDivergingIntrinsic<'tcx>> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Assume(op) => write!(f, "assume({op:?})"),
-            Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
-                write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
+        let value = self.value;
+        let names = self.names;
+        match value {
+            NonDivergingIntrinsic::Assume(op) => {
+                write!(f, "assume({:?})", names.wrap(op))
+            }
+            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
+                write!(
+                    f,
+                    "copy_nonoverlapping(dst = {:?}, src = {:?}, count = {:?})",
+                    names.wrap(dst),
+                    names.wrap(src),
+                    names.wrap(count)
+                )
             }
         }
     }
@@ -932,16 +987,23 @@ impl Display for NonDivergingIntrinsic<'_> {
 
 impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Debug for MirFormat<'_, &TerminatorKind<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let value = self.value;
         self.fmt_head(fmt)?;
-        let successor_count = self.successors().count();
-        let labels = self.fmt_successor_labels();
+        let successor_count = value.successors().count();
+        let labels = value.fmt_successor_labels();
         assert_eq!(successor_count, labels.len());
 
         // `Cleanup` is already included in successors
-        let show_unwind = !matches!(self.unwind(), None | Some(UnwindAction::Cleanup(_)));
+        let show_unwind = !matches!(value.unwind(), None | Some(UnwindAction::Cleanup(_)));
         let fmt_unwind = |fmt: &mut Formatter<'_>| -> fmt::Result {
             write!(fmt, "unwind ")?;
-            match self.unwind() {
+            match value.unwind() {
                 // Not needed or included in successors
                 None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
                 Some(UnwindAction::Continue) => write!(fmt, "continue"),
@@ -958,10 +1020,10 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
                 write!(fmt, " -> ")?;
                 fmt_unwind(fmt)
             }
-            (1, false) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
+            (1, false) => write!(fmt, " -> {:?}", value.successors().next().unwrap()),
             _ => {
                 write!(fmt, " -> [")?;
-                for (i, target) in self.successors().enumerate() {
+                for (i, target) in value.successors().enumerate() {
                     if i > 0 {
                         write!(fmt, ", ")?;
                     }
@@ -987,37 +1049,46 @@ impl<'tcx> TerminatorKind<'tcx> {
     /// successor basic block, if any. The only information not included is the list of possible
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: fmt::Write>(&self, fmt: &mut W) -> fmt::Result {
+        AllocationNames(None).wrap(self).fmt_head(fmt)
+    }
+}
+
+impl<'tcx> MirFormat<'_, &TerminatorKind<'tcx>> {
+    fn fmt_head<W: fmt::Write>(&self, fmt: &mut W) -> fmt::Result {
+        let names = self.names;
         use self::TerminatorKind::*;
-        match self {
+        match self.value {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", names.wrap(discr)),
             Return => write!(fmt, "return"),
             CoroutineDrop => write!(fmt, "coroutine_drop"),
             UnwindResume => write!(fmt, "resume"),
             UnwindTerminate(reason) => {
                 write!(fmt, "terminate({})", reason.as_short_str())
             }
-            Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
+            Yield { value, resume_arg, .. } => {
+                write!(fmt, "{resume_arg:?} = yield({:?})", names.wrap(value))
+            }
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({place:?})"),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
-                write!(fmt, "{func:?}(")?;
+                write!(fmt, "{:?}(", names.wrap(func))?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", arg.node)?;
+                    write!(fmt, "{:?}", names.wrap(&arg.node))?;
                 }
                 write!(fmt, ")")
             }
             TailCall { func, args, .. } => {
-                write!(fmt, "tailcall {func:?}(")?;
+                write!(fmt, "tailcall {:?}(", names.wrap(func))?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", arg.node)?;
+                    write!(fmt, "{:?}", names.wrap(&arg.node))?;
                 }
                 write!(fmt, ")")
             }
@@ -1026,8 +1097,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{cond:?}, ")?;
-                msg.fmt_assert_args(fmt)?;
+                write!(fmt, "{:?}, ", names.wrap(cond))?;
+                msg.fmt_operands(fmt, |op| names.wrap(op))?;
                 write!(fmt, ")")
             }
             FalseEdge { .. } => write!(fmt, "falseEdge"),
@@ -1039,7 +1110,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     let print_late = |&late| if late { "late" } else { "" };
                     match op {
                         InlineAsmOperand::In { reg, value } => {
-                            write!(fmt, "in({reg}) {value:?}")?;
+                            write!(fmt, "in({reg}) {:?}", names.wrap(value))?;
                         }
                         InlineAsmOperand::Out { reg, late, place: Some(place) } => {
                             write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
@@ -1058,18 +1129,24 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 "in{}out({}) {:?} => {:?}",
                                 print_late(late),
                                 reg,
-                                in_value,
+                                names.wrap(in_value),
                                 out_place
                             )?;
                         }
                         InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
-                            write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
+                            write!(
+                                fmt,
+                                "in{}out({}) {:?} => _",
+                                print_late(late),
+                                reg,
+                                names.wrap(in_value)
+                            )?;
                         }
                         InlineAsmOperand::Const { value } => {
-                            write!(fmt, "const {value:?}")?;
+                            write!(fmt, "const {}", names.wrap(&**value))?;
                         }
                         InlineAsmOperand::SymFn { value } => {
-                            write!(fmt, "sym_fn {value:?}")?;
+                            write!(fmt, "sym_fn {}", names.wrap(&**value))?;
                         }
                         InlineAsmOperand::SymStatic { def_id } => {
                             write!(fmt, "sym_static {def_id:?}")?;
@@ -1083,7 +1160,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
         }
     }
+}
 
+impl<'tcx> TerminatorKind<'tcx> {
     /// Returns the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
@@ -1145,23 +1224,36 @@ impl<'tcx> TerminatorKind<'tcx> {
 
 impl<'tcx> Debug for Rvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Debug for MirFormat<'_, &Rvalue<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let value = self.value;
+        let names = self.names;
         use self::Rvalue::*;
 
-        match *self {
+        match *value {
             Use(ref operand, with_retag) => {
+                let operand = names.wrap(operand);
                 // With retag is more common so we only print when it's without.
                 write!(fmt, "{}{operand:?}", if with_retag.no() { "no_retag " } else { "" })
             }
             Repeat(ref a, b) => {
+                let a = names.wrap(a);
                 write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
             }
             Cast(ref kind, ref place, ref ty) => {
+                let place = names.wrap(place);
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
-            BinaryOp(ref op, (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
-            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
+            BinaryOp(ref op, (ref a, ref b)) => {
+                write!(fmt, "{op:?}({:?}, {:?})", names.wrap(a), names.wrap(b))
+            }
+            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({:?})", names.wrap(a)),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
@@ -1207,22 +1299,23 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             Aggregate(ref kind, ref places) => {
-                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str| {
+                let places = places.iter().map(|place| names.wrap(place));
+                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str, places| {
                     let mut tuple_fmt = fmt.debug_tuple(name);
                     for place in places {
-                        tuple_fmt.field(place);
+                        tuple_fmt.field(&place);
                     }
                     tuple_fmt.finish()
                 };
 
                 match **kind {
-                    AggregateKind::Array(_) => write!(fmt, "{places:?}"),
+                    AggregateKind::Array(_) => fmt.debug_list().entries(places).finish(),
 
                     AggregateKind::Tuple => {
-                        if places.is_empty() {
+                        if places.len() == 0 {
                             write!(fmt, "()")
                         } else {
-                            fmt_tuple(fmt, "")
+                            fmt_tuple(fmt, "", places)
                         }
                     }
 
@@ -1236,11 +1329,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             match variant_def.ctor_kind() {
                                 Some(CtorKind::Const) => fmt.write_str(&name),
-                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name),
+                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name, places),
                                 None => {
                                     let mut struct_fmt = fmt.debug_struct(&name);
                                     for (field, place) in iter::zip(&variant_def.fields, places) {
-                                        struct_fmt.field(field.name.as_str(), place);
+                                        struct_fmt.field(field.name.as_str(), &place);
                                     }
                                     struct_fmt.finish()
                                 }
@@ -1266,11 +1359,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let captures = tcx.closure_captures(def_id);
                             assert_eq!(captures.len(), places.len());
                             for (&capture, place) in iter::zip(captures, places) {
-                                struct_fmt.field(capture.to_symbol().as_str(), place);
+                                struct_fmt.field(capture.to_symbol().as_str(), &place);
                             }
                         } else {
-                            for (index, place) in places.iter().enumerate() {
-                                struct_fmt.field(&format!("{index}"), place);
+                            for (index, place) in places.enumerate() {
+                                struct_fmt.field(&format!("{index}"), &place);
                             }
                         }
 
@@ -1285,11 +1378,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let captures = tcx.closure_captures(def_id);
                             assert_eq!(captures.len(), places.len());
                             for (&capture, place) in iter::zip(captures, places) {
-                                struct_fmt.field(capture.to_symbol().as_str(), place);
+                                struct_fmt.field(capture.to_symbol().as_str(), &place);
                             }
                         } else {
-                            for (index, place) in places.iter().enumerate() {
-                                struct_fmt.field(&format!("{index}"), place);
+                            for (index, place) in places.enumerate() {
+                                struct_fmt.field(&format!("{index}"), &place);
                             }
                         }
 
@@ -1302,13 +1395,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             Mutability::Not => "const",
                         };
                         with_no_trimmed_paths!(write!(fmt, "*{kind_str} {pointee_ty} from "))?;
-                        fmt_tuple(fmt, "")
+                        fmt_tuple(fmt, "", places)
                     }
                 }
             }
 
             WrapUnsafeBinder(ref op, ty) => {
-                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
+                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({:?}; {ty})", names.wrap(op)))
             }
         }
     }
@@ -1316,9 +1409,17 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
 impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Debug for MirFormat<'_, &Operand<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let value = self.value;
+        let names = self.names;
         use self::Operand::*;
-        match *self {
-            Constant(ref a) => write!(fmt, "{a:?}"),
+        match *value {
+            Constant(ref a) => write!(fmt, "{}", names.wrap(&**a)),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
             RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
@@ -1334,11 +1435,19 @@ impl<'tcx> Debug for ConstOperand<'tcx> {
 
 impl<'tcx> Display for ConstOperand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self.ty().kind() {
+        Display::fmt(&AllocationNames(None).wrap(self), fmt)
+    }
+}
+
+impl<'tcx> Display for MirFormat<'_, &ConstOperand<'tcx>> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let value = self.value;
+        let names = self.names;
+        match value.ty().kind() {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        Display::fmt(&self.const_, fmt)
+        Display::fmt(&names.wrap(&value.const_), fmt)
     }
 }
 
@@ -1436,11 +1545,12 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
 fn write_extra<'tcx>(
     tcx: TyCtxt<'tcx>,
     write: &mut dyn io::Write,
-    visit_op: &dyn Fn(&mut ExtraComments<'tcx>),
+    visit_op: &dyn Fn(&mut ExtraComments<'_, 'tcx>),
     options: PrettyPrintMirOptions,
+    names: AllocationNames<'_>,
 ) -> io::Result<()> {
     if options.include_extra_comments {
-        let mut extra_comments = ExtraComments { tcx, comments: vec![] };
+        let mut extra_comments = ExtraComments { tcx, comments: vec![], names };
         visit_op(&mut extra_comments);
         for comment in extra_comments.comments {
             writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
@@ -1449,12 +1559,13 @@ fn write_extra<'tcx>(
     Ok(())
 }
 
-struct ExtraComments<'tcx> {
+struct ExtraComments<'a, 'tcx> {
+    names: AllocationNames<'a>,
     tcx: TyCtxt<'tcx>,
     comments: Vec<String>,
 }
 
-impl<'tcx> ExtraComments<'tcx> {
+impl<'tcx> ExtraComments<'_, 'tcx> {
     fn push(&mut self, lines: &str) {
         for line in lines.split('\n') {
             self.comments.push(line.to_string());
@@ -1474,7 +1585,7 @@ fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
+impl<'tcx> Visitor<'tcx> for ExtraComments<'_, 'tcx> {
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
         let ConstOperand { span, user_ty, const_ } = constant;
         if use_verbose(const_.ty(), true) {
@@ -1489,8 +1600,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
 
             let fmt_val = |val: ConstValue, ty: Ty<'tcx>| {
                 let tcx = self.tcx;
+                let names = self.names;
                 rustc_data_structures::make_display(move |fmt| {
-                    pretty_print_const_value_tcx(tcx, val, ty, fmt)
+                    pretty_print_const_value_tcx(tcx, val, ty, fmt, names)
                 })
             };
 
@@ -1585,6 +1697,15 @@ pub fn write_allocations<'tcx>(
     body: &Body<'_>,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
+    write_body_allocations(tcx, body, w, AllocationNames(None))
+}
+
+fn write_body_allocations<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'_>,
+    w: &mut dyn io::Write,
+    names: AllocationNames<'_>,
+) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> {
@@ -1603,7 +1724,7 @@ pub fn write_allocations<'tcx>(
             }
         }
     }
-    struct CollectAllocIds(BTreeSet<AllocId>);
+    struct CollectAllocIds(FxIndexSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
         fn visit_const_operand(&mut self, c: &ConstOperand<'tcx>, _: Location) {
@@ -1626,6 +1747,11 @@ pub fn write_allocations<'tcx>(
     // then push to `todo`.
     let mut seen = visitor.0;
     let mut todo: Vec<_> = seen.iter().copied().collect();
+    if names.0.is_some() {
+        todo.reverse();
+    } else {
+        todo.sort_unstable();
+    }
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =
             |w: &mut dyn io::Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
@@ -1635,9 +1761,9 @@ pub fn write_allocations<'tcx>(
                         todo.push(id);
                     }
                 }
-                write!(w, "{}", display_allocation(tcx, alloc.inner()))
+                write!(w, "{}", names.wrap(display_allocation(tcx, alloc.inner())))
             };
-        write!(w, "\n{id:?}")?;
+        write!(w, "\n{:?}", names.wrap(id))?;
         match tcx.try_get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
@@ -1716,6 +1842,16 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> std::fmt::Display
     for RenderAllocation<'a, 'tcx, Prov, Extra, Bytes>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.fmt_contents(w, std::convert::identity)
+    }
+}
+
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> RenderAllocation<'_, '_, Prov, Extra, Bytes> {
+    fn fmt_contents<D: Debug>(
+        &self,
+        w: &mut Formatter<'_>,
+        pointer: impl Fn(Pointer<Prov>) -> D,
+    ) -> fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
         write!(w, "size: {}, align: {})", alloc.size().bytes(), alloc.align.bytes())?;
         if alloc.size() == Size::ZERO {
@@ -1727,7 +1863,7 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> std::fmt::Display
         }
         // Write allocation bytes.
         writeln!(w, " {{")?;
-        write_allocation_bytes(tcx, alloc, w, "    ")?;
+        write_hex_dump(tcx, alloc, w, "    ", pointer)?;
         write!(w, "}}")?;
         Ok(())
     }
@@ -1766,6 +1902,21 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
+    write_hex_dump(tcx, alloc, w, prefix, std::convert::identity)
+}
+
+fn write_hex_dump<'tcx, P, E, B, D>(
+    tcx: TyCtxt<'tcx>,
+    alloc: &Allocation<P, E, B>,
+    w: &mut dyn std::fmt::Write,
+    prefix: &str,
+    pointer: impl Fn(Pointer<P>) -> D,
+) -> std::fmt::Result
+where
+    P: Provenance,
+    B: AllocBytes,
+    D: Debug,
+{
     let num_lines = alloc.size().bytes_usize().saturating_sub(BYTES_PER_LINE);
     // Number of chars needed to represent all line numbers.
     let pos_width = hex_number_length(alloc.size().bytes());
@@ -1805,7 +1956,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let provenance_width = |bytes| bytes * 3;
-            let ptr = Pointer::new(prov, offset);
+            let ptr = pointer(Pointer::new(prov, offset));
             let mut target = format!("{ptr:?}");
             if target.len() > provenance_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.
@@ -1912,13 +2063,14 @@ fn comma_sep<'tcx>(
     tcx: TyCtxt<'tcx>,
     fmt: &mut Formatter<'_>,
     elems: Vec<(ConstValue, Ty<'tcx>)>,
+    names: AllocationNames<'_>,
 ) -> fmt::Result {
     let mut first = true;
     for (ct, ty) in elems {
         if !first {
             fmt.write_str(", ")?;
         }
-        pretty_print_const_value_tcx(tcx, ct, ty, fmt)?;
+        pretty_print_const_value_tcx(tcx, ct, ty, fmt, names)?;
         first = false;
     }
     Ok(())
@@ -1929,11 +2081,12 @@ fn pretty_print_const_value_tcx<'tcx>(
     ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
+    names: AllocationNames<'_>,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
     if tcx.sess.verbose_internals() {
-        fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
+        fmt.write_str(&format!("ConstValue({:?}: {ty})", names.wrap(&ct)))?;
         return Ok(());
     }
 
@@ -1986,12 +2139,12 @@ fn pretty_print_const_value_tcx<'tcx>(
                 match *ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
-                        comma_sep(tcx, fmt, fields)?;
+                        comma_sep(tcx, fmt, fields, names)?;
                         fmt.write_str("]")?;
                     }
                     ty::Tuple(..) => {
                         fmt.write_str("(")?;
-                        comma_sep(tcx, fmt, fields)?;
+                        comma_sep(tcx, fmt, fields, names)?;
                         if contents.fields.len() == 1 {
                             fmt.write_str(",")?;
                         }
@@ -2014,7 +2167,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                             Some(CtorKind::Const) => {}
                             Some(CtorKind::Fn) => {
                                 fmt.write_str("(")?;
-                                comma_sep(tcx, fmt, fields)?;
+                                comma_sep(tcx, fmt, fields, names)?;
                                 fmt.write_str(")")?;
                             }
                             None => {
@@ -2026,7 +2179,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                                         fmt.write_str(", ")?;
                                     }
                                     write!(fmt, "{}: ", field_def.name)?;
-                                    pretty_print_const_value_tcx(tcx, ct, ty, fmt)?;
+                                    pretty_print_const_value_tcx(tcx, ct, ty, fmt, names)?;
                                     first = false;
                                 }
                                 fmt.write_str(" }}")?;
@@ -2041,7 +2194,16 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::Scalar(scalar), _) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_const_scalar(scalar, ty)?;
+            match scalar {
+                interpret::Scalar::Ptr(ptr, _) => p.print_scalar_ptr(ptr, ty, |p, ptr, ty| {
+                    p.typed_value(
+                        |p| write!(p, "{:?}", names.wrap(ptr)),
+                        |p| p.print_type(ty),
+                        ": ",
+                    )
+                })?,
+                interpret::Scalar::Int(_) => p.pretty_print_const_scalar(scalar, ty)?,
+            };
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
@@ -2057,7 +2219,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         _ => {}
     }
     // Fall back to debug pretty printing for invalid constants.
-    write!(fmt, "{ct:?}: {ty}")
+    write!(fmt, "{:?}: {ty}", names.wrap(&ct))
 }
 
 pub(crate) fn pretty_print_const_value<'tcx>(
@@ -2067,7 +2229,7 @@ pub(crate) fn pretty_print_const_value<'tcx>(
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let ty = tcx.lift(ty);
-        pretty_print_const_value_tcx(tcx, ct, ty, fmt)
+        pretty_print_const_value_tcx(tcx, ct, ty, fmt, AllocationNames(None))
     })
 }
 

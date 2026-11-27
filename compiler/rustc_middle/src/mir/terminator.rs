@@ -245,58 +245,95 @@ impl<O> AssertKind<O> {
     where
         O: Debug,
     {
+        self.fmt_operands(f, |op| op)
+    }
+
+    pub(crate) fn fmt_operands<'a, W: fmt::Write, D: Debug>(
+        &'a self,
+        f: &mut W,
+        operand: impl Fn(&'a O) -> D,
+    ) -> fmt::Result {
         use AssertKind::*;
         match self {
             BoundsCheck { len, index } => write!(
                 f,
-                "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {:?}, {:?}",
+                operand(len),
+                operand(index)
             ),
 
             OverflowNeg(op) => {
-                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {op:?}")
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {:?}", operand(op))
             }
-            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {op:?}"),
+            DivisionByZero(op) => {
+                write!(f, "\"attempt to divide `{{}}` by zero\", {:?}", operand(op))
+            }
             RemainderByZero(op) => write!(
                 f,
-                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {op:?}"
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {:?}",
+                operand(op)
             ),
             Overflow(BinOp::Add, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {l:?}, {r:?}"
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {:?}, {:?}",
+                operand(l),
+                operand(r)
             ),
             Overflow(BinOp::Sub, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {l:?}, {r:?}"
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {:?}, {:?}",
+                operand(l),
+                operand(r)
             ),
             Overflow(BinOp::Mul, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {l:?}, {r:?}"
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {:?}, {:?}",
+                operand(l),
+                operand(r)
             ),
             Overflow(BinOp::Div, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {l:?}, {r:?}"
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {:?}, {:?}",
+                operand(l),
+                operand(r)
             ),
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {l:?}, {r:?}"
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {:?}, {:?}",
+                operand(l),
+                operand(r)
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {r:?}")
+                write!(
+                    f,
+                    "\"attempt to shift right by `{{}}`, which would overflow\", {:?}",
+                    operand(r)
+                )
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
+                write!(
+                    f,
+                    "\"attempt to shift left by `{{}}`, which would overflow\", {:?}",
+                    operand(r)
+                )
             }
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             MisalignedPointerDereference { required, found } => {
                 write!(
                     f,
-                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
+                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {:?}, {:?}",
+                    operand(required),
+                    operand(found)
                 )
             }
             NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
             NullReferenceConstructed => write!(f, "\"null reference produced\""),
             InvalidEnumConstruction(source) => {
-                write!(f, "\"trying to construct an enum from an invalid value {{}}\", {source:?}")
+                write!(
+                    f,
+                    "\"trying to construct an enum from an invalid value {{}}\", {:?}",
+                    operand(source)
+                )
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
