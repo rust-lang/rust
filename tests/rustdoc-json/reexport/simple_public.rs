@@ -8,8 +8,8 @@ pub mod inner {
     pub struct Public;
 }
 
-//@ set import_id = "$.index[?(@.docs=='Outer')].id"
-//@ is "$.index[?(@.docs=='Outer')].inner.use.source" \"inner::Public\"
+//@ set import_id = "$.index[?(@.docs[0].text=='Outer')].id"
+//@ is "$.index[?(@.docs[0].text=='Outer')].inner.use.source" \"inner::Public\"
 /// Outer
 pub use inner::Public;
 

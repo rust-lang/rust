@@ -15,7 +15,7 @@ mod sub {
 /// Displayed
 #[doc(inline)]
 pub use crate::bar as Bar;
-//@ matches - '//dd' '^Hello\sDisplayed$'
+//@ matches - '//dd' '^Hello$'
 #[doc(inline)]
 /// Hello
 pub use crate::Bar as Bar2;
@@ -23,3 +23,15 @@ pub use crate::Bar as Bar2;
 //@ matches - '//dd' '^Public$'
 /// Public
 pub use crate::sub::public as Public;
+
+//@ has 'foo/fn.Bar.html'
+//@ matches - '//div[@class="docblock"]' '^Displayed$'
+//@ snapshot fn.Bar.docblock - '//div[@class="docblock"]'
+
+//@ has 'foo/fn.Bar2.html'
+//@ matches - '//div[@class="docblock"]' '^Hello|Displayed$'
+//@ snapshot fn.Bar2.docblock - '//div[@class="docblock"]'
+
+//@ has 'foo/fn.Public.html'
+//@ matches - '//div[@class="docblock"]' '^Public$'
+//@ snapshot fn.Public.docblock - '//div[@class="docblock"]'
