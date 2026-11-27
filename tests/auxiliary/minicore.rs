@@ -72,6 +72,9 @@ pub trait MetaSized: PointeeSized {}
 )]
 pub trait Sized: MetaSized {}
 
+#[lang = "move_trait"]
+pub auto trait Move {}
+
 #[lang = "destruct"]
 #[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 pub trait Destruct: PointeeSized {}

@@ -16,6 +16,9 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 trait Sized: MetaSized {}
 
+#[lang = "move_trait"]
+pub trait Move {}
+
 #[lang = "copy"]
 trait Copy {}
 

@@ -234,7 +234,18 @@ fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Dynamic(trait_data, ..) => {
-            let auto_traits: SmallVec<[DefId; 4]> = trait_data.auto_traits().collect();
+            let mut has_move_bound = false;
+            let auto_traits: SmallVec<[DefId; 4]> = trait_data
+                .auto_traits()
+                .filter(|def_id| {
+                    if tcx.is_move_trait(*def_id) {
+                        has_move_bound = true;
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .collect();
 
             let has_enclosing_parens = if cpp_like_debuginfo {
                 output.push_str("dyn$<");
@@ -312,6 +323,13 @@ fn push_debuginfo_type_name<'tcx>(
                         push_item_name(tcx, def_id, true, &mut name);
                         name
                     })
+                    .chain((!has_move_bound).then(|| {
+                        let move_trait = tcx.lang_items().move_trait().unwrap();
+                        let mut name = String::with_capacity(21);
+                        name.push('?');
+                        push_item_name(tcx, move_trait, true, &mut name);
+                        name
+                    }))
                     .collect();
                 auto_traits.sort_unstable();
 

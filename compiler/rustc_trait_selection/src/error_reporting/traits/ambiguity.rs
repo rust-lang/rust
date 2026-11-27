@@ -722,7 +722,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
                     if !matches!(
                         self.tcx.as_lang_item(data.def_id()),
-                        Some(LangItem::Sized | LangItem::MetaSized | LangItem::PointeeSized)
+                        Some(LangItem::Sized | LangItem::MetaSized | LangItem::PointeeSized | LangItem::Move)
                     ) =>
                 {
                     let clause = related_pred.kind().rebind(data);

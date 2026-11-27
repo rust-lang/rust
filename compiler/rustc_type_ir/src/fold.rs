@@ -183,6 +183,8 @@ pub trait PredicateProxy<I: Interner>:
         cx: I,
         f: impl FnOnce(Binder<I, ProjectionClause<I>>) -> Binder<I, ProjectionClause<I>>,
     ) -> Option<Self>;
+
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool;
 }
 
 /// This trait is implemented for every folding traversal. There is a fold
