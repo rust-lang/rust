@@ -94,6 +94,25 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // disabled. This is necessary otherwise LLVM will try
                         // to actually allocate a register for the dummy output.
                         assert_matches!(reg, InlineAsmRegOrRegClass::Reg(_));
+                        if let InlineAsmRegOrRegClass::Reg(reg) = reg
+                            && let Some(idx) = arm_qreg_index(reg)
+                        {
+                            // Arm `qN` registers require NEON (or MVE), but the
+                            // `d(2N)`/`d(2N+1)` registers they overlap may still
+                            // be available with only VFP. LLVM silently ignores
+                            // a clobber on a register class with no legal type,
+                            // so clobber the overlapping `d` registers instead.
+                            let dreg_class = if idx < 8 {
+                                ArmInlineAsmRegClass::dreg_low16
+                            } else {
+                                ArmInlineAsmRegClass::dreg
+                            };
+                            if is_target_supported(InlineAsmRegClass::Arm(dreg_class)) {
+                                clobbers.push(format!("~{{d{}}}", idx * 2));
+                                clobbers.push(format!("~{{d{}}}", idx * 2 + 1));
+                                continue;
+                            }
+                        }
                         clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
                         continue;
                     } else {
@@ -686,6 +705,17 @@ fn xmm_reg_index(reg: InlineAsmReg) -> Option<u32> {
         }
         InlineAsmReg::X86(reg) if reg as u32 >= zmm0 as u32 && reg as u32 <= zmm31 as u32 => {
             Some(reg as u32 - zmm0 as u32)
+        }
+        _ => None,
+    }
+}
+
+/// If the register is an Arm `q` register then return its index.
+fn arm_qreg_index(reg: InlineAsmReg) -> Option<u32> {
+    use ArmInlineAsmReg::*;
+    match reg {
+        InlineAsmReg::Arm(reg) if reg as u32 >= q0 as u32 && reg as u32 <= q15 as u32 => {
+            Some(reg as u32 - q0 as u32)
         }
         _ => None,
     }
