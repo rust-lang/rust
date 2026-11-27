@@ -83,6 +83,7 @@ struct SyntaxContextData {
     opaque_and_semiopaque: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
+    hash: Option<Fingerprint>,
 }
 
 impl SyntaxContextData {
@@ -94,6 +95,7 @@ impl SyntaxContextData {
             opaque: SyntaxContext::root(),
             opaque_and_semiopaque: SyntaxContext::root(),
             dollar_crate_name: kw::DollarCrate,
+            hash: Some(Fingerprint::ZERO),
         }
     }
 
@@ -382,7 +384,7 @@ impl<TKey: RemappableIdx + Into<u32>, TRemappedKey: RemappableIdx + From<u32>>
 /// that are allocated during metadata encoding, if we will have non-determinism there
 /// this remapping will not help as it is constructed before metadata encoding.
 pub trait HygieneRemapper<T> {
-    fn stable_hash(&self, t: T, hcx: &mut impl StableHashCtxt, hasher: &mut StableHasher);
+    fn stable_hash(&mut self, t: T, hcx: &mut impl StableHashCtxt, hasher: &mut StableHasher);
     fn len(&self) -> usize;
     fn first_non_det_index_mut(&mut self) -> &mut Option<T>;
     fn first_non_det_index(&self) -> u32;
@@ -398,7 +400,7 @@ pub trait HygieneRemapper<T> {
     }
 
     fn remapping_results<TRemappedKey>(
-        &self,
+        &mut self,
         hcx: &mut impl StableHashCtxt,
     ) -> HygieneRemappingResults<T, TRemappedKey>
     where
@@ -462,7 +464,7 @@ impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
 
     #[inline]
     fn stable_hash(
-        &self,
+        &mut self,
         ctxt: SyntaxContext,
         hcx: &mut impl StableHashCtxt,
         hasher: &mut StableHasher,
@@ -489,7 +491,7 @@ impl HygieneRemapper<LocalExpnId> for LocalExpnIdRemapper<'_> {
 
     #[inline]
     fn stable_hash(
-        &self,
+        &mut self,
         local_expn_id: LocalExpnId,
         hcx: &mut impl StableHashCtxt,
         hasher: &mut StableHasher,
@@ -777,6 +779,7 @@ impl HygieneData {
             opaque,
             opaque_and_semiopaque,
             dollar_crate_name: kw::DollarCrate,
+            hash: None,
         };
         ctxt
     }
@@ -1689,7 +1692,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) 
 impl SyntaxContext {
     fn stable_hash_internal(
         self,
-        data: Option<&HygieneData>,
+        data: Option<&mut HygieneData>,
         hcx: &mut impl StableHashCtxt,
         hasher: &mut StableHasher,
     ) {
@@ -1704,19 +1707,32 @@ impl SyntaxContext {
             // expansion hash in a single `HygieneData::with` call to avoid extra locking.
             hcx.assert_default_stable_hash_controls("ExpnId");
 
-            let get_hashing_data = |data: &HygieneData| {
+            let mut get_or_calculate_hash = |data: &mut HygieneData| {
+                if let Some(hash) = data.syntax_context_data[self].hash {
+                    return hash;
+                }
+
                 let (expn_id, transparency) = data.outer_mark(self);
-                (data.parent_ctxt(self), data.expn_hash(expn_id).0, transparency)
+                let parent = data.parent_ctxt(self);
+
+                let mut hasher = StableHasher::new();
+                parent.stable_hash_internal(Some(data), hcx, &mut hasher);
+                data.expn_hash(expn_id).0.stable_hash(hcx, &mut hasher);
+                transparency.stable_hash(hcx, &mut hasher);
+
+                let hash = hasher.finish();
+
+                data.syntax_context_data[self].hash = Some(hash);
+
+                hash
             };
 
-            let (parent, hash, transparency) = match data {
-                Some(data) => get_hashing_data(data),
-                None => HygieneData::with(|data| get_hashing_data(data)),
+            let hash = match data {
+                Some(data) => get_or_calculate_hash(data),
+                None => HygieneData::with(|data| get_or_calculate_hash(data)),
             };
 
-            parent.stable_hash_internal(data, hcx, hasher);
             hash.stable_hash(hcx, hasher);
-            transparency.stable_hash(hcx, hasher);
         }
     }
 }
