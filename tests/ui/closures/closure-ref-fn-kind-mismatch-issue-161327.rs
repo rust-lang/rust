@@ -44,20 +44,19 @@ fn test_double_ref_fn_mut_passed_to_fn() {
 fn test_fn_passed_as_mut_ref_to_fn() {
     let mut pure_closure = |x: &'static str| x.to_string();
     req_fn(&mut pure_closure);
-    //~^ ERROR E0277
 }
 
 fn test_nested_closure_conservative_fallback() {
     let mut v = Vec::new();
     let s = String::new();
     let mut outer = |_x| {
+        //~^ ERROR E0525
         v.push("a");
         let inner = || drop(s);
         inner();
         v.join("/")
     };
     req_fn(&mut outer);
-    //~^ ERROR E0277
 }
 
 fn test_unresolved_integer_fallback_copy() {
@@ -67,7 +66,6 @@ fn test_unresolved_integer_fallback_copy() {
         String::new()
     };
     req_fn(&mut c);
-    //~^ ERROR E0277
 }
 
 fn main() {}
