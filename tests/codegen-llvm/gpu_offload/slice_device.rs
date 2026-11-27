@@ -17,7 +17,7 @@ extern crate minicore;
 // amdgpu-NEXT: define amdgpu_kernel void @foo
 // CHECK-SAME: ptr nofree readnone captures(none) %dyn_ptr
 // nvptx-SAME: [2 x i64] %0
-// amdgpu-SAME: ptr noalias {{.*}} %0, i64 {{.*}} %1
+// amdgpu-SAME: ptr addrspace(4) {{.*}} byref([16 x i8]) align 8 {{.*}} %0)
 // CHECK-NEXT: entry:
 // CHECK-NEXT: ret void
 // CHECK-NEXT: }
