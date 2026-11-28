@@ -1,0 +1,392 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:8:5
+   |
+LL | fn is_caused_by<T: Error + 'static>(err: &dyn Error) -> bool {
+   |                                     ---  - let's call the lifetime of this reference `'1`
+   |                                     |
+   |                                     `err` is only valid in the function body
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn is_caused_by<T: Error + 'static>(err: &dyn Error) -> bool {
+LL + fn is_caused_by<T: Error + 'static>(err: &(dyn Error + 'static)) -> bool {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:13:5
+   |
+LL | fn named<'a, T: Error + 'static>(err: &'a dyn Error) -> bool {
+   |          --                      --- `err` is only valid in the function body
+   |          |
+   |          lifetime `'a` defined here
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn named<'a, T: Error + 'static>(err: &'a dyn Error) -> bool {
+LL + fn named<'a, T: Error + 'static>(err: &'a (dyn Error + 'static)) -> bool {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:17:5
+   |
+LL | fn early_bound<'a: 'a, T: Error + 'static>(err: &'a dyn Error) -> bool {
+   |                --                          --- `err` is only valid in the function body
+   |                |
+   |                lifetime `'a` defined here
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn early_bound<'a: 'a, T: Error + 'static>(err: &'a dyn Error) -> bool {
+LL + fn early_bound<'a: 'a, T: Error + 'static>(err: &'a (dyn Error + 'static)) -> bool {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:21:5
+   |
+LL | fn mutable<'a, T: Error + 'static>(err: &'a mut dyn Error) -> Option<&'a mut T> {
+   |            --                      --- `err` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |     err.downcast_mut::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::downcast_mut` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+   = note: requirement occurs because of a mutable reference to `(dyn std::error::Error + 'static)`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn mutable<'a, T: Error + 'static>(err: &'a mut dyn Error) -> Option<&'a mut T> {
+LL + fn mutable<'a, T: Error + 'static>(err: &'a mut (dyn Error + 'static)) -> Option<&'a mut T> {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:25:5
+   |
+LL | fn parenthesized<T: Error + 'static>(err: &(dyn Error)) -> bool {
+   |                                      ---  - let's call the lifetime of this reference `'1`
+   |                                      |
+   |                                      `err` is only valid in the function body
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL | fn parenthesized<T: Error + 'static>(err: &(dyn Error + 'static)) -> bool {
+   |                                                       +++++++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:29:5
+   |
+LL | fn other_bounds<T: Error + 'static>(err: &(dyn Error + Send + Sync)) -> bool {
+   |                                     ---  - let's call the lifetime of this reference `'1`
+   |                                     |
+   |                                     `err` is only valid in the function body
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + Send + Sync + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL | fn other_bounds<T: Error + 'static>(err: &(dyn Error + Send + Sync + 'static)) -> bool {
+   |                                                                    +++++++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:35:5
+   |
+LL | fn function_call(err: &dyn Error) {
+   |                  ---  - let's call the lifetime of this reference `'1`
+   |                  |
+   |                  `err` is only valid in the function body
+LL |     takes_static_object(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn function_call(err: &dyn Error) {
+LL + fn function_call(err: &(dyn Error + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:41:5
+   |
+LL | fn repeated_argument(err: &dyn Error) {
+   |                      ---  - let's call the lifetime of this reference `'1`
+   |                      |
+   |                      `err` is only valid in the function body
+LL |     takes_two_static_objects(err, err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn repeated_argument(err: &dyn Error) {
+LL + fn repeated_argument(err: &(dyn Error + 'static)) {
+   |
+
+error: lifetime may not live long enough
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:45:5
+   |
+LL | fn shared_region<'a, T: Error + 'static>(_: &'a u32, err: &'a dyn Error) -> bool {
+   |                  -- lifetime `'a` defined here
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn shared_region<'a, T: Error + 'static>(_: &'a u32, err: &'a dyn Error) -> bool {
+LL + fn shared_region<'a, T: Error + 'static>(_: &'a u32, err: &'a (dyn Error + 'static)) -> bool {
+   |
+
+error: lifetime may not live long enough
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:49:5
+   |
+LL | fn same_trait<'a, T: Error + 'static>(_: &'a dyn Error, err: &'a dyn Error) -> bool {
+   |               -- lifetime `'a` defined here
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn same_trait<'a, T: Error + 'static>(_: &'a dyn Error, err: &'a dyn Error) -> bool {
+LL + fn same_trait<'a, T: Error + 'static>(_: &'a dyn Error, err: &'a (dyn Error + 'static)) -> bool {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:55:5
+   |
+LL | fn callable(value: &dyn Fn() -> &'static dyn std::fmt::Debug) {
+   |             -----  - let's call the lifetime of this reference `'1`
+   |             |
+   |             `value` declared here, outside of the function body
+   |             `value` is only valid in the function body
+LL |     takes_static_callable(value);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `value` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn callable(value: &dyn Fn() -> &'static dyn std::fmt::Debug) {
+LL + fn callable(value: &(dyn Fn() -> &'static (dyn std::fmt::Debug) + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:63:5
+   |
+LL | fn derived_lifetime<'a, 'b>(arg: &'b dyn DerivedLifetime<'a>) {
+   |                         --  --- `arg` is only valid in the function body
+   |                         |
+   |                         lifetime `'b` defined here
+LL |     takes_derived_lifetime(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'b` must outlive `'static`
+   |
+help: this trait object's lifetime is inferred from its trait's lifetime bounds; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn derived_lifetime<'a, 'b>(arg: &'b dyn DerivedLifetime<'a>) {
+LL + fn derived_lifetime<'a, 'b>(arg: &'b (dyn DerivedLifetime<'a> + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:71:5
+   |
+LL | fn matching_lifetime_argument<'a>(arg: &'a dyn LifetimeArgument<'a>) {
+   |                               --  --- `arg` is only valid in the function body
+   |                               |
+   |                               lifetime `'a` defined here
+LL |     takes_lifetime_argument(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn matching_lifetime_argument<'a>(arg: &'a dyn LifetimeArgument<'a>) {
+LL + fn matching_lifetime_argument<'a>(arg: &'a (dyn LifetimeArgument<'a> + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:79:5
+   |
+LL | fn matching_independent_lifetimes<'a, 'b>(arg: &'a dyn IndependentLifetimes<'a, 'b>) {
+   |                                   --      --- `arg` is only valid in the function body
+   |                                   |
+   |                                   lifetime `'a` defined here
+LL |     takes_independent_lifetimes(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn matching_independent_lifetimes<'a, 'b>(arg: &'a dyn IndependentLifetimes<'a, 'b>) {
+LL + fn matching_independent_lifetimes<'a, 'b>(arg: &'a (dyn IndependentLifetimes<'a, 'b> + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:89:5
+   |
+LL | fn matching_associated_type<'a>(arg: &'a dyn AssociatedType<Item = &'a u32>) {
+   |                             --  --- `arg` is only valid in the function body
+   |                             |
+   |                             lifetime `'a` defined here
+LL |     takes_associated_type(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn matching_associated_type<'a>(arg: &'a dyn AssociatedType<Item = &'a u32>) {
+LL + fn matching_associated_type<'a>(arg: &'a (dyn AssociatedType<Item = &'a u32> + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:93:5
+   |
+LL | fn drop_auto_trait(arg: &(dyn Error + Send)) {
+   |                    ---  - let's call the lifetime of this reference `'1`
+   |                    |
+   |                    `arg` is only valid in the function body
+LL |     takes_static_object(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL | fn drop_auto_trait(arg: &(dyn Error + Send + 'static)) {
+   |                                            +++++++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:99:5
+   |
+LL | fn higher_ranked(arg: &dyn Fn(&str)) {
+   |                  ---  - let's call the lifetime of this reference `'1`
+   |                  |
+   |                  `arg` is only valid in the function body
+LL |     takes_higher_ranked(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn higher_ranked(arg: &dyn Fn(&str)) {
+LL + fn higher_ranked(arg: &(dyn Fn(&str) + 'static)) {
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-static-suggestion.rs:107:5
+   |
+LL | fn typed<T>(arg: &dyn Typed<T>) {
+   |             ---  - let's call the lifetime of this reference `'1`
+   |             |
+   |             `arg` is only valid in the function body
+LL |     takes_typed(arg);
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn typed<T>(arg: &dyn Typed<T>) {
+LL + fn typed<T>(arg: &(dyn Typed<T> + 'static)) {
+   |
+
+error: aborting due to 18 previous errors
+
+For more information about this error, try `rustc --explain E0521`.
