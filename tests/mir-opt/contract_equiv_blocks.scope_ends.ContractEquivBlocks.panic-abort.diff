@@ -1,0 +1,151 @@
+- // MIR for `scope_ends` before ContractEquivBlocks
++ // MIR for `scope_ends` after ContractEquivBlocks
+  
+  fn scope_ends(_1: String, _2: String) -> Result<(), ()> {
+      debug s => _1;
+      debug t => _2;
+      let mut _0: std::result::Result<(), ()>;
+      let _3: ();
+      let mut _4: bool;
+      let mut _5: &std::string::String;
+      let mut _6: &std::string::String;
+      let _7: std::string::String;
+      let mut _8: &str;
+      let _9: &str;
+      let _10: ();
+      let mut _11: std::ops::ControlFlow<std::result::Result<!, ()>>;
+      let mut _12: std::result::Result<(), ()>;
+      let mut _13: isize;
+      let _14: std::result::Result<!, ()>;
+      let mut _15: !;
+      let mut _16: std::result::Result<!, ()>;
+      let _17: ();
+      let mut _18: ();
+      scope 1 {
+          debug residual => _14;
+      }
+      scope 2 {
+          debug val => _17;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = &_1;
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = const "";
+          _8 = &(*_9);
+          _7 = <str as ToString>::to_string(move _8) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _6 = &_7;
+          StorageDead(_8);
+          _4 = <String as PartialEq>::eq(move _5, move _6) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          switchInt(move _4) -> [0: bb11, otherwise: bb3];
+      }
+  
+      bb3: {
+          drop(_7) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_9);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = returns_result() -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          _11 = <Result<(), ()> as Try>::branch(move _12) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_12);
+          _13 = discriminant(_11);
+          switchInt(move _13) -> [0: bb8, 1: bb9, otherwise: bb7];
+      }
+  
+      bb7: {
+          unreachable;
+      }
+  
+      bb8: {
+          StorageLive(_17);
+          _17 = copy ((_11 as Continue).0: ());
+          _10 = copy _17;
+          StorageDead(_17);
+          StorageDead(_11);
+          StorageDead(_10);
+          _3 = const ();
+          goto -> bb13;
+      }
+  
+      bb9: {
+          StorageLive(_14);
+          _14 = copy ((_11 as Break).0: std::result::Result<!, ()>);
+          StorageLive(_16);
+          _16 = copy _14;
+          _0 = <Result<(), ()> as FromResidual<Result<!, ()>>>::from_residual(move _16) -> [return: bb10, unwind unreachable];
+      }
+  
+      bb10: {
+          StorageDead(_16);
+          StorageDead(_14);
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_4);
+          StorageDead(_3);
+          drop(_2) -> [return: bb15, unwind unreachable];
+      }
+  
+      bb11: {
+          drop(_7) -> [return: bb12, unwind unreachable];
+      }
+  
+      bb12: {
+          StorageDead(_9);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          _3 = const ();
+          goto -> bb13;
+      }
+  
+      bb13: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_18);
+          _18 = ();
+          _0 = Result::<(), ()>::Ok(move _18);
+          StorageDead(_18);
+          drop(_2) -> [return: bb14, unwind unreachable];
+      }
+  
+      bb14: {
+-         drop(_1) -> [return: bb16, unwind unreachable];
++         goto -> bb15;
+      }
+  
+      bb15: {
+          drop(_1) -> [return: bb16, unwind unreachable];
+      }
+  
+      bb16: {
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 0, align: 1) {}
+  

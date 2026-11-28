@@ -1,0 +1,26 @@
+- // MIR for `match_from_macro2` before ContractEquivBlocks
++ // MIR for `match_from_macro2` after ContractEquivBlocks
+  
+  fn match_from_macro2(_1: u8) -> u8 {
+      debug x => _1;
+      let mut _0: u8;
+  
+      bb0: {
+          switchInt(copy _1) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const <u8 as T>::V;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = const <() as T>::V;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          return;
+      }
+  }
+  
