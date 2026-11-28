@@ -16,10 +16,12 @@ use std::sync::{Arc, Weak as ArcWeak};
 // CHECK-NEXT: call qword ptr {{.*}}__rust_alloc
 // CHECK-NEXT: test rax, rax
 // CHECK-NEXT: je [[RC_NEW_ALLOC_FAIL:\..+]]
-// CHECK-DAG: mov qword ptr [rax], 1
-// CHECK-DAG: mov qword ptr [rax + 8], 1
-// CHECK-DAG: mov qword ptr [rax + 16], rbx
-// CHECK-DAG: pop rbx
+// CHECK-NEXT: mov rcx, rax
+// CHECK-NEXT: add rax, 16
+// CHECK-DAG: mov qword ptr [rcx], 1
+// CHECK-DAG: mov qword ptr [rcx + 8], 1
+// CHECK-DAG: mov qword ptr [rcx + 16], rbx
+// CHECK-NEXT: pop rbx
 // CHECK: ret
 // CHECK-NEXT: [[RC_NEW_ALLOC_FAIL]]:
 // CHECK: mov edi, [[#N:]]
@@ -32,7 +34,6 @@ pub fn rc_new(x: usize) -> Rc<usize> {
 
 // CHECK-LABEL: rc_deref:
 // CHECK: mov rax, qword ptr [rdi]
-// CHECK-NEXT: add rax, 16
 // CHECK-NEXT: ret
 #[unsafe(no_mangle)]
 pub fn rc_deref(rc: &Rc<usize>) -> &usize {
@@ -41,7 +42,7 @@ pub fn rc_deref(rc: &Rc<usize>) -> &usize {
 
 // CHECK-LABEL: rc_increment:
 // CHECK: mov rax, qword ptr [rdi]
-// CHECK-NEXT: inc qword ptr [rax]
+// CHECK-NEXT: inc qword ptr [rax - 16]
 // CHECK-NEXT: je [[RC_INCREMENT_OVERFLOW:\..+]]
 // CHECK-NEXT: ret
 // CHECK-NEXT: [[RC_INCREMENT_OVERFLOW]]:
@@ -54,7 +55,7 @@ pub fn rc_increment(rc: &Rc<usize>) {
 // CHECK-LABEL: rc_decrement:
 // CHECK: push rax
 // CHECK: mov qword ptr [rsp], rdi
-// CHECK-NEXT: dec qword ptr [rdi]
+// CHECK-NEXT: dec qword ptr [rdi - 16]
 // CHECK-NEXT: je [[RC_DECREMENT_DROP_SLOW:\..+]]
 // CHECK-NEXT: pop rax
 // CHECK: ret
@@ -70,7 +71,7 @@ pub fn rc_decrement(rc: Rc<usize>) {
 
 // CHECK-LABEL: rc_downgrade:
 // CHECK: mov rax, qword ptr [rdi]
-// CHECK-NEXT: inc qword ptr [rax + 8]
+// CHECK-NEXT: inc qword ptr [rax - 8]
 // CHECK-NEXT: je [[RC_DOWNGRADE_OVERFLOW:\..+]]
 // CHECK: ret
 // CHECK-NEXT: [[RC_DOWNGRADE_OVERFLOW]]:
@@ -84,11 +85,11 @@ pub fn rc_downgrade(rc: &Rc<usize>) {
 // CHECK: mov rax, qword ptr [rdi]
 // CHECK-NEXT: cmp rax, -1
 // CHECK-NEXT: je [[RC_UPGRADE_RET:\..+]]
-// CHECK-NEXT: mov rcx, qword ptr [rax]
+// CHECK-NEXT: mov rcx, qword ptr [rax - 16]
 // CHECK-NEXT: test rcx, rcx
 // CHECK-NEXT: je [[RC_UPGRADE_RET]]
 // CHECK-NEXT: inc rcx
-// CHECK-NEXT: mov qword ptr [rax], rcx
+// CHECK-NEXT: mov qword ptr [rax - 16], rcx
 // CHECK-NEXT: je [[RC_UPGRADE_OVERFLOW:\..+]]
 // CHECK-NEXT: [[RC_UPGRADE_RET]]:
 // CHECK-NEXT: ret
