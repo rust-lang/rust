@@ -480,6 +480,7 @@ fn get_extracted_doctests(code: &str) -> ExtractedDocTests {
             DUMMY_SP,
             Vec::new(),
             Vec::new(),
+            None,
         ),
         &opts,
         Edition::Edition2018,

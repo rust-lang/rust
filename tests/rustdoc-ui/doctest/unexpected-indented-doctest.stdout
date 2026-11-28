@@ -1,0 +1,47 @@
+
+running 4 tests
+test $DIR/unexpected-indented-doctest.rs - Allowed (line 22) ... FAILED
+test $DIR/unexpected-indented-doctest.rs - X (line 9) ... FAILED
+test $DIR/unexpected-indented-doctest.rs - Y (line 15) ... FAILED
+test $DIR/unexpected-indented-doctest.rs - Z (line 28) ... ok
+
+failures:
+
+---- $DIR/unexpected-indented-doctest.rs - Allowed (line 22) stdout ----
+error: expected one of `!` or `::`, found `rust`
+  --> $DIR/unexpected-indented-doctest.rs:23:5
+   |
+LL | not rust code
+   |     ^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/unexpected-indented-doctest.rs - X (line 9) stdout ----
+error: expected one of `!` or `::`, found `rust`
+  --> $DIR/unexpected-indented-doctest.rs:10:5
+   |
+LL | not rust code
+   |     ^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/unexpected-indented-doctest.rs - Y (line 15) stdout ----
+error: expected one of `!` or `::`, found `rust`
+  --> $DIR/unexpected-indented-doctest.rs:16:5
+   |
+LL | not rust code
+   |     ^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/unexpected-indented-doctest.rs - Allowed (line 22)
+    $DIR/unexpected-indented-doctest.rs - X (line 9)
+    $DIR/unexpected-indented-doctest.rs - Y (line 15)
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

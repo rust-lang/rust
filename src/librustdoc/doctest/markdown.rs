@@ -51,6 +51,7 @@ impl DocTestVisitor for MdCollector {
             DUMMY_SP,
             code_mappings,
             Vec::new(),
+            None,
         ));
     }
 
@@ -148,6 +149,7 @@ pub(crate) fn test(
         dcx,
         opts,
         &rustdoc_options,
+        &Arc::new(Mutex::new(Vec::new())),
         &Arc::new(Mutex::new(Vec::new())),
         standalone_tests,
         mergeable_tests,

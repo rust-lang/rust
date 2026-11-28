@@ -22,10 +22,11 @@ use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_interface::interface;
 use rustc_lint as lint;
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Input};
 use rustc_session::output::ErrorOutputType;
@@ -264,7 +265,32 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                         .into_iter()
                         .for_each(|t| collector.add_test(t, Some(compiler.sess.dcx())));
 
-                    Ok(Some(collector))
+                    if compiler.sess.dcx().has_errors().is_some() {
+                        return Ok(None);
+                    }
+
+                    let CreateRunnableDocTests {
+                        standalone_tests,
+                        mergeable_tests,
+                        rustdoc_options,
+                        opts,
+                        unused_extern_reports,
+                        indented_doctest_failures,
+                        compiling_test_count,
+                        ..
+                    } = collector;
+                    let exit_code = run_tests(
+                        compiler.sess.dcx(),
+                        opts,
+                        &rustdoc_options,
+                        &unused_extern_reports,
+                        &indented_doctest_failures,
+                        standalone_tests,
+                        mergeable_tests,
+                    );
+                    emit_indented_doctest_failures(tcx, &indented_doctest_failures);
+
+                    Ok(Some((exit_code, unused_extern_reports, compiling_test_count)))
                 }
             });
         compiler.sess.dcx().abort_if_errors();
@@ -272,15 +298,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         collector
     });
 
-    let CreateRunnableDocTests {
-        standalone_tests,
-        mergeable_tests,
-        rustdoc_options,
-        opts,
-        unused_extern_reports,
-        compiling_test_count,
-        ..
-    } = match result {
+    let (exit_code, unused_extern_reports, compiling_test_count) = match result {
         Ok(Some(collector)) => collector,
         Ok(None) => return ExitCode::SUCCESS,
         Err(error) => {
@@ -294,14 +312,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         }
     };
 
-    let exit_code = run_tests(
-        dcx,
-        opts,
-        &rustdoc_options,
-        &unused_extern_reports,
-        standalone_tests,
-        mergeable_tests,
-    );
     if exit_code != ExitCode::SUCCESS {
         return exit_code;
     }
@@ -354,6 +364,7 @@ pub(crate) fn run_tests(
     opts: GlobalTestOptions,
     rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
+    indented_doctest_failures: &Arc<Mutex<Vec<IndentedDoctestFailure>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
     mergeable_tests: FxIndexMap<MergeableTestKey, Vec<(DocTestBuilder, ScrapedDocTest)>>,
 ) -> ExitCode {
@@ -424,6 +435,7 @@ pub(crate) fn run_tests(
                 opts.clone(),
                 Arc::clone(rustdoc_options),
                 unused_extern_reports.clone(),
+                indented_doctest_failures.clone(),
             ));
         }
     }
@@ -535,6 +547,29 @@ pub(crate) struct UnusedExterns {
     lint_level: String,
     /// List of unused externs by their names.
     unused_extern_names: Vec<String>,
+}
+
+pub(crate) struct IndentedDoctestFailure {
+    span: Span,
+    hir_id: HirId,
+}
+
+#[derive(Diagnostic)]
+#[diag("this indented doctest failed to compile")]
+#[help("if it wasn't intended to be a doctest, remove indentation")]
+struct UnexpectedIndentedDoctest;
+
+fn emit_indented_doctest_failures(tcx: TyCtxt<'_>, failures: &Mutex<Vec<IndentedDoctestFailure>>) {
+    let mut failures = std::mem::take(&mut *failures.lock().unwrap());
+    failures.sort_by_key(|failure| failure.span.lo());
+    for IndentedDoctestFailure { span, hir_id } in failures {
+        tcx.emit_node_span_lint(
+            crate::lint::UNEXPECTED_INDENTED_DOCTEST,
+            hir_id,
+            span,
+            UnexpectedIndentedDoctest,
+        );
+    }
 }
 
 fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
@@ -971,6 +1006,7 @@ pub(crate) struct ScrapedDocTest {
     span: Span,
     code_mappings: Vec<CodeLineMapping>,
     global_crate_attrs: Vec<String>,
+    hir_id: Option<HirId>,
 }
 
 impl ScrapedDocTest {
@@ -983,6 +1019,7 @@ impl ScrapedDocTest {
         span: Span,
         code_mappings: Vec<CodeLineMapping>,
         global_crate_attrs: Vec<String>,
+        hir_id: Option<HirId>,
     ) -> Self {
         let mut item_path = logical_path.join("::");
         item_path.retain(|c| c != ' ');
@@ -994,7 +1031,17 @@ impl ScrapedDocTest {
             filename.display(RemapPathScopeComponents::DIAGNOSTICS)
         );
 
-        Self { filename, line, langstr, text, name, span, code_mappings, global_crate_attrs }
+        Self {
+            filename,
+            line,
+            langstr,
+            text,
+            name,
+            span,
+            code_mappings,
+            global_crate_attrs,
+            hir_id,
+        }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -1038,6 +1085,7 @@ struct CreateRunnableDocTests {
     opts: GlobalTestOptions,
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
+    indented_doctest_failures: Arc<Mutex<Vec<IndentedDoctestFailure>>>,
     compiling_test_count: AtomicUsize,
     can_merge_doctests: MergeDoctests,
 }
@@ -1050,6 +1098,7 @@ impl CreateRunnableDocTests {
             opts,
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
+            indented_doctest_failures: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
             can_merge_doctests: rustdoc_options.merge_doctests,
             rustdoc_options: Arc::new(rustdoc_options),
@@ -1129,6 +1178,7 @@ impl CreateRunnableDocTests {
             self.opts.clone(),
             Arc::clone(&self.rustdoc_options),
             self.unused_extern_reports.clone(),
+            self.indented_doctest_failures.clone(),
         )
     }
 }
@@ -1139,6 +1189,7 @@ fn generate_test_desc_and_fn(
     opts: GlobalTestOptions,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    indented_doctest_failures: Arc<Mutex<Vec<IndentedDoctestFailure>>>,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
 
@@ -1176,6 +1227,7 @@ fn generate_test_desc_and_fn(
                 &scraped_test,
                 &rustdoc_options,
                 &unused_externs,
+                &indented_doctest_failures,
             )
         })),
     }
@@ -1188,6 +1240,7 @@ fn doctest_run_fn(
     scraped_test: &ScrapedDocTest,
     rustdoc_options: &RustdocOptions,
     unused_externs: &Mutex<Vec<UnusedExterns>>,
+    indented_doctest_failures: &Mutex<Vec<IndentedDoctestFailure>>,
 ) -> Result<(), String> {
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
@@ -1216,6 +1269,14 @@ fn doctest_run_fn(
         match err {
             TestFailure::CompileError => {
                 eprint!("Couldn't compile the test.");
+                if !scraped_test.langstr.is_fenced
+                    && let Some(hir_id) = scraped_test.hir_id
+                {
+                    indented_doctest_failures
+                        .lock()
+                        .unwrap()
+                        .push(IndentedDoctestFailure { span: scraped_test.span, hir_id });
+                }
             }
             TestFailure::UnexpectedCompilePass => {
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");

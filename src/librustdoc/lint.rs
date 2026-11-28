@@ -220,6 +220,17 @@ declare_rustdoc_lint! {
     "detects unescaped pipe in table rows in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This lint is **warn-by-default**. It is emitted when a doctest which fails compilation
+    /// is an indented code block. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unexpected_indented_doctest
+    UNEXPECTED_INDENTED_DOCTEST,
+    Warn,
+    "warn when a doctest which fails compilation is an indented code block",
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -236,6 +247,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         BROKEN_FOOTNOTE,
         UNUSED_FOOTNOTE_DEFINITION,
         INVALID_MARKDOWN_TABLE,
+        UNEXPECTED_INDENTED_DOCTEST,
     ]
 });
 

@@ -150,6 +150,7 @@ struct LangString {
     pub(crate) edition: Option<String>,
     pub(crate) added_css_classes: Vec<String>,
     pub(crate) unknown: Vec<String>,
+    pub(crate) is_fenced: bool,
 }
 
 impl From<markdown::LangString> for LangString {
@@ -167,6 +168,7 @@ impl From<markdown::LangString> for LangString {
             edition,
             added_classes,
             unknown,
+            is_fenced,
         } = original;
 
         Self {
@@ -182,6 +184,7 @@ impl From<markdown::LangString> for LangString {
             edition: edition.map(|edition| edition.to_string()),
             added_css_classes: added_classes,
             unknown,
+            is_fenced,
         }
     }
 }
