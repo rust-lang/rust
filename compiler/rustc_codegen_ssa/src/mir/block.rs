@@ -1090,9 +1090,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 };
                             }
                             IntrinsicResult::Err(_) => {
-                                // Even though we're definitely going to error, we need it initialize
-                                // the local or `maybe_codegen_consume_direct` might ICE later
-                                // when it goes to use the result from this intrinsic.
+                                // Even though we're definitely going to error, we need to
+                                // initialize the local or `maybe_codegen_consume_direct` might ICE
+                                // later when it goes to use the result from this intrinsic.
                                 if let Some(local) = store_in_local {
                                     let op = OperandRef {
                                         val: OperandValue::poison(bx, result_layout),
@@ -1101,10 +1101,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     };
                                     self.overwrite_local(local, LocalRef::Operand(op));
                                 }
-                                // Also we need to terminate the block to avoid an LLVM assertion,
-                                // even though we're not going to actually use the IR.
-                                bx.abort_immediate();
-                                return MergingSucc::False;
+                                return if let Some(target) = target {
+                                    // Emit a branch to the target (if there is one) to make sure it
+                                    // still gets codegen'd. Without this we can miss some "invalid
+                                    // monomorphization" errors.
+                                    helper.funclet_br(self, bx, target, mergeable_succ, &[])
+                                } else {
+                                    // We need to terminate the block to avoid an LLVM assertion,
+                                    // even though we're not going to actually use the IR.
+                                    bx.abort_immediate();
+                                    MergingSucc::False
+                                };
                             }
                             IntrinsicResult::Fallback(instance) => {
                                 if intrinsic.must_be_overridden {
@@ -1615,11 +1622,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
-        let llbb = match self.try_llbb(bb) {
-            Some(llbb) => llbb,
-            None => return,
-        };
+    pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock, llbb: Bx::BasicBlock) {
         let bx = &mut Bx::build(self.cx, llbb);
         let mir = self.mir;
 
@@ -1656,13 +1659,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
-        let llbb = match self.try_llbb(bb) {
-            Some(llbb) => llbb,
-            None => return,
-        };
-        let bx = &mut Bx::build(self.cx, llbb);
-        debug!("codegen_block_as_unreachable({:?})", bb);
+    pub(crate) fn codegen_block_as_unreachable(&mut self, llbb: Bx::BasicBlock) {
+        let mut bx = Bx::build(self.cx, llbb);
         bx.unreachable();
     }
 
@@ -2425,19 +2423,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
     pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
-        self.try_llbb(bb).unwrap()
-    }
-
-    /// Like `llbb`, but may fail if the basic block should be skipped.
-    pub(crate) fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
                 self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
-                Some(llbb)
+                llbb
             }
-            CachedLlbb::Some(llbb) => Some(llbb),
-            CachedLlbb::Skip => None,
+            CachedLlbb::Some(llbb) => llbb,
+            CachedLlbb::Skip => bug!(),
         }
     }
 
