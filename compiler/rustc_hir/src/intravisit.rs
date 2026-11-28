@@ -969,6 +969,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visit_opt!(visitor, visit_ty_unambig, ty);
         }
         ExprKind::Lit(lit) => try_visit!(visitor.visit_lit(*hir_id, lit, false)),
+        ExprKind::ViewProjection(ref base, ref fields) => {
+            try_visit!(visitor.visit_expr(base));
+            walk_list!(visitor, visit_ident, fields.iter().copied())
+        }
         ExprKind::Err(_) => {}
     }
     V::Result::output()

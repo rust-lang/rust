@@ -93,7 +93,9 @@ impl<'a> ProjectedUserTypesNode<'a> {
     }
 
     /// Assembles this chain of user-type projections into a proper data structure.
-    pub(crate) fn build_user_type_projections(&self) -> Option<Box<UserTypeProjections>> {
+    pub(crate) fn build_user_type_projections<'tcx>(
+        &self,
+    ) -> Option<Box<UserTypeProjections<'tcx>>> {
         // If we know there's nothing to do, just return None immediately.
         if matches!(self, Self::None) {
             return None;

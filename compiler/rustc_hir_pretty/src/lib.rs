@@ -1820,6 +1820,9 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
+
+            // FIXME(scrabsha):
+            hir::ExprKind::ViewProjection(..) => unimplemented!(),
         }
         self.ann.post(self, AnnNode::Expr(expr));
         self.end(ib)

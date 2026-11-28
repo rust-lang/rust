@@ -487,8 +487,14 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::Error(..) => true,
 
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
+            ty::View(lhs_def, lhs_args, lhs_fields) => match rhs.kind() {
+                ty::View(rhs_def, rhs_args, rhs_fields) => {
+                    lhs_def == rhs_def
+                        && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                        && self.types_may_unify_inner(lhs_fields, rhs_fields, depth)
+                }
+                _ => false,
+            },
         }
     }
 

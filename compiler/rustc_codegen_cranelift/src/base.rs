@@ -1051,6 +1051,9 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Downcast(_adt_def, variant) => {
                 cplace = cplace.downcast_variant(fx, variant);
             }
+
+            // FIXME(scrabsha):
+            PlaceElem::View(_) => unimplemented!(),
         }
     }
 

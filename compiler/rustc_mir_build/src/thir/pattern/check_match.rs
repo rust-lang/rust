@@ -361,6 +361,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | ZstLiteral { .. }
             | Yield { .. }
             | Reborrow { .. } => true,
+
+            // FIXME(scrabsha):
+            ViewProjection { .. } => unimplemented!(),
         }
     }
 

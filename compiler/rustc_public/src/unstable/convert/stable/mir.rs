@@ -468,11 +468,14 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
             UnwrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
+
+            // FIXME(scrabsha):
+            View(..) => unimplemented!(),
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
+impl<'tcx> Stable<'tcx> for mir::UserTypeProjection<'tcx> {
     type T = crate::mir::UserTypeProjection;
 
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {

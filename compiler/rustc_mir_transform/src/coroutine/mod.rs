@@ -450,6 +450,9 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             | PlaceElem::Subslice { .. }
             | PlaceElem::Downcast(..)
             | PlaceElem::PhantomDeref => None,
+
+            // FIXME(scrabsha):
+            PlaceElem::View(_) => unimplemented!(),
         }
     }
 

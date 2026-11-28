@@ -1115,6 +1115,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!(vis, kind, expr, ty),
                 ExprKind::Gca(expr) =>
                     visit_visitable!(vis, expr),
+                ExprKind::ViewProjection(expr, fields) =>
+                    visit_visitable!(vis, expr, fields),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }

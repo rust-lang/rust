@@ -299,6 +299,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     | ExprKind::Continue(_)
                     | ExprKind::OffsetOf(_, _)
                     | ExprKind::Err(_) => unreachable!("no sub-expr expected for {:?}", expr.kind),
+
+                    // FIXME(scrabsha):
+                    ExprKind::ViewProjection(..) => unimplemented!(),
                 }
             }
 

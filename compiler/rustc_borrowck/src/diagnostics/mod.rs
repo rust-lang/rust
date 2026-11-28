@@ -419,6 +419,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     // to avoid confusing the end-user
                     buf.push_str("[..]");
                 }
+
+                // FIXME(scrabsha):
+                ProjectionElem::View(_) => unimplemented!(),
             }
         }
         ok.ok().map(|_| buf)
@@ -466,6 +469,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
                 ProjectionElem::PhantomDeref => unreachable!("not a field"),
+
+                // FIXME(scrabsha):
+                ProjectionElem::View(_) => unimplemented!(),
             },
         };
         self.describe_field_from_ty(

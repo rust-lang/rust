@@ -608,6 +608,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "ty:", depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         }
     }
 

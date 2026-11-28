@@ -202,6 +202,9 @@ trait UnusedDelimLint {
             Gca(_) => false,
             // don't lint for placeholder/error-recovery
             Underscore | Err(_) | Dummy => false,
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 

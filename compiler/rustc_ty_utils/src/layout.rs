@@ -698,7 +698,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // ADTs.
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _) => {
             // Cache the field layouts.
             let variants = def
                 .variants()
@@ -906,9 +906,6 @@ fn layout_of_uncached<'tcx>(
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
     })
 }
 

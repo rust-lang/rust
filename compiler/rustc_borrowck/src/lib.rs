@@ -2030,6 +2030,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::UnwrapUnsafeBinder(_)
                 | ProjectionElem::PhantomDeref => (),
+
+                // FIXME(scrabsha):
+                ProjectionElem::View(_) => unimplemented!(),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -2316,6 +2319,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         _ => {}
                     }
                 }
+
+                // FIXME(scrabsha):
+                ProjectionElem::View(_) => unimplemented!(),
             }
         }
 
@@ -2722,6 +2728,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             self.is_mutable(place_base, is_local_mutation_allowed)
                         }
                     }
+
+                    // FIXME(scrabsha):
+                    ProjectionElem::View(_) => unimplemented!(),
                 }
             }
         }

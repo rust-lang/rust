@@ -322,6 +322,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Yield(_)
             | ExprKind::Gca(_)
             | ExprKind::UnsafeBinderCast(..) => {}
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 

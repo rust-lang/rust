@@ -450,7 +450,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        user_ty: &UserTypeProjection,
+        user_ty: &UserTypeProjection<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
@@ -482,6 +482,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     )
                 },
                 |_| unreachable!(),
+                |_, _| unimplemented!(),
             );
             curr_projected_ty = projected_ty;
         }
@@ -1943,6 +1944,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 )
                 .unwrap();
             }
+            ProjectionElem::View(_) => {
+                // FIXME(scrabsha): should we `self.visit_fields()` here or sth?
+            }
         }
     }
 }
@@ -2474,7 +2478,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. }
-                | ProjectionElem::UnwrapUnsafeBinder(_) => {
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::View(_) => {
                     // other field access
                 }
             }

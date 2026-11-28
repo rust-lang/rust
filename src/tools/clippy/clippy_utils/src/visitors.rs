@@ -779,6 +779,9 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::InlineAsm(_)
             | ExprKind::OffsetOf(..)
             | ExprKind::Err(_) => (),
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         }
         ControlFlow::Continue(())
     }

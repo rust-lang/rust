@@ -548,6 +548,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let e = self.emit_bad_gca_macro(e.span, expr, "expression");
                 hir::ExprKind::Err(e)
             }
+
+            ExprKind::ViewProjection(base, fields) => {
+                let expr = self.lower_expr(&base);
+                let fields = self.arena.alloc_slice(fields);
+                hir::ExprKind::ViewProjection(expr, fields)
+            }
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }

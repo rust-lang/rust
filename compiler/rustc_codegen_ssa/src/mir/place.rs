@@ -317,6 +317,18 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast
     }
 
+    pub fn project_view<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &self,
+        bx: &mut Bx,
+        fields: &[FieldIdx],
+    ) -> Self {
+        let ty::Adt(def, args) = self.layout.ty.kind() else {
+            bug!("project_view on non-adt");
+        };
+        let ty = Ty::new_view(bx.tcx(), *def, *args, fields);
+        self.project_type(bx, ty)
+    }
+
     pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_start(self.val.llval, self.layout.size);
     }
@@ -415,6 +427,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     subslice
                 }
                 mir::ProjectionElem::Downcast(_, v) => cg_base.project_downcast(bx, v),
+
+                // FIXME(scrabsha):
+                mir::ProjectionElem::View(fields) => cg_base.project_view(bx, fields),
             };
         }
         debug!("codegen_place(place={:?}) => {:?}", place_ref, cg_base);

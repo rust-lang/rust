@@ -48,8 +48,9 @@ use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
     ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FieldNotPartOfView,
-    FunctionalRecordUpdateOnNonStruct, NakedAsmOutsideNakedFn, NoFieldOnVariant,
-    ReturnLikeStatementKind, StructExprNonExhaustive, YieldExprOutsideOfCoroutine,
+    FunctionalRecordUpdateOnNonStruct, InvalidViewedFieldSet, NakedAsmOutsideNakedFn,
+    NoFieldOnVariant, ReturnLikeStatementKind, StructExprNonExhaustive,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -408,6 +409,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
             }
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
+
+            ExprKind::ViewProjection(base, fields) => {
+                self.check_expr_view_projection(expr, base, fields)
+            }
         }
     }
 
@@ -2278,6 +2283,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .map(|field| field.name)
             .collect()
+    }
+
+    /// Checks `view_projection!()`. Returns the type of the returned object.
+    ///
+    /// ```ignore (illustrative)
+    /// view_projection!(my_struct.{ a, b })
+    /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expr
+    ///                  ^^^^^^^^^           base
+    ///                              ^^^^    fields
+    /// ```
+    fn check_expr_view_projection(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        base: &'tcx hir::Expr<'tcx>,
+        fields: &[Ident],
+    ) -> Ty<'tcx> {
+        let base_ty = self.check_expr(base);
+
+        let mut field_idxs = Vec::with_capacity(fields.len());
+
+        let mut autoderef = self.autoderef(expr.span, base_ty);
+        'deref: while let Some((deref_base_ty, _)) = autoderef.next() {
+            match deref_base_ty.kind() {
+                ty::Adt(base_def, args) if base_def.is_struct() => {
+                    // we don't care to report errors for a struct if the struct itself is tainted
+                    if let Err(guar) = base_def.non_enum_variant().has_errors() {
+                        return Ty::new_error(self.tcx(), guar);
+                    }
+
+                    for field in fields {
+                        let Some((idx, field)) = self.find_adt_field(*base_def, *field) else {
+                            field_idxs.clear();
+                            continue 'deref;
+                        };
+                        field_idxs.push(idx);
+                        self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                    }
+
+                    let adjustments = self.adjust_steps(&autoderef);
+                    self.apply_adjustments(base, adjustments);
+
+                    return Ty::new_view(self.tcx, *base_def, *args, &field_idxs);
+                }
+                _ => {}
+            }
+        }
+
+        // we have not found a deref step that has all the fields listed in `fields`. that's an
+        // error.
+
+        // FIXME(scrabsha): this is mostly suboptimal. ultimately we want to customize the
+        // diagnostic for common patterns. ottomh:
+        //
+        // - all the fields are part of a deref step but they are not part of the same deref step
+        // - one or more field belongs to none of the deref steps
+        let guar = self.dcx().emit_err(InvalidViewedFieldSet {
+            fields: fields.to_vec().into(),
+            ty: base_ty,
+            span: expr.span,
+            base_span: base.span,
+            fields_plural: pluralize!(fields.len()),
+        });
+        Ty::new_error(self.tcx(), guar)
     }
 
     /// Find the position of a field named `ident` in `base_def`, accounting for unnammed fields.

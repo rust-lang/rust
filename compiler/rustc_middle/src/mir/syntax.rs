@@ -410,7 +410,7 @@ pub enum StatementKind<'tcx> {
     /// When executed at runtime this is a nop.
     ///
     /// Disallowed after drop elaboration.
-    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
+    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection<'tcx>)>, ty::Variance),
 
     /// Carries control-flow-sensitive information injected by `-Cinstrument-coverage`,
     /// such as where to generate physical coverage-counter-increments during codegen.
@@ -1174,7 +1174,7 @@ pub struct Place<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
-pub enum ProjectionElem<V, T> {
+pub enum ProjectionElem<'tcx, V, T> {
     Deref,
 
     /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
@@ -1281,11 +1281,14 @@ pub enum ProjectionElem<V, T> {
     ///
     /// [PR]: https://github.com/rust-lang/rust/pull/159103
     PhantomDeref,
+
+    /// Projects an ADT of type `MyStruct` to `view_type!(MyStruct.{ T })`.
+    View(&'tcx List<FieldIdx>),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
-pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
+pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 ///////////////////////////////////////////////////////////////////////////
 // Operands

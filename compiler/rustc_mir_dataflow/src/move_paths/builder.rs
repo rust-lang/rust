@@ -220,6 +220,11 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             // FIXME(scrabsha)
                             ty::View(..) => unimplemented!(),
                         },
+
+                        MoveSubPath::Fields(_) => {
+                            // FIXME(scrabsha): what the hell is going on
+                            return;
+                        }
                         MoveSubPath::ConstantIndex(_) => match place_ty.kind() {
                             ty::Slice(_) => {
                                 return;
@@ -307,7 +312,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn add_move_path(
         &mut self,
         base: MovePathIndex,
-        elem: MoveSubPath,
+        elem: MoveSubPath<'tcx>,
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {

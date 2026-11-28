@@ -203,6 +203,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         | ProjectionElem::UnwrapUnsafeBinder(_),
                     ],
             } => bug!("Unexpected immutable place."),
+
+            // FIXME(scrabsha):
+            PlaceRef { local: _, projection: [.., ProjectionElem::View(_)] } => unimplemented!(),
         }
 
         debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);

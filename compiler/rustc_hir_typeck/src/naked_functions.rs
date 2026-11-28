@@ -183,6 +183,9 @@ impl CheckInlineAssembly {
             ExprKind::Err(_) => {
                 self.items.push((ItemKind::Err, span));
             }
+
+            // FIXME(scrabsha):
+            hir::ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 }

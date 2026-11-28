@@ -191,9 +191,20 @@ impl<'tcx> PlaceTy<'tcx> {
     pub fn projection_ty<V: Debug>(
         self,
         tcx: TyCtxt<'tcx>,
-        elem: ProjectionElem<V, Ty<'tcx>>,
+        elem: ProjectionElem<'tcx, V, Ty<'tcx>>,
     ) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, &elem, |_, _, _, ty| ty, |ty| ty)
+        self.projection_ty_core(
+            tcx,
+            &elem,
+            |_, _, _, ty| ty,
+            |ty| ty,
+            |ty, fields| {
+                let ty::Adt(def, args) = ty.kind() else {
+                    bug!("malformed viewed field set: {ty:?}");
+                };
+                Ty::new_view(tcx, *def, *args, fields)
+            },
+        )
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -201,13 +212,18 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `Ty` or downcast variant corresponding to that projection.
     /// The `handle_field` callback must map a `FieldIdx` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
-    #[instrument(level = "debug", skip(tcx, handle_field, handle_opaque_cast_and_subtype), ret)]
+    #[instrument(
+        level = "debug",
+        skip(tcx, handle_field, handle_opaque_cast_and_subtype, handle_view),
+        ret
+    )]
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
-        elem: &ProjectionElem<V, T>,
+        elem: &ProjectionElem<'tcx, V, T>,
         mut handle_field: impl FnMut(Ty<'tcx>, Option<VariantIdx>, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast_and_subtype: impl FnMut(T) -> Ty<'tcx>,
+        mut handle_view: impl FnMut(Ty<'tcx>, &List<FieldIdx>) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: Debug,
@@ -253,11 +269,13 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
                 PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty))
             }
+
+            ProjectionElem::View(ty) => PlaceTy::from_ty(handle_view(self.ty, ty)),
         }
     }
 }
 
-impl<V, T> ProjectionElem<V, T> {
+impl<'tcx, V, T> ProjectionElem<'tcx, V, T> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
     pub fn is_indirect(&self) -> bool {
@@ -270,7 +288,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
-            | Self::UnwrapUnsafeBinder(..) => false,
+            | Self::UnwrapUnsafeBinder(..)
+            | Self::View(_) => false,
         }
     }
 
@@ -285,7 +304,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
             | Self::UnwrapUnsafeBinder(..)
-            | Self::PhantomDeref => true,
+            | Self::PhantomDeref
+            | Self::View(_) => true,
         }
     }
 
@@ -314,11 +334,13 @@ impl<V, T> ProjectionElem<V, T> {
 
             // FIXME(unsafe_binders): Figure this out.
             Self::UnwrapUnsafeBinder(..) => false,
+            // FIXME(scrabsha): Figure this out.
+            Self::View(..) => false,
         }
     }
 
     /// Returns the `ProjectionKind` associated to this projection.
-    pub fn kind(self) -> ProjectionKind {
+    pub fn kind(self) -> ProjectionKind<'tcx> {
         self.try_map(|_| Some(()), |_| ()).unwrap()
     }
 
@@ -327,7 +349,7 @@ impl<V, T> ProjectionElem<V, T> {
         self,
         v: impl FnOnce(V) -> Option<V2>,
         t: impl FnOnce(T) -> T2,
-    ) -> Option<ProjectionElem<V2, T2>> {
+    ) -> Option<ProjectionElem<'tcx, V2, T2>> {
         Some(match self {
             ProjectionElem::Deref => ProjectionElem::Deref,
             ProjectionElem::PhantomDeref => bug!("PhantomDeref shouldn't hopefully come here"),
@@ -344,13 +366,14 @@ impl<V, T> ProjectionElem<V, T> {
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
             ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
             ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
+            ProjectionElem::View(fs) => ProjectionElem::View(fs),
         })
     }
 }
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
-pub type ProjectionKind = ProjectionElem<(), ()>;
+pub type ProjectionKind<'tcx> = ProjectionElem<'tcx, (), ()>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
@@ -574,7 +597,8 @@ impl<'tcx> PlaceRef<'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+            | ProjectionElem::UnwrapUnsafeBinder(_)
+            | ProjectionElem::View(_) => None,
         }))
     }
 

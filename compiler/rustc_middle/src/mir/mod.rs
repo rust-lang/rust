@@ -977,7 +977,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: Option<Box<UserTypeProjections>>,
+    pub user_ty: Option<Box<UserTypeProjections<'tcx>>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
@@ -1511,12 +1511,14 @@ pub struct SourceScopeLocalData {
 /// inferred region `'1`). The second will lead to the constraint `w:
 /// &'static str`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
-pub struct UserTypeProjections {
-    pub contents: Vec<UserTypeProjection>,
+pub struct UserTypeProjections<'tcx> {
+    pub contents: Vec<UserTypeProjection<'tcx>>,
 }
 
-impl UserTypeProjections {
-    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
+impl<'tcx> UserTypeProjections<'tcx> {
+    pub fn projections(
+        &self,
+    ) -> impl Iterator<Item = &UserTypeProjection<'tcx>> + ExactSizeIterator {
         self.contents.iter()
     }
 }
@@ -1538,9 +1540,9 @@ impl UserTypeProjections {
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct UserTypeProjection {
+pub struct UserTypeProjection<'tcx> {
     pub base: UserTypeAnnotationIndex,
-    pub projs: Vec<ProjectionKind>,
+    pub projs: Vec<ProjectionKind<'tcx>>,
 }
 
 rustc_index::newtype_index! {

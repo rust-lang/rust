@@ -1600,6 +1600,9 @@ impl Expr {
             | ExprKind::Gca(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 
@@ -1891,6 +1894,9 @@ pub enum ExprKind {
 
     /// A `format_args!()` expression.
     FormatArgs(Box<FormatArgs>),
+
+    /// A `view_projection!()` expression.
+    ViewProjection(Box<Expr>, ThinVec<Ident>),
 
     UnsafeBinderCast(UnsafeBinderCastKind, Box<Expr>, Option<Box<Ty>>),
 

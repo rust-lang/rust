@@ -8,7 +8,7 @@ use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as Hi
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, List, Ty, Variance};
 use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
@@ -111,6 +111,9 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 // We can stop here as arrays are captured completely.
                 break;
             }
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(_) => unimplemented!(),
         };
         variant = None;
         hir_projections.push(hir_projection);
@@ -315,6 +318,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
 
     pub(crate) fn downcast(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx) -> Self {
         self.project(PlaceElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index))
+    }
+
+    pub(crate) fn view(self, fs: &'tcx List<FieldIdx>) -> Self {
+        self.project(PlaceElem::View(fs))
     }
 
     fn index(self, index: Local) -> Self {
@@ -543,6 +550,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.region_scope_tree.temporary_scope(this.thir[source].temp_scope_id);
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, source, mutability));
                 block.and(PlaceBuilder::from(temp).project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
+            }
+            ExprKind::ViewProjection { base } => {
+                let place_builder =
+                    unpack!(block = this.expr_as_place(block, base, mutability, fake_borrow_temps,));
+
+                let ty::View(_, _, fields) = expr.ty.kind() else {
+                    bug!("type of view projection is not a View: {:?}", expr.ty.kind());
+                };
+                let ty::Tuple(fields) = *fields.kind() else {
+                    bug!("malformed viewed field set: {fields:?}");
+                };
+                let fields = fields.iter().map(|field| {
+                    let frt_data = if let ty::Adt(def, args) = field.kind() && let Some(frt_data) = def.field_representing_type_info(this.tcx, *args) {
+                        frt_data
+                    } else {
+                        bug!("malformed viewed field: {field:?}");
+                    };
+
+                    // sanity check: view types don't exist on enums
+                    debug_assert_eq!(frt_data.variant_idx, FIRST_VARIANT);
+
+                    frt_data.field_idx
+                });
+                let fields = this.tcx.mk_fields_from_iter(fields);
+
+                block.and(place_builder.view(fields))
             }
 
             ExprKind::Array { .. }
@@ -809,6 +842,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+
+                    // FIXME(scrabsha):
+                    ProjectionElem::View(_) => unimplemented!(),
                 }
             }
         }

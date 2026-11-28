@@ -268,6 +268,9 @@ fn place_components_conflict<'tcx>(
                     // there's a deref later on, e.g., a borrow
                     // of `*x.y` while accessing `x`.
                 }
+
+                // FIXME(scrabsha):
+                (ProjectionElem::View(_), _, _) => {}
             }
         }
     }
@@ -540,5 +543,13 @@ fn place_projection_conflict<'tcx>(
         (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
             unimplemented!()
         }
+
+        (ProjectionElem::View(_), ProjectionElem::View(_)) => {
+            debug!("place_element_conflict: DISJOINT-OR-EQ-VIEW-VIEW");
+            Overlap::Disjoint
+        }
+
+        // FIXME(scrabsha):
+        (ProjectionElem::View(_), _) => unimplemented!(),
     }
 }

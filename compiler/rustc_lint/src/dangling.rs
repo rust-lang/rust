@@ -333,6 +333,9 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
 
         // Not applicable
         ExprKind::Type(..) | ExprKind::Err(..) => false,
+
+        // FIXME(scrabsha):
+        ExprKind::ViewProjection(..) => unimplemented!(),
     }
 }
 

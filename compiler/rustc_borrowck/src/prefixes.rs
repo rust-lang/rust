@@ -85,6 +85,9 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                                 }
                             }
                         }
+
+                        // FIXME(scrabsha):
+                        ProjectionElem::View(_) => unimplemented!(),
                     }
                 }
             }
