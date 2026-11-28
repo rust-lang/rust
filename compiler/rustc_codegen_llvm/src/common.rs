@@ -22,7 +22,8 @@ use crate::consts::{IsInitOrFini, IsStatic, const_alloc_to_llvm};
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
 use crate::llvm::{
-    self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, TypeKind, Value, const_ptr_auth,
+    self, BasicBlock, ConstantInt, FALSE, FunctionSignature, TRUE, ToLlvmBool, Type, TypeKind,
+    Value, const_ptr_auth,
 };
 
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
@@ -132,7 +133,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
 
     type Value = Value<'ll>;
     type Type = Type<'ll>;
-    type FunctionSignature = Type<'ll>;
+    type FunctionSignature = FunctionSignature<'ll>;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
     type DILocation = &'ll llvm::debuginfo::DILocation;

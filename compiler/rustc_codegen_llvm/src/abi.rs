@@ -24,7 +24,7 @@ use smallvec::SmallVec;
 use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, FunctionSignature, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 
 trait ArgAttributesExt {
@@ -532,7 +532,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> FunctionSignature<'ll>;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
@@ -549,7 +549,7 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> FunctionSignature<'ll> {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =

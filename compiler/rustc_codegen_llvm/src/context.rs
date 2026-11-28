@@ -38,7 +38,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
+use crate::llvm::{self, FunctionSignature, Metadata, MetadataKindId, Module, Type, Value};
 use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
@@ -141,10 +141,14 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     pub sanitizer_ignorelist: Option<SanitizerIgnoreList>,
 
     eh_personality: Cell<Option<Value<'ll>>>,
-    pub rust_try_fn: Cell<Option<(Type<'ll>, Value<'ll>)>>,
+    pub rust_try_fn: Cell<Option<(FunctionSignature<'ll>, Value<'ll>)>>,
 
-    intrinsics:
-        RefCell<FxHashMap<(Cow<'static, str>, SmallVec<[Type<'ll>; 2]>), (Type<'ll>, Value<'ll>)>>,
+    intrinsics: RefCell<
+        FxHashMap<
+            (Cow<'static, str>, SmallVec<[Type<'ll>; 2]>),
+            (FunctionSignature<'ll>, Value<'ll>),
+        >,
+    >,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -890,6 +894,9 @@ impl<'ll> SimpleCx<'ll> {
     pub(crate) fn get_type_of_global(&self, val: Value<'ll>) -> Type<'ll> {
         unsafe { llvm::LLVMGlobalGetValueType(val) }
     }
+    pub(crate) fn get_type_of_function_global(&self, val: Value<'ll>) -> FunctionSignature<'ll> {
+        FunctionSignature::from_type(self.get_type_of_global(val)).unwrap()
+    }
     pub(crate) fn val_ty(&self, v: Value<'ll>) -> Type<'ll> {
         common::val_ty(v)
     }
@@ -1087,7 +1094,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 
-    fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
+    fn declare_c_main(&self, fn_type: Self::FunctionSignature) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if self.get_declared_value(entry_name).is_none() {
             let llfn = self.declare_entry_fn(
@@ -1119,7 +1126,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         &self,
         base_name: Cow<'static, str>,
         type_params: &[Type<'ll>],
-    ) -> (Type<'ll>, Value<'ll>) {
+    ) -> (FunctionSignature<'ll>, Value<'ll>) {
         *self
             .intrinsics
             .borrow_mut()
@@ -1133,7 +1140,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         &self,
         base_name: &str,
         type_params: &[Type<'ll>],
-    ) -> (Type<'ll>, Value<'ll>) {
+    ) -> (FunctionSignature<'ll>, Value<'ll>) {
         match base_name {
             // This isn't an "LLVM intrinsic", but LLVM's optimization passes
             // recognize it like one (including turning it into `bcmp` sometimes)
@@ -1172,7 +1179,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
                     .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
                 let f = intrinsic.get_declaration(self.llmod, type_params);
-                (self.get_type_of_global(f), f)
+                (self.get_type_of_function_global(f), f)
             }
         }
     }
