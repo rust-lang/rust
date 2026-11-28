@@ -41,8 +41,8 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     }
 
     // Recurse into the fields.
-    for ctor in set.present {
-        let specialized_columns = column.specialize(cx, &ty, &ctor);
+    for (ctor, covered_rows) in set.present {
+        let specialized_columns = column.specialize(cx, &ty, &ctor, &covered_rows);
         let wild_pat = WitnessPat::wild_from_ctor(cx, ctor, ty);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.

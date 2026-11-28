@@ -270,9 +270,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 None => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
             DerefPattern(pointee_ty) => reveal_and_alloc(cx, once(pointee_ty.inner())),
-            Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
-            | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
-            | PrivateUninhabited | Wildcard => &[],
+            Bool(..) | IntRange(..) | FloatRange(..) | Str(..) | Opaque(..) | Never
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => &[],
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
@@ -293,9 +292,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             },
             Ref | DerefPattern(_) => 1,
             Slice(slice) => slice.arity(),
-            Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
-            | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
-            | PrivateUninhabited | Wildcard => 0,
+            Bool(..) | IntRange(..) | FloatRange(..) | Str(..) | Opaque(..) | Never
+            | NonExhaustive | Hidden | Missing | PrivateUninhabited | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
         }
     }
@@ -537,6 +535,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 }
             }
             PatKind::Constant { value } => {
+                use super::constructor::FloatRange::*;
                 match ty.kind() {
                     ty::Bool => {
                         ctor = Bool(value.try_to_bool().unwrap());
@@ -562,7 +561,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u16();
                         let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
-                        ctor = F16Range(value, value, RangeEnd::Included);
+                        ctor = FloatRange(F16Range(value, value, RangeEnd::Included));
                         fields = vec![];
                         arity = 0;
                     }
@@ -570,7 +569,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u32();
                         let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
-                        ctor = F32Range(value, value, RangeEnd::Included);
+                        ctor = FloatRange(F32Range(value, value, RangeEnd::Included));
                         fields = vec![];
                         arity = 0;
                     }
@@ -578,7 +577,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u64();
                         let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
-                        ctor = F64Range(value, value, RangeEnd::Included);
+                        ctor = FloatRange(F64Range(value, value, RangeEnd::Included));
                         fields = vec![];
                         arity = 0;
                     }
@@ -586,7 +585,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         use rustc_apfloat::Float;
                         let bits = value.to_leaf().to_u128();
                         let value = rustc_apfloat::ieee::Quad::from_bits(bits);
-                        ctor = F128Range(value, value, RangeEnd::Included);
+                        ctor = FloatRange(F128Range(value, value, RangeEnd::Included));
                         fields = vec![];
                         arity = 0;
                     }
@@ -622,9 +621,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
+
+                        use super::constructor::FloatRange::*;
                         let lo = lo.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
                         let hi = hi.as_finite().map(|c| c.to_leaf().to_bits_unchecked());
-                        match fty {
+                        FloatRange(match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;
                                 let lo = lo.map(Half::from_bits).unwrap_or(-Half::INFINITY);
@@ -649,7 +650,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                                 let hi = hi.map(Quad::from_bits).unwrap_or(Quad::INFINITY);
                                 F128Range(lo, hi, end)
                             }
-                        }
+                        })
                     }
                     _ => span_bug!(pat.span, "invalid type for range pattern: {}", ty.inner()),
                 };
@@ -866,7 +867,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..) | Or => {
+            FloatRange(..) | Opaque(..) | Or => {
                 bug!("can't convert to pattern: {:?}", pat)
             }
         }
@@ -930,10 +931,12 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         Ok(())
     }
 
+    #[track_caller]
     fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         span_bug!(self.scrut_span, "{}", fmt)
     }
 
+    #[track_caller]
     fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         self.tcx.dcx().span_delayed_bug(self.scrut_span, format!("{fmt}"))
     }

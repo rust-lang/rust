@@ -1,4 +1,4 @@
-use crate::constructor::{Constructor, SplitConstructorSet};
+use crate::constructor::{Constructor, RowId, RowSet, SplitConstructorSet};
 use crate::pat::{DeconstructedPat, PatOrWild};
 use crate::{MatchArm, PatCx};
 
@@ -51,13 +51,14 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
         cx: &Cx,
         ty: &Cx::Ty,
     ) -> Result<SplitConstructorSet<Cx>, Cx::Error> {
-        let column_ctors = self.patterns.iter().map(|p| p.ctor());
+        let column_ctors = self.patterns.iter().enumerate().map(|(i, p)| (RowId::new(i), p.ctor()));
         let ctors_for_ty = cx.ctors_for_ty(ty)?;
-        Ok(ctors_for_ty.split(column_ctors))
+        ctors_for_ty.split(cx, column_ctors)
     }
 
     /// Does specialization: given a constructor, this takes the patterns from the column that match
-    /// the constructor, and outputs their fields.
+    /// the constructor, and outputs their fields (matching rows must be precomputed in
+    /// `covered_rows`).
     /// This returns one column per field of the constructor. They usually all have the same length
     /// (the number of patterns in `self` that matched `ctor`), except that we expand or-patterns
     /// which may change the lengths.
@@ -66,6 +67,7 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
         cx: &Cx,
         ty: &Cx::Ty,
         ctor: &Constructor<Cx>,
+        covered_rows: &RowSet,
     ) -> Vec<PatternColumn<'p, Cx>> {
         let arity = ctor.arity(cx, ty);
         if arity == 0 {
@@ -77,8 +79,7 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
         // reuse `Matrix`).
         let mut specialized_columns: Vec<_> =
             (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
-        let relevant_patterns =
-            self.patterns.iter().filter(|pat| ctor.is_covered_by(cx, pat.ctor()).unwrap_or(false));
+        let relevant_patterns = covered_rows.iter().map(|i| &self.patterns[i.index()]);
         for pat in relevant_patterns {
             let specialized = pat.specialize(ctor, arity);
             for (subpat, column) in specialized.into_iter().zip(&mut specialized_columns) {
