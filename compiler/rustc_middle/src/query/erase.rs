@@ -191,6 +191,7 @@ impl_erasable_for_types_with_no_type_params! {
     Option<rustc_attr_ir::Stability>,
     Option<rustc_data_structures::svh::Svh>,
     Option<rustc_hir::CoroutineKind>,
+    Option<rustc_middle::middle::privacy::Level>,
     Option<rustc_middle::middle::stability::DeprecationEntry>,
     Option<rustc_middle::ty::AsyncDestructor>,
     Option<rustc_middle::ty::Destructor>,

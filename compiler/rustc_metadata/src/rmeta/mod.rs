@@ -37,6 +37,7 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
+use rustc_middle::middle::privacy;
 use rustc_middle::middle::resolve::{AmbigModChild, DocLinkResMap, ModChild};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
@@ -695,6 +696,7 @@ define_tables! {
     rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     coroutine_kind: Table<hir::CoroutineKind>,
+    effective_visibility_level: Table<privacy::Level>,
     coroutine_for_closure: Table<RemappedRawDefId>,
     adt_destructor: Table<LazyValue<ty::Destructor>>,
     adt_async_destructor: Table<LazyValue<ty::AsyncDestructor>>,

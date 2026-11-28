@@ -1736,6 +1736,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         effective_visibilities,
+        effective_visibility_level,
         check_private_in_public,
         check_mod_privacy,
         ..*providers
@@ -1775,6 +1776,10 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, mod_id: LocalModId) {
                 visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
         }
     }
+}
+
+fn effective_visibility_level(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Level> {
+    tcx.effective_visibilities(()).public_at_level(def_id)
 }
 
 fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {

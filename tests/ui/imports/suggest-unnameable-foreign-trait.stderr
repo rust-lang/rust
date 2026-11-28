@@ -1,0 +1,73 @@
+error[E0599]: no method named `unnameable_method` found for type `u8` in the current scope
+  --> $DIR/suggest-unnameable-foreign-trait.rs:6:9
+   |
+LL |     0u8.unnameable_method();
+   |         ^^^^^^^^^^^^^^^^^ method not found in `u8`
+   |
+note: the method is available on trait `Unnameable` for `u8`
+  --> $DIR/auxiliary/unnameable-traits.rs:5:5
+   |
+LL |     pub trait Unnameable {
+LL |         fn unnameable_method(&self) {}
+   |            ----------------- the method is available here
+LL |     }
+LL |     impl Unnameable for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
+   = help: items from traits can only be used if the trait is in scope
+help: trait `unnameable_traits::private::Unnameable` which provides `unnameable_method` is implemented but not reachable
+  --> $DIR/auxiliary/unnameable-traits.rs:2:5
+   |
+LL |     pub trait Unnameable {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `leaked_method` found for type `u8` in the current scope
+  --> $DIR/suggest-unnameable-foreign-trait.rs:8:9
+   |
+LL |     0u8.leaked_method();
+   |         ^^^^^^^^^^^^^ method not found in `u8`
+   |
+note: the method is available on trait `Leaked` for `u8`
+  --> $DIR/auxiliary/unnameable-traits.rs:10:5
+   |
+LL |     pub trait Leaked {
+LL |         fn leaked_method(&self) {}
+   |            ------------- the method is available here
+LL |     }
+LL |     impl Leaked for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^ the trait is implemented here
+   = help: items from traits can only be used if the trait is in scope
+help: trait `unnameable_traits::private::Leaked` which provides `leaked_method` is implemented but not reachable
+  --> $DIR/auxiliary/unnameable-traits.rs:7:5
+   |
+LL |     pub trait Leaked {
+   |     ^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `reexported_method` found for type `u8` in the current scope
+  --> $DIR/suggest-unnameable-foreign-trait.rs:10:9
+   |
+LL |     0u8.reexported_method();
+   |         ^^^^^^^^^^^^^^^^^
+   |
+note: the method is available on trait `Reexported` for `u8`
+  --> $DIR/auxiliary/unnameable-traits.rs:15:5
+   |
+LL |     pub trait Reexported {
+LL |         fn reexported_method(&self) {}
+   |            ----------------- the method is available here
+LL |     }
+LL |     impl Reexported for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Reexported` which provides `reexported_method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use unnameable_traits::Reexported;
+   |
+help: there is a method `leaked_method` with a similar name
+   |
+LL -     0u8.reexported_method();
+LL +     0u8.leaked_method();
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

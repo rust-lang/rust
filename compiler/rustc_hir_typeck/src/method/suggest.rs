@@ -25,6 +25,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, is_range_literal};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_infer::traits::ImplSource;
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
@@ -4013,13 +4014,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_map = self.tcx.visible_parent_map(());
 
         let (accessible_candidates, inaccessible_candidates): (Vec<_>, Vec<_>) =
-            candidates.into_iter().partition(|id| {
-                let vis = self.tcx.visibility(*id);
-                vis.is_accessible_from(self.mod_id, self.tcx)
-                    // Visibility alone does not make `fn_name::Trait` an importable path.
-                    // We need to make sure all parent are modules, otherwise the path is not importable.
-                    && std::iter::successors(self.tcx.opt_parent(*id), |&id| self.tcx.opt_parent(id))
-                        .all(|id| self.tcx.def_kind(id) == DefKind::Mod)
+            candidates.into_iter().partition(|&id| {
+                if id.is_local() {
+                    let vis = self.tcx.visibility(id);
+                    vis.is_accessible_from(self.mod_id, self.tcx)
+                        // Visibility alone does not make `fn_name::Trait` an importable path.
+                        // We need to make sure all parent are modules, otherwise the path is not importable.
+                        && std::iter::successors(self.tcx.opt_parent(id), |&id| self.tcx.opt_parent(id))
+                            .all(|id| self.tcx.def_kind(id) == DefKind::Mod)
+                } else {
+                    self.tcx.is_public_at_level(id, Level::Reexported)
+                }
             });
 
         let sugg = |candidates: &[DefId], visible| {

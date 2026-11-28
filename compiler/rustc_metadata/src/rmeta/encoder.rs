@@ -1546,6 +1546,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let vis = tcx.local_visibility(local_id).map_id(|mod_id| mod_id.to_local_def_id());
                 self.table_writer().visibility(local_id, vis);
             }
+            if let Some(level) = tcx.effective_visibility_level(def_id) {
+                self.table_writer().effective_visibility_level(local_id, level);
+            }
             if should_encode_stability(def_kind) {
                 self.encode_stability(local_id);
                 self.encode_const_stability(local_id);
@@ -2131,6 +2134,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.encode_attrs(CRATE_DEF_ID);
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|mod_id| mod_id.to_local_def_id());
             self.table_writer().visibility(CRATE_DEF_ID, vis);
+            self.table_writer().effective_visibility_level(CRATE_DEF_ID, privacy::Level::Direct);
             if let Some(stability) = stability {
                 self.table_writer().lookup_stability(CRATE_DEF_ID, stability);
             }
@@ -2189,6 +2193,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.table_writer().def_ident_span(id, span);
                 self.table_writer().def_span(id, span);
                 self.table_writer().visibility(id, ty::Visibility::Public);
+                self.table_writer().effective_visibility_level(id, privacy::Level::Direct);
                 if let Some(stability) = stability {
                     self.table_writer().lookup_stability(id, stability);
                 }

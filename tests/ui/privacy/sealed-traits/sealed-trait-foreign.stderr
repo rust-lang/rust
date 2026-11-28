@@ -1,0 +1,38 @@
+error[E0277]: the trait bound `S: aux::private::Hidden` is not satisfied
+  --> $DIR/sealed-trait-foreign.rs:6:22
+   |
+LL | impl aux::Sealed for S {}
+   |                      ^ unsatisfied trait bound
+   |
+help: the trait `aux::private::Hidden` is not implemented for `S`
+  --> $DIR/sealed-trait-foreign.rs:5:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `Sealed`
+  --> $DIR/auxiliary/sealed-trait-foreign-aux.rs:9:19
+   |
+LL | pub trait Sealed: private::Hidden {}
+   |                   ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
+   = note: `Sealed` is a "sealed trait", because to implement it you also need to implement `aux::private::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
+
+error[E0277]: the trait bound `S: sealed_trait_foreign_indirect_aux::Super` is not satisfied
+  --> $DIR/sealed-trait-foreign.rs:7:25
+   |
+LL | impl aux::NotSealed for S {}
+   |                         ^ unsatisfied trait bound
+   |
+help: the trait `sealed_trait_foreign_indirect_aux::Super` is not implemented for `S`
+  --> $DIR/sealed-trait-foreign.rs:5:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `NotSealed`
+  --> $DIR/auxiliary/sealed-trait-foreign-aux.rs:10:22
+   |
+LL | pub trait NotSealed: indirect::Super {}
+   |                      ^^^^^^^^^^^^^^^ required by this bound in `NotSealed`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

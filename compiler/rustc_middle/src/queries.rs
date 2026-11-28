@@ -88,7 +88,7 @@ use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::privacy::{self, EffectiveVisibilities};
 use crate::middle::resolve::{
     AstOwner, DocLinkResMap, ModChild, ResolverAstLowering, ResolverGlobalCtxt,
 };
@@ -1425,6 +1425,14 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
+
+    /// How the item is visible from other crates, or `None` if it isn't.
+    /// Unlike [`effective_visibilities`](Self::effective_visibilities), this works on foreign items.
+    query effective_visibility_level(def_id: DefId) -> Option<privacy::Level> {
+        desc { "computing effective visibility level of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     query check_private_in_public(module_def_id: LocalModId) {
         desc {
             "checking for private elements in public interfaces for {}",

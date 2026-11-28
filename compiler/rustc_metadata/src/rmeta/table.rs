@@ -249,6 +249,15 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
+    privacy::Level {
+        ( ReachableThroughImplTrait )
+        ( Reachable                 )
+        ( Reexported                )
+        ( Direct                    )
+    }
+}
+
+fixed_size_enum! {
     MacroKind {
         ( Attr   )
         ( Bang   )

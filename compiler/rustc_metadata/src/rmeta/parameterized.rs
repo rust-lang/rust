@@ -116,6 +116,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::middle::exported_symbols::SymbolExportInfo,
     rustc_middle::middle::lib_features::FeatureStability,
+    rustc_middle::middle::privacy::Level,
     rustc_middle::middle::resolve::AmbigModChild,
     rustc_middle::middle::resolve::DocLinkResMap,
     rustc_middle::middle::resolve::ModChild,
@@ -235,6 +236,7 @@ trivial_encode_from! {
     rustc_hir::Defaultness,
     rustc_hir::Safety,
     rustc_hir::def::DefKind,
+    rustc_middle::middle::privacy::Level,
     rustc_middle::ty::Asyncness,
     // tidy-alphabetical-end
 }
