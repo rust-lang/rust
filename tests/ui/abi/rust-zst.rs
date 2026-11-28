@@ -62,3 +62,8 @@ use minicore::*;
 
 #[rustc_abi(debug)]
 extern "C" fn pass_rust_zst(_: ()) {} //~ ERROR: fn_abi
+
+// Unsized type, so shouldn't have a trivial ABI.
+#[rustc_dump_layout(debug)]
+type Slice = [u8];
+//~^ ERROR: layout_of

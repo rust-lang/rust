@@ -202,6 +202,8 @@ enum Either2<T, U> {
     Right(U, ()),
 }
 
+struct ReprRust<T>(T);
+
 #[repr(C)]
 struct ReprC<T>(T);
 #[repr(C)]
@@ -234,9 +236,12 @@ test_abi_compatible!(isize_int, isize, i32);
 #[cfg(target_pointer_width = "64")]
 test_abi_compatible!(isize_int, isize, i64);
 
-// Compatibility of 1-ZST.
+// Compatibility of trivial ABI 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
-test_abi_compatible!(zst_array, Zst, [u8; 0]);
+test_abi_compatible!(zst_empty_array, Zst, [(); 0]);
+test_abi_compatible!(zst_array, Zst, [(); 4]);
+test_abi_compatible!(zst_rust_struct, Zst, ReprRust<ReprC<Zst>>);
+test_abi_compatible!(zst_tuple, Zst, (ReprC<Zst>,));
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
 // `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
@@ -256,7 +261,7 @@ struct TransparentWrapper1<T: ?Sized>(T);
 #[repr(transparent)]
 struct TransparentWrapper2<T: ?Sized>((), Zst, T);
 #[repr(transparent)]
-struct TransparentWrapper3<T>(T, [u8; 0], PhantomData<u64>);
+struct TransparentWrapper3<T>(T, [(); 0], PhantomData<u64>);
 #[repr(transparent)]
 union TransparentWrapperUnion<T> {
     nothing: (),
@@ -289,6 +294,7 @@ test_transparent!(float_ppc, ppcf128);
 
 test_transparent!(reference, &'static i32);
 test_transparent!(zst, Zst);
+test_transparent!(c_zst, ReprC<Zst>);
 test_transparent!(unit, ());
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
@@ -313,6 +319,8 @@ mod arrays {
     use super::*;
     test_transparent!(empty_array, [u32; 0]);
     test_transparent!(empty_1zst_array, [u8; 0]);
+    test_transparent!(empty_trivial_array, [(); 0]);
+    test_transparent!(trivial_array, [(); 8]);
     test_transparent!(small_array, [i32; 2]); // chosen to fit into 64bit
     test_transparent!(large_array, [i32; 16]);
 }

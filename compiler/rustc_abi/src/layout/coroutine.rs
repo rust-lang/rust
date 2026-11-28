@@ -26,8 +26,8 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::{debug, trace};
 
 use crate::{
-    BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions, Scalar,
-    StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
+    Align, BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions,
+    Scalar, Size, StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
 };
 
 /// This option controls how coroutine saved locals are packed
@@ -333,7 +333,7 @@ where
         align,
         max_repr_align: None,
         unadjusted_abi_align: align,
-        repr_c: false,
+        trivial_abi: size == Size::ZERO && align == Align::ONE,
         randomization_seed: Default::default(),
     })
 }

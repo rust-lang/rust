@@ -1,3 +1,28 @@
+error: layout_of([u8; 0]) = Layout {
+           size: Size(0 bytes),
+           align: $SOME_ALIGN,
+           backend_repr: Memory {
+               sized: true,
+           },
+           fields: Array {
+               stride: Size(1 bytes),
+               count: 0,
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: $SOME_ALIGN,
+           trivial_abi: false,
+           randomization_seed: $SEED,
+       }
+  --> $DIR/c-zst.rs:80:1
+   |
+LL | type Array = [u8; 0];
+   | ^^^^^^^^^^
+
 error: fn_abi_of(pass_zst) = FnAbi {
            args: [
                ArgAbi {
@@ -20,7 +45,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
-                           repr_c: true,
+                           trivial_abi: false,
                            randomization_seed: $SEED,
                        },
                    },
@@ -47,7 +72,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
-                       repr_c: true,
+                       trivial_abi: false,
                        randomization_seed: $SEED,
                    },
                },
@@ -63,5 +88,5 @@ error: fn_abi_of(pass_zst) = FnAbi {
 LL | extern "C" fn pass_zst(_: Czst) -> Czst {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
