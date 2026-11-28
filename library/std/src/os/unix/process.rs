@@ -826,7 +826,7 @@ impl From<OwnedFd> for process::ChildStderr {
 #[must_use]
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
-    crate::sys::process::getppid()
+    sys::process::getppid()
 }
 
 /// Returns the real user ID of the current process.
@@ -846,7 +846,7 @@ pub fn parent_id() -> u32 {
 #[must_use]
 #[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
 pub fn uid() -> u32 {
-    crate::sys::process::getuid()
+    sys::process::getuid()
 }
 
 /// Returns the effective user ID of the current process.
@@ -866,7 +866,7 @@ pub fn uid() -> u32 {
 #[must_use]
 #[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
 pub fn effective_uid() -> u32 {
-    crate::sys::process::geteuid()
+    sys::process::geteuid()
 }
 
 /// Returns the real group ID of the current process.
@@ -887,7 +887,7 @@ pub fn effective_uid() -> u32 {
 #[must_use]
 #[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
 pub fn gid() -> u32 {
-    crate::sys::process::getgid()
+    sys::process::getgid()
 }
 
 /// Returns the effective group ID of the current process.
@@ -908,5 +908,31 @@ pub fn gid() -> u32 {
 #[must_use]
 #[unstable(feature = "unix_process_user_group_ids", issue = "166252")]
 pub fn effective_gid() -> u32 {
-    crate::sys::process::getegid()
+    sys::process::getegid()
+}
+
+/// Returns the supplementary group IDs of the current process. These are additional group IDs that are used
+/// for permission checks when accessing files and other shared resources.
+///
+/// The list may be empty. Whether it includes the [effective group ID](effective_gid)
+/// depends on the platform.
+///
+/// # Errors
+///
+/// This function returns an error if the operating system fails to provide the group IDs.
+///
+/// # Example
+///
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+/// #![feature(unix_supplementary_groups)]
+/// use std::os::unix::process;
+///
+/// # if cfg!(skip_unsupported_miri_tests) { return; }
+/// let groups = process::supplementary_groups().expect("failed to query supplementary groups");
+/// println!("The current process has supplementary group IDs {groups:?}");
+/// ```
+#[unstable(feature = "unix_supplementary_groups", issue = "166559")]
+pub fn supplementary_groups() -> io::Result<Vec<u32>> {
+    sys::process::getgroups()
 }

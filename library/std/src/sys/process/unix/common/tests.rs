@@ -295,3 +295,21 @@ fn unix_exit_statuses() {
         }
     }
 }
+
+#[test]
+fn supplementary_groups_change_between_calls() {
+    let snapshots: &[&[gid_t]] = &[&[10], &[10, 20], &[10, 20, 30], &[10, 30]];
+    let mut snapshots = snapshots.iter();
+    let groups = getgroups_with(|buf| {
+        let groups = snapshots.next().unwrap();
+        if !buf.is_empty() {
+            let dst =
+                buf.get_mut(..groups.len()).ok_or(io::Error::from_raw_os_error(libc::EINVAL))?;
+            dst.copy_from_slice(groups);
+        }
+        Ok(groups.len() as c_int)
+    })
+    .unwrap();
+    assert_eq!(groups, [10, 30]);
+    assert!(snapshots.next().is_none());
+}
