@@ -430,7 +430,8 @@ pub(crate) fn format_expr(
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..)
         | ast::ExprKind::UnsafeBinderCast(..)
-        | ast::ExprKind::Gca(..) => {
+        | ast::ExprKind::Gca(..)
+        | ast::ExprKind::ViewProjection(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,
             // rustfmt tries to parse macro arguments when formatting macros, so it's not totally
             // impossible for rustfmt to come across one of these nodes when formatting a file.
@@ -438,9 +439,6 @@ pub(crate) fn format_expr(
             Err(RewriteError::Unknown)
         }
         ast::ExprKind::Err(_) | ast::ExprKind::Dummy => Err(RewriteError::Unknown),
-
-        // FIXME(scrabsha):
-        ast::ExprKind::ViewProjection(..) => unimplemented!(),
     };
 
     expr_rw
