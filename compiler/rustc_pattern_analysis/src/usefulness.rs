@@ -97,9 +97,7 @@
 //! - `matches!([v0, v1, v2], [p0, .., p1]) := matches!(v0, p0) && matches!(v2, p1)`
 //!
 //! Constructors and relevant operations are defined in the [`crate::constructor`] module. A
-//! representation of patterns that uses constructors is available in [`crate::pat`]. The question
-//! of whether a constructor is matched by another one is answered by
-//! [`Constructor::is_covered_by`].
+//! representation of patterns that uses constructors is available in [`crate::pat`].
 //!
 //! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as wildcards.
 //! Note 2: this only applies to matchable values. For example a value of type `Rc<u64>` can't be
@@ -145,7 +143,8 @@
 //!     && matches!((v_1, .., v_n, w_1, .., w_m), specialize(c, (p_0, p_1, .., p_m)))
 //! ```
 //!
-//! Whether specialization returns something or not is given by [`Constructor::is_covered_by`].
+//! Whether specialization returns something or not used to be implemented separately but is now
+//! part of the logic of [`crate::constructor::ConstructorSet::split`].
 //! Specialization of a pattern is computed in [`DeconstructedPat::specialize`]. Specialization for
 //! a pattern-tuple is computed in [`PatStack::pop_head_constructor`]. Finally, specialization for a
 //! set of pattern-tuples is computed in [`Matrix::specialize_constructor`].
@@ -716,7 +715,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use self::PlaceValidity::*;
-use crate::constructor::{Constructor, ConstructorSet, IntRange};
+use crate::constructor::{Constructor, ConstructorSet, IntRange, RowId, RowSet};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{MatchArm, PatCx, PrivateUninhabitedField, checks};
 
@@ -924,20 +923,21 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
     fn split_column_ctors<'a>(
         &self,
         cx: &Cx,
-        ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> Result<(SmallVec<[Constructor<Cx>; 1]>, Vec<Constructor<Cx>>), Cx::Error>
+        ctors: impl Iterator<Item = (RowId, &'a Constructor<Cx>)> + Clone,
+    ) -> Result<(SmallVec<[(Constructor<Cx>, RowSet); 1]>, Vec<Constructor<Cx>>), Cx::Error>
     where
         Cx: 'a,
     {
         debug!(?self.ty);
         if self.private_uninhabited {
             // Skip the whole column
-            return Ok((smallvec![Constructor::PrivateUninhabited], vec![]));
+            let covered_rows = ctors.map(|(i, _)| i).collect();
+            return Ok((smallvec![(Constructor::PrivateUninhabited, covered_rows)], vec![]));
         }
 
-        if ctors.clone().any(|c| matches!(c, Constructor::Or)) {
+        if ctors.clone().any(|(_, c)| matches!(c, Constructor::Or)) {
             // If any constructor is `Or`, we expand or-patterns.
-            return Ok((smallvec![Constructor::Or], vec![]));
+            return Ok((smallvec![(Constructor::Or, Default::default())], vec![]));
         }
 
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
@@ -960,7 +960,7 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             || cx.is_exhaustive_patterns_feature_on();
 
         // Analyze the constructors present in this column.
-        let mut split_set = ctors_for_ty.split(ctors);
+        let mut split_set = ctors_for_ty.split(cx, ctors.clone())?;
         debug!(?split_set);
         let all_missing = split_set.present.is_empty();
 
@@ -971,7 +971,13 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         if !(split_set.missing.is_empty()
             && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
         {
-            split_ctors.push(Constructor::Missing);
+            // Only wildcards cover the missing constructor.
+            let covered_rows = ctors
+                .clone()
+                .filter(|(_, ctor)| matches!(ctor, Constructor::Wildcard))
+                .map(|(i, _)| i)
+                .collect();
+            split_ctors.push((Constructor::Missing, covered_rows));
         }
 
         // Which empty constructors are considered missing. We ensure that
@@ -1058,7 +1064,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
-    /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
+    /// Only call if `ctor` is known to be covered by `self.head().ctor()`.
     fn pop_head_constructor(
         &self,
         cx: &Cx,
@@ -1069,7 +1075,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         let head_pat = self.head();
         if head_pat.as_pat().is_some_and(|pat| pat.arity() > ctor_arity) {
             // Arity can be smaller in case of variable-length slices, but mustn't be larger.
-            return Err(cx.bug(format_args!(
+            return Err(cx.delayed_bug(format_args!(
                 "uncaught type error: pattern {:?} has inconsistent arity (expected arity <= {ctor_arity})",
                 head_pat.as_pat().unwrap()
             )));
@@ -1107,7 +1113,7 @@ struct MatrixRow<'p, Cx: PatCx> {
     /// When we specialize, we remember which row of the original matrix produced a given row of the
     /// specialized matrix. When we unspecialize, we use this to propagate usefulness back up the
     /// callstack. On creation, this stores the index of the original match arm.
-    parent_row: usize,
+    parent_row: RowId,
     /// False when the matrix is just built. This is set to `true` by
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
@@ -1137,7 +1143,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     fn new(arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
         MatrixRow {
             pats: PatStack::from_pattern(arm.pat),
-            parent_row: arm_id,
+            parent_row: RowId::new(arm_id),
             is_under_guard: arm.has_guard,
             useful: false,
             intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
@@ -1159,7 +1165,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     }
 
     // Expand the first or-pattern (if any) into its subpatterns. Panics if `self` is empty.
-    fn expand_or_pat(&self, parent_row: usize) -> impl Iterator<Item = MatrixRow<'p, Cx>> {
+    fn expand_or_pat(&self, parent_row: RowId) -> impl Iterator<Item = MatrixRow<'p, Cx>> {
         let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
@@ -1172,14 +1178,14 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
-    /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
+    /// Only call if `ctor` is known to be covered by `self.head().ctor()`.
     fn pop_head_constructor(
         &self,
         cx: &Cx,
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
-        parent_row: usize,
+        parent_row: RowId,
     ) -> Result<MatrixRow<'p, Cx>, Cx::Error> {
         Ok(MatrixRow {
             pats: self.pats.pop_head_constructor(cx, ctor, ctor_arity, ctor_is_relevant)?,
@@ -1261,6 +1267,9 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     {
         self.rows.iter()
     }
+    fn rows_indexed(&self) -> impl Iterator<Item = (RowId, &MatrixRow<'p, Cx>)> + Clone {
+        self.rows.iter().enumerate().map(|(i, r)| (RowId::new(i), r))
+    }
     fn rows_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
@@ -1272,12 +1281,19 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone {
         self.rows().map(|r| r.head())
     }
+    /// Iterate over the first pattern of each row.
+    fn heads_indexed(&self) -> impl Iterator<Item = (RowId, PatOrWild<'p, Cx>)> + Clone {
+        self.rows_indexed().map(|(i, r)| (i, r.head()))
+    }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
+    /// We have already precomputed which rows have head ctors that cover `ctor`; that's stored in
+    /// `covered_rows`.
     fn specialize_constructor(
         &self,
         pcx: &PlaceCtxt<'_, Cx>,
         ctor: &Constructor<Cx>,
+        covered_rows: &RowSet,
         ctor_is_relevant: bool,
     ) -> Result<Matrix<'p, Cx>, Cx::Error> {
         if matches!(ctor, Constructor::Or) {
@@ -1287,7 +1303,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 place_info: self.place_info.clone(),
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant,
             };
-            for (i, row) in self.rows().enumerate() {
+            for (i, row) in self.rows_indexed() {
                 for new_row in row.expand_or_pat(i) {
                     matrix.push(new_row);
                 }
@@ -1303,12 +1319,10 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 place_info: specialized_place_info,
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
             };
-            for (i, row) in self.rows().enumerate() {
-                if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
-                    let new_row =
-                        row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
-                    matrix.push(new_row);
-                }
+            for &i in covered_rows {
+                let row = &self.rows[i.index()];
+                let new_row = row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
+                matrix.push(new_row);
             }
             Ok(matrix)
         }
@@ -1319,7 +1333,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     fn unspecialize(&mut self, specialized: Self) {
         for child_row in specialized.rows() {
             let parent_row_id = child_row.parent_row;
-            let parent_row = &mut self.rows[parent_row_id];
+            let parent_row = &mut self.rows[parent_row_id.index()];
             // A parent row is useful if any of its children is.
             parent_row.useful |= child_row.useful;
             for child_intersection in child_row.intersects_at_least.iter() {
@@ -1327,7 +1341,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 let parent_intersection = specialized.rows[child_intersection].parent_row;
                 // Note: self-intersection can happen with or-patterns.
                 if parent_intersection != parent_row_id {
-                    parent_row.intersects_at_least.insert(parent_intersection);
+                    parent_row.intersects_at_least.insert(parent_intersection.index());
                 }
             }
         }
@@ -1611,7 +1625,9 @@ fn collect_overlapping_range_endpoints<'p, Cx: PatCx>(
     // information. It doesn't contain the column that contains the range; that can be found in
     // `matrix`.
     for (child_row_id, child_row) in specialized_matrix.rows().enumerate() {
-        let PatOrWild::Pat(pat) = matrix.rows[child_row.parent_row].head() else { continue };
+        let PatOrWild::Pat(pat) = matrix.rows[child_row.parent_row.index()].head() else {
+            continue;
+        };
         let Constructor::IntRange(this_range) = pat.ctor() else { continue };
         // Don't lint when one of the ranges is a singleton.
         if this_range.is_singleton() {
@@ -1730,13 +1746,13 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
     };
 
     // Analyze the constructors present in this column.
-    let ctors = matrix.heads().map(|p| p.ctor());
+    let ctors = matrix.heads_indexed().map(|(i, p)| (i, p.ctor()));
     let (split_ctors, missing_ctors) = place.split_column_ctors(mcx.tycx, ctors)?;
 
     let ty = &place.ty.clone(); // Clone it out so we can mutate `matrix` later.
     let pcx = &PlaceCtxt { cx: mcx.tycx, ty };
     let mut ret = WitnessMatrix::empty();
-    for ctor in split_ctors {
+    for (ctor, covered_rows) in split_ctors {
         // Dig into rows that match `ctor`.
         debug!("specialize({:?})", ctor);
         // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
@@ -1745,7 +1761,8 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing)
             || missing_ctors.is_empty()
             || mcx.tycx.exhaustive_witnesses();
-        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant)?;
+        let mut spec_matrix =
+            matrix.specialize_constructor(pcx, &ctor, &covered_rows, ctor_is_relevant)?;
         let mut witnesses = compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix)?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.

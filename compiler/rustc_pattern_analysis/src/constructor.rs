@@ -3,7 +3,7 @@
 //!
 //! There are two important bits of core logic in this file: constructor inclusion and constructor
 //! splitting. Constructor inclusion, i.e. whether a constructor is included in/covered by another,
-//! is straightforward and defined in [`Constructor::is_covered_by`].
+//! is straightforward.
 //!
 //! Constructor splitting is mentioned in [`crate::usefulness`] but not detailed. We describe it
 //! precisely here.
@@ -180,8 +180,8 @@ use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
-use smallvec::SmallVec;
+use rustc_index::bit_set::GrowableBitSet;
+use smallvec::{SmallVec, smallvec};
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
@@ -366,7 +366,7 @@ impl IntRange {
     /// `usize::MAX+1..PosInfinity` in the output. Diagnostics must be careful to handle these
     /// fictitious ranges sensibly.
     fn split(
-        &self,
+        self,
         column_ranges: impl Iterator<Item = IntRange>,
     ) -> impl Iterator<Item = (Presence, IntRange)> {
         // The boundaries of ranges in `column_ranges` intersected with `self`.
@@ -488,7 +488,7 @@ impl Slice {
         self.kind.arity()
     }
 
-    /// See `Constructor::is_covered_by`
+    /// Whether all values matched by this slice constructor are also matched by `other`.
     fn is_covered_by(self, other: Self) -> bool {
         other.kind.covers_length(self.arity())
     }
@@ -662,6 +662,62 @@ impl Slice {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum FloatRange {
+    F16Range(IeeeFloat<HalfS>, IeeeFloat<HalfS>, RangeEnd),
+    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
+    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
+    F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
+}
+
+impl FloatRange {
+    pub(crate) fn is_subrange<Cx: PatCx>(&self, cx: &Cx, other: &Self) -> Result<bool, Cx::Error> {
+        use self::FloatRange::*;
+        Ok(match (self, other) {
+            (F16Range(self_from, self_to, self_end), F16Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            (
+                F128Range(self_from, self_to, self_end),
+                F128Range(other_from, other_to, other_end),
+            ) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
+            }
+            _ => {
+                return Err(cx.delayed_bug(format_args!(
+                    "trying to compare incompatible float ranges {self:?} and {other:?}"
+                )));
+            }
+        })
+    }
+}
+
 /// A globally unique id to distinguish `Opaque` patterns.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpaqueId(u32);
@@ -698,10 +754,7 @@ pub enum Constructor<Cx: PatCx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    F16Range(IeeeFloat<HalfS>, IeeeFloat<HalfS>, RangeEnd),
-    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
-    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
-    F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
+    FloatRange(FloatRange),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Cx::StrLit),
     /// Deref patterns (enabled by the `deref_patterns` feature) provide a way of matching on a
@@ -747,10 +800,7 @@ impl<Cx: PatCx> Clone for Constructor<Cx> {
             Constructor::UnionField => Constructor::UnionField,
             Constructor::Bool(b) => Constructor::Bool(*b),
             Constructor::IntRange(range) => Constructor::IntRange(*range),
-            Constructor::F16Range(lo, hi, end) => Constructor::F16Range(*lo, *hi, *end),
-            Constructor::F32Range(lo, hi, end) => Constructor::F32Range(*lo, *hi, *end),
-            Constructor::F64Range(lo, hi, end) => Constructor::F64Range(*lo, *hi, *end),
-            Constructor::F128Range(lo, hi, end) => Constructor::F128Range(*lo, *hi, *end),
+            Constructor::FloatRange(range) => Constructor::FloatRange(*range),
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::DerefPattern(ty) => Constructor::DerefPattern(ty.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
@@ -801,97 +851,13 @@ impl<Cx: PatCx> Constructor<Cx> {
         cx.ctor_arity(self, ty)
     }
 
-    /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
-    /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
-    /// this checks for inclusion.
-    // We inline because this has a single call site in `Matrix::specialize_constructor`.
-    #[inline]
-    pub(crate) fn is_covered_by(&self, cx: &Cx, other: &Self) -> Result<bool, Cx::Error> {
-        Ok(match (self, other) {
-            (Wildcard, _) => {
-                return Err(cx.bug(format_args!(
-                    "Constructor splitting should not have returned `Wildcard`"
-                )));
-            }
-            // Wildcards cover anything
-            (_, Wildcard) => true,
-            // `PrivateUninhabited` skips everything.
-            (PrivateUninhabited, _) => true,
-            // Only a wildcard pattern can match these special constructors.
-            (Missing { .. } | NonExhaustive | Hidden, _) => false,
-
-            (Struct, Struct) => true,
-            (Ref, Ref) => true,
-            (UnionField, UnionField) => true,
-            (Variant(self_id), Variant(other_id)) => self_id == other_id,
-            (Bool(self_b), Bool(other_b)) => self_b == other_b,
-
-            (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
-            (F16Range(self_from, self_to, self_end), F16Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (
-                F128Range(self_from, self_to, self_end),
-                F128Range(other_from, other_to, other_end),
-            ) => {
-                self_from.ge(other_from)
-                    && match self_to.partial_cmp(other_to) {
-                        Some(Ordering::Less) => true,
-                        Some(Ordering::Equal) => other_end == self_end,
-                        _ => false,
-                    }
-            }
-            (Str(self_val), Str(other_val)) => {
-                // FIXME Once valtrees are available we can directly use the bytes
-                // in the `Str` variant of the valtree for the comparison here.
-                self_val == other_val
-            }
-            (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
-
-            // Deref patterns only interact with other deref patterns. Prior to usefulness analysis,
-            // we ensure they don't appear alongside any other non-wild non-opaque constructors.
-            (DerefPattern(_), DerefPattern(_)) => true,
-
-            // Opaque constructors don't interact with anything unless they come from the
-            // syntactically identical pattern.
-            (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
-            (Opaque(..), _) | (_, Opaque(..)) => false,
-
-            _ => {
-                return Err(cx.delayed_bug(format_args!(
-                    "trying to compare incompatible constructors {self:?} and {other:?}"
-                )));
-            }
-        })
-    }
-
     pub(crate) fn fmt_fields(
         &self,
         f: &mut fmt::Formatter<'_>,
         ty: &Cx::Ty,
         mut fields: impl Iterator<Item = impl fmt::Debug>,
     ) -> fmt::Result {
+        use self::FloatRange::*;
         let mut first = true;
         let mut start_or_continue = |s| {
             if first {
@@ -944,10 +910,10 @@ impl<Cx: PatCx> Constructor<Cx> {
             Bool(b) => write!(f, "{b}")?,
             // Best-effort, will render signed ranges incorrectly
             IntRange(range) => write!(f, "{range:?}")?,
-            F16Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
-            F128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F16Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F32Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F64Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
+            FloatRange(F128Range(lo, hi, end)) => write!(f, "{lo}{end}{hi}")?,
             Str(value) => write!(f, "{value:?}")?,
             DerefPattern(_) => write!(f, "deref!({:?})", fields.next().unwrap())?,
             Opaque(..) => write!(f, "<constant pattern>")?,
@@ -1008,6 +974,22 @@ pub enum ConstructorSet<Cx: PatCx> {
     NoConstructors,
 }
 
+/// Identifies a row in the matrix, that a constructor came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RowId(u32);
+
+impl RowId {
+    pub fn new(i: usize) -> Self {
+        RowId(i.try_into().unwrap())
+    }
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// Identifies a (sorted) set of matrix rows.
+pub type RowSet = SmallVec<[RowId; 1]>;
+
 /// Describes the result of analyzing the constructors in a column of a match.
 ///
 /// `present` is morally the set of constructors present in the column, and `missing` is the set of
@@ -1031,7 +1013,8 @@ pub enum ConstructorSet<Cx: PatCx> {
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
 pub struct SplitConstructorSet<Cx: PatCx> {
-    pub present: SmallVec<[Constructor<Cx>; 1]>,
+    /// For each present constructor, we remember which matrix rows cover it.
+    pub present: SmallVec<[(Constructor<Cx>, RowSet); 1]>,
     pub missing: Vec<Constructor<Cx>>,
     pub missing_empty: Vec<Constructor<Cx>>,
 }
@@ -1043,42 +1026,40 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
     /// and its invariants.
     pub fn split<'a>(
         &self,
-        ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> SplitConstructorSet<Cx>
+        cx: &Cx,
+        ctors: impl Iterator<Item = (RowId, &'a Constructor<Cx>)> + Clone,
+    ) -> Result<SplitConstructorSet<Cx>, Cx::Error>
     where
         Cx: 'a,
     {
-        let mut present: SmallVec<[_; 1]> = SmallVec::new();
+        let mut present: SmallVec<[(_, RowSet); 1]> = SmallVec::new();
         // Empty constructors found missing.
         let mut missing_empty = Vec::new();
         // Nonempty constructors found missing.
         let mut missing = Vec::new();
         // Constructors in `ctors`, except wildcards and opaques.
         let mut seen = Vec::new();
-        // If we see a deref pattern, it must be the only non-wildcard non-opaque constructor; we
-        // ensure this prior to analysis.
-        let mut deref_pat_present = false;
-        for ctor in ctors.cloned() {
+        // Deref patterns may exist for base types that have other constructors like enums, so only
+        // seeing one can tell us whether to expect one in the column.
+        let mut seen_deref_pats = false;
+        let mut wildcard_rows = Vec::new();
+        for (i, ctor) in ctors.clone() {
+            let ctor = ctor.clone();
+            seen_deref_pats |= matches!(ctor, DerefPattern(..));
             match ctor {
-                DerefPattern(..) => {
-                    if !deref_pat_present {
-                        deref_pat_present = true;
-                        present.push(ctor);
-                    }
-                }
-                Opaque(..) => present.push(ctor),
-                Wildcard => {} // discard wildcards
-                _ => seen.push(ctor),
+                Opaque(..) => present.push((ctor, smallvec![i])),
+                Wildcard => wildcard_rows.push(i),
+                _ => seen.push((i, ctor)),
             }
         }
 
+        let all_seen_rows = || seen.iter().map(|(i, _)| *i).collect();
         match self {
-            _ if deref_pat_present => {
-                // Deref patterns are the only constructor; nothing is missing.
-            }
+            // We've already checked there are no other non-wildcard non-opaque constructors.
+            _ if seen_deref_pats => present.push((seen[0].1.clone(), all_seen_rows())),
             ConstructorSet::Struct { empty } => {
                 if !seen.is_empty() {
-                    present.push(Struct);
+                    present.push((Struct, all_seen_rows()));
                 } else if *empty {
                     missing_empty.push(Struct);
                 } else {
@@ -1087,32 +1068,34 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             }
             ConstructorSet::Ref => {
                 if !seen.is_empty() {
-                    present.push(Ref);
+                    present.push((Ref, all_seen_rows()));
                 } else {
                     missing.push(Ref);
                 }
             }
             ConstructorSet::Union => {
                 if !seen.is_empty() {
-                    present.push(UnionField);
+                    present.push((UnionField, all_seen_rows()));
                 } else {
                     missing.push(UnionField);
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set = DenseBitSet::new_empty(variants.len());
-                for idx in seen.iter().filter_map(|c| c.as_variant()) {
-                    seen_set.insert(idx);
+                let mut seen_map = IndexVec::from_elem(smallvec![], &variants);
+                for (i, ctor) in &seen {
+                    if let Some(variant) = ctor.as_variant() {
+                        seen_map[variant].push(*i);
+                    }
                 }
                 let mut skipped_a_hidden_variant = false;
 
-                for (idx, visibility) in variants.iter_enumerated() {
+                for (idx, covered_rows) in seen_map.into_iter_enumerated() {
                     let ctor = Variant(idx);
-                    if seen_set.contains(idx) {
-                        present.push(ctor);
+                    if !covered_rows.is_empty() {
+                        present.push((ctor, covered_rows));
                     } else {
                         // We only put visible variants directly into `missing`.
-                        match visibility {
+                        match variants[idx] {
                             VariantVisibility::Visible => missing.push(ctor),
                             VariantVisibility::Hidden => skipped_a_hidden_variant = true,
                             VariantVisibility::Empty => missing_empty.push(ctor),
@@ -1128,51 +1111,71 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Bool => {
-                let mut seen_false = false;
-                let mut seen_true = false;
-                for b in seen.iter().filter_map(|ctor| ctor.as_bool()) {
-                    if b {
-                        seen_true = true;
-                    } else {
-                        seen_false = true;
+                let mut false_rows = smallvec![];
+                let mut true_rows = smallvec![];
+                for (i, ctor) in &seen {
+                    if let Some(b) = ctor.as_bool() {
+                        if b {
+                            true_rows.push(*i);
+                        } else {
+                            false_rows.push(*i);
+                        }
                     }
                 }
-                if seen_true {
-                    present.push(Bool(true));
+                if !true_rows.is_empty() {
+                    present.push((Bool(true), true_rows));
                 } else {
                     missing.push(Bool(true));
                 }
-                if seen_false {
-                    present.push(Bool(false));
+                if !false_rows.is_empty() {
+                    present.push((Bool(false), false_rows));
                 } else {
                     missing.push(Bool(false));
                 }
             }
             ConstructorSet::Integers { range_1, range_2 } => {
-                let seen_ranges: Vec<_> =
-                    seen.iter().filter_map(|ctor| ctor.as_int_range()).copied().collect();
-                for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
-                    match seen {
+                let seen_ranges: Vec<IntRange> =
+                    seen.iter().filter_map(|(_, ctor)| ctor.as_int_range()).copied().collect();
+                let ranges = range_1.split(seen_ranges.iter().copied()).chain(
+                    range_2
+                        .map(|range_2| range_2.split(seen_ranges.iter().copied()))
+                        .into_iter()
+                        .flatten(),
+                );
+                for (presence, splitted_range) in ranges {
+                    match presence {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),
-                        Presence::Seen => present.push(IntRange(splitted_range)),
-                    }
-                }
-                if let Some(range_2) = range_2 {
-                    for (seen, splitted_range) in range_2.split(seen_ranges.into_iter()) {
-                        match seen {
-                            Presence::Unseen => missing.push(IntRange(splitted_range)),
-                            Presence::Seen => present.push(IntRange(splitted_range)),
+                        Presence::Seen => {
+                            let covered_rows = seen
+                                .iter()
+                                .filter(|(_, seen_ctor)| {
+                                    matches!(seen_ctor, IntRange(seen_range)
+                                    if splitted_range.is_subrange(seen_range))
+                                })
+                                .map(|(i, _)| *i)
+                                .collect();
+                            present.push((IntRange(splitted_range), covered_rows))
                         }
                     }
                 }
             }
             ConstructorSet::Slice { array_len, subtype_is_empty } => {
-                let seen_slices = seen.iter().filter_map(|c| c.as_slice());
+                let seen_slices = seen.iter().filter_map(|(_, c)| c.as_slice());
                 let base_slice = Slice::new(*array_len, VarLen(0, 0));
-                for (seen, splitted_slice) in base_slice.split(seen_slices) {
+                for (presence, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
-                    match seen {
-                        Presence::Seen => present.push(ctor),
+                    match presence {
+                        Presence::Seen => {
+                            let covered_rows = seen
+                                .iter()
+                                .filter(|(_, seen_ctor)| {
+                                    matches!(seen_ctor, Slice(seen_slice)
+                                    if splitted_slice.is_covered_by(*seen_slice))
+                                })
+                                .map(|(i, _)| *i)
+                                .collect();
+                            present.push((ctor, covered_rows))
+                        }
                         Presence::Unseen => {
                             if *subtype_is_empty && splitted_slice.arity() != 0 {
                                 // We have subpatterns of an empty type, so the constructor is
@@ -1186,9 +1189,36 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Unlistable => {
-                // Since we can't list constructors, we take the ones in the column. This might list
-                // some constructors several times but there's not much we can do.
-                present.extend(seen);
+                // Since we can't list constructors, we take the ones in the column. FIXME: this
+                // might list some constructors several times.
+                for (_, ctor) in &seen {
+                    let covered_rows = match &ctor {
+                        FloatRange(range) => seen
+                            .iter()
+                            .filter(|(_, other_ctor)| {
+                                matches!(other_ctor, FloatRange(other_range)
+                                    if range.is_subrange(cx, other_range).unwrap_or(false))
+                            })
+                            .map(|(i, _)| *i)
+                            .collect(),
+                        // FIXME Once valtrees are available we can directly use the bytes
+                        // in the `Str` variant of the valtree for the comparison here.
+                        Str(val) => seen
+                            .iter()
+                            .filter(|(_, other_ctor)| {
+                                matches!(other_ctor, Str(other_val)
+                                    if val == other_val)
+                            })
+                            .map(|(i, _)| *i)
+                            .collect(),
+                        _ => {
+                            return Err(cx.delayed_bug(format_args!(
+                                "unexpected constructor for `Unlistable` case: {ctor:?}"
+                            )));
+                        }
+                    };
+                    present.push((ctor.clone(), covered_rows));
+                }
                 missing.push(NonExhaustive);
             }
             ConstructorSet::NoConstructors => {
@@ -1199,7 +1229,13 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
             }
         }
 
-        SplitConstructorSet { present, missing, missing_empty }
+        // Wildcards cover all constructors.
+        for (_ctor, covered_rows) in &mut present {
+            covered_rows.extend_from_slice(&wildcard_rows);
+            covered_rows.sort_unstable();
+        }
+
+        Ok(SplitConstructorSet { present, missing, missing_empty })
     }
 
     /// Whether this set only contains empty constructors.
