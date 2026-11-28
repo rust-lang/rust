@@ -1,5 +1,5 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_attr_ir::target::{AstTarget, ConstTypeAstTarget, Target};
+use rustc_attr_ir::target::{AssocCtxt, AstTarget, ConstTypeAstTarget, MethodKind, Target};
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow, NotableTraitColor,
@@ -30,7 +30,7 @@ use crate::diagnostics::{
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
-use crate::target_checking::Policy::{Allow, AllowSilent};
+use crate::target_checking::Policy::{Allow, Warn};
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -291,13 +291,7 @@ impl DocParser {
                     return;
                 }
 
-                cx.check_target(
-                    sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param),
-                    ]),
-                );
+                cx.check_target(sym::no_crate_inject.as_str(), &CRATE_DOC_TARGETS);
 
                 self.attribute.no_crate_inject = Some(path.span())
             }
@@ -684,13 +678,7 @@ impl DocParser {
                     return;
                 }
                 let span = path.span();
-                cx.check_target(
-                    concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param), // Param has a custom error
-                    ]),
-                );
+                cx.check_target(concat!("(", stringify!($ident), ")"), &CRATE_DOC_TARGETS);
                 self.attribute.$ident = Some(span);
             }};
         }
@@ -706,13 +694,7 @@ impl DocParser {
                     return;
                 };
 
-                cx.check_target(
-                    s.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param), // Param has a custom error
-                    ]),
-                );
+                cx.check_target(s.as_str(), &CRATE_DOC_TARGETS);
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
@@ -948,3 +930,57 @@ impl AttributeParser for DocParser {
         }
     }
 }
+
+const CRATE_DOC_TARGETS: AllowedTargets<'static> = {
+    AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::ForeignTy),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TraitAlias),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ])
+};

@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, DiagLocation, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
@@ -77,6 +78,7 @@ use crate::parser::{
     RefPathParser,
 };
 use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, AllowSilent, Error, Warn};
 use crate::{AttributeParser, AttributeTemplate, DuplicateAttribute, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
@@ -151,6 +153,13 @@ macro_rules! attribute_parsers {
                                 });
                             }
                             Entry::Occupied(_) => panic!("Attribute {path:?} has multiple accepters"),
+                        }
+                    }
+                    if cfg!(debug_assertions) && let AllowedTargets::AllowList( allowed_targets)= <$names>::ALLOWED_TARGETS {
+                        let mut targets = FxHashSet::<Target>::default();
+                            for target in allowed_targets{
+                                let (Allow(target) | AllowSilent(target) | Warn(target) | Error(target)) = *target;
+                                assert!(targets.insert(target), "duplicate target entry `{target}` of attribute `{path:?}`", path = <$names>::ATTRIBUTES[0].0)
                         }
                     }
                 }

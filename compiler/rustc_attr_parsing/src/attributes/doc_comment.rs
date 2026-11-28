@@ -9,7 +9,7 @@ use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::UNUSED_DOC_COMMENTS;
 use rustc_span::Span;
 
-use crate::attributes::prelude::{Allow, Error};
+use crate::attributes::prelude::{Allow, Warn};
 use crate::diagnostics::{BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub};
 use crate::target_checking::{AllowedResult, AllowedTargets};
 use crate::{AttributeParser, EmitAttribute, ShouldEmit};
@@ -66,39 +66,55 @@ pub(crate) fn target_check_doc_comment(
 
 /// This set of targets is used both for the `doc` attribute and doc comments.
 pub(crate) const DOC_TARGETS: AllowedTargets<'static> = {
-    AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Use),
-        Allow(Target::Static),
-        Allow(Target::Const),
-        Allow(Target::Fn),
-        Allow(Target::Mod),
-        Allow(Target::Enum),
-        Allow(Target::Variant),
-        Allow(Target::Struct),
-        Allow(Target::Field),
-        Allow(Target::Union),
-        Allow(Target::Trait),
-        Allow(Target::TraitAlias),
-        Allow(Target::TyAlias),
+    AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
         Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocConst(AssocCtxt::Trait)),
         Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::Const),
+        Allow(Target::Crate),
+        Allow(Target::Enum),
+        Allow(Target::ExternCrate),
+        Allow(Target::Field),
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::MacroDef),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
-        Allow(Target::AssocTy(AssocCtxt::Trait)),
-        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::ForeignTy),
-        Allow(Target::MacroDef),
-        Allow(Target::Crate),
-        Allow(Target::ExternCrate),
-        Allow(Target::Impl { of_trait: false }),
-        Allow(Target::Impl { of_trait: true }),
-        Error(Target::WherePredicate),
-        Error(Target::Param),
+        Allow(Target::Mod),
+        Allow(Target::Static),
+        Allow(Target::Struct),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::TyAlias),
+        Allow(Target::Union),
+        Allow(Target::Use),
+        Allow(Target::Variant),
+        Warn(Target::Arm),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::ConstParam),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignMod),
+        Warn(Target::GlobalAsm),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::TypeParam),
+        Warn(Target::While),
+        // tidy-alphabetical-end
     ])
 };

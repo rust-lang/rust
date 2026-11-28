@@ -22,7 +22,7 @@ use thin_vec::ThinVec;
 use crate::ast::*;
 use crate::tokenstream::DelimSpan;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, StableHash)]
+#[derive(Copy, Clone, Hash, Debug, PartialEq, Eq, StableHash)]
 pub enum AssocCtxt {
     Trait,
     Impl { of_trait: bool },

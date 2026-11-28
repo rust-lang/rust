@@ -8,13 +8,54 @@ pub(crate) struct InstructionSetParser;
 
 impl SingleAttributeParser for InstructionSetParser {
     const PATH: &[Symbol] = &[sym::instruction_set];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Fn),
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
         Allow(Target::Closure),
+        Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
-        Error(Target::Param),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Crate),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;

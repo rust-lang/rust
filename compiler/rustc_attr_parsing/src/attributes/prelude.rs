@@ -22,7 +22,7 @@ pub(super) use crate::parser::*;
 pub(super) use crate::target_checking::AllowedTargets;
 // target checking
 #[doc(hidden)]
-pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
+pub(super) use crate::target_checking::Policy::{Allow, Warn};
 #[doc(hidden)]
 pub(super) use crate::unstable;
 pub(super) use crate::{AttributeTemplate, template};

@@ -21,8 +21,55 @@ impl SingleAttributeParser for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -40,8 +87,55 @@ impl CombineAttributeParser for CrateTypeParser {
     const PATH: &[Symbol] = &[sym::crate_type];
     type Item = CrateType;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -84,8 +178,55 @@ impl SingleAttributeParser for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -116,8 +257,55 @@ impl SingleAttributeParser for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -159,8 +347,55 @@ pub(crate) struct NoStdParser;
 impl NoArgsAttributeParser for NoStdParser {
     const PATH: &[Symbol] = &[sym::no_std];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoStd;
 }
@@ -170,8 +405,55 @@ pub(crate) struct NoMainParser;
 impl NoArgsAttributeParser for NoMainParser {
     const PATH: &[Symbol] = &[sym::no_main];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
 }
@@ -190,8 +472,55 @@ pub(crate) struct WindowsSubsystemParser;
 impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -246,8 +575,55 @@ pub(crate) struct NoBuiltinsParser;
 impl NoArgsAttributeParser for NoBuiltinsParser {
     const PATH: &[Symbol] = &[sym::no_builtins];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
 }
@@ -285,8 +661,55 @@ impl CombineAttributeParser for FeatureParser {
     const PATH: &[Symbol] = &[sym::feature];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        // tidy-alphabetical-start
+        Allow(Target::Crate),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Warn(Target::AssocTy(AssocCtxt::Trait)),
+        Warn(Target::Break),
+        Warn(Target::Closure),
+        Warn(Target::Const),
+        Warn(Target::ConstParam),
+        Warn(Target::Enum),
+        Warn(Target::ExprField),
+        Warn(Target::Expression),
+        Warn(Target::ExternCrate),
+        Warn(Target::Field),
+        Warn(Target::Fn),
+        Warn(Target::ForLoop),
+        Warn(Target::ForeignFn),
+        Warn(Target::ForeignMod),
+        Warn(Target::ForeignStatic),
+        Warn(Target::GlobalAsm),
+        Warn(Target::Impl { of_trait: false }),
+        Warn(Target::Impl { of_trait: true }),
+        Warn(Target::LifetimeParam),
+        Warn(Target::Loop),
+        Warn(Target::MacroCall),
+        Warn(Target::MacroDef),
+        Warn(Target::Method(MethodKind::Inherent)),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::Method(MethodKind::Trait { body: true })),
+        Warn(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Mod),
+        Warn(Target::PatField),
+        Warn(Target::Statement),
+        Warn(Target::Static),
+        Warn(Target::Struct),
+        Warn(Target::Trait),
+        Warn(Target::TyAlias),
+        Warn(Target::TypeParam),
+        Warn(Target::Union),
+        Warn(Target::Use),
+        Warn(Target::Variant),
+        Warn(Target::While),
+        // tidy-alphabetical-end
+    ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
