@@ -25,7 +25,7 @@ use rustc_macros::StableHash;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{RealFileName, Span, Symbol};
+use rustc_span::{FileName, RealFileName, Span, Symbol};
 use rustc_structures::{CrateType, Limit};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
@@ -947,8 +947,14 @@ impl Session {
         if !path.is_absolute() {
             let callsite = span.source_callsite();
             let source_map = self.source_map();
-            let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path()
-            else {
+            let base_path = match source_map.span_to_filename(callsite) {
+                // `-Zcrate-attr` attributes resolve paths as if written at the top of the crate root.
+                FileName::CliCrateAttr(_) => {
+                    self.io.input.opt_path().map(|path| path.to_path_buf())
+                }
+                filename => filename.into_local_path(),
+            };
+            let Some(mut base_path) = base_path else {
                 return Err(self.dcx().create_err(diagnostics::ResolveRelativePath {
                     span,
                     path: source_map
