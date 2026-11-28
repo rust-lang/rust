@@ -32,8 +32,8 @@ impl DefPathHashMapRef<'_> {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'tcx> Encodable<EncodeContext<'tcx>> for DefPathHashMapRef<'tcx> {
+    fn encode(&self, e: &mut EncodeContext<'tcx>) {
         match *self {
             DefPathHashMapRef::BorrowedFromTcx(map) => {
                 let bytes = map.before_parallel_alloc.raw_bytes();

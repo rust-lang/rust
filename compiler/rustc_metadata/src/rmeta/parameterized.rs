@@ -184,7 +184,7 @@ pub(super) trait EncodeFrom<'tcx, T> {
     /// When a `T` is trivial to encode, it has a fixed size, no pointers inside, this can be
     /// just a no-op. For more complex types this usually creates a `LazyValue<T>` or `LazyArray<T>`
     /// encoding `value` with `encoder` in the process
-    fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, value: T) -> Self;
+    fn encode_from(encoder: &mut EncodeContext<'tcx>, value: T) -> Self;
 }
 
 macro_rules! trivial_encode_from {
@@ -193,8 +193,8 @@ macro_rules! trivial_encode_from {
     ) => {
         $(
             impl<'tcx> EncodeFrom<'tcx, $ty> for $ty {
-                fn encode_from<'a>(
-                    _encoder: &mut EncodeContext<'a, 'tcx>,
+                fn encode_from(
+                    _encoder: &mut EncodeContext<'tcx>,
                     value: $ty,
                 ) -> $ty {
                     value
@@ -213,8 +213,8 @@ macro_rules! lazy_encode_from {
             where
                 B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>
             {
-                fn encode_from<'a>(
-                    encoder: &mut EncodeContext<'a, 'tcx>,
+                fn encode_from(
+                    encoder: &mut EncodeContext<'tcx>,
                     value: B,
                 ) -> LazyValue<$ty> {
                     encoder.lazy(value)
@@ -292,13 +292,10 @@ lazy_encode_from! {
 impl<'tcx, T, B> EncodeFrom<'tcx, Option<B>> for Option<LazyValue<T>>
 where
     T: ParameterizedOverTcx,
-    T::Value<'tcx>: for<'b> Encodable<EncodeContext<'b, 'tcx>>,
+    T::Value<'tcx>: Encodable<EncodeContext<'tcx>>,
     B: std::borrow::Borrow<T::Value<'tcx>>,
 {
-    fn encode_from<'a>(
-        encoder: &mut EncodeContext<'a, 'tcx>,
-        value: Option<B>,
-    ) -> Option<LazyValue<T>> {
+    fn encode_from(encoder: &mut EncodeContext<'tcx>, value: Option<B>) -> Option<LazyValue<T>> {
         value.map(|v| encoder.lazy(v))
     }
 }
@@ -308,9 +305,9 @@ where
     T: ParameterizedOverTcx,
     I: IntoIterator<Item = B>,
     B: std::borrow::Borrow<T::Value<'tcx>>,
-    T::Value<'tcx>: for<'a> Encodable<EncodeContext<'a, 'tcx>>,
+    T::Value<'tcx>: for<'a> Encodable<EncodeContext<'tcx>>,
 {
-    fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, values: I) -> Self {
+    fn encode_from(encoder: &mut EncodeContext<'tcx>, values: I) -> Self {
         encoder.lazy_array(values)
     }
 }
