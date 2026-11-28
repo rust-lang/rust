@@ -1897,7 +1897,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..) => {}
+            | ProjectionElem::Downcast(..)
+            | ProjectionElem::Wrap(_) => {}
             ProjectionElem::Field(field, fty) => {
                 let fty = self.normalize(ty::Unnormalized::new_wip(fty), location);
                 let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
@@ -2474,7 +2475,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. }
-                | ProjectionElem::UnwrapUnsafeBinder(_) => {
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::Wrap(_) => {
                     // other field access
                 }
             }

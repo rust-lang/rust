@@ -673,13 +673,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::Deref
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+            ProjectionElem::Deref => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
-                if base_ty.is_box() {
-                    self.fail(location, format!("{base_ty} dereferenced after ElaborateBoxDerefs"))
+                    if base_ty.is_box() {
+                        self.fail(
+                            location,
+                            format!("{base_ty} dereferenced after ElaborateBoxDerefs"),
+                        )
+                    }
                 }
             }
             ProjectionElem::Field(f, ty) => {
@@ -879,13 +882,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, "backwards subslice {from}..{to}");
                 }
             }
-            ProjectionElem::OpaqueCast(ty)
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                self.fail(
-                    location,
-                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
-                )
+            ProjectionElem::OpaqueCast(ty) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        format!(
+                            "explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"
+                        ),
+                    )
+                }
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
@@ -906,7 +911,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            _ => {}
+            ProjectionElem::Downcast(..)
+            | ProjectionElem::PhantomDeref
+            | ProjectionElem::Wrap(_) => {}
         }
         self.super_projection_elem(place_ref, elem, context, location);
     }

@@ -255,14 +255,19 @@ fn place_components_conflict<'tcx>(
 
                 (ProjectionElem::Deref, _, Deep)
                 | (ProjectionElem::Deref, _, AccessDepth::Drop)
-                | (ProjectionElem::PhantomDeref, _, _)
-                | (ProjectionElem::Field { .. }, _, _)
-                | (ProjectionElem::Index { .. }, _, _)
-                | (ProjectionElem::ConstantIndex { .. }, _, _)
-                | (ProjectionElem::Subslice { .. }, _, _)
-                | (ProjectionElem::OpaqueCast { .. }, _, _)
-                | (ProjectionElem::Downcast { .. }, _, _)
-                | (ProjectionElem::UnwrapUnsafeBinder(_), _, _) => {
+                | (
+                    ProjectionElem::PhantomDeref
+                    | ProjectionElem::Field { .. }
+                    | ProjectionElem::Index { .. }
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::OpaqueCast { .. }
+                    | ProjectionElem::Downcast { .. }
+                    | ProjectionElem::UnwrapUnsafeBinder(_)
+                    | ProjectionElem::Wrap(_),
+                    _,
+                    _,
+                ) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
                     // there's a deref later on, e.g., a borrow
@@ -321,6 +326,10 @@ fn place_projection_conflict<'tcx>(
         (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
             // casts to other types may always conflict irrespective of the type being cast to.
             debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
+            Overlap::EqualOrDisjoint
+        }
+        (ProjectionElem::Wrap(_), ProjectionElem::Wrap(_)) => {
+            debug!("place_element_conflict: DISJOINT-OR-EQ-WRAP-IN-MAYBE-DANGLING");
             Overlap::EqualOrDisjoint
         }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
@@ -529,7 +538,8 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..),
+            | ProjectionElem::Downcast(..)
+            | ProjectionElem::Wrap(_),
             _,
         ) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",

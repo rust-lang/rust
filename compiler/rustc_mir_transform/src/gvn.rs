@@ -919,6 +919,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             ProjectionElem::OpaqueCast(_) => ProjectionElem::OpaqueCast(()),
             ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
+            ProjectionElem::Wrap(kind) => ProjectionElem::Wrap(kind),
         };
 
         let value = self.insert(projection_ty.ty, Value::Projection(value, proj));

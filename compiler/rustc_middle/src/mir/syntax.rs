@@ -1172,6 +1172,26 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
+/// Type constructor for [`ProjectionElem::Wrap`] to wrap a place with.
+/// Currently, only `MaybeDangling` is supported.
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    StableHash,
+    TyEncodable,
+    TyDecodable,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum PlaceWrapperTy {
+    /// `T` → `MaybeDangling<T>`
+    MaybeDangling,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T> {
@@ -1281,6 +1301,10 @@ pub enum ProjectionElem<V, T> {
     ///
     /// [PR]: https://github.com/rust-lang/rust/pull/159103
     PhantomDeref,
+
+    /// Wraps the type of the place with the specified wrapper.
+    /// Borrow-checking considers this projection to be unconditionally immutable.
+    Wrap(PlaceWrapperTy),
 }
 
 /// Alias for projections as they appear in places, where the base is a place

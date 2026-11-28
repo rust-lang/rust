@@ -2029,7 +2029,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::UnwrapUnsafeBinder(_)
-                | ProjectionElem::PhantomDeref => (),
+                | ProjectionElem::PhantomDeref
+                | ProjectionElem::Wrap(_) => (),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -2280,11 +2281,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 }
 
                 ProjectionElem::PhantomDeref => {
-                    panic!("we don't allow assignments to PhantomDeref, location {location:?}");
+                    bug!("we don't allow assignments to PhantomDeref, location {location:?}");
                 }
 
                 ProjectionElem::Subslice { .. } => {
-                    panic!("we don't allow assignments to subslices, location: {location:?}");
+                    bug!("we don't allow assignments to subslices, location: {location:?}");
+                }
+
+                ProjectionElem::Wrap { .. } => {
+                    bug!("we don't allow assignments to WrapInMaybeDangling, location: {location:?}");
                 }
 
                 ProjectionElem::Field(..) => {
@@ -2722,6 +2727,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             self.is_mutable(place_base, is_local_mutation_allowed)
                         }
                     }
+                    // This projection is never mutable
+                    ProjectionElem::Wrap(_) => Err(place),
                 }
             }
         }

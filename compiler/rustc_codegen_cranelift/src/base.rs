@@ -1001,6 +1001,12 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::UnwrapUnsafeBinder(ty) => {
                 cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
             }
+            PlaceElem::Wrap(kind) => {
+                cplace = cplace.place_transmute_type(
+                    fx,
+                    fx.monomorphize(kind.wrap_type(fx.tcx, cplace.layout().ty)),
+                );
+            }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
