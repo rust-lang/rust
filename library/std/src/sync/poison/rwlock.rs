@@ -1174,6 +1174,7 @@ impl<T: ?Sized> Drop for MappedRwLockWriteGuard<'_, T> {
 impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
         unsafe { self.data.as_ref() }
@@ -1184,6 +1185,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
 impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
         unsafe { &*self.lock.data.get() }
@@ -1192,6 +1194,7 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
         unsafe { &mut *self.lock.data.get() }

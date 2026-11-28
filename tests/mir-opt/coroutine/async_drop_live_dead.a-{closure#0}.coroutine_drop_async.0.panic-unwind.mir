@@ -103,7 +103,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb13: {
         _11 = &mut (((*_23) as variant#4).2: impl std::future::Future<Output = ()>);
-        _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb12, unwind: bb6];
+        _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb12, unwind unreachable];
     }
 
     bb14: {

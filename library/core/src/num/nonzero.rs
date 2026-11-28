@@ -611,6 +611,7 @@ where
     #[stable(feature = "nonzero", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
     #[inline]
+    #[rustc_nounwind]
     pub const fn get(self) -> T {
         // Rustc can set range metadata only if it loads `self` from
         // memory somewhere. If the value of `self` was from by-value argument

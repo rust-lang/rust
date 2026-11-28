@@ -45,12 +45,12 @@
       bb0: {
 -         _3 = move (_1.0: &mut AsyncReference<'_>);
 -         _20 = &mut (*_3);
--         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb22, unwind: bb2];
+-         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb21, unwind unreachable];
 +         _25 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
 +         _24 = std::future::ResumeTy(move _25);
 +         _23 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncReference<'_>>()});
 +         _22 = discriminant((*_23));
-+         switchInt(move _22) -> [0: bb20, 1: bb19, 2: bb18, 3: bb16, 4: bb17, otherwise: bb7];
++         switchInt(move _22) -> [0: bb19, 1: bb18, 2: bb17, 3: bb15, 4: bb16, otherwise: bb6];
       }
   
       bb1: {
@@ -61,58 +61,53 @@
           return;
       }
   
-      bb2 (cleanup): {
--         resume;
-+         goto -> bb15;
-      }
-  
-      bb3: {
+      bb2: {
 -         StorageDead(_4);
 +         nop;
           goto -> bb1;
       }
   
--     bb4: {
+-     bb3: {
 -         StorageDead(_4);
 -         goto -> bb1;
-+     bb4 (cleanup): {
++     bb3 (cleanup): {
 +         nop;
-+         goto -> bb2;
++         goto -> bb14;
       }
   
--     bb5 (cleanup): {
+-     bb4 (cleanup): {
 -         StorageDead(_4);
--         goto -> bb2;
-+     bb5: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb5, unwind: bb4];
+-         resume;
++     bb4: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb4, unwind: bb3];
+      }
+  
+      bb5: {
+-         assert(const false, "`async fn` resumed after async drop") -> [success: bb5, unwind: bb4];
++         _24 = move _5;
++         StorageDead(_5);
++         goto -> bb4;
       }
   
       bb6: {
--         assert(const false, "`async fn` resumed after async drop") -> [success: bb6, unwind: bb5];
-+         _24 = move _5;
-+         StorageDead(_5);
-+         goto -> bb5;
+-         _2 = move _5;
+-         StorageDead(_5);
+-         goto -> bb5;
++         unreachable;
       }
   
       bb7: {
 -         _2 = move _5;
 -         StorageDead(_5);
--         goto -> bb6;
-+         unreachable;
+-         goto -> bb13;
++         _24 = move _12;
++         StorageDead(_12);
++         goto -> bb12;
       }
   
       bb8: {
--         _2 = move _5;
--         StorageDead(_5);
--         goto -> bb14;
-+         _24 = move _12;
-+         StorageDead(_12);
-+         goto -> bb13;
-      }
-  
-      bb9: {
 -         StorageLive(_5);
--         _5 = yield(const ()) -> [resume: bb7, drop: bb8];
+-         _5 = yield(const ()) -> [resume: bb6, drop: bb7];
 +         StorageLive(_12);
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_12);
@@ -120,92 +115,92 @@
 +         return;
       }
   
-      bb10: {
+      bb9: {
 -         unreachable;
 +         _14 = discriminant(_13);
-+         switchInt(move _14) -> [0: bb3, 1: bb9, otherwise: bb7];
++         switchInt(move _14) -> [0: bb2, 1: bb8, otherwise: bb6];
+      }
+  
+      bb10: {
+-         _7 = discriminant(_6);
+-         switchInt(move _7) -> [0: bb3, 1: bb8, otherwise: bb9];
++         _13 = <impl Future<Output = ()> as Future>::poll(move _15, move _16) -> [return: bb9, unwind: bb3];
       }
   
       bb11: {
--         _7 = discriminant(_6);
--         switchInt(move _7) -> [0: bb4, 1: bb9, otherwise: bb10];
-+         _13 = <impl Future<Output = ()> as Future>::poll(move _15, move _16) -> [return: bb10, unwind: bb4];
+-         _6 = <impl Future<Output = ()> as Future>::poll(move _8, move _9) -> [return: bb10, unwind: bb4];
++         _17 = move _24;
++         _16 = copy (_17.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
++         goto -> bb10;
       }
   
       bb12: {
--         _6 = <impl Future<Output = ()> as Future>::poll(move _8, move _9) -> [return: bb11, unwind: bb5];
-+         _17 = move _24;
-+         _16 = copy (_17.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
-+         goto -> bb11;
+-         _10 = move _2;
+-         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb11, unwind: bb4];
++         _18 = &mut (((*_23) as variant#4).0: impl std::future::Future<Output = ()>);
++         _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _18) -> [return: bb11, unwind unreachable];
       }
   
       bb13: {
--         _10 = move _2;
--         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb12, unwind: bb5];
-+         _18 = &mut (((*_23) as variant#4).0: impl std::future::Future<Output = ()>);
-+         _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _18) -> [return: bb12, unwind: bb4];
-      }
-  
-      bb14: {
 -         _11 = &mut _4;
--         _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb13, unwind: bb5];
+-         _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb12, unwind unreachable];
 +         nop;
-+         (((*_23) as variant#4).0: impl std::future::Future<Output = ()>) = <AsyncReference<'_> as AsyncDrop>::drop(move _19) -> [return: bb13, unwind: bb4];
++         (((*_23) as variant#4).0: impl std::future::Future<Output = ()>) = <AsyncReference<'_> as AsyncDrop>::drop(move _19) -> [return: bb12, unwind: bb3];
       }
   
--     bb15: {
+-     bb14: {
 -         _2 = move _12;
 -         StorageDead(_12);
--         goto -> bb21;
-+     bb15 (cleanup): {
+-         goto -> bb20;
++     bb14 (cleanup): {
 +         discriminant((*_23)) = 2;
 +         resume;
       }
   
-      bb16: {
+      bb15: {
 -         _2 = move _12;
 -         StorageDead(_12);
--         goto -> bb14;
+-         goto -> bb13;
 +         StorageLive(_5);
 +         _5 = move _24;
-+         goto -> bb6;
++         goto -> bb5;
+      }
+  
+      bb16: {
+          StorageLive(_12);
+-         _12 = yield(const ()) -> [resume: bb14, drop: bb15];
++         _12 = move _24;
++         goto -> bb7;
       }
   
       bb17: {
-          StorageLive(_12);
--         _12 = yield(const ()) -> [resume: bb15, drop: bb16];
-+         _12 = move _24;
-+         goto -> bb8;
+-         _14 = discriminant(_13);
+-         switchInt(move _14) -> [0: bb2, 1: bb16, otherwise: bb9];
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb17, unwind continue];
       }
   
       bb18: {
--         _14 = discriminant(_13);
--         switchInt(move _14) -> [0: bb3, 1: bb17, otherwise: bb10];
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb18, unwind continue];
-      }
-  
-      bb19: {
--         _13 = <impl Future<Output = ()> as Future>::poll(move _15, move _16) -> [return: bb18, unwind: bb5];
+-         _13 = <impl Future<Output = ()> as Future>::poll(move _15, move _16) -> [return: bb17, unwind: bb4];
 +         _0 = Poll::<()>::Ready(const ());
 +         return;
       }
   
-      bb20: {
+      bb19: {
 -         _17 = move _2;
--         _16 = std::future::get_context::<'_, '_>(move _17) -> [return: bb19, unwind: bb5];
+-         _16 = std::future::get_context::<'_, '_>(move _17) -> [return: bb18, unwind: bb4];
+-     }
+- 
+-     bb20: {
+-         _18 = &mut _4;
+-         _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _18) -> [return: bb19, unwind unreachable];
 -     }
 - 
 -     bb21: {
--         _18 = &mut _4;
--         _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _18) -> [return: bb20, unwind: bb5];
--     }
-- 
--     bb22: {
 -         StorageLive(_4);
--         _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _19) -> [return: bb21, unwind: bb5];
+-         _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _19) -> [return: bb20, unwind: bb4];
 +         _3 = move ((*_23).0: &mut AsyncReference<'_>);
 +         _20 = &mut (*_3);
-+         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb14, unwind: bb2];
++         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb13, unwind unreachable];
       }
   }
   

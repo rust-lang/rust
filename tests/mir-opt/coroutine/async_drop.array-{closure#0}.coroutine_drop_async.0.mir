@@ -104,7 +104,7 @@ fn array::{closure#0}(_1: Pin<&mut {async fn body of array()}>, _2: &mut Context
 
     bb13: {
         _13 = &mut (((*_25) as variant#4).2: impl std::future::Future<Output = ()>);
-        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb12, unwind: bb6];
+        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb12, unwind unreachable];
     }
 
     bb14: {

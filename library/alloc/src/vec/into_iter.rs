@@ -266,6 +266,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
+    #[rustc_nounwind]
     fn next(&mut self) -> Option<T> {
         let ptr = if T::IS_ZST {
             if self.ptr.as_ptr() == self.end as *mut T {

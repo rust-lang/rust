@@ -731,6 +731,7 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         unsafe { &*self.lock.data.get() }
     }
@@ -738,6 +739,7 @@ impl<T: ?Sized> Deref for MutexGuard<'_, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.lock.data.get() }
     }

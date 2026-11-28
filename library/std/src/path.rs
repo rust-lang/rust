@@ -2088,6 +2088,7 @@ impl fmt::Debug for PathBuf {
 impl ops::Deref for PathBuf {
     type Target = Path;
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &Path {
         Path::new(&self.inner)
     }
@@ -3299,6 +3300,7 @@ impl Path {
     #[must_use = "this does not display the path, \
                   it returns an object that can be displayed"]
     #[inline]
+    #[rustc_nounwind]
     pub fn display(&self) -> Display<'_> {
         Display { inner: self.inner.display() }
     }

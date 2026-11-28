@@ -1630,6 +1630,7 @@ const impl<T: ?Sized> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         // SAFETY: the value is accessible as long as we hold our borrow.
         unsafe { self.value.as_ref() }
@@ -2114,6 +2115,7 @@ const impl<T: ?Sized> Deref for RefMut<'_, T> {
     type Target = T;
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         // SAFETY: the value is accessible as long as we hold our borrow.
         unsafe { self.value.as_ref() }
@@ -2124,6 +2126,7 @@ const impl<T: ?Sized> Deref for RefMut<'_, T> {
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     #[inline]
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the value is accessible as long as we hold our borrow.
         unsafe { self.value.as_mut() }

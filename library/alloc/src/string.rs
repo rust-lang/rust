@@ -447,6 +447,7 @@ impl String {
     #[rustc_diagnostic_item = "string_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
+    #[rustc_nounwind]
     pub const fn new() -> String {
         String { vec: Vec::new() }
     }
@@ -2943,6 +2944,7 @@ impl ops::Deref for String {
     type Target = str;
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &str {
         self.as_str()
     }
@@ -2954,6 +2956,7 @@ unsafe impl ops::DerefPure for String {}
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut str {
         self.as_mut_str()
     }

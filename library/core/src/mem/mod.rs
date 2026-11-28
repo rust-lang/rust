@@ -188,6 +188,7 @@ pub mod type_info;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "mem_forget"]
 #[rustc_no_writable]
+#[rustc_nounwind]
 pub const fn forget<T>(t: T) {
     let _ = ManuallyDrop::new(t);
 }
