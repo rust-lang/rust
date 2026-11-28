@@ -379,35 +379,23 @@ impl IntRange {
             .filter_map(|r| self.intersection(&r))
             .flat_map(|r| [(r.lo, 1), (r.hi, -1)])
             .collect();
-        // We sort by boundary, and for each boundary we sort the "closing parentheses" first. The
-        // order of +1/-1 for a same boundary value is actually irrelevant, because we only look at
-        // the accumulated count between distinct boundary values.
-        boundaries.sort_unstable();
+        // We sort by boundary. The order of +1/-1 for a same boundary value is irrelevant, because
+        // we only look at the accumulated count between distinct boundary values.
+        boundaries.sort_unstable_by_key(|(bdy, _)| *bdy);
+        // End with the end of the range. The count is ignored.
+        boundaries.push((self.hi, 0));
 
-        // Accumulate parenthesis counts.
-        let mut paren_counter = 0isize;
         // Gather pairs of adjacent boundaries.
         let mut prev_bdy = self.lo;
-        boundaries
-            .into_iter()
-            // End with the end of the range. The count is ignored.
-            .chain(once((self.hi, 0)))
-            // List pairs of adjacent boundaries and the count between them.
-            .map(move |(bdy, delta)| {
-                // `delta` affects the count as we cross `bdy`, so the relevant count between
-                // `prev_bdy` and `bdy` is untouched by `delta`.
-                let ret = (prev_bdy, paren_counter, bdy);
-                prev_bdy = bdy;
-                paren_counter += delta;
-                ret
-            })
+        // Accumulate parenthesis counts between two boundaries.
+        let mut paren_counter = 0isize;
+        let mut splitted: Vec<(Presence, IntRange)> = Vec::new();
+        for (bdy, delta) in boundaries {
             // Skip empty ranges.
-            .filter(|&(prev_bdy, _, bdy)| prev_bdy != bdy)
-            // Convert back to ranges.
-            .map(move |(prev_bdy, paren_count, bdy)| {
+            if prev_bdy != bdy {
                 use Presence::*;
                 let splitted_range = IntRange { lo: prev_bdy, hi: bdy };
-                let presence = if paren_count > 0 {
+                let presence = if paren_counter > 0 {
                     let covered_rows = column_ranges
                         .clone()
                         .filter(|(_, seen_range)| splitted_range.is_subrange(seen_range))
@@ -417,8 +405,14 @@ impl IntRange {
                 } else {
                     Unseen
                 };
-                (presence, splitted_range)
-            })
+                splitted.push((presence, splitted_range));
+            }
+            prev_bdy = bdy;
+            // `delta` affects the count as we cross `bdy`, so the relevant count between
+            // `prev_bdy` and `bdy` is untouched by `delta`.
+            paren_counter += delta;
+        }
+        splitted.into_iter()
     }
 }
 
