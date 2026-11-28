@@ -16,6 +16,7 @@ use rustc_ast::{
 };
 use rustc_attr_ir::RustcAutodiff;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::hygiene::Transparency;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::trace;
@@ -555,7 +556,16 @@ fn gen_turbofish_expr(
         })
         .collect::<Vec<_>>();
 
-    let idents = if is_impl { &[Ident::new(kw::SelfUpper, span), ident][..] } else { &[ident] };
+    let idents = if is_impl {
+        &[Ident::new(kw::SelfUpper, span), ident][..]
+    } else {
+        // A parameter of the generated function can have the same name, as in
+        // `#[autodiff_reverse(x, Active, Active)] fn f(x: f64)`. Like an identifier from a
+        // `macro_rules` body, the marked path does not see the parameters, but it still finds
+        // the function.
+        let expn_id = ecx.current_expansion.id.to_expn_id();
+        &[Ident::new(ident.name, ident.span.apply_mark(expn_id, Transparency::SemiOpaque))]
+    };
     let path = ecx.path_all(span, idents, generic_args);
 
     ecx.expr_path(path)
