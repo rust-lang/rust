@@ -1836,6 +1836,16 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
     }
 
+    // Fast path for matches that pair up 1:1 with a fieldless enum.
+    // But it may give up and waste effort, so only do it when the match is large.
+    if arms.len() > 16 && is_obviously_one_to_one(tycx, arms, &scrut_ty)? {
+        return Ok(UsefulnessReport {
+            arm_usefulness: arms.iter().map(|&arm| (arm, Usefulness::Useful(Vec::new()))).collect(),
+            non_exhaustiveness_witnesses: Vec::new(),
+            arm_intersections: Vec::new(),
+        });
+    }
+
     let mut cx = UsefulnessCtxt {
         tycx,
         branch_usefulness: FxHashMap::default(),
@@ -1879,4 +1889,50 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         matrix.rows().map(|row| row.intersects_at_least.clone()).collect();
 
     Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses, arm_intersections })
+}
+
+/// Attempts to quickly verify that a match is exhaustive and has no useless arms, by checking
+/// that it has exactly one arm per fieldless variant of the type, in the same order.
+///
+/// If this function returns `Ok(true)`, the match is exhaustive and has no useless arms.
+/// If this function returns `Ok(false)`, more general analysis is required.
+fn is_obviously_one_to_one<Cx: PatCx>(
+    tycx: &Cx,
+    arms: &[MatchArm<'_, Cx>],
+    scrut_ty: &Cx::Ty,
+) -> Result<bool, Cx::Error> {
+    // Before calling ctors_for_ty(), check if the match arms are of an appropriate shape.
+    // We do this in reverse order in order to quickly catch a final wildcard arm, which
+    // is a common way in which matches aren’t in the shape this algorithm accepts.
+    if !arms.iter().rev().all(|MatchArm { pat, has_guard, arm_data: _ }| {
+        !has_guard && matches!(pat.ctor(), Constructor::Variant(_))
+    }) {
+        return Ok(false);
+    }
+
+    // Note: This does more work than necessary (allocating a vector of all variants)
+    // in the case where we give up.
+    // This could be improved by adding a more suitable method to PatCx, that does not allocate
+    // and perhaps gives up earlier on its own.
+    let ctors = tycx.ctors_for_ty(scrut_ty)?;
+
+    if let ConstructorSet::Variants { variants, non_exhaustive: false } = ctors {
+        if variants.len() != arms.len() {
+            // If there are not the same number of arms as variants, our strategy does not apply.
+            return Ok(false);
+        }
+
+        Ok(variants.indices().zip(arms).all(|(ty_variant_idx, arm)| {
+            let MatchArm { pat: arm_pat, has_guard: false, arm_data: _ } = arm else {
+                unreachable!();
+            };
+            let pat_ctor @ &Constructor::Variant(pat_variant_idx) = arm_pat.ctor() else {
+                unreachable!();
+            };
+
+            pat_variant_idx == ty_variant_idx && tycx.ctor_arity(pat_ctor, scrut_ty) == 0
+        }))
+    } else {
+        Ok(false)
+    }
 }
