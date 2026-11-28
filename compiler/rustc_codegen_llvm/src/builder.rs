@@ -7,7 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, CanonAbi, Float, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, Float, Size, WrappingRange};
 use rustc_attr_ir::UnrollAttr;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope};
@@ -1532,6 +1532,34 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
+
+    fn ptrauth_resign(
+        &mut self,
+        value: Value<'ll>,
+        old_key: u32,
+        old_discriminator: u64,
+        new_key: u32,
+        new_discriminator: u64,
+    ) -> Value<'ll> {
+        let ptr_as_int = self.ptrtoint(value, self.type_i64());
+        let resigned_int = self.call_intrinsic(
+            "llvm.ptrauth.resign",
+            &[],
+            &[
+                ptr_as_int,
+                self.const_i32(old_key as i32),
+                self.const_i64(old_discriminator as i64),
+                self.const_i32(new_key as i32),
+                self.const_i64(new_discriminator as i64),
+            ],
+        );
+
+        self.inttoptr(resigned_int, self.val_ty(value))
+    }
+
+    fn ptrauth_strip(&mut self, value: Value<'ll>, key: u32) -> Value<'ll> {
+        self.call_intrinsic("llvm.ptrauth.strip", &[], &[value, self.const_i32(key as i32)])
+    }
 }
 
 impl<'ll> Builder<'_, 'll, '_> {
@@ -2156,11 +2184,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let schema = self.sess().pointer_authentication_functions()?;
 
-        // Pointer authentication support is currently limited to extern "C" calls; filter out other
-        // ABIs.
-        if fn_abi?.conv != CanonAbi::C {
-            return None;
-        }
+        // `ptrauth_discriminator` is only Some for ABIs that support pointer authentication (None
+        // by default) - see `is_ptrauth_signed_abi`.
+        let discriminator = fn_abi?.ptrauth_discriminator?;
         // Filter out LLVM intrinsics.
         if llvm::get_value_name(llfn).starts_with(b"llvm.") {
             return None;
@@ -2175,10 +2201,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
-            &[
-                self.const_u32(schema.key as u32),
-                self.const_u64(schema.constant_discriminator as u64),
-            ],
+            &[self.const_u32(schema.key as u32), self.const_u64(discriminator)],
         ))
     }
 

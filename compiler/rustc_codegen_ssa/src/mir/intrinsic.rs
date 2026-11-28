@@ -1,5 +1,7 @@
-use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_abi::{Align, BackendRepr, FieldIdx, Primitive, WrappingRange};
 use rustc_middle::mir::SourceInfo;
+use rustc_middle::ptrauth::ptrauth_c_encoding;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
@@ -8,7 +10,7 @@ use rustc_target::spec::Arch;
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceValue;
 use super::{FunctionCx, IntrinsicResult};
-use crate::common::{AtomicRmwBinOp, SynchronizationScope};
+use crate::common::{AtomicRmwBinOp, IntPredicate, SynchronizationScope};
 use crate::diagnostics::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
@@ -219,6 +221,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => {}
                 }
                 OperandValue::Immediate(value)
+            }
+            sym::ptrauth_c_cast => {
+                let (src_ty, dst_ty) = (fn_args.type_at(0), fn_args.type_at(1));
+                let src_disc = ptrauth_c_encoding(bx.tcx(), src_ty).discriminator();
+                let dst_disc = ptrauth_c_encoding(bx.tcx(), dst_ty).discriminator();
+                let (Some(src_disc), true) = (src_disc, is_ptr_sized_scalar(bx, args[0].layout))
+                else {
+                    return IntrinsicResult::Err(invalid_monomorphization_int_or_ptr_type(src_ty));
+                };
+                let (Some(dst_disc), true) = (dst_disc, is_ptr_sized_scalar(bx, result_layout))
+                else {
+                    return IntrinsicResult::Err(invalid_monomorphization_int_or_ptr_type(dst_ty));
+                };
+                OperandValue::Immediate(codegen_ptrauth_c_cast(
+                    bx,
+                    args[0],
+                    result_layout,
+                    src_disc,
+                    dst_disc,
+                ))
+            }
+            sym::ptrauth_strip => {
+                let ty = fn_args.type_at(0);
+                if !is_ptr_sized_scalar(bx, args[0].layout) {
+                    return IntrinsicResult::Err(invalid_monomorphization_int_or_ptr_type(ty));
+                }
+                let addr = scalar_to_usize(bx, args[0]);
+                let addr = match bx.sess().pointer_authentication_fn_ptr_key() {
+                    Some(key) => bx.ptrauth_strip(addr, key as u32),
+                    None => addr,
+                };
+                OperandValue::Immediate(addr)
             }
             sym::arith_offset => {
                 let ty = fn_args.type_at(0);
@@ -633,6 +667,95 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         check_value(op_val);
 
         IntrinsicResult::Operand(op_val)
+    }
+}
+
+/// Return true if `layout` is a pointer-sized scalar holding a pointer or an integer (a value that
+/// can hold a code address).
+fn is_ptr_sized_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    layout: TyAndLayout<'tcx>,
+) -> bool {
+    match layout.backend_repr {
+        BackendRepr::Scalar(s) => {
+            matches!(s.primitive(), Primitive::Pointer(_) | Primitive::Int(..))
+                && s.size(bx) == bx.data_layout().pointer_size()
+        }
+        _ => false,
+    }
+}
+
+/// Returns the pointer-sized scalar `op` as a `usize` value.
+fn scalar_to_usize<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    op: OperandRef<'tcx, Bx::Value>,
+) -> Bx::Value {
+    let BackendRepr::Scalar(s) = op.layout.backend_repr else {
+        bug!("expected a scalar, found {:?}", op.layout);
+    };
+    let imm = op.immediate();
+    match s.primitive() {
+        Primitive::Pointer(_) => bx.ptrtoint(imm, bx.type_isize()),
+        _ => imm,
+    }
+}
+
+/// Lowers `ptrauth_c_cast`: reinterprets the pointer-sized scalar `src` as `dst_layout` and, under
+/// function pointer type discrimination, resigning the code address it holds from `src_disc` to
+/// `dst_disc` (if they differ) .
+fn codegen_ptrauth_c_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    src: OperandRef<'tcx, Bx::Value>,
+    dst_layout: TyAndLayout<'tcx>,
+    src_disc: u16,
+    dst_disc: u16,
+) -> Bx::Value {
+    let BackendRepr::Scalar(src_scalar) = src.layout.backend_repr else {
+        bug!("expected a scalar, found {:?}", src.layout);
+    };
+    let BackendRepr::Scalar(dst_scalar) = dst_layout.backend_repr else {
+        bug!("expected a scalar, found {:?}", dst_layout);
+    };
+    let ptr_ty = bx.type_ptr();
+    let imm = src.immediate();
+    let mut ptr = match src_scalar.primitive() {
+        Primitive::Pointer(_) => imm,
+        _ => bx.inttoptr(imm, ptr_ty),
+    };
+
+    if bx.sess().pointer_authentication_fn_ptr_type_discrimination() && src_disc != dst_disc {
+        let key = bx.sess().pointer_authentication_fn_ptr_key().unwrap() as u32;
+        ptr = if src_scalar.valid_range(bx.cx()).contains(0) {
+            let align = bx.tcx().data_layout.pointer_align();
+            let size = bx.tcx().data_layout.pointer_size();
+            let slot = bx.alloca(size, align);
+
+            let null_bb = bx.append_sibling_block("ptrauth.null");
+            let resign_bb = bx.append_sibling_block("ptrauth.resign");
+            let end_bb = bx.append_sibling_block("ptrauth.end");
+
+            let is_null = bx.icmp(IntPredicate::IntEQ, ptr, bx.const_null(ptr_ty));
+            bx.cond_br(is_null, null_bb, resign_bb);
+
+            bx.switch_to_block(null_bb);
+            bx.store(bx.const_null(ptr_ty), slot, align);
+            bx.br(end_bb);
+
+            bx.switch_to_block(resign_bb);
+            let resigned = bx.ptrauth_resign(ptr, key, src_disc.into(), key, dst_disc.into());
+            bx.store(resigned, slot, align);
+            bx.br(end_bb);
+
+            bx.switch_to_block(end_bb);
+            bx.load(ptr_ty, slot, align)
+        } else {
+            bx.ptrauth_resign(ptr, key, src_disc.into(), key, dst_disc.into())
+        };
+    }
+
+    match dst_scalar.primitive() {
+        Primitive::Pointer(_) => ptr,
+        _ => bx.ptrtoint(ptr, bx.type_isize()),
     }
 }
 
