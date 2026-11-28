@@ -180,7 +180,6 @@ use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::GrowableBitSet;
 use smallvec::{SmallVec, smallvec};
 
 use self::Constructor::*;
@@ -485,11 +484,6 @@ impl Slice {
         self.kind.arity()
     }
 
-    /// Whether all values matched by this slice constructor are also matched by `other`.
-    fn is_covered_by(self, other: Self) -> bool {
-        other.kind.covers_length(self.arity())
-    }
-
     // Getters. They are used by rust-analyzer.
     pub fn array_len(self) -> Option<usize> {
         self.array_len
@@ -575,26 +569,27 @@ impl Slice {
     ) -> impl Iterator<Item = (Slice, RowSet)> {
         // Range of lengths below `L`.
         let smaller_lengths;
-        let arity = self.arity();
         let mut max_slice = self.kind;
         let mut max_slice_arity = max_slice.arity();
-        // Tracks the smallest variable-length slice we've seen. Any slice arity above it is
-        // therefore seen in the column.
-        let mut min_var_len = usize::MAX;
-        // Tracks the fixed-length slices we've seen.
-        let mut seen_fixed_lens = GrowableBitSet::new_empty();
+        // We start at 1 in case the subtype is empty because in that case the zero-length
+        // slice must be treated separately from the rest.
+        max_slice_arity = cmp::max(max_slice_arity, 1);
+
+        // Track the set of rows that cover `max_slice`.
+        let mut covers_max_slice = RowSet::default();
+        // Track the set of rows that cover each fixed length.
+        // Invariant: `covered_fixed_lens.len() == max_slice_arity`
+        let mut covered_fixed_lens: Vec<RowSet> =
+            Vec::from_fn(max_slice_arity, |_| RowSet::default());
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
-                // We start at 1 in case the subtype is empty because in that case the zero-length
-                // slice must be treated separately from the rest.
-                max_slice_arity = cmp::max(max_slice_arity, 1);
-                // We grow `max_slice` to be larger than all slices encountered, as described above.
-                // `L` is `max_slice_arity`. For diagnostics, we keep the prefix and suffix lengths
-                // separate.
-                for (_, slice) in column_slices.clone() {
+                for (i, slice) in column_slices.clone() {
+                    // Grow `max_slice` to be larger than all slices encountered, as described
+                    // above. `L` is `max_slice_arity`. For diagnostics, we keep the prefix and
+                    // suffix lengths separate.
+                    let old_max_slice_arity = max_slice_arity;
                     match slice.kind {
                         FixedLen(len) => {
-                            seen_fixed_lens.insert(len);
                             max_slice_arity = cmp::max(max_slice_arity, len + 1);
                         }
                         VarLen(prefix, suffix) => {
@@ -602,10 +597,24 @@ impl Slice {
                             *max_suffix_len = cmp::max(*max_suffix_len, suffix);
                             max_slice_arity =
                                 cmp::max(max_slice_arity, *max_prefix_len + *max_suffix_len);
-                            min_var_len = cmp::min(min_var_len, prefix + suffix);
+                        }
+                    }
+                    // The rows that cover the old max_slice still cover the new one, as well as all
+                    // the intermediary fixed lengths.
+                    for _ in old_max_slice_arity..max_slice_arity {
+                        covered_fixed_lens.push(covers_max_slice.clone());
+                    }
+                    match slice.kind {
+                        FixedLen(len) => covered_fixed_lens[len].push(i),
+                        VarLen(..) => {
+                            for arity in slice.arity()..max_slice_arity {
+                                covered_fixed_lens[arity].push(i);
+                            }
+                            covers_max_slice.push(i);
                         }
                     }
                 }
+
                 // If the computed `max_slice_arity` isn't the real arity of `max_slice`, make it so.
                 if let Some(d) = max_slice_arity.checked_sub(*max_prefix_len + *max_suffix_len) {
                     *max_prefix_len += d
@@ -613,7 +622,11 @@ impl Slice {
 
                 // We cap the arity of `max_slice` at the array size.
                 match self.array_len {
-                    Some(len) if max_slice.arity() >= len => max_slice = FixedLen(len),
+                    Some(len) if max_slice.arity() >= len => {
+                        max_slice = FixedLen(len);
+                        covers_max_slice =
+                            covered_fixed_lens.get(len).cloned().unwrap_or(covers_max_slice);
+                    }
                     _ => {}
                 }
 
@@ -630,37 +643,20 @@ impl Slice {
                 };
             }
             FixedLen(_) => {
-                // No need to split here. We only track presence.
-                for (_, slice) in column_slices.clone() {
-                    match slice.kind {
-                        FixedLen(len) => {
-                            if len == arity {
-                                seen_fixed_lens.insert(len);
-                            }
-                        }
-                        VarLen(prefix, suffix) => {
-                            min_var_len = cmp::min(min_var_len, prefix + suffix);
-                        }
+                // No need to split here. We only track coverage.
+                for (i, slice) in column_slices.clone() {
+                    if slice.kind.covers_length(max_slice.arity()) {
+                        covers_max_slice.push(i);
                     }
                 }
                 smaller_lengths = 0..0;
             }
         };
 
-        smaller_lengths.map(FixedLen).chain(once(max_slice)).map(move |kind| {
-            let arity = kind.arity();
-            let splitted_slice = Slice::new(self.array_len, kind);
-            let covered_rows = if min_var_len <= arity || seen_fixed_lens.contains(arity) {
-                column_slices
-                    .clone()
-                    .filter(|(_, seen_slice)| splitted_slice.is_covered_by(*seen_slice))
-                    .map(|(i, _)| i)
-                    .collect()
-            } else {
-                smallvec![]
-            };
-            (splitted_slice, covered_rows)
-        })
+        smaller_lengths
+            .map(move |arity| (FixedLen(arity), covered_fixed_lens[arity].clone()))
+            .chain(once((max_slice, covers_max_slice)))
+            .map(move |(kind, covered_rows)| (Slice::new(self.array_len, kind), covered_rows))
     }
 }
 
