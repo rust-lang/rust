@@ -27,8 +27,7 @@ mod derive_errors;
 // simple and sub-optimal in terms of how it moves elements, but it can be inlined.
 // `Vec::retain_mut` is more sophisticated and minimizes element moves, but also contains more code
 // and doesn't get inlined in `try_evaluate_obligations`, giving worse performance overall.
-type PendingObligations<'tcx> =
-    ThinVec<(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)>;
+type PendingObligations<'tcx> = ThinVec<(PredicateObligation<'tcx>, Option<GoalStalledOn>)>;
 
 /// A trait engine using the new trait solver.
 ///
@@ -61,7 +60,7 @@ impl<'tcx> ObligationStorage<'tcx> {
     fn register(
         &mut self,
         obligation: PredicateObligation<'tcx>,
-        stalled_on: Option<GoalStalledOn<TyCtxt<'tcx>>>,
+        stalled_on: Option<GoalStalledOn>,
     ) {
         self.pending.push((obligation, stalled_on));
     }
@@ -76,14 +75,14 @@ impl<'tcx> ObligationStorage<'tcx> {
 
     fn clone_pending_filtered<F>(&self, f: F) -> PredicateObligations<'tcx>
     where
-        F: FnMut(&&(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)) -> bool,
+        F: FnMut(&&(PredicateObligation<'tcx>, Option<GoalStalledOn>)) -> bool,
     {
         self.pending.iter().filter(f).map(|(o, _)| o.clone()).collect()
     }
 
     fn drain_pending(
         &mut self,
-        cond: impl Fn(&PredicateObligation<'tcx>, &Option<GoalStalledOn<TyCtxt<'tcx>>>) -> bool,
+        cond: impl Fn(&PredicateObligation<'tcx>, &Option<GoalStalledOn>) -> bool,
     ) -> PendingObligations<'tcx> {
         let (unstalled, pending) =
             mem::take(&mut self.pending).into_iter().partition(|(o, s)| cond(o, s));
@@ -409,6 +408,6 @@ mod size_asserts {
     // `memcpy` for moving elements of `PendingObligations`. Then #160479 greatly reduced the
     // number of `memcpy` operations in `try_evaluate_obligations`. So the size of this pair is
     // much less important than it was, but still shouldn't be changed without some thought.
-    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 104);
+    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn>), 88);
     // tidy-alphabetical-end
 }

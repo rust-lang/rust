@@ -46,7 +46,7 @@ where
         cx: I,
         kind: PathKind,
         input: I::CanonicalInput,
-    ) -> (QueryResult<I>, AccessedOpaques<I>) {
+    ) -> (QueryResult<I>, AccessedOpaques) {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
             PathKind::Unknown | PathKind::ForcedAmbiguity => {
@@ -71,7 +71,7 @@ where
     }
 
     fn is_initial_provisional_result(
-        result: (QueryResult<I>, AccessedOpaques<I>),
+        result: (QueryResult<I>, AccessedOpaques),
     ) -> Option<PathKind> {
         match result.0 {
             Ok(response) => {
@@ -89,10 +89,7 @@ where
         }
     }
 
-    fn stack_overflow_result(
-        cx: I,
-        input: I::CanonicalInput,
-    ) -> (QueryResult<I>, AccessedOpaques<I>) {
+    fn stack_overflow_result(cx: I, input: I::CanonicalInput) -> (QueryResult<I>, AccessedOpaques) {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 
@@ -100,11 +97,11 @@ where
     fn fixpoint_overflow_result(
         cx: I,
         input: I::CanonicalInput,
-    ) -> (QueryResult<I>, AccessedOpaques<I>) {
+    ) -> (QueryResult<I>, AccessedOpaques) {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
 
-    fn is_ambiguous_result(result: (QueryResult<I>, AccessedOpaques<I>)) -> Option<Certainty> {
+    fn is_ambiguous_result(result: (QueryResult<I>, AccessedOpaques)) -> Option<Certainty> {
         result.0.ok().and_then(|response| {
             if has_no_inference_or_external_constraints(response)
                 && matches!(response.value.certainty, Certainty::Maybe { .. })
@@ -121,7 +118,7 @@ where
         cx: I,
         input: I::CanonicalInput,
         inspect: &mut Self::ProofTreeBuilder,
-    ) -> (QueryResult<I>, AccessedOpaques<I>) {
+    ) -> (QueryResult<I>, AccessedOpaques) {
         EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
             // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
             let result = ecx.compute_goal(goal).map_err_to_rerun()?;
@@ -136,7 +133,7 @@ fn response_no_constraints<I: Interner>(
     cx: I,
     input: I::CanonicalInput,
     certainty: Certainty,
-) -> (QueryResult<I>, AccessedOpaques<I>) {
+) -> (QueryResult<I>, AccessedOpaques) {
     (
         Ok(response_no_constraints_raw(
             cx,

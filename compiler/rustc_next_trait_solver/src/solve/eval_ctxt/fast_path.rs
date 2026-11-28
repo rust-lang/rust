@@ -29,7 +29,7 @@ pub(super) enum RerunStalled {
 #[inline(never)]
 pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
-    stalled_on: Option<&GoalStalledOn<I>>,
+    stalled_on: Option<&GoalStalledOn>,
 ) -> RerunStalled
 where
     D: SolverDelegate<Interner = I>,
@@ -42,7 +42,7 @@ where
 #[inline(always)]
 pub(super) fn inlined_rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
-    stalled_on: Option<&GoalStalledOn<I>>,
+    stalled_on: Option<&GoalStalledOn>,
 ) -> RerunStalled
 where
     D: SolverDelegate<Interner = I>,

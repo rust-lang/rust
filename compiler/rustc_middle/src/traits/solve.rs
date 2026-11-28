@@ -15,11 +15,6 @@ pub type CandidateSource<'tcx> = ir::solve::CandidateSource<TyCtxt<'tcx>>;
 pub type CanonicalResponse<'tcx> = ir::solve::CanonicalResponse<TyCtxt<'tcx>>;
 pub type FetchEligibleAssocItemResponse<'tcx> =
     ir::solve::FetchEligibleAssocItemResponse<TyCtxt<'tcx>>;
-pub type ComputeGoalFastPathOutcome<'tcx> = ir::solve::ComputeGoalFastPathOutcome<TyCtxt<'tcx>>;
-pub type GoalStalledOn<'tcx> = ir::solve::GoalStalledOn<TyCtxt<'tcx>>;
-pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tcx>>;
-pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
-
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
 
 // Interning CanonicalInput drastically reduces max memory usage when compiling a crate that has
@@ -121,6 +116,6 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(GoalStalledOn<'_>, 56);
+    static_assert_size!(GoalStalledOn, 40);
     // tidy-alphabetical-end
 }
