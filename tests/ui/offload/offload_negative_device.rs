@@ -1,4 +1,4 @@
-//@ compile-flags: -Zunstable-options -Zoffload=Test -Clto=fat --emit=llvm-ir -Zdeduplicate-diagnostics=yes
+//@ compile-flags: -Zunstable-options -Zoffload=Host -Clto=fat --emit=llvm-ir -Zdeduplicate-diagnostics=yes
 //@ no-prefer-dynamic
 //@ needs-offload
 

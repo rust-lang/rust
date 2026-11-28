@@ -242,19 +242,23 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
+    /// The device step in the offload pipeline, enables kernel compilation for a gpu device
     /// Reads a manifest of required generic kernel instantiations
-    /// produced by a previous `HostMetadata` pass. An empty manifest
+    /// produced by a previous `Host` or `HostMetadata` pass. An empty manifest
     /// means there are no generic kernels at all, or that generic kernels are only
     /// called from non-generic device entry points and never from the host, so we
     /// don't need to track their instantiations.
     Device(String),
-    /// Third step in the offload pipeline, generates the host code to call kernels.
-    Host(String),
-    /// Test is similar to Host, but allows testing without a device artifact.
-    Test,
-    /// First step in the offload pipeline: compile for the host but only emit a manifest of
-    /// kernel instantiations required by the host code.
+    /// The host step in the offload pipeline. Generates the host code to call kernels
+    /// and outputs the offload manifest to the `--out-dir`.
+    Host,
+    /// The device image must be provided for any host step that also performs linking.
+    /// It is passed as `-Zoffload=DeviceImage=<Absolute-Path>` and will embed
+    /// the device image in the artifact.
+    DeviceImage(String),
+    /// Runs the host step, but stops after writing the offload manifest. This is useful for
+    /// calls that need to pass the `DeviceImage` since the offload manifest is a prerequisite of
+    /// the device image. The offload manifest is written at the named path instead of `--out-dir`.
     HostMetadata(String),
 }
 

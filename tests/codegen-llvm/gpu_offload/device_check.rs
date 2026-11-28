@@ -1,4 +1,4 @@
-//@ compile-flags: -Zoffload=Test -Zunstable-options -C opt-level=0 -Clto=fat
+//@ compile-flags: -Zoffload=Host -Zunstable-options -C opt-level=0 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-offload
 

@@ -1,6 +1,4 @@
-error: using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.ptx or <crate>.elf>
+error: using the offload feature requires -Z offload=<Device or Host>
 
-error: using the offload feature requires -C lto=fat
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
