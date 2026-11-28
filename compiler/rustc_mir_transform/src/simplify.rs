@@ -38,9 +38,11 @@ use itertools::Itertools as _;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
@@ -465,7 +467,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
         // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the
         // `Local`s.
-        let map = make_local_map(&mut body.local_decls, &used_locals);
+        let map = make_local_map(&mut body.local_decls, |l| used_locals.is_used(l));
 
         // Only bother running the `LocalUpdater` if we actually found locals to remove.
         if map.iter().any(Option::is_none) {
@@ -475,6 +477,184 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
             body.local_decls.shrink_to_fit();
         }
+    }
+}
+
+/// Removes unreferenced `LocalDecl`s left behind by `PromoteTemps` and `SimplifyCfg`.
+pub(super) struct RemoveUnreferencedLocals;
+
+impl<'tcx> crate::MirPass<'tcx> for RemoveUnreferencedLocals {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let num_temps = body.local_decls.len() - (body.arg_count + 1);
+        if num_temps == 0 {
+            return;
+        }
+
+        let mut keep = DenseBitSet::new_empty(body.local_decls.len());
+        if find_referenced_locals(body, &mut keep) {
+            return;
+        }
+
+        preserve_borrowck_checked_locals(tcx, body, &mut keep);
+        if keep.count() == num_temps {
+            return;
+        }
+
+        preserve_local_info_targets(body, &mut keep);
+        if keep.count() == num_temps {
+            return;
+        }
+
+        compact_locals(tcx, body, &keep);
+    }
+}
+
+fn find_referenced_locals(body: &Body<'_>, keep: &mut DenseBitSet<Local>) -> bool {
+    struct ReferencedLocals<'a> {
+        first_temp: usize,
+        keep: &'a mut DenseBitSet<Local>,
+        remaining: usize,
+    }
+    impl<'tcx> Visitor<'tcx> for ReferencedLocals<'_> {
+        fn visit_local(&mut self, local: Local, _context: PlaceContext, _location: Location) {
+            if local.index() >= self.first_temp && self.keep.insert(local) {
+                self.remaining -= 1;
+            }
+        }
+    }
+
+    let first_temp = body.arg_count + 1;
+    let mut finder =
+        ReferencedLocals { first_temp, keep, remaining: body.local_decls.len() - first_temp };
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
+        finder.visit_basic_block_data(bb, data);
+        if finder.remaining == 0 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Keep unreferenced locals still checked by borrowck (`user_ty` and sizedness).
+fn preserve_borrowck_checked_locals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    keep: &mut DenseBitSet<Local>,
+) {
+    let check_sized = !tcx.features().unsized_fn_params();
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, body.source.def_id());
+    for (local, decl) in body.local_decls.iter_enumerated().skip(body.arg_count + 1) {
+        if keep.contains(local) {
+            continue;
+        }
+        let must_keep = decl.user_ty.is_some()
+            || (check_sized
+                && !decl.ty.has_trivial_sizedness(tcx, ty::SizedTraitKind::Sized)
+                && !tcx.erase_and_anonymize_regions(decl.ty).is_sized(tcx, typing_env));
+        if must_keep {
+            keep.insert(local);
+        }
+    }
+}
+
+/// Keep locals referenced by the `LocalInfo` of kept locals.
+fn preserve_local_info_targets<'tcx>(body: &mut Body<'tcx>, keep: &mut DenseBitSet<Local>) {
+    let first_temp = body.arg_count + 1;
+    let enqueue = |local: Local,
+                   local_decls: &mut IndexSlice<Local, LocalDecl<'tcx>>,
+                   keep: &DenseBitSet<Local>,
+                   worklist: &mut Vec<Local>| {
+        let is_kept = |l: Local| l.index() < first_temp || keep.contains(l);
+        visit_local_info_targets(&mut local_decls[local].local_info, |target| match target {
+            LocalInfoTarget::Local(arm_local) => {
+                if !is_kept(*arm_local) {
+                    worklist.push(*arm_local);
+                }
+            }
+            LocalInfoTarget::Place(place) => {
+                for l in place.as_ref().accessed_locals() {
+                    if !is_kept(l) {
+                        worklist.push(l);
+                    }
+                }
+            }
+        });
+    };
+
+    let mut worklist = Vec::new();
+    for local in body.local_decls.indices().take(first_temp).chain(keep.iter()) {
+        enqueue(local, &mut body.local_decls, keep, &mut worklist);
+    }
+    while let Some(local) = worklist.pop() {
+        if keep.insert(local) {
+            enqueue(local, &mut body.local_decls, keep, &mut worklist);
+        }
+    }
+}
+
+/// Drop stale debuginfo and compact `local_decls`.
+fn compact_locals<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, keep: &DenseBitSet<Local>) {
+    let first_temp = body.arg_count + 1;
+    let is_kept = |l: Local| l.index() < first_temp || keep.contains(l);
+
+    body.var_debug_info.retain(|debuginfo| match &debuginfo.value {
+        VarDebugInfoContents::Place(place) => place.as_ref().accessed_locals().all(is_kept),
+        VarDebugInfoContents::Const(_) => true,
+    });
+
+    let kept_count = first_temp + keep.count();
+    if keep.last_set_in(..).is_none_or(|last| last.index() + 1 == kept_count) {
+        body.local_decls.truncate(kept_count);
+        body.local_decls.shrink_to_fit();
+        return;
+    }
+
+    let map = make_local_map(&mut body.local_decls, is_kept);
+    let mut updater = LocalUpdater { map, tcx };
+    updater.visit_body_preserves_cfg(body);
+    body.local_decls.shrink_to_fit();
+}
+
+enum LocalInfoTarget<'a, 'tcx> {
+    Local(&'a mut Local),
+    Place(&'a mut Place<'tcx>),
+}
+
+fn visit_local_info_targets<'tcx>(
+    local_info: &mut ClearCrossCrate<Box<LocalInfo<'tcx>>>,
+    mut f: impl FnMut(LocalInfoTarget<'_, 'tcx>),
+) {
+    let ClearCrossCrate::Set(local_info) = local_info else {
+        return;
+    };
+    match &mut **local_info {
+        LocalInfo::User(binding_form) => match binding_form {
+            BindingForm::RefForGuard(arm_local) => f(LocalInfoTarget::Local(arm_local)),
+            BindingForm::Var(VarBindingForm {
+                binding_mode: _,
+                opt_ty_info: _,
+                opt_match_place,
+                pat_span: _,
+                introductions: _,
+            }) => {
+                if let Some((Some(place), _)) = opt_match_place {
+                    f(LocalInfoTarget::Place(place));
+                }
+            }
+            BindingForm::ImplicitSelf(_) => {}
+        },
+        LocalInfo::StaticRef { def_id: _, is_thread_local: _ }
+        | LocalInfo::ConstRef { def_id: _ }
+        | LocalInfo::AggregateTemp
+        | LocalInfo::BlockTailTemp(_)
+        | LocalInfo::IfThenRescopeTemp { if_then: _ }
+        | LocalInfo::DerefTemp
+        | LocalInfo::FakeBorrow
+        | LocalInfo::Boring => {}
     }
 }
 
@@ -493,14 +673,14 @@ pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<V>(
     local_decls: &mut IndexVec<Local, V>,
-    used_locals: &UsedLocals,
+    mut is_used: impl FnMut(Local) -> bool,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
     let mut used = Local::ZERO;
 
     for alive_index in local_decls.indices() {
         // `is_used` treats the `RETURN_PLACE` and arguments as used.
-        if !used_locals.is_used(alive_index) {
+        if !is_used(alive_index) {
             continue;
         }
 
@@ -685,6 +865,18 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
             StmtDebugInfo::InvalidAssign(_) => {}
         }
         self.super_statement_debuginfo(stmt_debuginfo, location);
+    }
+
+    fn visit_local_decl(&mut self, local: Local, local_decl: &mut LocalDecl<'tcx>) {
+        self.super_local_decl(local, local_decl);
+        visit_local_info_targets(&mut local_decl.local_info, |target| match target {
+            LocalInfoTarget::Local(arm_local) => *arm_local = self.map[*arm_local].unwrap(),
+            LocalInfoTarget::Place(place) => self.visit_place(
+                place,
+                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                Location::START,
+            ),
+        });
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {

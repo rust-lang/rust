@@ -21,11 +21,10 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     let mut _18: &mut std::task::Context<'_>;
     let mut _19: std::future::ResumeTy;
     let mut _20: isize;
-    let mut _22: !;
-    let mut _23: std::future::ResumeTy;
-    let mut _24: ();
+    let mut _22: std::future::ResumeTy;
+    let mut _23: ();
+    let mut _24: u32;
     let mut _25: u32;
-    let mut _26: u32;
     scope 1 {
         debug x => (((*_1) as variant#3).0: u32);
         let _4: u32;
@@ -47,14 +46,14 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     }
 
     bb0: {
-        _26 = discriminant((*_1));
+        _25 = discriminant((*_1));
         _0 = const ();
-        switchInt(move _26) -> [0: bb11, 3: bb12, otherwise: bb13];
+        switchInt(move _25) -> [0: bb11, 3: bb12, otherwise: bb13];
     }
 
     bb1: {
-        StorageDead(_24);
         StorageDead(_23);
+        StorageDead(_22);
         drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb2, unwind: bb7];
     }
 
@@ -111,8 +110,8 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     bb12: {
         StorageLive(_5);
         StorageLive(_8);
+        StorageLive(_22);
         StorageLive(_23);
-        StorageLive(_24);
         goto -> bb1;
     }
 

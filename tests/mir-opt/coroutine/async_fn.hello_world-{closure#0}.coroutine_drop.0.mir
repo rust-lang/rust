@@ -27,11 +27,10 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
     let mut _26: &mut std::task::Context<'_>;
     let mut _27: std::future::ResumeTy;
     let mut _28: isize;
-    let mut _30: !;
-    let mut _31: std::future::ResumeTy;
+    let mut _30: std::future::ResumeTy;
+    let mut _31: ();
     let mut _32: ();
-    let mut _33: ();
-    let mut _34: u32;
+    let mut _33: u32;
     scope 1 {
         debug data => (((*_1) as variant#3).0: [u8; 1]);
         let mut _4: &[u8];
@@ -53,14 +52,14 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
     }
 
     bb0: {
-        _34 = discriminant((*_1));
+        _33 = discriminant((*_1));
         _0 = const ();
-        switchInt(move _34) -> [0: bb9, 3: bb10, otherwise: bb11];
+        switchInt(move _33) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
-        StorageDead(_32);
         StorageDead(_31);
+        StorageDead(_30);
         drop((((*_1) as variant#3).3: {async fn body of read_exact()})) -> [return: bb2, unwind: bb6];
     }
 
@@ -123,8 +122,8 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
         StorageLive(_11);
         StorageLive(_14);
         StorageLive(_17);
+        StorageLive(_30);
         StorageLive(_31);
-        StorageLive(_32);
         goto -> bb1;
     }
 

@@ -10,7 +10,6 @@
       let mut _5: DFA;
       let mut _6: DFA;
       let mut _7: DFA;
-      let mut _8: !;
       scope 1 {
           debug state => _1;
       }

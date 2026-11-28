@@ -6,8 +6,7 @@
       let _1: u32;
       let mut _2: E;
       let mut _3: &U;
-      let _4: U;
-      let mut _5: &U;
+      let mut _4: &U;
       scope 1 {
           debug i => _1;
       }
@@ -15,8 +14,8 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _5 = const f::promoted[0];
-          _3 = &(*_5);
+          _4 = const f::promoted[0];
+          _3 = &(*_4);
 -         _2 = copy ((*_3).1: E);
 +         _2 = const Scalar(0x00000000): E;
           StorageLive(_1);

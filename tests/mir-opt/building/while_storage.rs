@@ -21,9 +21,9 @@ fn while_loop(c: bool) {
     // CHECK-NEXT:     switchInt(move _3) -> [0: bb3, otherwise: bb4];
     // CHECK: bb3: {
     // CHECK-NEXT:     StorageDead(_2);
-    // CHECK-NEXT:     StorageLive(_9);
+    // CHECK-NEXT:     StorageLive(_7);
     // CHECK-NEXT:     _0 = const ();
-    // CHECK-NEXT:     StorageDead(_9);
+    // CHECK-NEXT:     StorageDead(_7);
     // CHECK-NEXT:     goto -> bb8;
     // CHECK: bb4: {
     // CHECK-NEXT:     StorageDead(_2);

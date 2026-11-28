@@ -3,43 +3,42 @@
   
   fn fn0() -> bool {
       let mut _0: bool;
-      let mut _1: !;
-      let mut _2: (i32, bool);
-      let _4: ();
-      let mut _6: bool;
+      let mut _1: (i32, bool);
+      let _3: ();
+      let mut _5: bool;
       scope 1 {
-          debug pair => _2;
-          let _3: *mut bool;
+          debug pair => _1;
+          let _2: *mut bool;
           scope 2 {
-              debug ptr => _3;
-              let _5: bool;
+              debug ptr => _2;
+              let _4: bool;
               scope 3 {
-                  debug ret => _5;
+                  debug ret => _4;
               }
           }
       }
   
       bb0: {
+          StorageLive(_1);
+-         _1 = (const 1_i32, const false);
++         _1 = const (1_i32, false);
           StorageLive(_2);
--         _2 = (const 1_i32, const false);
-+         _2 = const (1_i32, false);
+          _2 = &raw mut (_1.1: bool);
+-         _1 = (const 1_i32, const false);
++         _1 = const (1_i32, false);
           StorageLive(_3);
-          _3 = &raw mut (_2.1: bool);
--         _2 = (const 1_i32, const false);
-+         _2 = const (1_i32, false);
-          StorageLive(_4);
-          (*_3) = const true;
-          _4 = const ();
-          StorageDead(_4);
-          StorageLive(_5);
-          StorageLive(_6);
-          _6 = copy (_2.1: bool);
-          _5 = Not(move _6);
-          StorageDead(_6);
-          _0 = copy _5;
-          StorageDead(_5);
+          (*_2) = const true;
+          _3 = const ();
           StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy (_1.1: bool);
+          _4 = Not(move _5);
+          StorageDead(_5);
+          _0 = copy _4;
+          StorageDead(_4);
           StorageDead(_2);
+          StorageDead(_1);
           return;
       }
   }

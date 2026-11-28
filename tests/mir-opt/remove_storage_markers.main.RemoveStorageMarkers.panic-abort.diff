@@ -12,16 +12,15 @@
       let mut _8: &mut std::ops::Range<i32>;
       let mut _9: &mut std::ops::Range<i32>;
       let mut _10: isize;
-      let mut _11: !;
-      let mut _13: i32;
+      let mut _12: i32;
       scope 1 {
           debug sum => _1;
           let mut _4: std::ops::Range<i32>;
           scope 2 {
               debug iter => _4;
-              let _12: i32;
+              let _11: i32;
               scope 3 {
-                  debug i => _12;
+                  debug i => _11;
               }
           }
       }
@@ -63,14 +62,14 @@
       }
   
       bb5: {
+-         StorageLive(_11);
+          _11 = copy ((_7 as Some).0: i32);
 -         StorageLive(_12);
-          _12 = copy ((_7 as Some).0: i32);
--         StorageLive(_13);
-          _13 = copy _12;
-          _1 = Add(copy _1, move _13);
--         StorageDead(_13);
-          _6 = const ();
+          _12 = copy _11;
+          _1 = Add(copy _1, move _12);
 -         StorageDead(_12);
+          _6 = const ();
+-         StorageDead(_11);
 -         StorageDead(_9);
 -         StorageDead(_7);
 -         StorageDead(_6);
