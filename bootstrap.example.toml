@@ -1057,6 +1057,19 @@
 #pgo.cranelift.generate = "/tmp/profiles/foo.profraw"
 
 # =============================================================================
+# Rustc-perf options
+#
+# Configure how rustc-perf, accessible through `./x perf`, behaves
+# =============================================================================
+
+# Use a local checkout of `rustc-perf` at the specified path, rather than the submodule in `rust-lang/rust`
+# perf.rustc-perf-path = "/path/to/local/rustc-perf"
+# The amount of jobs to use to prepare benchmarks.
+# Setting this to higher than 1 makes all preparation happen at the start, rather than just before the benchmark.
+# This causes a few gigabytes of higher peak memory usage.
+# perf.prepare-jobs = 1
+
+# =============================================================================
 # Options for specific targets
 #
 # Each of the following options is scoped to the specific target triple in
