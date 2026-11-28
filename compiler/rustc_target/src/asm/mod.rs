@@ -3,7 +3,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 
 use crate::spec::{Arch, LlvmAbi, RelocModel, Target};
 
@@ -1032,7 +1032,8 @@ pub enum InlineAsmClobberAbi {
     S390x,
     Bpf,
     Msp430,
-    Xtensa,
+    XtensaWindowed,
+    XtensaCall0,
 }
 
 impl InlineAsmClobberAbi {
@@ -1118,7 +1119,11 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::Xtensa => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::Xtensa),
+                "C" | "system" => Ok(if target_features.contains(&sym::windowed) {
+                    InlineAsmClobberAbi::XtensaWindowed
+                } else {
+                    InlineAsmClobberAbi::XtensaCall0
+                }),
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1475,19 +1480,17 @@ impl InlineAsmClobberAbi {
                     r11, r12, r13, r14, r15,
                 }
             },
-            InlineAsmClobberAbi::Xtensa => clobbered_regs! {
+            InlineAsmClobberAbi::XtensaWindowed => clobbered_regs! {
                 Xtensa XtensaInlineAsmReg {
                     // Refs:
                     // - Xtensa ISA Reference Manual, Section 8.1.4 & 8.1.6
                     // - "Except for LITBASE, all non-privileged special registers are
                     //   caller-saved."
 
-                    // Caller-saved general-purpose registers (a2-a11).
-                    // a0 is the return address (reserved by LLVM).
-                    // a1/sp is the stack pointer (reserved by LLVM).
-                    // a12-a15 are callee-saved.
-                    a2, a3, a4, a5, a6, a7,
-                    a8, a9, a10, a11,
+                    // LLVM calls functions with call8. The callee's register window
+                    // starts at the caller's a8, so a call preserves a0-a7 and
+                    // clobbers a8-a15.
+                    a8, a9, a10, a11, a12, a13, a14, a15,
 
                     // All floating-point registers are caller-saved.
                     f0, f1, f2, f3, f4, f5, f6, f7,
@@ -1507,6 +1510,27 @@ impl InlineAsmClobberAbi {
                     m0, m1, m2, m3,
 
                     // Boolean registers - caller-saved (boolean option).
+                    b0, b1, b2, b3, b4, b5, b6, b7,
+                    b8, b9, b10, b11, b12, b13, b14, b15,
+                }
+            },
+            InlineAsmClobberAbi::XtensaCall0 => clobbered_regs! {
+                Xtensa XtensaInlineAsmReg {
+                    // Caller-saved general-purpose registers (a2-a11).
+                    // a0 is the return address (reserved by LLVM).
+                    // a1/sp is the stack pointer (reserved by LLVM).
+                    // a12-a15 are callee-saved.
+                    a2, a3, a4, a5, a6, a7,
+                    a8, a9, a10, a11,
+
+                    // The other registers are the same as for the windowed ABI.
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+                    sar,
+                    scompare1,
+                    lbeg, lend, lcount,
+                    acclo, acchi,
+                    m0, m1, m2, m3,
                     b0, b1, b2, b3, b4, b5, b6, b7,
                     b8, b9, b10, b11, b12, b13, b14, b15,
                 }
