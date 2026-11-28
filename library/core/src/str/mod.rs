@@ -3041,7 +3041,7 @@ impl str {
     #[inline]
     #[unstable(feature = "str_copy_from_str", issue = "159841")]
     #[track_caller]
-    pub fn copy_from_str(&mut self, src: &str) {
+    pub const fn copy_from_str(&mut self, src: &str) {
         // SAFETY: `copy_from_slice` panics unless the lengths are equal, and copying same-length
         // UTF-8 into a `str` keeps it valid UTF-8.
         let me = unsafe { self.as_bytes_mut() };
