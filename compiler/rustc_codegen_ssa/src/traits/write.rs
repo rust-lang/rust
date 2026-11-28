@@ -4,14 +4,14 @@ use std::path::PathBuf;
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
-use rustc_middle::dep_graph::{BorrowedIncrCompSession, WorkProduct};
+use rustc_middle::dep_graph::IncrCompSession;
 use rustc_session::Session;
 
 use crate::back::lto::ThinModule;
 use crate::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
-use crate::{CompiledModule, ModuleCodegen};
+use crate::{CachedModuleCodegen, CompiledModule, ModuleCodegen};
 
 pub trait WriteBackendMethods: Clone + 'static {
     type Module: Send;
@@ -45,13 +45,13 @@ pub trait WriteBackendMethods: Clone + 'static {
     /// can simply be copied over from the incr. comp. cache.
     fn run_thin_lto(
         cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        incr_comp_session: Option<&BorrowedIncrCompSession>,
+        sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<ThinLtoInput<Self>>,
-    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
+    ) -> (Vec<ThinModule<Self>>, Vec<CachedModuleCodegen>);
     fn optimize(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,

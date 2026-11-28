@@ -111,7 +111,7 @@ use rustc_middle::dep_graph::{IncrCompSession, WorkProduct};
 use rustc_session::output::OutputType;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::{Symbol, bug};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::diagnostics;
 
@@ -218,10 +218,11 @@ pub fn in_incr_comp_dir_sess(incr_comp_session: &IncrCompSession, file_name: &st
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(
+pub fn prepare_session_directory(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
+    suffix: &'static str,
 ) -> IncrCompSession {
     assert!(sess.opts.incremental.is_some());
 
@@ -229,8 +230,8 @@ pub(crate) fn prepare_session_directory(
 
     debug!("prepare_session_directory");
 
-    // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
+    // {incr-comp-dir}/{crate-name}-{disambiguator}-{suffix}
+    let crate_dir = crate_path(sess, crate_name, stable_crate_id, suffix);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -247,7 +248,7 @@ pub(crate) fn prepare_session_directory(
 
     // Generate a session directory of the form:
     //
-    // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
+    // {incr-comp-dir}/{crate-name}-{disambiguator}-{prefix}/s-{timestamp}-{random}-{suffix}-working
     let new_session_dir = generate_session_dir_path(&crate_dir);
     debug!("session-dir: {}", new_session_dir.display());
 
@@ -268,7 +269,18 @@ pub(crate) fn prepare_session_directory(
         None
     };
 
-    IncrCompSession::new(old_session_directory, new_session_directory)
+    let incr_comp_session = IncrCompSession::new(old_session_directory, new_session_directory);
+
+    sess.time("incr_comp_garbage_collect_session_directories", || {
+        if let Err(e) = garbage_collect_session_directories(sess, &incr_comp_session) {
+            warn!(
+                "Error while trying to garbage collect incremental compilation \
+                cache directory: {e}",
+            );
+        }
+    });
+
+    incr_comp_session
 }
 
 /// This function finalizes and thus 'publishes' the session directory by
@@ -536,11 +548,16 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(
+    sess: &Session,
+    crate_name: Symbol,
+    stable_crate_id: StableCrateId,
+    suffix: &str,
+) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name =
-        format!("{crate_name}-{}", stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE));
+    let crate_id = stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE);
+    let crate_name = format!("{crate_name}-{crate_id}-{suffix}");
     incr_dir.join(crate_name)
 }
 
@@ -549,7 +566,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 }
 
 /// Runs garbage collection for the current session.
-pub(crate) fn garbage_collect_session_directories(
+fn garbage_collect_session_directories(
     sess: &Session,
     incr_comp_session: &IncrCompSession,
 ) -> io::Result<()> {

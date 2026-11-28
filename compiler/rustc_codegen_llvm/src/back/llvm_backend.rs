@@ -17,12 +17,13 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{
-    CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig, target_features,
+    CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig,
+    target_features,
 };
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
+use rustc_middle::dep_graph::IncrCompSession;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
@@ -119,16 +120,16 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_thin_lto(
         cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        incr_comp_session: Option<&BorrowedIncrCompSession>,
+        sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<ThinLtoInput<Self>>,
-    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
+    ) -> (Vec<ThinModule<Self>>, Vec<CachedModuleCodegen>) {
         back::lto::run_thin(
             cgcx,
-            prof,
+            sess,
             incr_comp_session,
             dcx,
             exported_symbols_for_lto,
@@ -409,14 +410,27 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         incr_comp_session: Option<&mut IncrCompSession>,
-        outputs: &OutputFilenames,
-        crate_info: &CrateInfo,
-    ) -> CompiledModules {
-        let compiled_modules = ongoing_codegen
+    ) -> Box<dyn Any> {
+        ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess, incr_comp_session, crate_info);
+            .join(sess, incr_comp_session)
+    }
 
+    fn perform_lto(
+        &self,
+        ongoing_codegen: Box<dyn Any>,
+        sess: &Session,
+        incr_comp_session: Option<&mut IncrCompSession>,
+        crate_info: &CrateInfo,
+    ) -> CompiledModules {
+        ongoing_codegen
+            .downcast::<rustc_codegen_ssa::back::write::PendingLto<LlvmCodegenBackend>>()
+            .expect("Expected LlvmCodegenBackend's PendingLto, found Box<Any>")
+            .perform_lto(sess, incr_comp_session, crate_info)
+    }
+
+    fn post_codegen_metrics(&self, sess: &Session, outputs: &OutputFilenames) {
         if sess.opts.unstable_opts.llvm_time_trace {
             sess.time("llvm_dump_timing_file", || {
                 let file_name = outputs.with_extension("llvm_timings.json");
@@ -451,8 +465,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 ));
             }
         }
-
-        compiled_modules
     }
 
     fn link(

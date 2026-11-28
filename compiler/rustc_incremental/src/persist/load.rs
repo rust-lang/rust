@@ -10,7 +10,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use super::file_format;
 use super::fs::*;
@@ -75,7 +75,8 @@ fn load_dep_graph(
     }
 }
 
-fn load_work_product_index(
+/// Attempt to load the work product index from disk
+pub fn load_work_product_index(
     sess: &Session,
     incr_comp_session: &IncrCompSession,
 ) -> Result<WorkProductMap, ()> {
@@ -177,24 +178,16 @@ pub fn setup_dep_graph(
     }
 
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    let mut incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
+    let mut incr_comp_session =
+        prepare_session_directory(sess, crate_name, stable_crate_id, "main");
     // Try to load the previous session's dep graph and work products.
     let load_result = load_dep_graph(sess, &incr_comp_session);
-
-    sess.time("incr_comp_garbage_collect_session_directories", || {
-        if let Err(e) = garbage_collect_session_directories(sess, &incr_comp_session) {
-            warn!(
-                "Error while trying to garbage collect incremental compilation \
-                cache directory: {e}",
-            );
-        }
-    });
 
     // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
     maybe_assert_incr_state(sess, load_result.is_ok());
 
     let (prev_graph, prev_work_products) = match load_result {
-        Ok((prev_graph, prev_work_products)) => (prev_graph, prev_work_products),
+        Ok(prev) => prev,
         Err(()) => {
             invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
