@@ -29,7 +29,8 @@ fn detect_mixed_deref_pat_ctors_inner<'p, Cx: PatCx>(
             // The analysis can handle mixing deref patterns with wildcards and opaque patterns.
             Wildcard | Opaque(_) => {}
             DerefPattern(_) => deref_pat = Some(pat),
-            // Nothing else can be compared to deref patterns in `Constructor::is_covered_by`.
+            // Nothing else may be mixed with a deref pattern. `SplitConstructorSet::split` relies
+            // on that.
             _ => normal_pat = Some(pat),
         }
     }

@@ -97,9 +97,7 @@
 //! - `matches!([v0, v1, v2], [p0, .., p1]) := matches!(v0, p0) && matches!(v2, p1)`
 //!
 //! Constructors and relevant operations are defined in the [`crate::constructor`] module. A
-//! representation of patterns that uses constructors is available in [`crate::pat`]. The question
-//! of whether a constructor is matched by another one is answered by
-//! [`Constructor::is_covered_by`].
+//! representation of patterns that uses constructors is available in [`crate::pat`].
 //!
 //! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as wildcards.
 //! Note 2: this only applies to matchable values. For example a value of type `Rc<u64>` can't be
@@ -145,7 +143,8 @@
 //!     && matches!((v_1, .., v_n, w_1, .., w_m), specialize(c, (p_0, p_1, .., p_m)))
 //! ```
 //!
-//! Whether specialization returns something or not is given by [`Constructor::is_covered_by`].
+//! Whether specialization returns something or not used to be implemented separately but is now
+//! part of the logic of [`crate::constructor::ConstructorSet::split`].
 //! Specialization of a pattern is computed in [`DeconstructedPat::specialize`]. Specialization for
 //! a pattern-tuple is computed in [`PatStack::pop_head_constructor`]. Finally, specialization for a
 //! set of pattern-tuples is computed in [`Matrix::specialize_constructor`].
@@ -1065,7 +1064,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
-    /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
+    /// Only call if `ctor` is known to be covered by `self.head().ctor()`.
     fn pop_head_constructor(
         &self,
         cx: &Cx,
@@ -1179,7 +1178,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
-    /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
+    /// Only call if `ctor` is known to be covered by `self.head().ctor()`.
     fn pop_head_constructor(
         &self,
         cx: &Cx,

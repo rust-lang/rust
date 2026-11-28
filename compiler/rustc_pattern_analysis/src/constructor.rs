@@ -488,7 +488,7 @@ impl Slice {
         self.kind.arity()
     }
 
-    /// See `Constructor::is_covered_by`
+    /// Whether all values matched by this slice constructor are also matched by `other`.
     fn is_covered_by(self, other: Self) -> bool {
         other.kind.covers_length(self.arity())
     }
