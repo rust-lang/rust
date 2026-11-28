@@ -57,6 +57,7 @@ error: fn_abi_of(pass_rust_zst) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: None,
        }
   --> $DIR/rust-zst.rs:64:1
    |

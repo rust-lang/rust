@@ -182,7 +182,17 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let BackendRepr::Scalar(scalar) = layout.backend_repr else {
                     bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
-                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let llval = match x {
+                    // A pointer to a function is signed as `get_fn_addr` signs it (see
+                    // `maybe_sign_fn_ptr`), which only needs the session schema.
+                    Scalar::Ptr(..) => bx.scalar_to_backend_with_pac(
+                        x,
+                        scalar,
+                        bx.immediate_backend_type(layout),
+                        bx.sess().pointer_authentication_functions(),
+                    ),
+                    _ => bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout)),
+                };
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
@@ -225,6 +235,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 alloc_range(start, size),
                 /*read_provenance*/ matches!(s.primitive(), abi::Primitive::Pointer(_)),
             ) {
+                // A pointer to a function is signed as `get_fn_addr` signs it (see
+                // `maybe_sign_fn_ptr`), which only needs the session schema.
+                Ok(val) if matches!(s.primitive(), abi::Primitive::Pointer(_)) => bx
+                    .scalar_to_backend_with_pac(
+                        val,
+                        s,
+                        ty,
+                        bx.sess().pointer_authentication_functions(),
+                    ),
                 Ok(val) => bx.scalar_to_backend(val, s, ty),
                 Err(_) => bx.const_poison(ty),
             }
