@@ -1376,6 +1376,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::PhantomDeref => {
                 write!(fmt, "reborrow!(")?;
             }
+            ProjectionElem::Wrap(kind) => match kind {
+                PlaceWrapperTy::MaybeDangling => write!(fmt, "maybe_dangling!(")?,
+            },
         }
     }
 
@@ -1423,6 +1426,9 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             }
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
                 write!(fmt, "; {ty})")?;
+            }
+            ProjectionElem::Wrap(_) => {
+                write!(fmt, ")")?;
             }
         }
     }
