@@ -12,7 +12,7 @@ use rustc_type_ir::search_graph::{
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
+    RerunNonErased, RerunReason, RerunResultExt, TyOrConstInferVar,
 };
 use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
