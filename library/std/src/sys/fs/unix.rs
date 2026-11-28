@@ -2000,7 +2000,8 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         target_os = "netbsd",
         target_os = "dragonfly",
         target_os = "nto",
-        target_os = "qnx"
+        target_os = "qnx",
+        target_os = "nuttx",
     ))]
     {
         res = cvt_r(|| unsafe {
