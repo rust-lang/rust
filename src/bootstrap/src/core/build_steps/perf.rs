@@ -246,6 +246,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg(prepare_rustc());
 
             apply_shared_opts(&mut cmd, opts);
+            apply_config_opts(&mut cmd, builder);
             cmd.args(trailing_args);
             cmd.run(builder);
 
@@ -262,6 +263,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             }
 
             apply_shared_opts(&mut cmd, opts);
+            apply_config_opts(&mut cmd, builder);
             cmd.args(trailing_args);
             cmd.run(builder);
         }
@@ -297,5 +299,11 @@ fn apply_shared_opts(cmd: &mut BootstrapCommand, opts: &SharedOpts) {
     if !opts.frontend_threads.is_empty() {
         cmd.arg("--frontend-threads")
             .arg(opts.frontend_threads.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+    }
+}
+
+fn apply_config_opts(cmd: &mut BootstrapCommand, builder: &Builder<'_>) {
+    if let Some(prepare_jobs) = builder.rustc_perf_prepare_jobs {
+        cmd.arg("--prepare-jobs").arg(prepare_jobs.to_string());
     }
 }
