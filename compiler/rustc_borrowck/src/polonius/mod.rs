@@ -39,13 +39,15 @@ pub(crate) mod legacy;
 mod liveness;
 mod liveness_constraints;
 
+use std::rc::Rc;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_mir_dataflow::points::PointIndex;
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
@@ -141,12 +143,12 @@ impl<'tcx> PoloniusContext<'tcx> {
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
-        location_map: &DenseLocationMap,
         borrow_set: &BorrowSet<'tcx>,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
         // trace throughout localized constraints.
         if borrow_set.len() > 0 {
+            let location_map = &Rc::clone(liveness.location_map());
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).

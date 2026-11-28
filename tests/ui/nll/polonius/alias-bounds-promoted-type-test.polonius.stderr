@@ -1,0 +1,20 @@
+error[E0597]: `*x` does not live long enough
+  --> $DIR/alias-bounds-promoted-type-test.rs:26:22
+   |
+LL | fn test<'p, 'q>(seed: &'p u8, slot: &mut Option<Box<dyn Debug + 'q>>, _implied: &'q &'p ()) {
+   |         -- lifetime `'p` defined here
+LL |     let mut c = || {
+LL |         let mut y = make::<'p, 'p>(seed);
+   |                     -------------------- assignment requires that `*x` is borrowed for `'p`
+LL |         {
+LL |             let x = Box::new(42u8);
+   |                 - binding `x` declared here
+LL |             y = make(&*x);
+   |                      ^^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `*x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

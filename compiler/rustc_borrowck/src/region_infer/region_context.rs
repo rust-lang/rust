@@ -50,10 +50,10 @@ pub struct RegionInferenceContextInner<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: LivenessValues,
+    pub(crate) liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
-    pub(super) constraints: Frozen<OutlivesConstraintSet<'tcx>>,
+    pub(crate) constraints: Frozen<OutlivesConstraintSet<'tcx>>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
@@ -77,7 +77,7 @@ pub struct RegionInferenceContextInner<'tcx> {
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
-    pub(super) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
 }
 
 /// This contains data around region constraints and liveness, up to and after solving.
@@ -99,7 +99,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
     #[instrument(
-        skip(infcx, lowered_constraints, location_map, body, polonius_output),
+        skip(infcx, lowered_constraints, location_map, body, polonius_output, finalize),
         level = "debug"
     )]
     pub(crate) fn solve(
@@ -109,6 +109,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         location_map: Rc<DenseLocationMap>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
+        finalize: impl FnOnce(&mut UnsolvedRegionInferenceContext<'tcx>, Vec<OutlivesConstraint<'tcx>>),
     ) -> (RegionInferenceContext<'tcx>, Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>)
     {
         // 1. We first prepare the data needed for the `UnsolvedRegionInferenceContext` to do the
@@ -201,7 +202,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut propagated_outlives_requirements =
             infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        unsolved_regioncx.check_type_tests(
+        let type_test_loan_edges = unsolved_regioncx.check_type_tests(
             infcx,
             propagated_outlives_requirements.as_mut(),
             &mut errors_buffer,
@@ -229,6 +230,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         debug!(?errors_buffer);
+
+        finalize(&mut unsolved_regioncx, type_test_loan_edges);
 
         let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
         if propagated_outlives_requirements.is_empty() {
@@ -271,8 +274,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 /// This contains data around region constraints and liveness, up to solving.
-struct UnsolvedRegionInferenceContext<'tcx> {
-    inner: RegionInferenceContextInner<'tcx>,
+pub(crate) struct UnsolvedRegionInferenceContext<'tcx> {
+    pub(crate) inner: RegionInferenceContextInner<'tcx>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -902,10 +905,10 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
     /// 'a`. See `TypeTest` for more details.
     fn check_type_tests(
         &self,
-        infcx: &InferCtxt<'tcx>,
+        infcx: &BorrowckInferCtxt<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
-    ) {
+    ) -> Vec<OutlivesConstraint<'tcx>> {
         let tcx = infcx.tcx;
 
         // Sometimes we register equivalent type-tests that would
@@ -913,23 +916,58 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
         let mut failed_type_tests = Vec::new();
+        let mut type_test_loan_edges = Vec::new();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
             let generic_ty = type_test.generic_kind.to_ty(tcx);
-            if self.eval_verify_bound(
+            let holds = self.eval_verify_bound(
                 infcx,
                 generic_ty,
                 type_test.lower_bound,
                 &type_test.verify_bound,
-            ) {
-                continue;
-            }
+            );
 
-            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements
-                && self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements)
-            {
+            let promoted = !holds
+                && propagated_outlives_requirements.as_mut().map_or(
+                    false,
+                    |propagated_outlives_requirements| {
+                        self.try_promote_type_test(
+                            infcx,
+                            type_test,
+                            propagated_outlives_requirements,
+                        )
+                    },
+                );
+
+            // If the type test held, then we re-register any any known outlives
+            // relationships for the regions in the type at the location of the
+            // type test. This is necessary for Polonius Alpha, because the
+            // *location* of the region constraint matters. We could consider
+            // registering these into the existing region constraints; they
+            // *shouldn't* affect any logic outside Polonius because those
+            // analyses shouldn't be location-sensitive. But, for now, just
+            // keeping these separate to pass to Polonius seems reasonable.
+            if holds || promoted {
+                tcx.for_each_free_region(&generic_ty, |region| {
+                    let ty::ReVar(region) = region.kind() else {
+                        return;
+                    };
+                    if region != type_test.lower_bound
+                        && (promoted || self.eval_outlives(region, type_test.lower_bound))
+                    {
+                        type_test_loan_edges.push(OutlivesConstraint {
+                            sup: region,
+                            sub: type_test.lower_bound,
+                            locations: type_test.locations,
+                            span: type_test.span,
+                            category: ConstraintCategory::Boring,
+                            variance_info: ty::VarianceDiagInfo::default(),
+                            from_closure: false,
+                        });
+                    }
+                });
                 continue;
             }
 
@@ -984,6 +1022,8 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
                 errors_buffer.push(RegionErrorKind::TypeTestError { type_test: type_test.clone() });
             }
         }
+
+        type_test_loan_edges
     }
 
     /// Invoked when we have some type-test (e.g., `T: 'X`) that we cannot
@@ -1018,7 +1058,8 @@ impl<'tcx> UnsolvedRegionInferenceContext<'tcx> {
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
         let tcx = infcx.tcx;
-        let TypeTest { generic_kind, lower_bound, span: blame_span, verify_bound: _ } = *type_test;
+        let TypeTest { generic_kind, lower_bound, span: blame_span, locations: _, verify_bound: _ } =
+            *type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
