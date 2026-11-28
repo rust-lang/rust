@@ -3,6 +3,7 @@ use std::debug_assert_matches;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::predicates::Clause;
 use rustc_type_ir::solve::{
     FetchEligibleAssocItemResponse, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
     RerunNonErased, RerunReason, RerunResultExt,
@@ -195,7 +196,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {
             ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
@@ -255,7 +256,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

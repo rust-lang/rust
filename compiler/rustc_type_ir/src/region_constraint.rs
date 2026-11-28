@@ -54,6 +54,7 @@ use smallvec::SmallVec;
 use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
+use crate::predicates::Clause;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::visit::TypeVisitableExt;
 use crate::{
@@ -115,7 +116,7 @@ impl<I: Interner> Assumptions<I> {
     /// exactly the clauses it passed in.
     pub fn new(
         infcx: &impl InferCtxtLike<Interner = I>,
-        clauses: impl IntoIterator<Item = I::Clause>,
+        clauses: impl IntoIterator<Item = Clause<I>>,
         region_outlives: TransitiveRelation<Region<I>>,
         universe: UniverseIndex,
     ) -> Self {

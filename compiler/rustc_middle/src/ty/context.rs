@@ -47,6 +47,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
+use rustc_type_ir::predicates::Predicate as IrPredicate;
 use rustc_type_ir::{
     CollectAndApply, IncludeSizedImplicitBounds, PlaceholderType, TypeFlags, WithCachedTypeInfo,
     elaborate, search_graph,
@@ -237,7 +238,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     /// Interns a predicate. (Use `mk_predicate` instead, where possible.)
     #[inline(never)]
     fn intern_predicate(&self, kind: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
-        Predicate(Interned::new_unchecked(
+        IrPredicate(Interned::new_unchecked(
             self.predicate
                 .intern(kind, |kind| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);
@@ -1977,8 +1978,6 @@ macro_rules! nop_list_lift {
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
 nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
 nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
-nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
-nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
 
@@ -2003,6 +2002,21 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, WithCachedTypeInfo<ConstKind<
         assert!(tcx.interners.const_.contains_pointer_to(&InternedInSet(&*self.0)));
         // SAFETY: we just checked that `self` is interned in this `TyCtxt`, so
         // its pointee is valid for the entire lifetime of the target `TyCtxt`.
+        unsafe { mem::transmute(self) }
+    }
+}
+
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>>
+    for Interned<'a, WithCachedTypeInfo<ty::Binder<'a, ty::PredicateKind<'a>>>>
+{
+    type Lifted = Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, ty::PredicateKind<'tcx>>>>;
+
+    #[track_caller]
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+        assert!(tcx.interners.predicate.contains_pointer_to(&InternedInSet(&*self.0)));
+
+        // SAFETY: we just checked that the predicate is interned in this `TyCtxt`,
+        // so it is valid for the lifetime of the target context.
         unsafe { mem::transmute(self) }
     }
 }

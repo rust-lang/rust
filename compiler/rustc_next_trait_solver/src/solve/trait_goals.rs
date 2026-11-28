@@ -4,6 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::predicates::Clause;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData,
     IsIdentity, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
@@ -142,7 +143,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: Clause<I>,
     ) -> Result<(), NoSolution> {
         if let Some(trait_clause) = assumption.as_trait_clause()
             && trait_clause.polarity() == goal.predicate.polarity
@@ -919,7 +920,13 @@ where
                     }
                     ecx.add_goal(
                         GoalSource::Misc,
-                        goal.with(cx, ty::OutlivesClause(ty_lifetime, lifetime)),
+                        goal.with(
+                            cx,
+                            ty::ClauseKind::RegionOutlives(ty::OutlivesClause(
+                                ty_lifetime,
+                                lifetime,
+                            )),
+                        ),
                     )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
@@ -1088,7 +1095,10 @@ where
             )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesClause(a_ty, b_region)))?;
+            ecx.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a_ty, b_region))),
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1218,7 +1228,11 @@ where
             // Also require that a_ty's lifetime outlives b_ty's lifetime.
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
-                Goal::new(ecx.cx(), param_env, ty::OutlivesClause(a_region, b_region)),
+                Goal::new(
+                    ecx.cx(),
+                    param_env,
+                    ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a_region, b_region)),
+                ),
             )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

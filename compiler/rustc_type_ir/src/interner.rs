@@ -19,6 +19,7 @@ use crate::search_graph::RequiredDepth;
 use crate::solve::{
     AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
+use crate::sty::predicates::{Clause, Predicate as InternedPredicate};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
@@ -247,6 +248,7 @@ pub trait Interner:
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
     type InternedConstKind: Interned<Self, Value = WithCachedTypeInfo<ConstKind<Self>>>;
+    type InternedPredicateKind: Interned<Self, Value = WithCachedTypeInfo<ty::Binder<Self, ty::PredicateKind<Self>>>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -257,9 +259,12 @@ pub trait Interner:
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;
-    type Predicate: Predicate<Self>;
-    type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
+
+    fn intern_predicate(
+        self,
+        predicate: ty::Binder<Self, ty::PredicateKind<Self>>,
+    ) -> InternedPredicate<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
@@ -383,44 +388,44 @@ pub trait Interner:
     fn item_bounds(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn item_self_bounds(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn item_non_self_bounds(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn clauses_of(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn own_clauses_of(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn explicit_super_clauses_of(
         self,
         def_id: Self::TraitId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Clause<Self>, Self::Span)>>;
 
     fn explicit_implied_clauses_of(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Clause<Self>, Self::Span)>>;
 
     /// This is equivalent to computing the super-clauses of the trait for this impl
     /// and filtering them to the outlives clauses. This is purely for performance.
     fn impl_super_outlives(
         self,
         impl_def_id: Self::ImplId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Clause<Self>>>;
 
     fn supertrait_def_ids(self, trait_def_id: Self::TraitId)
     -> impl Iterator<Item = Self::TraitId>;
@@ -609,6 +614,7 @@ declare_lift_into! {
     InherentAssocConstId,
     InherentAssocTyId,
     InternedConstKind,
+    InternedPredicateKind,
     InternedRegionKind,
     OpaqueTyId,
     ParamEnv,

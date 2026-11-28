@@ -13,6 +13,7 @@ use trait_filter::*;
 
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
+use crate::predicates::Clause;
 use crate::{
     Binder, ClauseKind, ClausePolarity, CompressedTraitRefs, Interner, TraitClause, Upcast,
 };
@@ -21,7 +22,7 @@ use crate::{
 pub struct CallerBoundsAccessor<I, Iter, CF>
 where
     I: Interner,
-    Iter: Iterator<Item = I::Clause>,
+    Iter: Iterator<Item = Clause<I>>,
     CF: ClauseFilter,
 {
     clauses: Iter,
@@ -32,7 +33,7 @@ where
 impl<I, Iter> CallerBoundsAccessor<I, Iter, NoClauses>
 where
     I: Interner,
-    Iter: Iterator<Item = I::Clause>,
+    Iter: Iterator<Item = Clause<I>>,
 {
     #[inline]
     pub fn new(clauses: Iter) -> Self {
@@ -46,7 +47,7 @@ mod iterator {
     pub trait CallerBoundsIterator<I, Iter>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
     {
         type Item;
         /// Note: likely less efficient than staying in `CallerBoundsIterator` land.
@@ -55,9 +56,9 @@ mod iterator {
     impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, NonTraitClauses>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
     {
-        type Item = I::Clause;
+        type Item = Clause<I>;
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
@@ -73,7 +74,7 @@ mod iterator {
     impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, AllClauses<I>>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
     {
         type Item = Binder<I, ClauseKind<I>>;
 
@@ -95,9 +96,9 @@ mod iterator {
     impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, AllClausesInterned<I>>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
     {
-        type Item = I::Clause;
+        type Item = Clause<I>;
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
@@ -171,7 +172,7 @@ mod iterator {
     struct CallerBoundsIteratorImpl<I, Iter, CF>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
         CF: ClauseFilter,
     {
         accessor: CallerBoundsAccessor<I, Iter, CF>,
@@ -185,7 +186,7 @@ mod iterator {
         for CallerBoundsIteratorImpl<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
@@ -258,7 +259,7 @@ mod iterator {
         for CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
@@ -314,7 +315,7 @@ mod clause_filter {
     impl<I, Iter> CallerBoundsAccessor<I, Iter, NoClauses>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
     {
         #[inline]
         pub fn non_trait_clauses(self) -> CallerBoundsAccessor<I, Iter, NonTraitClauses> {
@@ -405,7 +406,7 @@ mod polarity_filter {
     impl<I, Iter, P, S, T, F, O> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, T, F, O>>
     where
         I: Interner,
-        Iter: Iterator<Item = I::Clause>,
+        Iter: Iterator<Item = Clause<I>>,
         P: PolarityFilter,
         S: SelfTyFilter<I>,
         T: TraitFilter<I>,
@@ -798,8 +799,8 @@ mod output_as {
 
     pub struct OutputAsInternedClause;
     impl<I: Interner> OutputAs<I> for OutputAsInternedClause {
-        type Output = I::Clause;
-        fn construct_from_trait_clause(tc: Binder<I, TraitClause<I>>, cx: I) -> I::Clause {
+        type Output = Clause<I>;
+        fn construct_from_trait_clause(tc: Binder<I, TraitClause<I>>, cx: I) -> Clause<I> {
             tc.upcast(cx)
         }
     }
