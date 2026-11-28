@@ -472,7 +472,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tikv-jemalloc-sys",
     "tinystr",
     "tinyvec",
-    "tinyvec_macros",
     "tracing",
     "tracing-attributes",
     "tracing-core",

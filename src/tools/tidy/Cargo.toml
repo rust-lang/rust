@@ -6,7 +6,7 @@ autobins = false
 
 [dependencies]
 build_helper = { path = "../../build_helper" }
-cargo_metadata = "0.21"
+cargo_metadata = "0.23"
 regex = "1"
 globset = "0.4.18"
 miropt-test-tools = { path = "../miropt-test-tools" }
