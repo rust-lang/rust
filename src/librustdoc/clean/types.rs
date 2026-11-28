@@ -8,7 +8,6 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast as ast;
-use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
     AttributeKind, ConstStability, DeprecatedSince, Deprecation, DocAttribute, Stability,
     StableSince, find_attr,
@@ -38,8 +37,7 @@ pub(crate) use self::Type::{
     RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
 };
 use crate::clean::cfg::Cfg;
-use crate::clean::clean_middle_path;
-use crate::clean::inline::{self, print_inlined_const};
+use crate::clean::inline::print_inlined_const;
 use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
@@ -1109,13 +1107,9 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
-    pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
-    }
-
-    pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(
-            cx,
+    pub(crate) fn maybe_sized(cx: &DocContext<'_>) -> Self {
+        Self::TraitBound(
+            super::Sizedness::Sized.to_poly_trait_ref(cx),
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
@@ -1123,33 +1117,8 @@ impl GenericBound {
         )
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
-        let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-        let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
-        inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifiers)
-    }
-
     pub(crate) fn is_trait_bound(&self) -> bool {
         matches!(self, Self::TraitBound(..))
-    }
-
-    pub(crate) fn is_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
-        self.is_bounded_by_lang_item(tcx, LangItem::Sized)
-    }
-
-    pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
-        self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
-    }
-
-    fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
-        if let GenericBound::TraitBound(poly_trait_ref, rustc_hir::TraitBoundModifiers::NONE) = self
-            && tcx.is_lang_item(poly_trait_ref.trait_.def_id(), lang_item)
-        {
-            return true;
-        }
-        false
     }
 
     pub(crate) fn get_trait_path(&self) -> Option<Path> {

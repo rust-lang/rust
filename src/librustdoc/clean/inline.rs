@@ -314,26 +314,16 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
         .collect();
 
     let generics = clean_ty_generics(cx, did);
-    let (generics, mut supertrait_bounds) = separate_self_bounds(generics);
+    let (generics, mut bounds) = separate_self_bounds(generics);
+    clean::clean_middle_sizedness_bounds_where(cx, &mut bounds, clean::Sizedness::MetaSized);
 
-    supertrait_bounds.retain(|b| {
-        // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-        // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx.tcx)
-    });
-
-    clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
+    clean::Trait { def_id: did, generics, items: trait_items, bounds }
 }
 
 fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     let generics = clean_ty_generics(cx, did);
     let (generics, mut bounds) = separate_self_bounds(generics);
-
-    bounds.retain(|b| {
-        // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-        // is shown and none of the new sizedness traits leak into documentation.
-        !b.is_meta_sized_bound(cx.tcx)
-    });
+    clean::clean_middle_sizedness_bounds_where(cx, &mut bounds, clean::Sizedness::MetaSized);
 
     clean::TraitAlias { generics, bounds }
 }
