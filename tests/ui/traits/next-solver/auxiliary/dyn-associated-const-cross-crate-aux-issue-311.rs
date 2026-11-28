@@ -1,4 +1,4 @@
-//@ no-prefer-dynamic
+//@ no-prefer-dynamic Use an rlib to avoid shared library loading failures on remote targets.
 
 #![crate_type = "rlib"]
 
