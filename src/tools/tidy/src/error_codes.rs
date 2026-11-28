@@ -33,8 +33,7 @@ const ERROR_TESTS_PATH: &str = "tests/ui/error-codes/";
 const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0717"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
-const IGNORE_UI_TEST_CHECK: &[&str] =
-    &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
+const IGNORE_UI_TEST_CHECK: &[&str] = &["E0461", "E0514", "E0554", "E0717"];
 
 pub fn check(root_path: &Path, search_paths: &[&Path], tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("error_codes");
@@ -247,6 +246,11 @@ fn check_error_codes_tests(
     let tests_path = root_path.join(Path::new(ERROR_TESTS_PATH));
 
     for code in error_codes {
+        if no_longer_emitted.contains(code) {
+            // UI tests *can't* contain error codes that are no longer emitted.
+            continue;
+        }
+
         let test_path = tests_path.join(format!("{code}.stderr"));
 
         if !test_path.exists() && !IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
@@ -274,11 +278,6 @@ fn check_error_codes_tests(
                 continue;
             }
         };
-
-        if no_longer_emitted.contains(code) {
-            // UI tests *can't* contain error codes that are no longer emitted.
-            continue;
-        }
 
         let mut found_code = false;
 
