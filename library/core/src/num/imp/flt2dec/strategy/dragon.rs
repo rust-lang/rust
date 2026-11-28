@@ -327,7 +327,16 @@ pub fn format_exact<'a>(
     // in order to keep the fixed-size bignum, we actually use `mant + floor(plus) >= scale`.
     // we are not actually modifying `scale`, since we can skip the initial multiplication instead.
     // again with the shortest algorithm, `d[0]` can be zero but will be eventually rounded up.
-    if *div_2pow10(&mut scale.clone(), buf.len()).add(&mant) >= scale {
+    //
+    // Avoid the expensive division when floor(plus) is known to be zero.
+    // Let `n = buf.len()` and `b = scale.bit_length()`.
+    // Since `scale < 2^b` and `3.321 < log2(10)`, the condition
+    // `b <= floor(3.321 * n) + 1` implies `scale < 2^b <= 2 * 10^n`.
+    // Therefore, `floor(plus) = floor(scale / (2 * 10^n))` is zero.
+    let floor_plus_is_zero = scale.bit_length() <= 1 + buf.len().saturating_mul(3321) / 1000;
+    if (floor_plus_is_zero && mant >= scale)
+        || (!floor_plus_is_zero && *div_2pow10(&mut scale.clone(), buf.len()).add(&mant) >= scale)
+    {
         // equivalent to scaling `scale` by 10
         k += 1;
     } else {
