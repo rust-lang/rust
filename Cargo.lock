@@ -4653,6 +4653,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "rustc-hash 2.1.1",
  "rustc_abi",
  "rustc_apfloat",

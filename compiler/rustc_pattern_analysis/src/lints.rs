@@ -15,7 +15,7 @@ use crate::rustc::{RevealedTy, RustcPatCtxt, WitnessPat};
 #[instrument(level = "debug", skip(cx), ret)]
 fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     cx: &RustcPatCtxt<'p, 'tcx>,
-    column: &PatternColumn<'p, RustcPatCtxt<'p, 'tcx>>,
+    column: &PatternColumn<'p, '_, RustcPatCtxt<'p, 'tcx>>,
 ) -> Result<Vec<WitnessPat<'p, 'tcx>>, ErrorGuaranteed> {
     let Some(&ty) = column.head_ty() else {
         return Ok(Vec::new());
@@ -62,7 +62,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
 pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
     rcx: &RustcPatCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, RustcPatCtxt<'p, 'tcx>>],
-    pat_column: &PatternColumn<'p, RustcPatCtxt<'p, 'tcx>>,
+    pat_column: &PatternColumn<'p, '_, RustcPatCtxt<'p, 'tcx>>,
     scrut_ty: RevealedTy<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     if !rcx

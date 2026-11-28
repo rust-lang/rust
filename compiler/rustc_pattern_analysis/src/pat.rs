@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use bumpalo::Bump;
 use smallvec::{SmallVec, smallvec};
 
 use self::Constructor::*;
@@ -82,18 +83,20 @@ impl<Cx: PatCx> DeconstructedPat<Cx> {
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(crate) fn specialize<'a>(
+    pub(crate) fn specialize<'a, 'b>(
         &'a self,
         other_ctor: &Constructor<Cx>,
         other_ctor_arity: usize,
-    ) -> SmallVec<[PatOrWild<'a, Cx>; 2]> {
+        arena: &'b Bump,
+    ) -> Vec<PatOrWild<'a, Cx>, &'b Bump> {
         if matches!(other_ctor, PrivateUninhabited) {
             // Skip this column.
-            return smallvec![];
+            return Vec::new_in(arena);
         }
 
         // Start with a slice of wildcards of the appropriate length.
-        let mut fields: SmallVec<[_; 2]> = (0..other_ctor_arity).map(|_| PatOrWild::Wild).collect();
+        let mut fields = Vec::new_in(arena);
+        (0..other_ctor_arity).map(|_| PatOrWild::Wild).collect_into(&mut fields);
         // Fill `fields` with our fields. The arities are known to be compatible.
         match self.ctor {
             // The only non-trivial case: two slices of different arity. `other_ctor` is guaranteed
@@ -213,26 +216,34 @@ impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
     }
 
     /// Recursively expand this (possibly-nested) or-pattern into its alternatives.
-    pub(crate) fn flatten_or_pat(self) -> SmallVec<[Self; 1]> {
+    pub(crate) fn flatten_or_pat(self, arena: &Bump) -> Vec<Self, &Bump> {
+        let mut vec = Vec::new_in(arena);
         match self {
-            PatOrWild::Pat(pat) if pat.is_or_pat() => pat
-                .iter_fields()
-                .flat_map(|ipat| PatOrWild::Pat(&ipat.pat).flatten_or_pat())
-                .collect(),
-            _ => smallvec![self],
+            PatOrWild::Pat(pat) if pat.is_or_pat() => {
+                pat.iter_fields()
+                    .flat_map(|ipat| PatOrWild::Pat(&ipat.pat).flatten_or_pat(arena))
+                    .collect_into(&mut vec);
+            }
+            _ => vec.push(self),
         }
+        vec
     }
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(crate) fn specialize(
+    pub(crate) fn specialize<'arena>(
         &self,
         other_ctor: &Constructor<Cx>,
         ctor_arity: usize,
-    ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
+        arena: &'arena Bump,
+    ) -> Vec<PatOrWild<'p, Cx>, &'arena Bump> {
         match self {
-            PatOrWild::Wild => (0..ctor_arity).map(|_| PatOrWild::Wild).collect(),
-            PatOrWild::Pat(pat) => pat.specialize(other_ctor, ctor_arity),
+            PatOrWild::Wild => {
+                let mut v = Vec::new_in(arena);
+                (0..ctor_arity).map(|_| PatOrWild::Wild).collect_into(&mut v);
+                v
+            }
+            PatOrWild::Pat(pat) => pat.specialize(other_ctor, ctor_arity, arena),
         }
     }
 }

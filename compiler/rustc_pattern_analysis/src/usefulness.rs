@@ -710,6 +710,7 @@
 
 use std::fmt;
 
+use bumpalo::Bump;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
@@ -737,7 +738,7 @@ struct BranchPatUsefulness<'p, Cx: PatCx> {
 
 impl<'p, Cx: PatCx> BranchPatUsefulness<'p, Cx> {
     /// Update `self` with the usefulness information found in `row`.
-    fn update(&mut self, row: &MatrixRow<'p, Cx>, matrix: &Matrix<'p, Cx>) {
+    fn update(&mut self, row: &MatrixRow<'p, '_, Cx>, matrix: &Matrix<'p, '_, Cx>) {
         self.useful |= row.useful;
         // This deserves an explanation: `intersects_at_least` does not contain all intersections
         // because we skip irrelevant values (see the docs for `intersects_at_least` for an
@@ -1015,24 +1016,27 @@ impl<Cx: PatCx> Clone for PlaceInfo<Cx> {
 // The three lifetimes are:
 // - 'p coming from the input
 // - Cx global compilation context
-struct PatStack<'p, Cx: PatCx> {
+struct PatStack<'p, 'arena, Cx: PatCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
+    pats: Vec<PatOrWild<'p, Cx>, &'arena Bump>,
+    arena: &'arena Bump,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
     relevant: bool,
 }
 
-impl<'p, Cx: PatCx> Clone for PatStack<'p, Cx> {
+impl<'p, 'arena, Cx: PatCx> Clone for PatStack<'p, 'arena, Cx> {
     fn clone(&self) -> Self {
-        Self { pats: self.pats.clone(), relevant: self.relevant }
+        Self { pats: self.pats.clone(), relevant: self.relevant, arena: self.arena }
     }
 }
 
-impl<'p, Cx: PatCx> PatStack<'p, Cx> {
-    fn from_pattern(pat: &'p DeconstructedPat<Cx>) -> Self {
-        PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
+impl<'p, 'arena, Cx: PatCx> PatStack<'p, 'arena, Cx> {
+    fn from_pattern(arena: &'arena Bump, pat: &'p DeconstructedPat<Cx>) -> Self {
+        let mut pats = Vec::with_capacity_in(1, arena);
+        pats.push(PatOrWild::Pat(pat));
+        PatStack { arena, pats, relevant: true }
     }
 
     fn len(&self) -> usize {
@@ -1049,7 +1053,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
 
     // Expand the first or-pattern into its subpatterns. Only useful if the pattern is an
     // or-pattern. Panics if `self` is empty.
-    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, 'arena, Cx>> {
         self.head().expand_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -1065,7 +1069,7 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         ctor: &Constructor<Cx>,
         ctor_arity: usize,
         ctor_is_relevant: bool,
-    ) -> Result<PatStack<'p, Cx>, Cx::Error> {
+    ) -> Result<PatStack<'p, 'arena, Cx>, Cx::Error> {
         let head_pat = self.head();
         if head_pat.as_pat().is_some_and(|pat| pat.arity() > ctor_arity) {
             // Arity can be smaller in case of variable-length slices, but mustn't be larger.
@@ -1076,17 +1080,21 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         }
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = head_pat.specialize(ctor, ctor_arity);
+        let mut new_pats = head_pat.specialize(ctor, ctor_arity, self.arena);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
         let ctor_is_relevant =
             !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
-        Ok(PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant })
+        Ok(PatStack {
+            pats: new_pats,
+            relevant: self.relevant && ctor_is_relevant,
+            arena: self.arena,
+        })
     }
 }
 
-impl<'p, Cx: PatCx> fmt::Debug for PatStack<'p, Cx> {
+impl<'p, 'arena, Cx: PatCx> fmt::Debug for PatStack<'p, 'arena, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We pretty-print similarly to the `Debug` impl of `Matrix`.
         write!(f, "+")?;
@@ -1099,9 +1107,9 @@ impl<'p, Cx: PatCx> fmt::Debug for PatStack<'p, Cx> {
 
 /// A row of the matrix.
 #[derive(Clone)]
-struct MatrixRow<'p, Cx: PatCx> {
+struct MatrixRow<'p, 'arena, Cx: PatCx> {
     // The patterns in the row.
-    pats: PatStack<'p, Cx>,
+    pats: PatStack<'p, 'arena, Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
@@ -1133,10 +1141,10 @@ struct MatrixRow<'p, Cx: PatCx> {
     head_is_branch: bool,
 }
 
-impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
-    fn new(arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
+impl<'p, 'arena, Cx: PatCx> MatrixRow<'p, 'arena, Cx> {
+    fn new(arena: &'arena Bump, arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
         MatrixRow {
-            pats: PatStack::from_pattern(arm.pat),
+            pats: PatStack::from_pattern(arena, arm.pat),
             parent_row: arm_id,
             is_under_guard: arm.has_guard,
             useful: false,
@@ -1159,7 +1167,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     }
 
     // Expand the first or-pattern (if any) into its subpatterns. Panics if `self` is empty.
-    fn expand_or_pat(&self, parent_row: usize) -> impl Iterator<Item = MatrixRow<'p, Cx>> {
+    fn expand_or_pat(&self, parent_row: usize) -> impl Iterator<Item = MatrixRow<'p, 'arena, Cx>> {
         let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
@@ -1180,7 +1188,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
         ctor_arity: usize,
         ctor_is_relevant: bool,
         parent_row: usize,
-    ) -> Result<MatrixRow<'p, Cx>, Cx::Error> {
+    ) -> Result<MatrixRow<'p, 'arena, Cx>, Cx::Error> {
         Ok(MatrixRow {
             pats: self.pats.pop_head_constructor(cx, ctor, ctor_arity, ctor_is_relevant)?,
             parent_row,
@@ -1192,7 +1200,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     }
 }
 
-impl<'p, Cx: PatCx> fmt::Debug for MatrixRow<'p, Cx> {
+impl<'p, 'arena, Cx: PatCx> fmt::Debug for MatrixRow<'p, 'arena, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.pats.fmt(f)
     }
@@ -1209,41 +1217,50 @@ impl<'p, Cx: PatCx> fmt::Debug for MatrixRow<'p, Cx> {
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
-struct Matrix<'p, Cx: PatCx> {
+struct Matrix<'p, 'arena, Cx: PatCx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
-    rows: Vec<MatrixRow<'p, Cx>>,
+    rows: Vec<MatrixRow<'p, 'arena, Cx>, &'arena Bump>,
     /// Track info about each place. Each place corresponds to a column in `rows`, and their types
     /// must match.
-    place_info: SmallVec<[PlaceInfo<Cx>; 2]>,
+    place_info: Vec<PlaceInfo<Cx>, &'arena Bump>,
     /// Track whether the virtual wildcard row used to compute exhaustiveness is relevant. See top
     /// of the file for details on relevancy.
     wildcard_row_is_relevant: bool,
+    arena: &'arena Bump,
 }
 
-impl<'p, Cx: PatCx> Matrix<'p, Cx> {
+impl<'p, 'arena, Cx: PatCx> Matrix<'p, 'arena, Cx> {
     /// Pushes a new row to the matrix. Internal method, prefer [`Matrix::new`].
-    fn push(&mut self, mut row: MatrixRow<'p, Cx>) {
+    fn push(&mut self, mut row: MatrixRow<'p, 'arena, Cx>) {
         row.intersects_at_least = DenseBitSet::new_empty(self.rows.len());
         self.rows.push(row);
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new(arms: &[MatchArm<'p, Cx>], scrut_ty: Cx::Ty, scrut_validity: PlaceValidity) -> Self {
+    fn new(
+        arena: &'arena Bump,
+        arms: &[MatchArm<'p, Cx>],
+        scrut_ty: Cx::Ty,
+        scrut_validity: PlaceValidity,
+    ) -> Self {
         let place_info = PlaceInfo {
             ty: scrut_ty,
             private_uninhabited: false,
             validity: scrut_validity,
             is_scrutinee: true,
         };
+        let mut p = Vec::with_capacity_in(1, arena);
+        p.push(place_info);
         let mut matrix = Matrix {
-            rows: Vec::with_capacity(arms.len()),
-            place_info: smallvec![place_info],
+            rows: Vec::with_capacity_in(arms.len(), arena),
+            place_info: p,
             wildcard_row_is_relevant: true,
+            arena,
         };
         for (arm_id, arm) in arms.iter().enumerate() {
-            matrix.push(MatrixRow::new(arm, arm_id));
+            matrix.push(MatrixRow::new(arena, arm, arm_id));
         }
         matrix
     }
@@ -1257,13 +1274,13 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
 
     fn rows(
         &self,
-    ) -> impl Iterator<Item = &MatrixRow<'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &MatrixRow<'p, 'arena, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
     }
     fn rows_mut(
         &mut self,
-    ) -> impl Iterator<Item = &mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &mut MatrixRow<'p, 'arena, Cx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
@@ -1279,13 +1296,14 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         pcx: &PlaceCtxt<'_, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
-    ) -> Result<Matrix<'p, Cx>, Cx::Error> {
+    ) -> Result<Matrix<'p, 'arena, Cx>, Cx::Error> {
         if matches!(ctor, Constructor::Or) {
             // Specializing with `Or` means expanding rows with or-patterns.
             let mut matrix = Matrix {
-                rows: Vec::new(),
+                rows: Vec::new_in(self.arena),
                 place_info: self.place_info.clone(),
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant,
+                arena: self.arena,
             };
             for (i, row) in self.rows().enumerate() {
                 for new_row in row.expand_or_pat(i) {
@@ -1296,12 +1314,15 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         } else {
             let subfield_place_info = self.place_info[0].specialize(pcx.cx, ctor);
             let arity = subfield_place_info.len();
-            let specialized_place_info =
-                subfield_place_info.chain(self.place_info[1..].iter().cloned()).collect();
+            let mut specialized_place_info = Vec::new_in(self.arena);
+            subfield_place_info
+                .chain(self.place_info[1..].iter().cloned())
+                .collect_into(&mut specialized_place_info);
             let mut matrix = Matrix {
-                rows: Vec::new(),
+                rows: Vec::new_in(self.arena),
                 place_info: specialized_place_info,
                 wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
+                arena: self.arena,
             };
             for (i, row) in self.rows().enumerate() {
                 if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
@@ -1344,7 +1365,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
 /// + _     + [_, _, tail @ ..] +
 /// | ✓     | ?                 | // validity
 /// ```
-impl<'p, Cx: PatCx> fmt::Debug for Matrix<'p, Cx> {
+impl<'p, 'arena, Cx: PatCx> fmt::Debug for Matrix<'p, 'arena, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -1598,8 +1619,8 @@ impl<Cx: PatCx> WitnessMatrix<Cx> {
 fn collect_overlapping_range_endpoints<'p, Cx: PatCx>(
     cx: &Cx,
     overlap_range: IntRange,
-    matrix: &Matrix<'p, Cx>,
-    specialized_matrix: &Matrix<'p, Cx>,
+    matrix: &Matrix<'p, '_, Cx>,
+    specialized_matrix: &Matrix<'p, '_, Cx>,
 ) {
     let overlap = overlap_range.lo;
     // Ranges that look like `lo..=overlap`.
@@ -1657,7 +1678,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: PatCx>(
 fn collect_non_contiguous_range_endpoints<'p, Cx: PatCx>(
     cx: &Cx,
     gap_range: &IntRange,
-    matrix: &Matrix<'p, Cx>,
+    matrix: &Matrix<'p, '_, Cx>,
 ) {
     let gap = gap_range.lo;
     // Ranges that look like `lo..gap`.
@@ -1697,7 +1718,7 @@ fn collect_non_contiguous_range_endpoints<'p, Cx: PatCx>(
 #[instrument(level = "debug", skip(mcx), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
     mcx: &mut UsefulnessCtxt<'a, 'p, Cx>,
-    matrix: &mut Matrix<'p, Cx>,
+    matrix: &mut Matrix<'p, '_, Cx>,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
@@ -1824,8 +1845,9 @@ pub struct UsefulnessReport<'p, Cx: PatCx> {
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
 #[instrument(skip(tycx, arms), level = "debug")]
-pub fn compute_match_usefulness<'p, Cx: PatCx>(
+pub fn compute_match_usefulness<'p, 'arena, Cx: PatCx>(
     tycx: &Cx,
+    arena: &'arena Bump,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: PlaceValidity,
@@ -1833,7 +1855,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
     if tycx.match_may_contain_deref_pats() {
-        checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
+        checks::detect_mixed_deref_pat_ctors(tycx, arms, &arena)?;
     }
 
     let mut cx = UsefulnessCtxt {
@@ -1842,7 +1864,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         complexity_limit,
         complexity_level: 0,
     };
-    let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
+    let mut matrix = Matrix::new(arena, arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(&mut cx, &mut matrix)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
