@@ -108,6 +108,8 @@ where
     }
     ch = utf8_acc_cont_byte(ch, w);
 
+    // SAFETY: A multibyte sequence in UTF-8 or WTF-8 encodes at least U+0080.
+    unsafe { crate::hint::assert_unchecked(ch >= 128) };
     Some(ch)
 }
 
