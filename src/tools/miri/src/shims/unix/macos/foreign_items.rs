@@ -206,7 +206,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [thread] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t) -> *_),
                     (link_name, abi, args),
@@ -215,7 +214,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.write_int(ecx.machine.stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [thread] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t) -> usize),
                     (link_name, abi, args),
@@ -429,10 +427,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
+            // Incomplete shims that we "stub out" just to get std to work.
             // These shims are enabled only when the caller is in the standard library.
-            "confstr" => {
-                // FIXME: This does not have a direct test (#3179).
+            "confstr" if ecx.frame_in_std() => {
+                // Used by `temp_dir`. Has a fallback to "/tmp".
                 let [_key, _buf, _buflen] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize) -> usize),
                     (link_name, abi, args),

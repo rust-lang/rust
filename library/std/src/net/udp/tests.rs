@@ -357,7 +357,6 @@ fn ttl() {
 
 #[test]
 #[cfg(any(target_family = "unix", target_os = "windows"))]
-#[cfg(not(skip_unsupported_miri_tests))] // socket flag not supported by Miri
 fn hop_limit() {
     let hlim = 100;
 

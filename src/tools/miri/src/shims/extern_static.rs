@@ -83,7 +83,15 @@ impl<'tcx> MiriMachine<'tcx> {
             Os::Android => {
                 Self::weak_fn_symbols(
                     ecx,
-                    &["signal", "getrandom", "gettid", "futimens", "preadv", "pwritev"],
+                    &[
+                        "signal",
+                        "getrandom",
+                        "gettid",
+                        "futimens",
+                        "utimensat",
+                        "preadv",
+                        "pwritev",
+                    ],
                 )?;
             }
             Os::Windows => {

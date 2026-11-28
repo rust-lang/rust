@@ -7,7 +7,7 @@ mod stack;
 
 use std::cmp;
 use std::fmt::Write;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
@@ -833,8 +833,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
         let Some(size) = size else {
-            static DEDUP: AtomicBool = AtomicBool::new(false);
-            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            static DEDUP: atomic::AtomicBool = atomic::AtomicBool::new(false);
+            if !DEDUP.swap(true, atomic::Ordering::Relaxed) {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
             }
             return interp_ok(place.clone());
