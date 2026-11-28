@@ -1230,9 +1230,11 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
         }
 
         // Wildcards cover all constructors.
-        for (_ctor, covered_rows) in &mut present {
-            covered_rows.extend_from_slice(&wildcard_rows);
-            covered_rows.sort_unstable();
+        if !wildcard_rows.is_empty() {
+            for (_ctor, covered_rows) in &mut present {
+                covered_rows.extend_from_slice(&wildcard_rows);
+                covered_rows.sort_unstable();
+            }
         }
 
         Ok(SplitConstructorSet { present, missing, missing_empty })
