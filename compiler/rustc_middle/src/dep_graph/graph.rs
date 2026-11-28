@@ -176,7 +176,7 @@ impl DepGraph {
         session: &Session,
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
-        encoder: FileEncoder<'static>,
+        encoder: FileEncoder,
     ) -> DepGraph {
         let prev_index_space_len = prev_graph.index_space_len();
 
@@ -1210,7 +1210,7 @@ impl CurrentDepGraph {
     fn new(
         session: &Session,
         prev_index_space_len: usize,
-        encoder: FileEncoder<'static>,
+        encoder: FileEncoder,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();

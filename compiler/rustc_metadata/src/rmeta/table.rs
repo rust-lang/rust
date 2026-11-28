@@ -479,7 +479,7 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<Ie, Id, T> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder) -> LazyTable<Ie, Id, T> {
         let pos = buf.position();
 
         let width = self.width;

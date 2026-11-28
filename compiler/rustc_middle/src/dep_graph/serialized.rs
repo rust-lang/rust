@@ -650,17 +650,13 @@ struct LocalEncoderResult {
 struct EncoderState {
     next_node_index: AtomicU64,
     previous: Arc<SerializedDepGraph>,
-    file: Lock<Option<FileEncoder<'static>>>,
+    file: Lock<Option<FileEncoder>>,
     local: WorkerLocal<RefCell<LocalEncoderState>>,
     stats: Option<Lock<FxHashMap<DepKind, Stat>>>,
 }
 
 impl EncoderState {
-    fn new(
-        encoder: FileEncoder<'static>,
-        record_stats: bool,
-        previous: Arc<SerializedDepGraph>,
-    ) -> Self {
+    fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph>) -> Self {
         Self {
             previous,
             next_node_index: AtomicU64::new(0),
@@ -921,7 +917,7 @@ pub(crate) struct GraphEncoder {
 impl GraphEncoder {
     pub(crate) fn new(
         sess: &Session,
-        encoder: FileEncoder<'static>,
+        encoder: FileEncoder,
         prev_index_space_len: usize,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {

@@ -20,15 +20,15 @@ use rustc_span::{
     bug,
 };
 
-pub(crate) struct OffloadManifestEncoder<'a, 'tcx> {
-    encoder: FileEncoder<'a>,
+pub(crate) struct OffloadManifestEncoder<'tcx> {
+    encoder: FileEncoder,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> OffloadManifestEncoder<'a, 'tcx> {
-    pub(crate) fn new(path: &'a std::path::Path, tcx: TyCtxt<'tcx>) -> std::io::Result<Self> {
+impl<'tcx> OffloadManifestEncoder<'tcx> {
+    pub(crate) fn new(path: &std::path::Path, tcx: TyCtxt<'tcx>) -> std::io::Result<Self> {
         let encoder = FileEncoder::new(path)?;
         Ok(OffloadManifestEncoder {
             encoder,
@@ -43,7 +43,7 @@ impl<'a, 'tcx> OffloadManifestEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Encoder for OffloadManifestEncoder<'a, 'tcx> {
+impl<'tcx> Encoder for OffloadManifestEncoder<'tcx> {
     const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
 
     fn emit_usize(&mut self, v: usize) {
@@ -87,7 +87,7 @@ impl<'a, 'tcx> Encoder for OffloadManifestEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
+impl<'tcx> SpanEncoder for OffloadManifestEncoder<'tcx> {
     fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
         self.tcx.prelocked_def_path_hasher()
     }
@@ -137,7 +137,7 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'a, 'tcx> {
+impl<'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {
