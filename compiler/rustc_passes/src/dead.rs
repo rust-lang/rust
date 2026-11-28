@@ -938,7 +938,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             && let Some(args) = segment.args
         {
             for constraint in args.constraints {
-                if let Some(local_def_id) = self
+                if let Some(def_id) = self
                     .tcx
                     .associated_items(trait_def_id)
                     .find_by_ident_and_kind(
@@ -947,14 +947,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                         AssocTag::Const,
                         trait_def_id,
                     )
-                    .and_then(|item| item.def_id.as_local())
+                    .map(|item| item.def_id)
                 {
-                    self.worklist.push(WorkItem {
-                        id: local_def_id,
-                        propagated: ComesFromAllowExpect::No,
-                        own: ComesFromAllowExpect::No,
-                        propagated_trivial_usage_site: self.trivial_usage_sites.last().copied(),
-                    });
+                    self.check_def_id(def_id);
                 }
             }
         }
