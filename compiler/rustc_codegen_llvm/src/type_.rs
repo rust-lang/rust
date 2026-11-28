@@ -13,7 +13,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;
 use crate::context::{CodegenCx, GenericCx, SCx};
-use crate::llvm::{self, FALSE, TRUE, Type, TypeKind, Value};
+use crate::llvm::{self, FALSE, FunctionSignature, TRUE, Type, TypeKind, Value};
 use crate::type_of::LayoutLlvmExt;
 
 impl<'ll> fmt::Debug for Type<'ll> {
@@ -65,16 +65,16 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMScalableVectorType(ty, count as c_uint) }
     }
 
-    pub(crate) fn add_func(&self, name: &str, ty: Type<'ll>) -> Value<'ll> {
+    pub(crate) fn add_func(&self, name: &str, ty: FunctionSignature<'ll>) -> Value<'ll> {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }
     }
 
-    pub(crate) fn get_return_type(&self, ty: Type<'ll>) -> Type<'ll> {
+    pub(crate) fn get_return_type(&self, ty: FunctionSignature<'ll>) -> Type<'ll> {
         unsafe { llvm::LLVMGetReturnType(ty) }
     }
 
-    pub(crate) fn func_params_types(&self, ty: Type<'ll>) -> Vec<Type<'ll>> {
+    pub(crate) fn func_params_types(&self, ty: FunctionSignature<'ll>) -> Vec<Type<'ll>> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
             let mut args = Vec::with_capacity(n_args);
@@ -84,7 +84,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn func_is_variadic(&self, ty: Type<'ll>) -> bool {
+    pub(crate) fn func_is_variadic(&self, ty: FunctionSignature<'ll>) -> bool {
         unsafe { llvm::LLVMIsFunctionVarArg(ty).is_true() }
     }
 
@@ -150,7 +150,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llmod
     }
 
-    pub(crate) fn type_variadic_func(&self, args: &[Type<'ll>], ret: Type<'ll>) -> Type<'ll> {
+    pub(crate) fn type_variadic_func(
+        &self,
+        args: &[Type<'ll>],
+        ret: Type<'ll>,
+    ) -> FunctionSignature<'ll> {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, TRUE) }
     }
 
@@ -238,7 +242,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
         unsafe { llvm::LLVMX86FP80TypeInContext(self.llcx()) }
     }
 
-    fn type_func(&self, args: &[Type<'ll>], ret: Type<'ll>) -> Type<'ll> {
+    fn type_func(&self, args: &[Type<'ll>], ret: Type<'ll>) -> FunctionSignature<'ll> {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, FALSE) }
     }
 
@@ -313,7 +317,7 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> Type<'ll> {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'ll> {
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> FunctionSignature<'ll> {
         fn_abi.llvm_type(self)
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'ll> {

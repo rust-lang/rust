@@ -35,8 +35,8 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
-    ToLlvmBool, Type, TypeKind, Value,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, FunctionSignature,
+    GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool, Type, TypeKind, Value,
 };
 use crate::type_of::LayoutLlvmExt;
 
@@ -60,14 +60,14 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
 impl<'a, 'll> SBuilder<'a, 'll> {
     pub(crate) fn call(
         &mut self,
-        llty: Type<'ll>,
+        llty: FunctionSignature<'ll>,
         llfn: Value<'ll>,
         args: &[Value<'ll>],
         funclet: Option<&Funclet<'ll>>,
     ) -> Value<'ll> {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llty, llfn, args);
+        let args = self.check_call(llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -461,7 +461,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn invoke(
         &mut self,
-        llty: Type<'ll>,
+        llty: FunctionSignature<'ll>,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Value<'ll>,
@@ -483,7 +483,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         };
         debug!("invoke {:?} with args ({:?})", llfn, args);
-        let args = self.check_call("invoke", llty, llfn, &args);
+        let args = self.check_call(llty, llfn, &args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1433,7 +1433,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn call(
         &mut self,
-        llty: Type<'ll>,
+        llty: FunctionSignature<'ll>,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Value<'ll>,
@@ -1453,7 +1453,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         };
         debug!("call {:?} with args ({:?})", llfn, args);
-        let args = self.check_call("call", llty, llfn, &args);
+        let args = self.check_call(llty, llfn, &args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1495,7 +1495,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn tail_call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,
@@ -1804,16 +1804,10 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 
     pub(crate) fn check_call<'b>(
         &mut self,
-        typ: &str,
-        fn_ty: Type<'ll>,
+        fn_ty: FunctionSignature<'ll>,
         llfn: Value<'ll>,
         args: &'b [Value<'ll>],
     ) -> Cow<'b, [Value<'ll>]> {
-        assert!(
-            self.cx.type_kind(fn_ty) == TypeKind::Function,
-            "builder::{typ} not passed a function, but {fn_ty:?}"
-        );
-
         let param_tys = self.cx.func_params_types(fn_ty);
 
         let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
@@ -1911,7 +1905,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn callbr(
         &mut self,
-        llty: Type<'ll>,
+        llty: FunctionSignature<'ll>,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Value<'ll>,
@@ -1923,7 +1917,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Value<'ll> {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("callbr", llty, llfn, args);
+        let args = self.check_call(llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {

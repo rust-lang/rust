@@ -21,7 +21,8 @@ use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 
 pub(crate) use self::branded::{
-    Attribute, Context, ContextRaw, Module, ModuleRaw, Type, Value, wrap_llcx, wrap_llmod,
+    Attribute, Context, ContextRaw, FunctionSignature, Module, ModuleRaw, Type, Value, wrap_llcx,
+    wrap_llmod,
 };
 use super::RustString;
 use super::debuginfo::{
@@ -917,7 +918,7 @@ unsafe extern "C" {
 
     /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
     pub(crate) fn LLVMGetInlineAsm<'ll>(
-        Ty: Type<'ll>,
+        Ty: FunctionSignature<'ll>,
         AsmString: *const c_uchar, // See "PTR_LEN_STR".
         AsmStringSize: size_t,
         Constraints: *const c_uchar, // See "PTR_LEN_STR".
@@ -957,11 +958,11 @@ unsafe extern "C" {
         ParamTypes: *const Type<'ll>,
         ParamCount: c_uint,
         IsVarArg: Bool,
-    ) -> Type<'ll>;
-    pub(crate) fn LLVMCountParamTypes<'ll>(FunctionTy: Type<'ll>) -> c_uint;
-    pub(crate) fn LLVMGetParamTypes<'ll>(FunctionTy: Type<'ll>, Dest: *mut Type<'ll>);
-    pub(crate) fn LLVMGetReturnType<'ll>(FunctionTy: Type<'ll>) -> Type<'ll>;
-    pub(crate) fn LLVMIsFunctionVarArg<'ll>(FunctionTy: Type<'ll>) -> Bool;
+    ) -> FunctionSignature<'ll>;
+    pub(crate) fn LLVMCountParamTypes<'ll>(FunctionTy: FunctionSignature<'ll>) -> c_uint;
+    pub(crate) fn LLVMGetParamTypes<'ll>(FunctionTy: FunctionSignature<'ll>, Dest: *mut Type<'ll>);
+    pub(crate) fn LLVMGetReturnType<'ll>(FunctionTy: FunctionSignature<'ll>) -> Type<'ll>;
+    pub(crate) fn LLVMIsFunctionVarArg<'ll>(FunctionTy: FunctionSignature<'ll>) -> Bool;
 
     // Operations on struct types
     pub(crate) fn LLVMStructTypeInContext<'ll>(
@@ -1169,14 +1170,14 @@ unsafe extern "C" {
     pub(crate) fn LLVMAddFunction<'ll>(
         Mod: Module<'ll>,
         Name: *const c_char,
-        FunctionTy: Type<'ll>,
+        FunctionTy: FunctionSignature<'ll>,
     ) -> Value<'ll>;
     pub(crate) fn LLVMDeleteFunction<'ll>(Fn: Value<'ll>);
     pub(crate) fn LLVMGetOrInsertFunction<'ll>(
         M: Module<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        FunctionTy: Type<'ll>,
+        FunctionTy: FunctionSignature<'ll>,
     ) -> Value<'ll>;
 
     // Operations about llvm intrinsics
@@ -1746,7 +1747,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMBuildCallWithOperandBundles<'ll>(
         B: &Builder<'ll>,
-        Ty: Type<'ll>,
+        Ty: FunctionSignature<'ll>,
         Fn: Value<'ll>,
         Args: *const Value<'ll>,
         NumArgs: c_uint,
@@ -1756,7 +1757,7 @@ unsafe extern "C" {
     ) -> Value<'ll>;
     pub(crate) fn LLVMBuildInvokeWithOperandBundles<'ll>(
         B: &Builder<'ll>,
-        Ty: Type<'ll>,
+        Ty: FunctionSignature<'ll>,
         Fn: Value<'ll>,
         Args: *const Value<'ll>,
         NumArgs: c_uint,
@@ -1768,7 +1769,7 @@ unsafe extern "C" {
     ) -> Value<'ll>;
     pub(crate) fn LLVMBuildCallBr<'ll>(
         B: &Builder<'ll>,
-        Ty: Type<'ll>,
+        Ty: FunctionSignature<'ll>,
         Fn: Value<'ll>,
         DefaultDest: &'ll BasicBlock,
         IndirectDests: *const &'ll BasicBlock,
@@ -2191,7 +2192,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustPrintStatisticsJSON(OutStr: &RustString);
 
     pub(crate) fn LLVMRustInlineAsmVerify<'ll>(
-        Ty: Type<'ll>,
+        Ty: FunctionSignature<'ll>,
         Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsLen: size_t,
     ) -> bool;

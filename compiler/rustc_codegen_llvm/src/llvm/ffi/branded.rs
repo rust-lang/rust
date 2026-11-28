@@ -1,7 +1,7 @@
 //! Lifetime-branded references to things manipulated by the LLVM bindings.
 
 use std::marker::PhantomData;
-use std::ptr;
+use std::{fmt, ptr};
 
 /// FIXME(Zalathar): Use the stdlib's `PhantomInvariantLifetime` when its API is settled.
 type PhantomInvariantLifetime<'a> = PhantomData<fn(&'a ()) -> &'a ()>;
@@ -77,6 +77,28 @@ pub(crate) struct Type<'ll> {
 unsafe extern "C" {
     /// Pointee type of the raw pointer wrapped by [`Type`].
     type TypeRaw;
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
+pub(crate) struct FunctionSignature<'ll>(Type<'ll>);
+
+impl<'ll> FunctionSignature<'ll> {
+    pub(crate) fn from_type(ty: Type<'ll>) -> Option<Self> {
+        if super::LLVMGetTypeKind(ty).to_rust() == super::TypeKind::Function {
+            Some(Self(ty))
+        } else {
+            None
+        }
+    }
+}
+
+impl fmt::Debug for FunctionSignature<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
 }
 
 /// Corresponds to `LLVMValueRef`.

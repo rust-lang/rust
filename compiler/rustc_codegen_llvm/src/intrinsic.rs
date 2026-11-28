@@ -44,7 +44,9 @@ use crate::diagnostics::{
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Value};
+use crate::llvm::{
+    self, Attribute, AttributePlace, FunctionSignature, Metadata, Type, TypeKind, Value,
+};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -977,7 +979,7 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
 
             llfn
         };
-        let fn_ty = self.get_type_of_global(fn_ptr);
+        let fn_ty = self.get_type_of_function_global(fn_ptr);
 
         let mut llargs = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
@@ -1322,7 +1324,7 @@ fn intrinsic_fn<'ll, 'tcx>(
     {
         // FIXME: also do this for overloaded intrinsics
         let llfn = intrinsic.get_declaration(bx.llmod, &[]);
-        let llvm_fn_ty = bx.get_type_of_global(llfn);
+        let llvm_fn_ty = bx.get_type_of_function_global(llfn);
 
         let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
         let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
@@ -1774,7 +1776,7 @@ fn gen_fn<'a, 'll, 'tcx>(
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
-) -> (Type<'ll>, Value<'ll>) {
+) -> (FunctionSignature<'ll>, Value<'ll>) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
     let llty = fn_abi.llvm_type(cx);
     let llfn = cx.declare_fn(name, fn_abi, None);
@@ -1796,7 +1798,7 @@ fn gen_fn<'a, 'll, 'tcx>(
 fn get_rust_try_fn<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
-) -> (Type<'ll>, Value<'ll>) {
+) -> (FunctionSignature<'ll>, Value<'ll>) {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
