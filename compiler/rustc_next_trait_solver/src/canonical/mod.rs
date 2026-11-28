@@ -14,6 +14,7 @@ use std::iter;
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::region_constraint::{LeafRegionConstraint, NoSpan, RegionConstraint};
 use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
@@ -154,7 +155,7 @@ where
             span,
         ),
         ExternalRegionConstraints::NextGen(r) => {
-            delegate.register_solver_region_constraint(r.clone(), span)
+            delegate.register_solver_region_constraint(r.clone(), VisibleForLeakCheck::No, span)
         }
     };
     register_new_opaque_types(delegate, opaque_types, span);
@@ -449,7 +450,25 @@ where
 
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
-        self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
+        if self.cx().assumptions_on_binders() {
+            let region_outlives = |a, b| {
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b), NoSpan)
+            };
+
+            self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
+            self.infcx.register_solver_region_constraint(
+                region_outlives(a, b),
+                VisibleForLeakCheck::Yes,
+                self.span,
+            );
+            self.infcx.register_solver_region_constraint(
+                region_outlives(b, a),
+                VisibleForLeakCheck::Yes,
+                self.span,
+            );
+        } else {
+            self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
+        }
 
         Ok(a)
     }

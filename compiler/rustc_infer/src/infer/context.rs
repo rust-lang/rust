@@ -329,9 +329,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn register_solver_region_constraint(
         &self,
         c: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        vis: ty::VisibleForLeakCheck,
         span: Span,
     ) {
-        self.register_solver_region_constraint(c.with_spans(span));
+        self.register_solver_region_constraint(c.with_spans(span), vis);
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
