@@ -870,6 +870,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "shlex",
  "tracing",
  "tracing-subscriber",
  "walkdir",
