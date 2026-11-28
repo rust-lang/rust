@@ -1,0 +1,40 @@
+error: lifetime may not live long enough
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:34:9
+   |
+LL |     fn test<'s>(_: &'s u8) {
+   |             -- lifetime `'s` defined here
+LL |         demand::<Carrier<&'s u8>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'s` must outlive `'static`
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:23:9
+   |
+LL |         for<'a> <F as Family<'a>>::Item: Check<'a>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:62:9
+   |
+LL |         demand::<Carrier<T>>();
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:51:42
+   |
+LL |         for<'a> <F as Family<'a>>::Item: Check<'a>,
+   |                                          ^^^^^^^^^
+
+error: `<T as Project>::Assoc` does not live long enough
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:94:9
+   |
+LL |         demand::<Carrier<T>>();
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/nonreflexive-type-outlives-issue-165867.rs:79:42
+   |
+LL |         for<'a> <F as Family<'a>>::Item: Check<'a>,
+   |                                          ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
