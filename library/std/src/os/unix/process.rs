@@ -911,7 +911,8 @@ pub fn effective_gid() -> u32 {
     sys::process::getegid()
 }
 
-/// Returns the supplementary group IDs of the current process.
+/// Returns the supplementary group IDs of the current process. These are additional group IDs that are used
+/// for permission checks when accessing files and other shared resources.
 ///
 /// The list may be empty. Whether it includes the [effective group ID](effective_gid)
 /// depends on the platform.
@@ -927,11 +928,9 @@ pub fn effective_gid() -> u32 {
 /// #![feature(unix_supplementary_groups)]
 /// use std::os::unix::process;
 ///
-/// fn main() {
-/// #     if cfg!(skip_unsupported_miri_tests) { return; }
-///     let groups = process::supplementary_groups().expect("failed to query supplementary groups");
-///     println!("The current process has supplementary group IDs {groups:?}");
-/// }
+/// # if cfg!(skip_unsupported_miri_tests) { return; }
+/// let groups = process::supplementary_groups().expect("failed to query supplementary groups");
+/// println!("The current process has supplementary group IDs {groups:?}");
 /// ```
 #[unstable(feature = "unix_supplementary_groups", issue = "166559")]
 pub fn supplementary_groups() -> io::Result<Vec<u32>> {
