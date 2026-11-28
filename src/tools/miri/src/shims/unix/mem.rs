@@ -15,6 +15,7 @@
 //! report UB.
 
 use rustc_abi::Size;
+use rustc_ast::Mutability;
 use rustc_target::spec::Os;
 
 use crate::*;
@@ -77,7 +78,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        verify_prot(ecx, prot)?;
+        let mutability = verify_prot(ecx, prot)?;
 
         // Miri does not support shared mappings, or any of the other extensions that for example
         // Linux has added to the flags arguments.
@@ -105,6 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             MiriMemoryKind::Mmap.into(),
             // mmap guarantees new mappings are zero-init.
             AllocInit::Zero,
+            mutability,
         )?;
 
         interp_ok(Scalar::from_pointer(ptr, ecx))
@@ -153,7 +155,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
-        verify_prot(ecx, prot)?;
+        let prot_mutability = verify_prot(ecx, prot)?;
 
         // The pages from `[addr, addr + length)` must be mapped, so length definitely must not overflow.
         let Some(length) = round_up_to_page_size(ecx, length) else {
@@ -163,13 +165,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.check_ptr_access(addr, Size::from_bytes(length), CheckInAllocMsg::MemoryAccess)
             .map_err_kind(|_| err_ub_format!("`mprotect` called on out-of-bounds memory"))?;
 
+        let (alloc_id, _, _) = ecx.ptr_get_alloc_id(addr, /* size */ 0)?;
+        let alloc_mutability = ecx.get_alloc_mutability(alloc_id)?;
+
+        if alloc_mutability != prot_mutability {
+            // The `mprotect` would change the mutability of the underlying allocation, but we're
+            // not allowed to do that.
+            throw_unsup_format!(
+                "mprotect: operation would change the mutability of the underlying allocation, which Miri does not support"
+            )
+        }
+
         // If the memory comes from memory the Rust program has allocated with mmap, we only support
-        // `PROT_READ|PROT_WRITE`, so this `mprotect` is a no-op. If the memory was mmaped by the
-        // runtime (e.g. if it's the stack, executable memory, or static memory), POSIX also allows
-        // us to remap it. In those cases, such a call to `PROT_READ|PROT_WRITE` might actually change the permissions,
-        // but treating them as the new permissions is still UB. Therefore, we just pretend that we
-        // did the permission change by returning success, and will still reject if you try to use
-        // it with the "new" permissions.
+        // "changing" the protection when the mutability of the underlying allocation stays the same,
+        // so this `mprotect` is a no-op. If the memory was mmaped by the runtime (e.g. if it's the stack,
+        // executable memory, or static memory), POSIX also allows us to remap it. In those cases, such a
+        // call to `mprotect` might actually change the permissions, but treating them as the new permissions
+        // is still UB. Therefore, we just pretend that we did the permission change by returning success,
+        // and will still reject if you try to use it with the "new" permissions.
         interp_ok(Scalar::from_i32(0))
     }
 
@@ -224,17 +237,37 @@ fn round_up_to_page_size(ecx: &MiriInterpCx<'_>, length: u64) -> Option<u64> {
         .filter(|length| *length <= ecx.target_isize_max().try_into().unwrap())
 }
 
-fn verify_prot<'tcx>(ecx: &mut MiriInterpCx<'tcx>, prot: i32) -> InterpResult<'tcx> {
+/// Verify the `prot` argument of a `mmap`/`mprotect` call and return
+/// the allocation [`Mutability`] to which `prot` corresponds.
+fn verify_prot<'tcx>(ecx: &mut MiriInterpCx<'tcx>, mut prot: i32) -> InterpResult<'tcx, Mutability> {
     let prot_read = ecx.eval_libc_i32("PROT_READ");
     let prot_write = ecx.eval_libc_i32("PROT_WRITE");
 
-    // Miri doesn't support protections other than PROT_READ|PROT_WRITE.
-    if prot != prot_read | prot_write {
+    let mut mutability = Mutability::Not;
+
+    if prot & prot_read == 0 {
+        // Miri only supports allocations that are readable.
+        throw_unsup_format!(
+            "Miri does not support calls to mmap/mprotect with protections that don't \
+            contain PROT_READ"
+        )
+    }
+
+    prot &= !prot_read;
+
+    if prot & prot_write != 0 {
+        // The protection contains PROT_WRITE. This corresponds to a mutable mutability.
+        mutability = Mutability::Mut;
+        prot &= !prot_write;
+    }
+
+    if prot != 0 {
+        // Miri only supports protections that are either readable, or readable and writable.
         throw_unsup_format!(
             "Miri does not support calls to mmap/mprotect with protections other than \
-             PROT_READ|PROT_WRITE",
+             PROT_READ and PROT_READ|PROT_WRITE",
         );
     }
 
-    interp_ok(())
+    interp_ok(mutability)
 }

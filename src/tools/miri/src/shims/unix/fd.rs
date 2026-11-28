@@ -6,6 +6,7 @@ use std::io::ErrorKind;
 
 use rand::RngExt;
 use rustc_abi::{Align, Size};
+use rustc_ast::Mutability;
 use rustc_target::spec::Os;
 
 use crate::shims::files::{BIG_ACCESS, DynFileDescriptionRef, FdNum, FileDescription};
@@ -518,6 +519,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Align::ONE,
                 MemoryKind::Stack,
                 AllocInit::Uninit,
+                Mutability::Mut,
             )?
             .into();
 
@@ -625,6 +627,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Align::ONE,
                 MemoryKind::Stack,
                 AllocInit::Uninit,
+                Mutability::Mut,
             )?
             .into();
 

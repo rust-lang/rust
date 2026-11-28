@@ -393,7 +393,6 @@ fn set_nonblocking() {
 // and must be rejected rather than truncated.
 #[test]
 #[cfg(all(target_pointer_width = "64", unix))]
-#[cfg(not(skip_unsupported_miri_tests))] // read-only mmap not supported by Miri
 fn send_datagram_larger_than_c_int_max() {
     // A read-only anonymous mapping rather than a 2 GiB `Vec`: the datagram is
     // rejected before the kernel ever reads the pages, so this costs no

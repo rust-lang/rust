@@ -6,6 +6,7 @@ use std::assert_matches;
 
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
@@ -1120,7 +1121,7 @@ where
         let Some((size, align)) = self.size_and_align_from_meta(&meta, &layout)? else {
             span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
         };
-        let ptr = self.allocate_ptr(size, align, kind, AllocInit::Uninit)?;
+        let ptr = self.allocate_ptr(size, align, kind, AllocInit::Uninit, Mutability::Mut)?;
         interp_ok(self.ptr_with_meta_to_mplace(ptr.into(), meta, layout, /*unaligned*/ false))
     }
 

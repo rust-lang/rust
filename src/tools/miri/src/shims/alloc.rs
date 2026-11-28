@@ -1,4 +1,5 @@
 use rustc_abi::{Align, AlignFromBytesError, Size};
+use rustc_ast::Mutability;
 use rustc_ast::expand::allocator::SpecialAllocatorMethod;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
@@ -142,6 +143,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     } else {
                         AllocInit::Uninit
                     },
+                    Mutability::Mut,
                 )?;
 
                 ecx.write_pointer(ptr, dest)
@@ -193,7 +195,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
         let align = ecx.malloc_align(size);
         let ptr =
-            ecx.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into(), init)?;
+            ecx.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into(), init, Mutability::Mut)?;
         interp_ok(ptr.into())
     }
 
@@ -218,6 +220,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Align::from_bytes(align).unwrap(),
                 MiriMemoryKind::C.into(),
                 AllocInit::Uninit,
+                Mutability::Mut
             )?;
             ecx.write_pointer(ptr, &memptr)?;
             interp_ok(Scalar::from_i32(0))
@@ -292,6 +295,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::C.into(),
                     AllocInit::Uninit,
+                    Mutability::Mut,
                 )?;
                 interp_ok(ptr.into())
             }

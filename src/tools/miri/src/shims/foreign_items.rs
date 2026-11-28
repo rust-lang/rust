@@ -4,6 +4,7 @@ use std::mem;
 use std::path::Path;
 
 use rustc_abi::{Align, ExternAbi, Size};
+use rustc_ast::Mutability;
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_attr_ir::Linkage;
 use rustc_data_structures::either::Either;
@@ -338,6 +339,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Miri.into(),
                     AllocInit::Uninit,
+                    Mutability::Mut,
                 )?;
 
                 ecx.write_pointer(ptr, dest)?;

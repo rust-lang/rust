@@ -254,12 +254,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
         init: AllocInit,
+        mutability: Mutability,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let params = self.machine.get_default_alloc_params();
         let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::new(size, align, init, params)
+            Allocation::new(size, align, init, mutability, params)
         } else {
-            Allocation::try_new(size, align, init, params)?
+            Allocation::try_new(size, align, init, mutability, params)?
         };
         self.insert_allocation(alloc, kind)
     }
@@ -314,12 +315,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             );
         }
 
+        // We reuse the mutability of the existing allocation since we're not
+        // allowed to change the mutability of an allocation.
+        let mutability = self.get_alloc_mutability(alloc_id)?;
+
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
         // If requested, we zero-init the entire allocation, to ensure that a growing
         // allocation has its new bytes properly set. For the part that is copied,
         // `mem_copy` below will de-initialize things as necessary.
-        let new_ptr = self.allocate_ptr(new_size, new_align, kind, init_growth)?;
+        let new_ptr = self.allocate_ptr(new_size, new_align, kind, init_growth, mutability)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_alloc_raw(alloc_id)?.size(),
@@ -412,9 +417,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .into();
         };
 
-        if alloc.mutability.is_not() {
-            throw_ub_format!("deallocating immutable allocation {alloc_id}");
-        }
         if alloc_kind != kind {
             throw_ub_format!(
                 "deallocating {alloc_id}, which is {alloc_kind} memory, using {kind} deallocation operation",
