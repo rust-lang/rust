@@ -354,18 +354,6 @@ impl<I: Interner> AccessedOpaques<I> {
         })
     }
 
-    pub fn rerun_if_opaque_in_opaque_type_storage(
-        &mut self,
-        reason: RerunReason,
-        defid: I::LocalOpaqueTyId,
-    ) -> Result<(), RerunNonErased> {
-        debug!("set rerun if opaque type {defid:?} in storage");
-        self.update(AccessedOpaques {
-            reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::new(defid.into())),
-        })
-    }
-
     pub fn rerun_if_any_opaque_has_infer_as_hidden_type(
         &mut self,
         reason: RerunReason,
