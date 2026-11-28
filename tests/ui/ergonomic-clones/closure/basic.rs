@@ -5,20 +5,17 @@
 
 use std::clone::UseCloned;
 use std::future::Future;
+use std::sync::Arc;
 
 fn ergonomic_clone_closure_no_captures() -> i32 {
-    let cl = use || {
-        1
-    };
+    let cl = || 1.use;
     cl()
 }
 
-fn ergonomic_clone_closure_move() -> String {
-    let s = String::from("hi");
+fn ergonomic_clone_closure_move() -> Arc<String> {
+    let s = Arc::new(String::from("hi"));
 
-    let cl = use || {
-        s
-    };
+    let cl = || s.use;
     cl()
 }
 
@@ -30,13 +27,9 @@ impl UseCloned for Foo {}
 fn ergonomic_clone_closure_use_cloned() -> Foo {
     let f = Foo;
 
-    let f1 = use || {
-        f
-    };
+    let f1 = || f.use;
 
-    let f2 = use || {
-        f
-    };
+    let f2 = || f.use;
 
     f
 }
@@ -44,13 +37,9 @@ fn ergonomic_clone_closure_use_cloned() -> Foo {
 fn ergonomic_clone_closure_copy() -> i32 {
     let i = 1;
 
-    let i1 = use || {
-        i
-    };
+    let i1 = || i.use;
 
-    let i2 = use || {
-        i
-    };
+    let i2 = || i.use;
 
     i
 }

@@ -26,8 +26,8 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::diagnostics::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AwaitSuggestion,
-    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AwaitSuggestion, BadQPathStage2, BadTypePlus,
+    BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
     ComparisonOperatorsCannotBeChainedSugg, DocCommentDoesNotDocumentAnything, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
@@ -452,17 +452,11 @@ impl<'a> Parser<'a> {
             return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
         }
 
-        if (self.token.is_keyword(kw::Move) || self.token.is_keyword(kw::Use))
-            && self.prev_token.is_keyword(kw::Async)
-        {
-            // The 2015 edition is in use because parsing of `async move` or `async use` has failed.
+        if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
+            // The 2015 edition is in use because parsing of `async move` has failed.
             let span = self.prev_token.span.to(self.token.span);
-            if self.token.is_keyword(kw::Move) {
-                return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
-            } else {
-                // kw::Use
-                return Err(self.dcx().create_err(AsyncUseBlockIn2015 { span }));
-            }
+
+            return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
         }
 
         let expect = tokens_to_string(&expected);

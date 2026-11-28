@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if self.const_item_counter.0 == 0
-            && let ExprKind::Repeat(_, _) | ExprKind::Array(_) = expr.kind
+            && let ExprKind::Repeat(_, _) | ExprKind::RepeatUse(_, _) | ExprKind::Array(_) = expr.kind
             && !self.is_from_vec_macro(cx, expr.span)
             && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
             && let Some(element_count) = cst.try_to_target_usize(cx.tcx)
@@ -131,7 +131,7 @@ fn might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     /// This is a fail-safe to a case where even the `is_from_proc_macro` is unable to determain the
     /// correct result.
     fn repeat_expr_might_be_expanded(expr: &Expr<'_>) -> bool {
-        let ExprKind::Repeat(_, len_ct) = expr.kind else {
+        let (ExprKind::Repeat(_, len_ct) | ExprKind::RepeatUse(_, len_ct)) = expr.kind else {
             return false;
         };
         !expr.span.contains(len_ct.span)

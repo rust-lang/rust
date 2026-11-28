@@ -1335,6 +1335,16 @@ impl<'a> State<'a> {
         self.end(ib)
     }
 
+    fn print_expr_repeat_used(&mut self, element: &hir::Expr<'_>, count: &hir::ConstArg<'_>) {
+        let ib = self.ibox(INDENT_UNIT);
+        self.word("[(");
+        self.print_expr(element);
+        self.word_space(").use ;");
+        self.print_const_arg(count);
+        self.word("]");
+        self.end(ib)
+    }
+
     fn print_expr_struct(
         &mut self,
         qpath: &hir::QPath<'_>,
@@ -1590,6 +1600,9 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Repeat(element, ref count) => {
                 self.print_expr_repeat(element, count);
+            }
+            hir::ExprKind::RepeatUse(element, ref count) => {
+                self.print_expr_repeat_used(element, count);
             }
             hir::ExprKind::Struct(qpath, fields, wth) => {
                 self.print_expr_struct(qpath, fields, wth);
@@ -2383,9 +2396,8 @@ impl<'a> State<'a> {
 
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
-            hir::CaptureBy::Value { .. } => self.word_space("move"),
-            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
+            hir::CaptureBy::Value { .. } => self.word_space("move"),
         }
     }
 

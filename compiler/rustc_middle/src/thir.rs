@@ -473,6 +473,12 @@ pub enum ExprKind<'tcx> {
         value: ExprId,
         count: ty::Const<'tcx>,
     },
+    /// An array literal constructed from one repeated `.use`d element, e.g. `[rc.use; 5]`.
+    /// The element is `.use`d and repeated at each iteration.
+    RepeatUse {
+        value: ExprId,
+        count: ty::Const<'tcx>,
+    },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
         fields: Box<[ExprId]>,

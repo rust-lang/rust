@@ -2,12 +2,15 @@
 //! kind of thing.
 
 use rustc_middle::mir::*;
+use rustc_middle::thir::{ExprId, ExprKind};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::builder::Builder;
+use crate::builder::expr::category::Category;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
@@ -65,6 +68,97 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Operand::Copy(place)
         } else {
             Operand::Move(place)
+        }
+    }
+
+    /// Recursively inspect a THIR expression and probe through unsizing
+    /// operations that can be const-folded today.
+    pub(crate) fn check_constness(&self, mut kind: &'a ExprKind<'tcx>) -> bool {
+        loop {
+            debug!(?kind, "check_constness");
+            match kind {
+                &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
+                | &ExprKind::ValueExpr { source: eid }
+                | &ExprKind::PointerCoercion {
+                    cast: PointerCoercion::Unsize,
+                    source: eid,
+                    is_from_as_cast: _,
+                }
+                | &ExprKind::Scope { region_scope: _, hir_id: _, value: eid } => {
+                    kind = &self.thir[eid].kind
+                }
+                _ => return matches!(Category::of(&kind), Some(Category::Constant)),
+            }
+        }
+    }
+
+    /// Whether `.use` applied to this expression needs to clone it.
+    pub(crate) fn use_expr_must_clone(&self, expr: ExprId) -> bool {
+        match self.thir[expr].kind {
+            ExprKind::Scope { value: inner, .. }
+            | ExprKind::PlaceTypeAscription { source: inner, .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { source: inner }
+            | ExprKind::Index { lhs: inner, .. } => self.use_expr_must_clone(inner),
+
+            ExprKind::Deref { arg } if self.thir[arg].ty.is_box() => self.use_expr_must_clone(arg),
+
+            ExprKind::Field { lhs, .. } => {
+                if let Some(adt_def) = self.thir[lhs].ty.ty_adt_def()
+                    && adt_def.has_dtor(self.tcx)
+                {
+                    // Can't move out of a field of a `Drop`-implementing type
+                    true
+                } else {
+                    self.use_expr_must_clone(lhs)
+                }
+            }
+
+            ExprKind::Deref { .. } | ExprKind::UpvarRef { .. } | ExprKind::VarRef { .. } => true,
+
+            ExprKind::If { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
+            | ExprKind::Binary { .. }
+            | ExprKind::LogicalOp { .. }
+            | ExprKind::Unary { .. }
+            | ExprKind::Cast { .. }
+            | ExprKind::ValueExpr { .. }
+            | ExprKind::NeverToAny { .. }
+            | ExprKind::PointerCoercion { .. }
+            | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
+            | ExprKind::Let { .. }
+            | ExprKind::Match { .. }
+            | ExprKind::Block { .. }
+            | ExprKind::Assign { .. }
+            | ExprKind::AssignOp { .. }
+            | ExprKind::Borrow { .. }
+            | ExprKind::RawBorrow { .. }
+            | ExprKind::Break { .. }
+            | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
+            | ExprKind::Return { .. }
+            | ExprKind::Become { .. }
+            | ExprKind::ConstBlock { .. }
+            | ExprKind::Repeat { .. }
+            | ExprKind::RepeatUse { .. }
+            | ExprKind::Array { .. }
+            | ExprKind::Tuple { .. }
+            | ExprKind::Adt { .. }
+            | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::WrapUnsafeBinder { .. }
+            | ExprKind::Closure { .. }
+            | ExprKind::Literal { .. }
+            | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ZstLiteral { .. }
+            | ExprKind::NamedConst { .. }
+            | ExprKind::ConstParam { .. }
+            | ExprKind::StaticRef { .. }
+            | ExprKind::InlineAsm { .. }
+            | ExprKind::ThreadLocalRef { .. }
+            | ExprKind::Yield { .. }
+            | ExprKind::Reborrow { .. } => false,
         }
     }
 }

@@ -377,6 +377,7 @@ impl<'tcx> Visitor<'tcx> for ExprEagernessVisitor<'tcx> {
             | ExprKind::Field(..)
             | ExprKind::AddrOf(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Block(Block { stmts: [], .. }, _)
             | ExprKind::OffsetOf(..)
             | ExprKind::UnsafeBinderCast(..) => (),

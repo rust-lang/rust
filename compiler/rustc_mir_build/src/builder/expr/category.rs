@@ -69,6 +69,7 @@ impl Category {
             | ExprKind::Cast { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
+            | ExprKind::RepeatUse { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             // A reborrow expression produces a value represented in MIR as
