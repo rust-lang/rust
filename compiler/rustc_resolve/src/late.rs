@@ -5881,6 +5881,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return;
         }
 
+        // Derives copy paths of their input into the items they generate.
+        if let Some(item) = self.diag_metadata.current_item
+            && item.span.in_external_macro(self.r.tcx.sess.source_map())
+        {
+            return;
+        }
+
         let end_pos =
             path.iter().position(|seg| seg.has_generic_args).map_or(path.len(), |pos| pos + 1);
         let unqualified = path[..end_pos].iter().enumerate().skip(1).rev().find_map(|(i, seg)| {
