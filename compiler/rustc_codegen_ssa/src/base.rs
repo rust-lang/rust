@@ -13,7 +13,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, find_attr};
 use rustc_crate_store::CrateSourceFlags;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
@@ -41,7 +41,6 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::write::{
     ComputedLtoType, ModuleConfig, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
-    submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate};
 use crate::meth::VirtualIndex;
@@ -808,71 +807,61 @@ pub fn codegen_crate<
     let mut total_codegen_time = Duration::new(0, 0);
     let start_rss = tcx.sess.opts.unstable_opts.time_passes.then(|| get_resident_set_size());
 
-    // The non-parallel compiler can only translate codegen units to LLVM IR
-    // on a single thread, leading to a staircase effect where the N LLVM
-    // threads have to wait on the single codegen threads to generate work
-    // for them. The parallel compiler does not have this restriction, so
-    // we can pre-load the LLVM queue in parallel before handing off
-    // coordination to the OnGoingCodegen scheduler.
-    //
-    // This likely is a temporary measure. Once we don't have to support the
-    // non-parallel compiler anymore, we can compile CGUs end-to-end in
-    // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if let JobsMode::Parallel(threads) = tcx.sess.opts.jobs.frontend {
-        tcx.sess.time("compile_first_CGU_batch", || {
-            // Try to find one CGU to compile per thread.
-            let cgus: Vec<_> = cgu_reuse
-                .iter()
-                .enumerate()
-                .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                .take(threads.get())
-                .collect();
+    let parallel = matches!(tcx.sess.opts.jobs.frontend, JobsMode::Parallel(..));
+    if parallel {
+        // Compile the found CGUs in parallel.
+        let start_time = Instant::now();
 
-            // Compile the found CGUs in parallel.
-            let start_time = Instant::now();
+        let codegen_dyn = IntoDynSyncSend(&ongoing_codegen);
 
-            let pre_compiled_cgus = par_map(cgus, |(i, _)| {
-                let module =
-                    backend.compile_codegen_unit(tcx, codegen_units[i].name(), bitcode_needed);
-                (i, IntoDynSyncSend(module))
-            });
+        let _timer = tcx.sess.prof.verbose_generic_activity("LLVM_passes");
 
-            total_codegen_time += start_time.elapsed();
+        let () =
+            par_map(
+                codegen_units.iter().zip(cgu_reuse.iter()),
+                |(cgu, cgu_reuse)| match cgu_reuse {
+                    CguReuse::No => {
+                        let (module, cost) =
+                            backend.compile_codegen_unit(tcx, cgu.name(), bitcode_needed);
+                        // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
+                        // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
+                        // compilation hang on post-monomorphization errors.
+                        tcx.dcx().abort_if_errors();
 
-            pre_compiled_cgus
-        })
-    } else {
-        FxHashMap::default()
-    };
+                        codegen_dyn.submit_codegened_module_to_llvm(module, cost, true);
+                    }
+                    CguReuse::PreLto | CguReuse::PostLto => {}
+                },
+            );
+
+        total_codegen_time += start_time.elapsed();
+    }
 
     for (i, cgu) in codegen_units.iter().enumerate() {
+        let cgu_reuse = cgu_reuse[i];
+        if parallel && matches!(cgu_reuse, CguReuse::No) {
+            continue;
+        }
+
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        let cgu_reuse = cgu_reuse[i];
-
         match cgu_reuse {
             CguReuse::No => {
-                let (module, cost) = if let Some(cgu) = pre_compiled_cgus.remove(&i) {
-                    cgu.0
-                } else {
-                    let start_time = Instant::now();
-                    let module = backend.compile_codegen_unit(tcx, cgu.name(), bitcode_needed);
-                    total_codegen_time += start_time.elapsed();
-                    module
-                };
+                let start_time = Instant::now();
+                let (module, cost) = backend.compile_codegen_unit(tcx, cgu.name(), bitcode_needed);
+                total_codegen_time += start_time.elapsed();
                 // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
                 // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
                 // compilation hang on post-monomorphization errors.
                 tcx.dcx().abort_if_errors();
 
-                submit_codegened_module_to_llvm(&ongoing_codegen.coordinator, module, cost);
+                ongoing_codegen.submit_codegened_module_to_llvm(module, cost, false);
             }
             CguReuse::PreLto => {
-                submit_pre_lto_module_to_llvm(
+                ongoing_codegen.submit_pre_lto_module_to_llvm(
                     tcx.sess,
                     tcx.incr_comp_session.unwrap(),
-                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -884,13 +873,10 @@ pub fn codegen_crate<
                 tcx.dcx().abort_if_errors();
             }
             CguReuse::PostLto => {
-                submit_post_lto_module_to_llvm(
-                    &ongoing_codegen.coordinator,
-                    CachedModuleCodegen {
-                        name: cgu.name().to_string(),
-                        source: cgu.previous_work_product(tcx),
-                    },
-                );
+                ongoing_codegen.submit_post_lto_module_to_llvm(CachedModuleCodegen {
+                    name: cgu.name().to_string(),
+                    source: cgu.previous_work_product(tcx),
+                });
             }
         }
     }
