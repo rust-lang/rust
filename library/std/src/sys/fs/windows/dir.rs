@@ -91,8 +91,6 @@ impl Dir {
     }
 
     pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
-        let from = to_u16s_without_nul(from)?;
-        let to = to_u16s_without_nul(to)?;
         self.rename_native(&from, to_dir, &to)
     }
 
@@ -163,24 +161,54 @@ impl Dir {
         File::from_inner(handle).delete().io_result()
     }
 
-    fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16]) -> io::Result<()> {
+    fn rename_native(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let handle =
-            self.open_file_native(from, &opts, /* create_opt */ c::FILE_OPEN_REPARSE_POINT)?;
+        let handle = if from.is_absolute() {
+            // NtCreateFile will fail if given an absolute path and a non-null RootDirectory
+            opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
+            File::open(from, &opts)?.into_inner()
+        } else {
+            let from = to_u16s_without_nul(from)?;
+            self.open_file_native(&from, &opts, /* create_opt */ c::FILE_OPEN_REPARSE_POINT)?
+        };
         // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
-        const too_long_err: io::Error =
+        const TOO_LONG_ERR: io::Error =
             io::const_error!(io::ErrorKind::InvalidFilename, "Filename too long");
+
+        let tmp_to_dir; // space for a temporary directory handle, if we need one
+        let (raw_dir_handle, to) = if to.is_absolute() {
+            // Putting an absolute path into `FileName` does not work when `RootDirectory` is set,
+            // and even when it is not set, requires NT path syntax.
+            // So instead we pick a suitable directory to make `to` relative to: the parent of `to`.
+            let Some(to_parent) = to.parent() else {
+                return Err(io::const_error!(
+                    io::ErrorKind::Unsupported,
+                    "rename with `to` path pointing to a root or prefix"
+                ));
+            };
+            tmp_to_dir = Dir::open_for_traversal(to_parent)?;
+            // `file_name` returns `None` on ".." so that case is handled.
+            let Some(to_filename) = to.file_name() else {
+                return Err(io::const_error!(
+                    io::ErrorKind::Unsupported,
+                    "rename with `to` path ending in '..'"
+                ));
+            };
+            (tmp_to_dir.handle.as_raw_handle(), to_u16s_without_nul(Path::new(to_filename))?)
+        } else {
+            (to_dir.handle.as_raw_handle(), to_u16s_without_nul(to)?)
+        };
         let struct_size = to
             .len()
             .checked_mul(2)
             .and_then(|x| x.checked_add(offset_of!(c::FILE_RENAME_INFORMATION, FileName)))
-            .ok_or(too_long_err)?;
+            .ok_or(TOO_LONG_ERR)?;
         let layout = Layout::from_size_align(struct_size, align_of::<c::FILE_RENAME_INFORMATION>())
-            .map_err(|_| too_long_err)?;
-        let struct_size = u32::try_from(struct_size).map_err(|_| too_long_err)?;
-        let to_byte_len = u32::try_from(to.len() * 2).map_err(|_| too_long_err)?;
+            .map_err(|_| TOO_LONG_ERR)?;
+        let struct_size = u32::try_from(struct_size).map_err(|_| TOO_LONG_ERR)?;
+        let to_byte_len = u32::try_from(to.len() * 2).map_err(|_| TOO_LONG_ERR)?;
 
         let file_rename_info;
         // SAFETY: We allocate enough memory for a full FILE_RENAME_INFORMATION struct and the filename.
@@ -194,7 +222,7 @@ impl Dir {
                 Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
             });
 
-            (&raw mut (*file_rename_info).RootDirectory).write(to_dir.handle.as_raw_handle());
+            (&raw mut (*file_rename_info).RootDirectory).write(raw_dir_handle);
             // Don't include the NULL in the size
             (&raw mut (*file_rename_info).FileNameLength).write(to_byte_len);
 

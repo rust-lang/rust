@@ -3276,6 +3276,7 @@ fn test_dir_read_file() {
     let f = check!(dir.open_file("foo.txt"));
     let buf = check!(io::read_to_string(f));
     assert_eq!("bar", &buf);
+    // Also test opening an absolute path.
     let f = check!(dir.open_file(tmpdir.join("foo.txt")));
     let buf = check!(io::read_to_string(f));
     assert_eq!("bar", &buf);
@@ -3337,15 +3338,23 @@ fn test_dir_remove_file() {
 #[test]
 fn test_dir_rename_file() {
     let tmpdir = tmpdir();
-    let mut f = check!(File::create(tmpdir.join("foo.txt")));
-    check!(f.write_all(b"bar"));
-    drop(f);
+    check!(fs::write(tmpdir.join("foo.txt"), b"bar"));
     let dir = check!(Dir::open(tmpdir.path()));
     check!(dir.rename("foo.txt", &dir, "baz.txt"));
-    let mut f = check!(File::open(tmpdir.join("baz.txt")));
-    let mut buf = [0u8; 3];
-    check!(f.read_exact(&mut buf));
-    assert_eq!(b"bar", &buf);
+    assert_eq!(check!(fs::read(tmpdir.path().join("baz.txt"))), b"bar");
+
+    // Renaming should also work if the old or new name are absolute.
+    check!(dir.rename(tmpdir.path().join("baz.txt"), &dir, "foo.txt"));
+    dir.rename("foo.txt", &dir, tmpdir.path().join("bazzz.txt")).unwrap_or_else(|err| {
+        let to = tmpdir.path().join("bazzz.txt");
+        panic!(
+            "failed to rename to absolute path:\n{err:?}\nto = {to:?}\nto.absolute() = {:?}",
+            to.absolute()
+        );
+    });
+    assert_eq!(check!(fs::read(tmpdir.path().join("bazzz.txt"))), b"bar");
+    // And even if both of them are.
+    check!(dir.rename(tmpdir.path().join("bazzz.txt"), &dir, "baz.txt"));
 
     // Renaming a symlink should rename the link, not the destination.
     if got_symlink_permission(&tmpdir) {
@@ -3353,6 +3362,11 @@ fn test_dir_rename_file() {
         check!(dir.rename("link", &dir, "link-renamed"));
         assert!(check!(dir.symlink_metadata("baz.txt")).is_file()); // file still exists
         assert!(check!(dir.symlink_metadata("link-renamed")).is_symlink()); // symlink has new name
+        assert!(dir.symlink_metadata("link").is_err()); // old name is gone
+        // Als test giving the link as an absolute path.
+        check!(dir.rename(tmpdir.path().join("link-renamed"), &dir, "link"));
+        assert!(check!(dir.symlink_metadata("baz.txt")).is_file()); // file still exists
+        assert!(check!(dir.symlink_metadata("link")).is_symlink()); // symlink has new name
     }
 }
 
