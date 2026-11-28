@@ -1,0 +1,15 @@
+error: not allowed to read `files/hello2`: not whitelisted
+  --> $DIR/comptime_files_read_not_allowed.rs:10:13
+   |
+LL | pub fn hello() {
+...
+LL |     let _ = core::mem::comptime::read_file("files/hello2");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | const _: () = hello();
+   | ----------- while evaluating this item
+   |
+   = help: pass -Zexperimental-comptime-files=<path> to the compiler to allow reading this file
+
+error: aborting due to 1 previous error
+

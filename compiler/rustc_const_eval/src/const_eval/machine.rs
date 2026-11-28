@@ -508,6 +508,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
         if !ecx.call_type_info_intrinsic(intrinsic_name, instance, args, dest, target)?
             && !ecx.call_ctfe_intrinsic(intrinsic_name, instance, args, dest, target)?
+            && !ecx.call_comptime_ops_intrinsic(intrinsic_name, instance, args, dest, target)?
         {
             return do_fallback(ecx);
         }

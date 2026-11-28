@@ -5,7 +5,7 @@ use std::convert::identity;
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
@@ -266,6 +266,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
+    }
+
+    /// Return the crate of the const item we are evaluating. This can
+    pub fn item_crate(&self) -> CrateNum {
+        let instance =
+            self.stack().first().expect("should have a call frame if we are here").instance();
+
+        instance.def_id().krate
     }
 
     pub(crate) fn stack(&self) -> &[Frame<'tcx, M::Provenance, M::FrameExtra>] {
