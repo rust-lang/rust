@@ -380,8 +380,7 @@ impl IntRange {
             .collect();
         // We sort by boundary value, then by source. The order of start/end for a same boundary
         // value is irrelevant because we only look at the current set between distinct boundary
-        // values. However we want the current set to be sorted by `RowId` and to always add an id
-        // before we remove it.
+        // values. However we want to always add an id before we remove it.
         boundaries.sort_unstable();
         // End with the end of the range.
         boundaries.push((self.hi, BoundarySrc::Last));
@@ -394,7 +393,9 @@ impl IntRange {
         for (bdy, src) in boundaries {
             if prev_bdy != bdy {
                 let splitted_range = IntRange { lo: prev_bdy, hi: bdy };
-                splitted.push((splitted_range, current_set.clone()));
+                let mut covered_rows = current_set.clone();
+                covered_rows.sort_unstable();
+                splitted.push((splitted_range, covered_rows));
             }
             prev_bdy = bdy;
             match src {
