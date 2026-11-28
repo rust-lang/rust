@@ -102,7 +102,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{InlineAttr, Linkage};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::par_join;
+use rustc_data_structures::sync::{par_join, par_map};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
@@ -1136,15 +1136,11 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
-where
-    I: Iterator<Item = &'a MonoItem<'tcx>>,
-    'tcx: 'a,
-{
+fn assert_symbols_are_distinct<'tcx>(tcx: TyCtxt<'tcx>, mono_items: &[MonoItem<'tcx>]) {
     let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
 
     let mut symbols: Vec<_> =
-        mono_items.map(|mono_item| (mono_item, mono_item.symbol_name(tcx))).collect();
+        par_map(mono_items, |mono_item| (mono_item, mono_item.symbol_name(tcx)));
 
     symbols.sort_by_key(|sym| sym.1);
 
@@ -1189,7 +1185,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
             },
-            || assert_symbols_are_distinct(tcx, items.iter()),
+            || assert_symbols_are_distinct(tcx, &items),
         )
     });
 
