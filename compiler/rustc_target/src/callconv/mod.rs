@@ -711,8 +711,8 @@ where
             return true;
         }
 
-        // Rust ZSTs are always ignored
-        !arg.layout.is_repr_c()
+        // ZSTs with trivial ABI are always ignored.
+        arg.layout.has_trivial_abi()
     }
 
     if !ignore_zst(&cc, &fn_abi.ret) {

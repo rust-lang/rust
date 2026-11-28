@@ -75,3 +75,7 @@ extern "C" fn pass_zst(_: Czst) -> Czst {
     //~^ ERROR: fn_abi
     Czst
 }
+
+#[rustc_dump_layout(debug)]
+type Array = [u8; 0];
+//~^ ERROR: layout_of

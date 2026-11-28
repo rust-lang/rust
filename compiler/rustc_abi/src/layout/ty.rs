@@ -122,7 +122,6 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
-    fn has_trivial_abi(this: TyAndLayout<'a, Self>) -> bool;
     fn is_complex_number_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_x87_f80_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
@@ -217,13 +216,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
-    }
-
-    pub fn has_trivial_abi<C>(self) -> bool
-    where
-        Ty: TyAbiInterface<'a, C>,
-    {
-        Ty::has_trivial_abi(self)
     }
 
     /// Returns `true` if this type needs to match the ABI of the C `_Complex` type. See

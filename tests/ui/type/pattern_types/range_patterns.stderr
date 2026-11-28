@@ -25,7 +25,7 @@ error: layout_of(NonZero<u32>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:8:1
@@ -60,7 +60,7 @@ error: layout_of(pattern_type!(u32 is 1..)) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:10:1
@@ -127,7 +127,7 @@ error: layout_of(Option<pattern_type!(u32 is 1..)>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:12:1
@@ -194,7 +194,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:14:1
@@ -229,7 +229,7 @@ error: layout_of(NonZeroU32New) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:16:1
@@ -292,7 +292,7 @@ error: layout_of(pattern_type!(i8 is -10..=10)) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:29:1
@@ -327,7 +327,7 @@ error: layout_of(pattern_type!(i8 is i8::MIN..=0)) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
-           repr_c: false,
+           trivial_abi: false,
            randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:32:1
