@@ -1413,7 +1413,7 @@ pub trait SpanEncoder: Encoder {
     }
 }
 
-impl SpanEncoder for FileEncoder<'_> {
+impl SpanEncoder for FileEncoder {
     fn encode_span(&mut self, span: Span) {
         let (lo, hi) = span.lo_hi();
         lo.encode(self);

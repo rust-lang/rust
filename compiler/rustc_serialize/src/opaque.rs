@@ -32,7 +32,7 @@ const BUF_SIZE: usize = 64 * 1024;
 ///
 /// The `'a` lifetime is the borrow of the optional flush strategy (see
 /// `flush_strategy`); it is unused (`'static`) for encoders created without one.
-pub struct FileEncoder<'a> {
+pub struct FileEncoder {
     // The input buffer. For adequate performance, we need to be able to write
     // directly to the unwritten region of the buffer, without calling copy_from_slice.
     // Note that our buffer is always initialized so that we can do that direct access
@@ -46,12 +46,12 @@ pub struct FileEncoder<'a> {
     // comment on `trait Encoder`.
     res: Result<(), io::Error>,
     path: PathBuf,
-    flush_strategy: Option<&'a mut (dyn FnMut(&[u8]) + Send)>,
+    flush_strategy: Option<Box<dyn FnMut(&[u8]) + Send>>,
     #[cfg(debug_assertions)]
     finished: bool,
 }
 
-impl<'a> FileEncoder<'a> {
+impl FileEncoder {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         // File::create opens the file for writing only. When -Zmeta-stats is enabled, the metadata
         // encoder rewinds the file to inspect what was written. So we need to always open the file
@@ -74,7 +74,7 @@ impl<'a> FileEncoder<'a> {
 
     pub fn with_flush_strategy<P: AsRef<Path>>(
         path: P,
-        strategy: &'a mut (dyn FnMut(&[u8]) + Send),
+        strategy: Box<dyn FnMut(&[u8]) + Send>,
     ) -> io::Result<Self> {
         let mut encoder = Self::new(path)?;
         encoder.flush_strategy = Some(strategy);
@@ -220,7 +220,7 @@ impl<'a> FileEncoder<'a> {
 }
 
 #[cfg(debug_assertions)]
-impl Drop for FileEncoder<'_> {
+impl Drop for FileEncoder {
     fn drop(&mut self) {
         if !std::thread::panicking() {
             assert!(self.finished);
@@ -237,7 +237,7 @@ macro_rules! write_leb128 {
     };
 }
 
-impl Encoder for FileEncoder<'_> {
+impl Encoder for FileEncoder {
     write_leb128!(emit_usize, usize, write_usize_leb128);
     write_leb128!(emit_u128, u128, write_u128_leb128);
     write_leb128!(emit_u64, u64, write_u64_leb128);
@@ -435,8 +435,8 @@ impl<'a> Decoder for MemDecoder<'a> {
 
 // Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
 // since the default implementations call `encode` on their slices internally.
-impl Encodable<FileEncoder<'_>> for [u8] {
-    fn encode(&self, e: &mut FileEncoder<'_>) {
+impl Encodable<FileEncoder> for [u8] {
+    fn encode(&self, e: &mut FileEncoder) {
         Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
@@ -458,9 +458,9 @@ impl IntEncodedWithFixedSize {
     pub const ENCODED_SIZE: usize = 8;
 }
 
-impl Encodable<FileEncoder<'_>> for IntEncodedWithFixedSize {
+impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
-    fn encode(&self, e: &mut FileEncoder<'_>) {
+    fn encode(&self, e: &mut FileEncoder) {
         let start_pos = e.position();
         e.write_array(self.0.to_le_bytes());
         let end_pos = e.position();

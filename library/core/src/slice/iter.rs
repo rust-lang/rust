@@ -2221,9 +2221,16 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let idx = n.min(self.v.len());
-        self.v = &self.v[idx..];
-        self.next()
+        if let Some(rest) = self.v.get(n..)
+            && let Some(ret) = rest.first_chunk()
+        {
+            self.v = &rest[1..];
+            Some(ret)
+        } else {
+            // setting length to 0 is cheaper than overwriting the pointer when assigning &[]
+            self.v = &self.v[..0]; // cheaper than &[]
+            None
+        }
     }
 
     #[inline]

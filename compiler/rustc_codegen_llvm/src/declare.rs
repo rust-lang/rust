@@ -27,7 +27,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
+use crate::llvm::{self, FromGeneric, FunctionSignature, Type, Value, Visibility};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -39,7 +39,7 @@ pub(crate) fn declare_simple_fn<'ll>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: Type<'ll>,
+    ty: FunctionSignature<'ll>,
 ) -> Value<'ll> {
     debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
     let llfn = unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_ptr(), name.len(), ty) };
@@ -61,7 +61,7 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: Type<'ll>,
+    ty: FunctionSignature<'ll>,
 ) -> Value<'ll> {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
@@ -133,7 +133,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
-        fn_type: Type<'ll>,
+        fn_type: FunctionSignature<'ll>,
     ) -> Value<'ll> {
         // Visibility should always be default for declarations, otherwise the linker may report an
         // error.
@@ -152,7 +152,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         name: &str,
         callconv: llvm::CallConv,
         unnamed: llvm::UnnamedAddr,
-        fn_type: Type<'ll>,
+        fn_type: FunctionSignature<'ll>,
     ) -> Value<'ll> {
         let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
         declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)

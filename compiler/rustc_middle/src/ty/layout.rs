@@ -1295,10 +1295,6 @@ where
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
     }
 
-    fn has_trivial_abi(this: TyAndLayout<'tcx>) -> bool {
-        this.is_1zst() && !this.is_repr_c()
-    }
-
     /// Is this type `core::num::Complex<T>`?
     fn is_complex_number_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
         let Some(def) = this.ty.ty_adt_def() else { return false };

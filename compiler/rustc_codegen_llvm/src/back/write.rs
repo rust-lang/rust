@@ -665,7 +665,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         cx: &SimpleCx<'ll>,
         old_fn: llvm::Value<'ll>,
     ) -> Option<llvm::Value<'ll>> {
-        let old_fn_ty = cx.get_type_of_global(old_fn);
+        let old_fn_ty = cx.get_type_of_function_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();
         if old_param_count == 0 {

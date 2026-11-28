@@ -199,7 +199,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align: None,
             unadjusted_abi_align: element.align,
-            repr_c: element.repr_c,
+            trivial_abi: element.trivial_abi && count_if_sized.is_some(),
             randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
         })
     }
@@ -511,8 +511,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         // We also need to check for a `repr(transparent)` wrapper around `repr(C)`
-        let repr_c =
-            repr.c() || (repr.transparent() && only_variant.iter().any(|field| field.repr_c));
+        let trivial_abi = size == Size::ZERO
+            && align == Align::ONE
+            && !repr.c()
+            && (!repr.transparent() || only_variant.iter().all(|field| field.trivial_abi));
 
         let combined_seed = only_variant
             .iter()
@@ -529,7 +531,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size: size.align_to(align),
             max_repr_align,
             unadjusted_abi_align,
-            repr_c,
+            trivial_abi,
             randomization_seed: combined_seed,
         })
     }
@@ -921,7 +923,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         // We also need to check for a `repr(transparent)` wrapper around `repr(C)`
-        let repr_c = repr.c() || (repr.transparent() && fields.iter().any(|field| field.repr_c));
+        let trivial_abi = sized
+            && size == Size::ZERO
+            && align == Align::ONE
+            && !repr.c()
+            && (!repr.transparent() || fields.iter().all(|field| field.trivial_abi));
 
         let seed = field_seed.wrapping_add(repr.field_shuffle_seed);
 
@@ -935,7 +941,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align,
             unadjusted_abi_align,
-            repr_c,
+            trivial_abi,
             randomization_seed: seed,
         })
     }
@@ -1034,7 +1040,7 @@ where
         align,
         max_repr_align: None,
         unadjusted_abi_align: elt.align,
-        repr_c: false,
+        trivial_abi: false,
         randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count.as_u64())),
     })
 }

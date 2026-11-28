@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::fs;
+use std::sync::{Arc, Mutex};
 
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
@@ -28,7 +29,7 @@ struct Struct {
 }
 
 fn check_round_trip<
-    T: for<'a> Encodable<FileEncoder<'a>> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
+    T: Encodable<FileEncoder> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
 >(
     values: Vec<T>,
 ) {
@@ -309,11 +310,10 @@ fn test_flush_strategy() {
     expected.extend(&big);
     expected.extend(MAGIC_END_BYTES);
 
-    let mut flushed: Vec<u8> = Vec::new();
-    let mut strategy = |buf: &[u8]| {
-        flushed.extend(buf);
-    };
-    let mut encoder = FileEncoder::with_flush_strategy(&tmpfile, &mut strategy).unwrap();
+    let flushed: Arc<Mutex<Vec<u8>>> = Default::default();
+    let flushed_ = Arc::clone(&flushed);
+    let strategy = move |buf: &[u8]| flushed_.lock().unwrap().extend(buf);
+    let mut encoder = FileEncoder::with_flush_strategy(&tmpfile, Box::new(strategy)).unwrap();
 
     encoder.write_all(&small);
     encoder.flush();
@@ -322,6 +322,6 @@ fn test_flush_strategy() {
 
     drop(encoder);
 
-    assert_eq!(flushed, expected);
-    assert_eq!(flushed, fs::read(&tmpfile).unwrap());
+    assert_eq!(*flushed.lock().unwrap(), expected);
+    assert_eq!(*flushed.lock().unwrap(), fs::read(&tmpfile).unwrap());
 }

@@ -71,51 +71,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// Returns whether the given type has trivial ABI.
-    fn has_trivial_abi(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, bool> {
-        if !layout.is_1zst() {
-            return interp_ok(false);
-        }
-        match *layout.ty.kind() {
-            // Trivially trivial-ABI types (because Rust makes no promises about their ABI).
-            ty::Tuple(..)
-            | ty::Never
-            | ty::FnDef(..)
-            | ty::Closure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineClosure(..) => interp_ok(true),
-
-            ty::Array(elem, _len) => {
-                // 0-length arrays are in general *not* okay, but arrays of trivial-ABI types are.
-                self.has_trivial_abi(self.layout_of(elem)?)
-            }
-            ty::Adt(adt_def, _args) => {
-                if adt_def.repr().transparent() {
-                    // All fields must have trivial ABI.
-                    (0..layout.fields.count()).try_fold(true, |acc, idx| {
-                        interp_ok(acc && self.has_trivial_abi(layout.field(self, idx))?)
-                    })
-                } else if adt_def.repr().c() {
-                    interp_ok(false)
-                } else {
-                    // Can't be SIMD or Scalable (since this is a 1-ZST); only Rust is left.
-                    assert!(adt_def.repr().rust());
-                    interp_ok(true)
-                }
-            }
-            // Types that are considered transparent in `unfold_transparent` should also act
-            // like transparent types here.
-            ty::Pat(base, _) => self.has_trivial_abi(self.layout_of(base)?),
-            ty::UnsafeBinder(bound_ty) => {
-                let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
-                self.has_trivial_abi(self.layout_of(ty)?)
-            }
-
-            ty::Alias(..) => panic!("non-normalized type"),
-            _ => interp_ok(false),
-        }
-    }
-
     /// Find the wrapped inner type of a transparent wrapper by going for the unique
     /// non-trivial-ABI field.
     ///
@@ -132,7 +87,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let mut found = None;
                 for idx in 0..layout.fields.count() {
                     let field = layout.field(self, idx);
-                    if self.has_trivial_abi(field)? {
+                    if field.has_trivial_abi() {
                         continue;
                     }
                     // Found a non-trivial ABI field!
@@ -320,7 +275,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(true);
         }
         // Handle trivial-ABI types.
-        if self.has_trivial_abi(caller)? && self.has_trivial_abi(callee)? {
+        if caller.has_trivial_abi() && callee.has_trivial_abi() {
             return interp_ok(true);
         }
         // Unfold newtypes and NPO optimizations.
