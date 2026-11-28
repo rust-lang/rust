@@ -67,7 +67,7 @@ where
     pub(in crate::solve) fn enter_inner(
         self,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<T, NoSolutionOrRerunNonErased>,
-        propagated_nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
+        propagated_nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn>)>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
 

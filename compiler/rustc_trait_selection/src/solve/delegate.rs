@@ -64,9 +64,7 @@ impl<'tcx> SolverDelegate<'tcx> {
 
 /// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
 /// on a list of [`ty::GenericArg`]
-fn goal_stalled_on_args<'tcx>(
-    stalled_vars: ThinVec<TyOrConstInferVar>,
-) -> ComputeGoalFastPathOutcome<'tcx> {
+fn goal_stalled_on_args(stalled_vars: ThinVec<TyOrConstInferVar>) -> ComputeGoalFastPathOutcome {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
@@ -80,9 +78,9 @@ fn goal_stalled_on_args<'tcx>(
 /// Create a [`ComputeGoalFastPathOutcome`] signalling the  goal is stalled
 /// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
 ///
-fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
+fn goal_stalled_on_args_or_nonempty_opaques(
     stalled_vars: ThinVec<TyOrConstInferVar>,
-) -> ComputeGoalFastPathOutcome<'tcx> {
+) -> ComputeGoalFastPathOutcome {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
@@ -152,7 +150,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
-    ) -> ComputeGoalFastPathOutcome<'tcx> {
+    ) -> ComputeGoalFastPathOutcome {
         use ComputeGoalFastPathOutcome as Outcome;
 
         // FIXME(-Zassumptions-on-binders): actually handle fast path

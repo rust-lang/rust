@@ -44,7 +44,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
-    ) -> ComputeGoalFastPathOutcome<Self::Interner>;
+    ) -> ComputeGoalFastPathOutcome;
 
     fn fresh_var_for_kind(
         &self,

@@ -148,7 +148,7 @@ where
 
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
-    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
+    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn>)>,
 
     pub(super) origin_span: I::Span,
 
@@ -161,7 +161,7 @@ where
     tainted: Result<(), NoSolution>,
 
     /// Tracks accesses of opaque types while in [`TypingMode::ErasedNotCoherence`].
-    pub(super) opaque_accesses: AccessedOpaques<I>,
+    pub(super) opaque_accesses: AccessedOpaques,
 
     pub(super) inspect: inspect::EvaluationStepBuilder<D>,
 }
@@ -175,12 +175,12 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
-        stalled_on: Option<GoalStalledOn<Self::Interner>>,
+        stalled_on: Option<GoalStalledOn>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
     /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
     /// `stalled_on`.
-    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool;
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn) -> bool;
 
     /// Checks whether evaluating `goal` may hold while treating not-yet-defined
     /// opaque types as being kind of rigid.
@@ -226,7 +226,7 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         span: I::Span,
-        stalled_on: Option<GoalStalledOn<I>>,
+        stalled_on: Option<GoalStalledOn>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
         if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
@@ -265,7 +265,7 @@ where
 
     // This function is very hot and has a single call site.
     #[inline(always)]
-    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn) -> bool {
         match inlined_rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
             RerunStalled::WontMakeProgress(_) => true,
             RerunStalled::MayMakeProgress => false,
@@ -504,7 +504,7 @@ where
             &mut EvalCtxt<'_, D>,
             Goal<I, I::Predicate>,
         ) -> Result<T, NoSolutionOrRerunNonErased>,
-    ) -> (Result<T, NoSolution>, AccessedOpaques<I>) {
+    ) -> (Result<T, NoSolution>, AccessedOpaques) {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
         let var_values = var_values.var_values;
         for (key, ty) in input.predefined_opaques_in_body.iter() {
@@ -641,7 +641,7 @@ where
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-        stalled_on: Option<GoalStalledOn<I>>,
+        stalled_on: Option<GoalStalledOn>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
@@ -683,7 +683,7 @@ where
         &mut self,
         canonical_goal: I::CanonicalInput,
         step_kind: PathKind,
-    ) -> (Result<CanonicalResponse<I>, NoSolution>, AccessedOpaques<I>) {
+    ) -> (Result<CanonicalResponse<I>, NoSolution>, AccessedOpaques) {
         let increase_depth_for_nested =
             match canonical_goal.canonical.value.goal.predicate.kind().skip_binder() {
                 // We don't lower the available depth for the `NormalizesTo` goal, as evaluating
@@ -977,8 +977,8 @@ where
         canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
         stalled_vars: Vec<I::GenericArg>,
-        previously_succeeded_in_erased: SucceededInErased<I>,
-    ) -> GoalStalledOn<I> {
+        previously_succeeded_in_erased: SucceededInErased,
+    ) -> GoalStalledOn {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.
         let mut sub_roots = ThinVec::new();
         let stalled_vars = stalled_vars
@@ -2056,24 +2056,10 @@ enum RerunDecision {
 
 #[tracing::instrument(ret)]
 fn should_rerun_after_erased_canonicalization<I: Interner>(
-    AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
+    AccessedOpaques { reason: _, rerun }: AccessedOpaques,
     original_typing_mode: TypingMode<I>,
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
 ) -> RerunDecision {
-    let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
-    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopySet<_>| {
-        if def_ids.as_ref().is_empty() {
-            RerunDecision::No
-        } else if opaques
-            .iter()
-            .chain(parent_opaque_def_ids)
-            .any(|opaque| def_ids.as_ref().contains(&opaque))
-        {
-            RerunDecision::Yes
-        } else {
-            RerunDecision::No
-        }
-    };
     let any_opaque_has_infer_as_hidden = || {
         if parent_opaque_types.iter().any(|(_, ty)| ty.is_ty_var()) {
             RerunDecision::Yes
@@ -2095,15 +2081,15 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         (RerunCondition::Always, _) => RerunDecision::Yes,
         // =============================
         (
-            RerunCondition::OpaqueInStorage(..),
+            RerunCondition::InPostAnalysis,
             TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
         ) => RerunDecision::Yes,
         (
-            RerunCondition::OpaqueInStorage(defids),
-            TypingMode::PostBorrowck { defined_opaque_types: opaques }
-            | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
-            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
-        ) => opaque_in_storage(opaques, defids),
+            RerunCondition::InPostAnalysis,
+            TypingMode::PostBorrowck { .. }
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. },
+        ) => RerunDecision::No,
         // =============================
         (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
             any_opaque_has_infer_as_hidden()
@@ -2118,26 +2104,20 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         ) => RerunDecision::No,
         // =============================
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
+            RerunCondition::InPostAnalysisOrAnyOpaqueHasInferAsHidden,
             TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
         ) => RerunDecision::Yes,
-        (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-            TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
-        ) => {
+        (RerunCondition::InPostAnalysisOrAnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
             if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
-                RerunDecision::Yes
-            } else if let RerunDecision::Yes = opaque_in_storage(opaques, defids) {
                 RerunDecision::Yes
             } else {
                 RerunDecision::No
             }
         }
         (
-            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-            TypingMode::PostBorrowck { defined_opaque_types: opaques }
-            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
-        ) => opaque_in_storage(opaques, defids),
+            RerunCondition::InPostAnalysisOrAnyOpaqueHasInferAsHidden,
+            TypingMode::PostBorrowck { .. } | TypingMode::PostTypeckThroughBorrowck { .. },
+        ) => RerunDecision::No,
     }
 }
 

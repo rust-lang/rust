@@ -767,7 +767,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 
 impl<I: Interner> search_graph::Cx for I {
     type Input = I::CanonicalInput;
-    type Result = (QueryResult<I>, AccessedOpaques<I>);
+    type Result = (QueryResult<I>, AccessedOpaques);
     type AmbiguityKind = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;

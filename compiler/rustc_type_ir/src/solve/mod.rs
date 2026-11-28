@@ -179,26 +179,26 @@ impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopySet<T> {
 /// - Rerun goal is implemented with `should_rerun_after_erased_canonicalization`, on the `EvalCtxt`.
 ///
 /// Some variant names contain an `Or` here. They rerun when any of the two conditions applies
-#[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum RerunCondition<I: Interner> {
+pub enum RerunCondition {
     Never,
 
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
     /// Note: unconditionally reruns in postanalysis
-    OpaqueInStorage(SmallCopySet<I::LocalDefId>),
+    InPostAnalysis,
 
     /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
-    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopySet<I::LocalDefId>),
+    InPostAnalysisOrAnyOpaqueHasInferAsHidden,
 
     Always,
 }
 
-impl<I: Interner> RerunCondition<I> {
+impl RerunCondition {
     /// Merge two rerun states according to the following transition diagram
     /// (some cells are empty because the table is symmetric, i.e. `a.merge(b)` == `b.merge(a)`).
     ///
@@ -220,38 +220,28 @@ impl<I: Interner> RerunCondition<I> {
             (Self::Never, other) | (other, Self::Never) => other,
             (Self::Always, _) | (_, Self::Always) => Self::Always,
 
-            (Self::OpaqueInStorage(a), Self::OpaqueInStorage(b)) => {
-                a.union(b).map(Self::OpaqueInStorage).unwrap_or(Self::Always)
-            }
+            (Self::InPostAnalysis, Self::InPostAnalysis) => self,
             (Self::AnyOpaqueHasInferAsHidden, Self::AnyOpaqueHasInferAsHidden) => {
                 Self::AnyOpaqueHasInferAsHidden
             }
-            (
-                Self::AnyOpaqueHasInferAsHidden,
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-            )
-            | (
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-                Self::AnyOpaqueHasInferAsHidden,
-            ) => Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
+            (Self::AnyOpaqueHasInferAsHidden, Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden)
+            | (Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden, Self::AnyOpaqueHasInferAsHidden) => {
+                Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden
+            }
 
             (
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b),
-            ) => a
-                .union(b)
-                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
-                .unwrap_or(Self::Always),
+                Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden,
+                Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden,
+            ) => Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden,
 
-            (Self::OpaqueInStorage(a), Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b))
-            | (Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b), Self::OpaqueInStorage(a)) => a
-                .union(b)
-                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
-                .unwrap_or(Self::Always),
+            (Self::InPostAnalysis, Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden)
+            | (Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden, Self::InPostAnalysis) => {
+                Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden
+            }
 
-            (Self::OpaqueInStorage(a), Self::AnyOpaqueHasInferAsHidden)
-            | (Self::AnyOpaqueHasInferAsHidden, Self::OpaqueInStorage(a)) => {
-                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a)
+            (Self::InPostAnalysis, Self::AnyOpaqueHasInferAsHidden)
+            | (Self::AnyOpaqueHasInferAsHidden, Self::InPostAnalysis) => {
+                Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden
             }
         };
         debug!("merging rerun state {self:?} + {other:?} => {merged:?}");
@@ -263,8 +253,8 @@ impl<I: Interner> RerunCondition<I> {
         match self {
             Self::Always => Err(RerunNonErased(())),
             Self::Never
-            | Self::OpaqueInStorage(_)
-            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
+            | Self::InPostAnalysis
+            | Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden
             | Self::AnyOpaqueHasInferAsHidden => Ok(()),
         }
     }
@@ -276,8 +266,8 @@ impl<I: Interner> RerunCondition<I> {
         match self {
             Self::Never => false,
             Self::Always
-            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
-            | Self::OpaqueInStorage(_)
+            | Self::InPostAnalysisOrAnyOpaqueHasInferAsHidden
+            | Self::InPostAnalysis
             | Self::AnyOpaqueHasInferAsHidden => true,
         }
     }
@@ -300,23 +290,23 @@ pub enum RerunReason {
     TryStallCoroutine,
 }
 
-#[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub struct AccessedOpaques<I: Interner> {
+pub struct AccessedOpaques {
     #[cfg_attr(feature = "nightly", type_visitable(ignore))]
     #[type_foldable(identity)]
     pub reason: Option<RerunReason>,
-    pub rerun: RerunCondition<I>,
+    pub rerun: RerunCondition,
 }
 
-impl<I: Interner> Default for AccessedOpaques<I> {
+impl Default for AccessedOpaques {
     fn default() -> Self {
         Self { reason: None, rerun: RerunCondition::Never }
     }
 }
 
-impl<I: Interner> AccessedOpaques<I> {
+impl AccessedOpaques {
     pub fn update(&mut self, other: Self) -> Result<(), RerunNonErased> {
         *self = Self {
             // prefer the newest reason
@@ -348,10 +338,7 @@ impl<I: Interner> AccessedOpaques<I> {
 
     pub fn rerun_if_in_post_analysis(&mut self, reason: RerunReason) -> Result<(), RerunNonErased> {
         debug!("set rerun if post analysis");
-        self.update(AccessedOpaques {
-            reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::empty()),
-        })
+        self.update(AccessedOpaques { reason: Some(reason), rerun: RerunCondition::InPostAnalysis })
     }
 
     pub fn rerun_if_any_opaque_has_infer_as_hidden_type(
@@ -1014,31 +1001,31 @@ impl SizedTraitKind {
     }
 }
 
-#[derive_where(Clone, Debug; I: Interner)]
-pub enum SucceededInErased<I: Interner> {
+#[derive(Clone, Debug)]
+pub enum SucceededInErased {
     /// This goal previously succeeded in erased mode, which based on `accessed_opaques`
     /// might make us take a fast path slightly more often.
     Yes {
-        accessed_opaques: AccessedOpaques<I>,
+        accessed_opaques: AccessedOpaques,
     },
     No,
 }
 
-#[derive_where(Clone, Debug; I: Interner)]
-pub enum GoalStalledOnOpaques<I: Interner> {
+#[derive(Clone, Debug)]
+pub enum GoalStalledOnOpaques {
     /// This goal got stalled in `compute_goal_fast_path`. Usually this means
     /// the goal is stalled on not that much, only one or two variables, and
     /// definitely nothing to do with opaque types. So we don't store that information.
     No,
     Yes {
         num_opaques_in_storage: usize,
-        previously_succeeded_in_erased: SucceededInErased<I>,
+        previously_succeeded_in_erased: SucceededInErased,
     },
 }
 
 /// The conditions that must change for a goal to warrant
-#[derive_where(Clone, Debug; I: Interner)]
-pub struct GoalStalledOn<I: Interner> {
+#[derive(Clone, Debug)]
+pub struct GoalStalledOn {
     // `ThinVec` is important for performance. See #160005.
     pub stalled_vars: ThinVec<TyOrConstInferVar>,
     // `ThinVec` is important for performance. See #160005.
@@ -1046,20 +1033,20 @@ pub struct GoalStalledOn<I: Interner> {
     /// The `MaybeInfo` that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_maybe_info: MaybeInfo,
-    pub opaques: GoalStalledOnOpaques<I>,
+    pub opaques: GoalStalledOnOpaques,
 }
 
 /// For some goals we can trivially answer some questions without going through
 /// canonicalization. There are three options:
 #[derive(Clone, Debug)]
-pub enum ComputeGoalFastPathOutcome<I: Interner> {
+pub enum ComputeGoalFastPathOutcome {
     /// Do not attempt the fast path. Compute as normal.
     NoFastPath,
     /// The goal trivially holds, immediately produce a result with [`Certainty::Yes`]
     TriviallyHolds,
     /// The goal is trivially stalled: we know for sure that it makes no sense to compute it right
     /// now, but can return information about what its stalled on and when it can be computed for real.
-    TriviallyStalled { stalled_on: GoalStalledOn<I> },
+    TriviallyStalled { stalled_on: GoalStalledOn },
 }
 
 /// Helper for `InferCtxt::ty_or_const_infer_var_changed` (see comment on that), used

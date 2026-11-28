@@ -438,7 +438,7 @@ pub struct GoalEvaluation<I: Interner> {
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
-    pub stalled_on: Option<GoalStalledOn<I>>,
+    pub stalled_on: Option<GoalStalledOn>,
 }
 
 /// Flatten the `Condition` tree into a conjunction of predicates.
