@@ -37,6 +37,7 @@ pub enum TokenType {
 
     // Structural symbols
     At,
+    Dollar,
     Dot,
     DotDot,
     DotDotDot,
@@ -188,6 +189,7 @@ impl TokenType {
             Or,
 
             At,
+            Dollar,
             Dot,
             DotDot,
             DotDotDot,
@@ -390,6 +392,7 @@ impl TokenType {
             TokenType::Or => "`|`",
 
             TokenType::At => "`@`",
+            TokenType::Dollar => "`$`",
             TokenType::Dot => "`.`",
             TokenType::DotDot => "`..`",
             TokenType::DotDotDot => "`...`",
@@ -489,6 +492,7 @@ macro_rules! exp {
     (And)            => { exp!(@tok, And) };
     (Or)             => { exp!(@tok, Or) };
     (At)             => { exp!(@tok, At) };
+    (Dollar)         => { exp!(@tok, Dollar) };
     (Dot)            => { exp!(@tok, Dot) };
     (DotDot)         => { exp!(@tok, DotDot) };
     (DotDotDot)      => { exp!(@tok, DotDotDot) };
