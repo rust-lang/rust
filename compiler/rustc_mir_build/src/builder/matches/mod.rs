@@ -2932,7 +2932,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         valtree: ty::ValTree<'tcx>,
         pat: &DeconstructedPat<'_, 'tcx>,
     ) -> bool {
-        use rustc_pattern_analysis::constructor::{IntRange, MaybeInfiniteInt};
+        use rustc_pattern_analysis::constructor::{FloatRange, IntRange, MaybeInfiniteInt};
         use rustc_pattern_analysis::rustc::Constructor;
 
         match pat.ctor() {
@@ -2963,28 +2963,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(actual_value) => *pattern_value == actual_value,
                 Err(()) => bug!("bool value with invalid bits"),
             },
-            Constructor::F16Range(l, h, end) => {
+            Constructor::FloatRange(FloatRange::F16Range(l, h, end)) => {
                 let actual = valtree.to_leaf().to_f16();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
-            Constructor::F32Range(l, h, end) => {
+            Constructor::FloatRange(FloatRange::F32Range(l, h, end)) => {
                 let actual = valtree.to_leaf().to_f32();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
-            Constructor::F64Range(l, h, end) => {
+            Constructor::FloatRange(FloatRange::F64Range(l, h, end)) => {
                 let actual = valtree.to_leaf().to_f64();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
-            Constructor::F128Range(l, h, end) => {
+            Constructor::FloatRange(FloatRange::F128Range(l, h, end)) => {
                 let actual = valtree.to_leaf().to_f128();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
