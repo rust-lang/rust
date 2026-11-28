@@ -87,7 +87,7 @@ impl From<RerunNonErased> for NoSolutionOrRerunNonErased {
 /// | ----------------------- | ----- | -------------------------------------------------------------------------------------------------------------------- |
 /// | never                   | no    | no                                                                                                                   |
 /// | always                  | yes   | yes                                                                                                                  |
-/// | [defid in storage]      | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
+/// | post-analysis           | no    | only if TypingMode::PostAnalysis                                                                                     |
 /// | opaque with hidden type | no    | only if any of the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Typeck       |
 ///
 /// - "bail" is implemented with [`should_bail`](Self::should_bail).
@@ -106,11 +106,11 @@ pub enum RerunCondition {
 
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
-    /// Note: unconditionally reruns in postanalysis
+    /// Unconditionally reruns in post-analysis
     InPostAnalysis,
 
-    /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
-    /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
+    /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::InPostAnalysis`].
+    /// Note that just like the unmerged [`Self::AnyOpaqueHasInferAsHidden`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
     InPostAnalysisOrAnyOpaqueHasInferAsHidden,
 
@@ -122,17 +122,14 @@ impl RerunCondition {
     /// (some cells are empty because the table is symmetric, i.e. `a.merge(b)` == `b.merge(a)`).
     ///
     /// - "self" here means the current state, i.e. the state of the current column
-    /// - square brackets represents that this is a list of things. Even if the state doesn't
-    /// change, we might grow the list to effectively end up in a different state anyway
-    /// - `[o. in s.]` abbreviates "opaque in storage"
     ///
     ///
-    /// |                                 | never  | always | [opaque in storage] | opaque has infer as hidden | [o. in s.] or i. as hidden |
-    /// | ------------------------------- | ------ | ------ | ------------------- | -------------------------- | -------------------------- |
-    /// | never                           | self   | self   | self                | self                       | self                       |
-    /// | always                          |        | always | always              | always                     | always                     |
-    /// | [opaque in storage]             |        |        | concat self         | [o. in s.] or i. as hidden | concat to self             |
-    /// | opaque has infer as hidden type |        |        |                     | self                       | to self                    |
+    /// |                                 | never  | always | post-analysis | opaque has infer as hidden    | post-analysis or i. as hidden |
+    /// | ------------------------------- | ------ | ------ | ------------- | ----------------------------- | ----------------------------- |
+    /// | never                           | self   | self   | self          | self                          | self                          |
+    /// | always                          |        | always | always        | always                        | always                        |
+    /// | post-analysis                   |        |        | self          | post-analysis or i. as hidden | self                          |
+    /// | opaque has infer as hidden type |        |        |               | self                          | to self                       |
     ///
     fn merge(self, other: Self) -> Self {
         let merged = match (self, other) {
