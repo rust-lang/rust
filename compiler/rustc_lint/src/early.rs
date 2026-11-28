@@ -76,11 +76,15 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
     }
 
     fn visit_item(&mut self, it: &'ast ast::Item) {
+        let prev = self.context.in_external_macro_item;
+        self.context.in_external_macro_item |=
+            it.span.in_external_macro(self.context.sess().source_map());
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             lint_callback!(cx, check_item, it);
             ast_visit::walk_item(cx, it);
             lint_callback!(cx, check_item_post, it);
-        })
+        });
+        self.context.in_external_macro_item = prev;
     }
 
     fn visit_foreign_item(&mut self, it: &'ast ast::ForeignItem) {

@@ -391,6 +391,9 @@ trait UnusedDelimLint {
         keep_space: (bool, bool),
         is_kw: bool,
     ) {
+        if cx.in_external_macro_item {
+            return;
+        }
         let sm = cx.sess().source_map();
         // The warning points at the delimiter alone. The help only does so if there is a comment
         // between the delimiter and the inner value, so the comment is kept.

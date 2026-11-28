@@ -459,6 +459,9 @@ pub struct LateContext<'tcx> {
 pub struct EarlyContext<'a> {
     pub builder: LintLevelsBuilder<'a, crate::levels::TopDown>,
     pub buffered: LintBuffer,
+    /// Whether an enclosing item comes from an external macro. Derives copy tokens of their input
+    /// into the items they generate, so the span a lint reports does not show this.
+    pub(crate) in_external_macro_item: bool,
 }
 
 pub trait LintContext {
@@ -524,6 +527,7 @@ impl<'a> EarlyContext<'a> {
                 registered_lint_tools,
             ),
             buffered,
+            in_external_macro_item: false,
         }
     }
 }

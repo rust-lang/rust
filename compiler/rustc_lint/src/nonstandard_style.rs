@@ -203,7 +203,9 @@ impl EarlyLintPass for NonCamelCaseTypes {
     }
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
-        if let ast::GenericParamKind::Type { .. } = param.kind {
+        if let ast::GenericParamKind::Type { .. } = param.kind
+            && !cx.in_external_macro_item
+        {
             self.check_case(cx, "type parameter", &param.ident);
         }
     }
