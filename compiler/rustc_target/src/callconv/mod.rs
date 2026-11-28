@@ -669,12 +669,18 @@ pub struct FnAbi<'a, Ty> {
     pub conv: CanonAbi,
     /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
+    /// The function pointer discriminator that a call using this `FnAbi` uses to create a call
+    /// bundle.
+    /// When type discrimination is on, contains per type discriminator otherwise a schema defined
+    /// constant discriminator. None, if this ABI doesn't participate in pointer authentication.
+    pub ptrauth_discriminator: Option<u64>,
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
 impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind } = self;
+        let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind, ptrauth_discriminator } =
+            self;
         f.debug_struct("FnAbi")
             .field("args", args)
             .field("ret", ret)
@@ -682,6 +688,7 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
             .field("fixed_count", fixed_count)
             .field("conv", conv)
             .field("can_unwind", can_unwind)
+            .field("ptrauth_discriminator", ptrauth_discriminator)
             .finish()
     }
 }
@@ -1067,6 +1074,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
-    static_assert_size!(FnAbi<'_, usize>, 80);
+    static_assert_size!(FnAbi<'_, usize>, 96);
     // tidy-alphabetical-end
 }

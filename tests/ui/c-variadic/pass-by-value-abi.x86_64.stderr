@@ -68,8 +68,9 @@ error: fn_abi_of(take_va_list) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-by-value-abi.rs:27:1
+  --> $DIR/pass-by-value-abi.rs:30:1
    |
 LL | pub extern "C" fn take_va_list(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -146,8 +147,9 @@ error: fn_abi_of(take_va_list_sysv64) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-by-value-abi.rs:37:1
+  --> $DIR/pass-by-value-abi.rs:40:1
    |
 LL | pub extern "sysv64" fn take_va_list_sysv64(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,8 +226,9 @@ error: fn_abi_of(take_va_list_win64) = FnAbi {
                Win64,
            ),
            can_unwind: false,
+           ptrauth_discriminator: $PTRAUTH_DISCRIMINATOR,
        }
-  --> $DIR/pass-by-value-abi.rs:44:1
+  --> $DIR/pass-by-value-abi.rs:47:1
    |
 LL | pub extern "win64" fn take_va_list_win64(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
