@@ -67,7 +67,6 @@ impl SingleAttributeParser for CrateNameParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -134,7 +133,6 @@ impl CombineAttributeParser for CrateTypeParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -226,7 +224,6 @@ impl SingleAttributeParser for RecursionLimitParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -306,7 +303,6 @@ impl SingleAttributeParser for TypeLengthLimitParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -397,7 +393,6 @@ impl NoArgsAttributeParser for NoStdParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -456,7 +451,6 @@ impl NoArgsAttributeParser for NoMainParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -524,7 +518,6 @@ impl SingleAttributeParser for WindowsSubsystemParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -628,7 +621,6 @@ impl NoArgsAttributeParser for NoBuiltinsParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -715,7 +707,6 @@ impl CombineAttributeParser for FeatureParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);

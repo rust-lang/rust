@@ -101,7 +101,6 @@ impl NoArgsAttributeParser for ColdParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -509,7 +508,6 @@ impl NoArgsAttributeParser for NoMangleParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);

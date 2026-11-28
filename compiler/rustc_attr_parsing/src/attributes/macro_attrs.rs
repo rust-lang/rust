@@ -222,7 +222,6 @@ impl SingleAttributeParser for MacroExportParser {
         Warn(Target::LifetimeParam),
         Warn(Target::Loop),
         Warn(Target::MacroCall),
-        Warn(Target::MacroDef),
         Warn(Target::Method(MethodKind::Inherent)),
         Warn(Target::Method(MethodKind::Trait { body: false })),
         Warn(Target::Method(MethodKind::Trait { body: true })),

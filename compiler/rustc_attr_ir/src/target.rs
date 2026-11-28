@@ -76,7 +76,7 @@ pub enum ConstTypeAstTarget<'a> {
     ConstBlockItem(&'a ConstBlockItem),
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
+#[derive(Copy, Clone, Hash, PartialEq, Debug, Eq, StableHash)]
 pub enum MethodKind {
     /// Method in a `trait Trait` block
     Trait {
@@ -91,7 +91,7 @@ pub enum MethodKind {
 
 // FIXME(rtjkro): `AstTarget` has nearly one-to-one mapping with `Target`, barring the extra fields from `AssocConst`, `Method`, and `AssocTy`.
 // In the future, remove `Target` and use `AstTarget` instead.
-#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
+#[derive(Copy, Clone, Hash, PartialEq, Debug, Eq, StableHash)]
 pub enum Target {
     ExternCrate,
     Use,

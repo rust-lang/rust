@@ -78,7 +78,6 @@ impl SingleAttributeParser for LinkNameParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -168,7 +167,6 @@ impl CombineAttributeParser for LinkParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);
@@ -642,7 +640,6 @@ impl SingleAttributeParser for LinkSectionParser {
         Warn(Target::Expression),
         Warn(Target::ExternCrate),
         Warn(Target::Field),
-        Warn(Target::Fn),
         Warn(Target::ForLoop),
         Warn(Target::ForeignFn),
         Warn(Target::ForeignMod),
@@ -665,7 +662,6 @@ impl SingleAttributeParser for LinkSectionParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);

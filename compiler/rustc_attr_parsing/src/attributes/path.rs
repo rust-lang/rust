@@ -52,7 +52,6 @@ impl SingleAttributeParser for PathParser {
         Warn(Target::Union),
         Warn(Target::Use),
         Warn(Target::Variant),
-        Warn(Target::WherePredicate),
         Warn(Target::While),
         // tidy-alphabetical-end
     ]);

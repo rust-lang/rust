@@ -118,7 +118,6 @@ impl SingleAttributeParser for ShouldPanicParser {
         Warn(Target::Expression),
         Warn(Target::ExternCrate),
         Warn(Target::Field),
-        Warn(Target::Fn),
         Warn(Target::ForLoop),
         Warn(Target::ForeignFn),
         Warn(Target::ForeignMod),

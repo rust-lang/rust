@@ -931,7 +931,6 @@ impl AttributeParser for DocParser {
     }
 }
 
-/// This set of targets is used both for the `doc` attribute and doc comments.
 const CRATE_DOC_TARGETS: AllowedTargets<'static> = {
     AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
