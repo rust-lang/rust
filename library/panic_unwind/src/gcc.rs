@@ -77,8 +77,10 @@ pub(crate) fn panic(data: &mut dyn PanicPayload) -> u32 {
         exception: *mut uw::_Unwind_Exception,
     ) {
         let exception = unsafe { Box::from_raw(exception as *mut Exception) };
-        // Mark this panic as handled, even if dropping the panic
-        // payload causes another exception.
+        // Mark this panic as handled before dropping the payload. The payload's
+        // destructor might observe the panic count via `thread::panicking`, and
+        // it is more natural to say that the panic ends as soon as the exception
+        // is caught, no matter what happens to the payload.
         super::__rust_drop_panic();
         drop(exception);
     }
