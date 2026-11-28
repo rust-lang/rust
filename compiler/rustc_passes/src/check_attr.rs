@@ -564,22 +564,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
         for (ident, is_pointer) in [(pointer, true), (length, false)] {
             let normalized_ident = ident.normalize_to_macro_rules();
-            let reason = match names.iter().zip(sig.inputs()).find(|(name, _)| {
-                name.is_some_and(|n| n.normalize_to_macro_rules() == normalized_ident)
-            }) {
+            let param = names.iter().zip(sig.inputs()).find_map(|(name, &ty)| {
+                let name = name.filter(|n| n.normalize_to_macro_rules() == normalized_ident)?;
+                Some((name.span, ty))
+            });
+            let reason = match param {
                 None => "the name must refer to a parameter of this function",
-                Some((_, ty)) => {
-                    if is_pointer && !ty.is_raw_ptr() {
-                        "the buffer parameter must have a raw pointer type"
-                    } else if !is_pointer && !ty.is_integral() {
-                        "the length parameter must have an integer type"
-                    } else {
-                        continue;
-                    }
+                Some((_, ty)) if is_pointer && !ty.is_raw_ptr() => {
+                    "the buffer parameter must have a raw pointer type"
                 }
+                Some((_, ty)) if !is_pointer && !ty.is_integral() => {
+                    "the length parameter must have an integer type"
+                }
+                Some(_) => continue,
             };
             self.dcx().emit_err(diagnostics::CBufferLengthParameter {
                 span: ident.span,
+                fn_span: self.tcx.item_ident(def_id).span,
+                param: param.map(|(span, ty)| diagnostics::CBufferLengthParameterType { span, ty }),
                 name: ident.name,
                 reason,
             });

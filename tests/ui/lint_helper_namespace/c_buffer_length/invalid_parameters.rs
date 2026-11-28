@@ -17,4 +17,14 @@ fn missing_pointer(buffer: *const u8, length: usize) {}
 //~^ ERROR invalid parameter `missing`
 fn missing_length(buffer: *const u8, length: usize) {}
 
+macro_rules! declare {
+    ($buffer:ident) => {
+        #[lint::c_buffer_length($buffer, len)]
+        //~^ ERROR invalid parameter `len`
+        fn in_macro($buffer: *const u8, len: bool) {}
+    };
+}
+
+declare!(len);
+
 fn main() {}

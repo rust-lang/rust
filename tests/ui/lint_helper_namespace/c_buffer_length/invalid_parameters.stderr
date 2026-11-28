@@ -3,6 +3,9 @@ error: invalid parameter `buffer` in `lint::c_buffer_length`
    |
 LL | #[lint::c_buffer_length(buffer, length)]
    |                         ^^^^^^
+LL |
+LL | fn not_pointer(buffer: &[u8], length: usize) {}
+   |                ------ this parameter has type `&[u8]`
    |
    = help: the buffer parameter must have a raw pointer type
 
@@ -11,6 +14,9 @@ error: invalid parameter `length` in `lint::c_buffer_length`
    |
 LL | #[lint::c_buffer_length(buffer, length)]
    |                                 ^^^^^^
+LL |
+LL | fn not_integer(buffer: *const u8, length: bool) {}
+   |                                   ------ this parameter has type `bool`
    |
    = help: the length parameter must have an integer type
 
@@ -19,6 +25,8 @@ error: invalid parameter `missing` in `lint::c_buffer_length`
    |
 LL | #[lint::c_buffer_length(missing, length)]
    |                         ^^^^^^^
+LL |
+LL | fn missing_pointer(buffer: *const u8, length: usize) {}
    |
    = help: the name must refer to a parameter of this function
 
@@ -27,8 +35,26 @@ error: invalid parameter `missing` in `lint::c_buffer_length`
    |
 LL | #[lint::c_buffer_length(buffer, missing)]
    |                                 ^^^^^^^
+LL |
+LL | fn missing_length(buffer: *const u8, length: usize) {}
    |
    = help: the name must refer to a parameter of this function
 
-error: aborting due to 4 previous errors
+error: invalid parameter `len` in `lint::c_buffer_length`
+  --> $DIR/invalid_parameters.rs:22:42
+   |
+LL | macro_rules! declare {
+LL |     ($buffer:ident) => {
+LL |         #[lint::c_buffer_length($buffer, len)]
+   |                                          ^^^
+LL |
+LL |         fn in_macro($buffer: *const u8, len: bool) {}
+   |                                         --- this parameter has type `bool`
+...
+LL | declare!(len);
+   | ------------- in this macro invocation
+   |
+   = help: the length parameter must have an integer type
+
+error: aborting due to 5 previous errors
 

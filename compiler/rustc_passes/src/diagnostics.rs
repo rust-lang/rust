@@ -13,11 +13,23 @@ use crate::check_attr::ProcMacroKind;
 #[derive(Diagnostic)]
 #[diag("invalid parameter `{$name}` in `lint::c_buffer_length`")]
 #[help("{$reason}")]
-pub(crate) struct CBufferLengthParameter {
+pub(crate) struct CBufferLengthParameter<'tcx> {
     #[primary_span]
     pub span: Span,
+    #[context]
+    pub fn_span: Span,
+    #[subdiagnostic]
+    pub param: Option<CBufferLengthParameterType<'tcx>>,
     pub name: Symbol,
     pub reason: &'static str,
+}
+
+#[derive(Subdiagnostic)]
+#[label("this parameter has type `{$ty}`")]
+pub(crate) struct CBufferLengthParameterType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
