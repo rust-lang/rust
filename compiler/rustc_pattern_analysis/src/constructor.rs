@@ -188,11 +188,11 @@ use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 use crate::PatCx;
 
-/// Whether we have seen a constructor in the column or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// Whether we have seen a constructor in the column or not, and if so in which rows.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Presence {
     Unseen,
-    Seen,
+    Seen(RowSet),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -367,13 +367,15 @@ impl IntRange {
     /// fictitious ranges sensibly.
     fn split(
         self,
-        column_ranges: impl Iterator<Item = IntRange>,
+        column_ranges: impl Iterator<Item = (RowId, IntRange)> + Clone,
     ) -> impl Iterator<Item = (Presence, IntRange)> {
         // The boundaries of ranges in `column_ranges` intersected with `self`.
         // We do parenthesis matching for input ranges. A boundary counts as +1 if it starts
         // a range and -1 if it ends it. When the count is > 0 between two boundaries, we
         // are within an input range.
         let mut boundaries: Vec<(MaybeInfiniteInt, isize)> = column_ranges
+            .clone()
+            .map(|(_, r)| r)
             .filter_map(|r| self.intersection(&r))
             .flat_map(|r| [(r.lo, 1), (r.hi, -1)])
             .collect();
@@ -404,9 +406,18 @@ impl IntRange {
             // Convert back to ranges.
             .map(move |(prev_bdy, paren_count, bdy)| {
                 use Presence::*;
-                let presence = if paren_count > 0 { Seen } else { Unseen };
-                let range = IntRange { lo: prev_bdy, hi: bdy };
-                (presence, range)
+                let splitted_range = IntRange { lo: prev_bdy, hi: bdy };
+                let presence = if paren_count > 0 {
+                    let covered_rows = column_ranges
+                        .clone()
+                        .filter(|(_, seen_range)| splitted_range.is_subrange(seen_range))
+                        .map(|(i, _)| i)
+                        .collect();
+                    Seen(covered_rows)
+                } else {
+                    Unseen
+                };
+                (presence, splitted_range)
             })
     }
 }
@@ -574,7 +585,7 @@ impl Slice {
     /// Additionally, we track for each output slice whether it is covered by one of the column slices or not.
     fn split(
         self,
-        column_slices: impl Iterator<Item = Slice>,
+        column_slices: impl Iterator<Item = (RowId, Slice)> + Clone,
     ) -> impl Iterator<Item = (Presence, Slice)> {
         // Range of lengths below `L`.
         let smaller_lengths;
@@ -594,7 +605,7 @@ impl Slice {
                 // We grow `max_slice` to be larger than all slices encountered, as described above.
                 // `L` is `max_slice.arity()`. For diagnostics, we keep the prefix and suffix
                 // lengths separate.
-                for slice in column_slices {
+                for (_, slice) in column_slices.clone() {
                     match slice.kind {
                         FixedLen(len) => {
                             fixed_len_upper_bound = cmp::max(fixed_len_upper_bound, len + 1);
@@ -634,7 +645,7 @@ impl Slice {
             }
             FixedLen(_) => {
                 // No need to split here. We only track presence.
-                for slice in column_slices {
+                for (_, slice) in column_slices.clone() {
                     match slice.kind {
                         FixedLen(len) => {
                             if len == arity {
@@ -652,12 +663,18 @@ impl Slice {
 
         smaller_lengths.map(FixedLen).chain(once(max_slice)).map(move |kind| {
             let arity = kind.arity();
+            let splitted_slice = Slice::new(self.array_len, kind);
             let seen = if min_var_len <= arity || seen_fixed_lens.contains(arity) {
-                Presence::Seen
+                let covered_rows = column_slices
+                    .clone()
+                    .filter(|(_, seen_slice)| splitted_slice.is_covered_by(*seen_slice))
+                    .map(|(i, _)| i)
+                    .collect();
+                Presence::Seen(covered_rows)
             } else {
                 Presence::Unseen
             };
-            (seen, Slice::new(self.array_len, kind))
+            (seen, splitted_slice)
         })
     }
 }
@@ -1134,8 +1151,8 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Integers { range_1, range_2 } => {
-                let seen_ranges: Vec<IntRange> =
-                    seen.iter().filter_map(|(_, ctor)| ctor.as_int_range()).copied().collect();
+                let seen_ranges: Vec<(RowId, IntRange)> =
+                    seen.iter().filter_map(|(i, c)| Some((*i, *c.as_int_range()?))).collect();
                 let ranges = range_1.split(seen_ranges.iter().copied()).chain(
                     range_2
                         .map(|range_2| range_2.split(seen_ranges.iter().copied()))
@@ -1145,37 +1162,19 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 for (presence, splitted_range) in ranges {
                     match presence {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),
-                        Presence::Seen => {
-                            let covered_rows = seen
-                                .iter()
-                                .filter(|(_, seen_ctor)| {
-                                    matches!(seen_ctor, IntRange(seen_range)
-                                    if splitted_range.is_subrange(seen_range))
-                                })
-                                .map(|(i, _)| *i)
-                                .collect();
+                        Presence::Seen(covered_rows) => {
                             present.push((IntRange(splitted_range), covered_rows))
                         }
                     }
                 }
             }
             ConstructorSet::Slice { array_len, subtype_is_empty } => {
-                let seen_slices = seen.iter().filter_map(|(_, c)| c.as_slice());
+                let seen_slices = seen.iter().filter_map(|(i, c)| Some((*i, c.as_slice()?)));
                 let base_slice = Slice::new(*array_len, VarLen(0, 0));
                 for (presence, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
                     match presence {
-                        Presence::Seen => {
-                            let covered_rows = seen
-                                .iter()
-                                .filter(|(_, seen_ctor)| {
-                                    matches!(seen_ctor, Slice(seen_slice)
-                                    if splitted_slice.is_covered_by(*seen_slice))
-                                })
-                                .map(|(i, _)| *i)
-                                .collect();
-                            present.push((ctor, covered_rows))
-                        }
+                        Presence::Seen(covered_rows) => present.push((ctor, covered_rows)),
                         Presence::Unseen => {
                             if *subtype_is_empty && splitted_slice.arity() != 0 {
                                 // We have subpatterns of an empty type, so the constructor is
