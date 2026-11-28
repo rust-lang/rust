@@ -591,6 +591,7 @@ impl Slice {
         let smaller_lengths;
         let arity = self.arity();
         let mut max_slice = self.kind;
+        let mut max_slice_arity = max_slice.arity();
         // Tracks the smallest variable-length slice we've seen. Any slice arity above it is
         // therefore `Presence::Seen` in the column.
         let mut min_var_len = usize::MAX;
@@ -598,31 +599,30 @@ impl Slice {
         let mut seen_fixed_lens = GrowableBitSet::new_empty();
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
-                // A length larger than any fixed-length slice encountered.
                 // We start at 1 in case the subtype is empty because in that case the zero-length
                 // slice must be treated separately from the rest.
-                let mut fixed_len_upper_bound = 1;
+                max_slice_arity = cmp::max(max_slice_arity, 1);
                 // We grow `max_slice` to be larger than all slices encountered, as described above.
-                // `L` is `max_slice.arity()`. For diagnostics, we keep the prefix and suffix
-                // lengths separate.
+                // `L` is `max_slice_arity`. For diagnostics, we keep the prefix and suffix lengths
+                // separate.
                 for (_, slice) in column_slices.clone() {
                     match slice.kind {
                         FixedLen(len) => {
-                            fixed_len_upper_bound = cmp::max(fixed_len_upper_bound, len + 1);
                             seen_fixed_lens.insert(len);
+                            max_slice_arity = cmp::max(max_slice_arity, len + 1);
                         }
                         VarLen(prefix, suffix) => {
                             *max_prefix_len = cmp::max(*max_prefix_len, prefix);
                             *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                            max_slice_arity =
+                                cmp::max(max_slice_arity, *max_prefix_len + *max_suffix_len);
                             min_var_len = cmp::min(min_var_len, prefix + suffix);
                         }
                     }
                 }
-                // If `fixed_len_upper_bound >= L`, we set `L` to `fixed_len_upper_bound`.
-                if let Some(delta) =
-                    fixed_len_upper_bound.checked_sub(*max_prefix_len + *max_suffix_len)
-                {
-                    *max_prefix_len += delta
+                // If the computed `max_slice_arity` isn't the real arity of `max_slice`, make it so.
+                if let Some(d) = max_slice_arity.checked_sub(*max_prefix_len + *max_suffix_len) {
+                    *max_prefix_len += d
                 }
 
                 // We cap the arity of `max_slice` at the array size.
