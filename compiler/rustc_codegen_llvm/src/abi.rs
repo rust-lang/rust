@@ -436,11 +436,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         if let Some(dbg_loc) = dbg_loc {
             self.set_dbg_loc(dbg_loc);
         }
-        self.phi(
-            self.type_x87_f80(),
-            &[is_nan_res, is_not_nan_res],
-            &[is_nan_block, is_not_nan_block],
-        )
+        self.phi(&[is_nan_res, is_not_nan_res], &[is_nan_block, is_not_nan_block])
     }
 
     fn x87_lossless_fp_stack_to_float(
@@ -527,7 +523,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         if let Some(dbg_loc) = dbg_loc {
             self.set_dbg_loc(dbg_loc);
         }
-        self.phi(float_type, &[is_nan_res, is_not_nan_res], &[is_nan_block, is_not_nan_block])
+        self.phi(&[is_nan_res, is_not_nan_res], &[is_nan_block, is_not_nan_block])
     }
 }
 

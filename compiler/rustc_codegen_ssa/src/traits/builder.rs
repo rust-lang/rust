@@ -71,6 +71,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             Type = Self::Type,
             FunctionSignature = Self::FunctionSignature,
             Funclet = Self::Funclet,
+            PhiBuilder = Self::PhiBuilder,
             DIScope = Self::DIScope,
             DILocation = Self::DILocation,
             DIVariable = Self::DIVariable,
@@ -96,6 +97,15 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[UnrollAttr]) {
         self.br(dest)
     }
+    /// Adding inputs to a phi is done as part of the branch as some backends (like
+    /// rustc_codegen_gcc) need to insert statements before the basic block terminator. Having a
+    /// combined `br_with_phi` operation prevents incorrect usage of the API even on backends
+    /// that don't need to insert any statements, like rustc_codegen_llvm.
+    fn br_with_phi<const N: usize>(
+        &mut self,
+        dest: Self::BasicBlock,
+        phi_builders: [(&mut Self::PhiBuilder, Self::Value); N],
+    );
     fn cond_br(
         &mut self,
         cond: Self::Value,
@@ -369,6 +379,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.inbounds_gep(Size::from_bytes(1), ptr, offset)
     }
+    fn ptr_mask(&mut self, ptr: Self::Value, mask: Self::Value) -> Self::Value;
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     /// Produces the same value as [`Self::trunc`] (and defaults to that),
@@ -578,7 +589,6 @@ pub trait BuilderMethods<'a, 'tcx>:
         else_val: Self::Value,
     ) -> Self::Value;
 
-    fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
     fn vector_splat(&mut self, num_elts: u64, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
@@ -685,4 +695,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);
+
+    fn new_phi(&mut self) -> Self::PhiBuilder;
+    /// Gets the output of a phi. Must be called in the destination block.
+    fn phi_output(&mut self, phi: Self::PhiBuilder) -> Self::Value;
 }

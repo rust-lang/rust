@@ -16,6 +16,7 @@ use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::{PointerAuthAddressDiscriminator, PointerAuthSchema};
 use rustc_span::bug;
+use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::consts::{IsInitOrFini, IsStatic, const_alloc_to_llvm};
@@ -124,11 +125,17 @@ impl<'ll> Funclet<'ll> {
     }
 }
 
+pub(crate) struct PhiBuilder<'ll> {
+    pub(crate) values: SmallVec<[Value<'ll>; 2]>,
+    pub(crate) blocks: SmallVec<[&'ll BasicBlock; 2]>,
+}
+
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = Value<'ll>;
     type BasicBlock = &'ll BasicBlock;
     type Funclet = Funclet<'ll>;
+    type PhiBuilder = PhiBuilder<'ll>;
 
     type Value = Value<'ll>;
     type Type = Type<'ll>;

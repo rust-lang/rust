@@ -16,7 +16,7 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods, ReturnSlot,
+    IntrinsicCallBuilderMethods, ReturnSlot,
 };
 use rustc_codegen_ssa::{MemFlags, RetagInfo};
 use rustc_data_structures::fx::FxHashSet;
@@ -161,11 +161,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::breakpoint | sym::resumable_breakpoint => {
                 unimplemented!();
-            }
-            sym::va_arg => {
-                let va_list = args[0].immediate();
-                let gcc_type = self.immediate_backend_type(result.layout);
-                self.va_arg(va_list, gcc_type)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
@@ -463,18 +458,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                 // We have copied the value to `result` already.
                 return IntrinsicResult::WroteIntoPlace;
-            }
-
-            sym::ptr_mask => {
-                let usize_type = self.context.new_type::<usize>();
-                let void_ptr_type = self.context.new_type::<*const ()>();
-
-                let ptr = args[0].immediate();
-                let mask = args[1].immediate();
-
-                let addr = self.bitcast(ptr, usize_type);
-                let masked = self.and(addr, mask);
-                self.bitcast(masked, void_ptr_type)
             }
 
             _ if name_str.starts_with("simd_") => {
