@@ -106,10 +106,12 @@ pub fn rc_upgrade(weak: &RcWeak<usize>) {
 // CHECK-NEXT: call qword ptr {{.*}}__rust_alloc
 // CHECK-NEXT: test rax, rax
 // CHECK-NEXT: je [[ARC_NEW_ALLOC_FAIL:\..+]]
-// CHECK-DAG: mov qword ptr [rax], 1
-// CHECK-DAG: mov qword ptr [rax + 8], 1
-// CHECK-DAG: mov qword ptr [rax + 16], rbx
-// CHECK-DAG: pop rbx
+// CHECK-NEXT: mov rcx, rax
+// CHECK-NEXT: add rax, 16
+// CHECK-DAG: mov qword ptr [rcx], 1
+// CHECK-DAG: mov qword ptr [rcx + 8], 1
+// CHECK-DAG: mov qword ptr [rcx + 16], rbx
+// CHECK-NEXT: pop rbx
 // CHECK: ret
 // CHECK-NEXT: [[ARC_NEW_ALLOC_FAIL]]:
 // CHECK: mov edi, [[#N:]]
@@ -122,7 +124,6 @@ pub fn arc_new(x: usize) -> Arc<usize> {
 
 // CHECK-LABEL: arc_deref:
 // CHECK: mov rax, qword ptr [rdi]
-// CHECK-NEXT: add rax, 16
 // CHECK-NEXT: ret
 #[unsafe(no_mangle)]
 pub fn arc_deref(arc: &Arc<usize>) -> &usize {
@@ -131,7 +132,7 @@ pub fn arc_deref(arc: &Arc<usize>) -> &usize {
 
 // CHECK-LABEL: arc_increment:
 // CHECK: mov rax, qword ptr [rdi]
-// CHECK-NEXT: lock inc qword ptr [rax]
+// CHECK-NEXT: lock inc qword ptr [rax - 16]
 // CHECK-NEXT: jle [[ARC_INCREMENT_OVERFLOW:\..+]]
 // CHECK-NEXT: ret
 // CHECK-NEXT: [[ARC_INCREMENT_OVERFLOW]]:
@@ -144,7 +145,7 @@ pub fn arc_increment(arc: &Arc<usize>) {
 // CHECK-LABEL: arc_decrement:
 // CHECK: push rax
 // CHECK: mov qword ptr [rsp], rdi
-// CHECK-NEXT: lock dec qword ptr [rdi]
+// CHECK-NEXT: lock dec qword ptr [rdi - 16]
 // CHECK-NEXT: jne [[ARC_DECREMENT_RET:\..+]]
 // CHECK-NEXT: #MEMBARRIER
 // CHECK: mov rdi, rsp
@@ -164,14 +165,14 @@ pub fn arc_decrement(arc: Arc<usize>) {
 // CHECK: [[ARC_DOWNGRADE_PAUSE:\..+]]:
 // CHECK-NEXT: pause
 // CHECK-NEXT: [[ARC_DOWNGRADE_LOAD_WEAK]]:
-// CHECK-NEXT: mov rax, qword ptr [rcx + 8]
+// CHECK-NEXT: mov rax, qword ptr [rcx - 8]
 // CHECK: [[ARC_DOWNGRADE_RETRY:\..+]]:
 // CHECK-NEXT: cmp rax, -1
 // CHECK-NEXT: je [[ARC_DOWNGRADE_PAUSE]]
 // CHECK-NEXT: test rax, rax
 // CHECK-NEXT: js [[ARC_DOWNGRADE_OVERFLOW:\..+]]
 // CHECK-NEXT: lea rdx, [rax + 1]
-// CHECK-NEXT: lock cmpxchg qword ptr [rcx + 8], rdx
+// CHECK-NEXT: lock cmpxchg qword ptr [rcx - 8], rdx
 // CHECK-NEXT: jne [[ARC_DOWNGRADE_RETRY]]
 // CHECK: pop rax
 // CHECK: ret
@@ -188,13 +189,13 @@ pub fn arc_downgrade(arc: &Arc<usize>) {
 // CHECK: mov rcx, qword ptr [rdi]
 // CHECK-NEXT: cmp rcx, -1
 // CHECK-NEXT: je [[ARC_UPGRADE_RET:\..+]]
-// CHECK-NEXT: mov rax, qword ptr [rcx]
+// CHECK-NEXT: mov rax, qword ptr [rcx - 16]
 // CHECK: [[ARC_UPGRADE_RETRY:\..+]]:
 // CHECK-NEXT: test rax, rax
 // CHECK-NEXT: je [[ARC_UPGRADE_RET]]
 // CHECK-NEXT: js [[ARC_UPGRADE_OVERFLOW:\..+]]
 // CHECK-NEXT: lea rdx, [rax + 1]
-// CHECK-NEXT: lock cmpxchg qword ptr [rcx], rdx
+// CHECK-NEXT: lock cmpxchg qword ptr [rcx - 16], rdx
 // CHECK-NEXT: jne [[ARC_UPGRADE_RETRY]]
 // CHECK-NEXT: [[ARC_UPGRADE_RET]]:
 // CHECK-NEXT: pop rax
