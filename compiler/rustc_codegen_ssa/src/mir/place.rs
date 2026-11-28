@@ -415,6 +415,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     subslice
                 }
                 mir::ProjectionElem::Downcast(_, v) => cg_base.project_downcast(bx, v),
+                mir::ProjectionElem::Wrap(kind) => {
+                    cg_base.project_type(bx, kind.wrap_type(bx.tcx(), cg_base.layout.ty))
+                }
             };
         }
         debug!("codegen_place(place={:?}) => {:?}", place_ref, cg_base);

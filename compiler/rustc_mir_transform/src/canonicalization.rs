@@ -34,6 +34,7 @@ pub(super) fn canonicalize_binary_operations<'tcx, 'body>(
             ProjectionElem::OpaqueCast(_) => 6,
             ProjectionElem::UnwrapUnsafeBinder(_) => 7,
             ProjectionElem::PhantomDeref => 8,
+            ProjectionElem::Wrap(_) => 9,
         }
     }
 

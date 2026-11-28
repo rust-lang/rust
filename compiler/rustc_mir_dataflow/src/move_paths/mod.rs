@@ -435,6 +435,7 @@ enum MoveSubPath {
     ConstantIndex(u64),
     Downcast(VariantIdx),
     UnwrapUnsafeBinder,
+    Wrap,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -479,6 +480,8 @@ impl MoveSubPath {
             ProjectionKind::Subslice { from, to, from_end: false } => {
                 return MoveSubPathResult::Subslice { from, to };
             }
+
+            ProjectionElem::Wrap(_) => MoveSubPath::Wrap,
         };
 
         MoveSubPathResult::One(subpath)

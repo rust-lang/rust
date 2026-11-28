@@ -332,7 +332,8 @@ fn check_place<'tcx>(
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_)
-            | ProjectionElem::PhantomDeref => {},
+            | ProjectionElem::PhantomDeref
+            | ProjectionElem::Wrap(_) => {},
         }
     }
 

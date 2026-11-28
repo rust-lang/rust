@@ -381,11 +381,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         }
                     }
                 }
-                ProjectionElem::PhantomDeref => (),
                 ProjectionElem::Downcast(..) if opt.including_downcast => return None,
-                ProjectionElem::Downcast(..) => (),
-                ProjectionElem::OpaqueCast(..) => (),
-                ProjectionElem::UnwrapUnsafeBinder(_) => (),
                 ProjectionElem::Field(field, _ty) => {
                     // FIXME(project-rfc_2229#36): print capture precisely here.
                     if let Some(field) = self.is_upvar_field_projection(PlaceRef {
@@ -419,6 +415,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     // to avoid confusing the end-user
                     buf.push_str("[..]");
                 }
+
+                ProjectionElem::PhantomDeref
+                | ProjectionElem::Downcast(..)
+                | ProjectionElem::OpaqueCast(..)
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::Wrap(_) => (),
             }
         }
         ok.ok().map(|_| buf)
@@ -457,7 +459,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 ProjectionElem::Deref
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Wrap(_) => {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
                 ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),

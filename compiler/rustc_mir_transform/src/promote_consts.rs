@@ -295,7 +295,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             // Recurse directly.
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::UnwrapUnsafeBinder(_) => {}
+            | ProjectionElem::UnwrapUnsafeBinder(_)
+            | ProjectionElem::Wrap(_) => {}
 
             // Never recurse.
             ProjectionElem::PhantomDeref

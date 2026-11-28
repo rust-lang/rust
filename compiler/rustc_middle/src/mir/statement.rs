@@ -3,6 +3,7 @@
 use std::fmt::Debug;
 use std::ops;
 
+use rustc_attr_ir::LangItem;
 use rustc_data_structures::outline;
 use rustc_span::bug;
 use thin_vec::ThinVec;
@@ -253,7 +254,20 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
                 PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty))
             }
+
+            ProjectionElem::Wrap(kind) => PlaceTy::from_ty(kind.wrap_type(tcx, self.ty)),
         }
+    }
+}
+
+impl PlaceWrapperTy {
+    /// Wrap `ty` with the type constructor corresponding to this `WrapperKind`.
+    pub fn wrap_type<'tcx>(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let lang_item = match self {
+            PlaceWrapperTy::MaybeDangling => LangItem::MaybeDangling,
+        };
+        let adt_def = tcx.adt_def(tcx.require_lang_item(lang_item, DUMMY_SP));
+        Ty::new_adt(tcx, adt_def, tcx.mk_args(&[ty.into()]))
     }
 }
 
@@ -270,7 +284,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
-            | Self::UnwrapUnsafeBinder(..) => false,
+            | Self::UnwrapUnsafeBinder(..)
+            | Self::Wrap(_) => false,
         }
     }
 
@@ -285,7 +300,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
             | Self::UnwrapUnsafeBinder(..)
-            | Self::PhantomDeref => true,
+            | Self::PhantomDeref
+            | Self::Wrap(_) => true,
         }
     }
 
@@ -314,6 +330,9 @@ impl<V, T> ProjectionElem<V, T> {
 
             // FIXME(unsafe_binders): Figure this out.
             Self::UnwrapUnsafeBinder(..) => false,
+
+            // FIXME: Figure this out.
+            Self::Wrap(_) => false,
         }
     }
 
@@ -344,6 +363,7 @@ impl<V, T> ProjectionElem<V, T> {
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
             ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
             ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
+            ProjectionElem::Wrap(kind) => ProjectionElem::Wrap(kind),
         })
     }
 }
@@ -574,7 +594,8 @@ impl<'tcx> PlaceRef<'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+            | ProjectionElem::UnwrapUnsafeBinder(_)
+            | ProjectionElem::Wrap(_) => None,
         }))
     }
 

@@ -428,6 +428,9 @@ where
                 self.project_constant_index(base, offset, min_length, from_end)?
             }
             Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
+            Wrap(kind) => {
+                base.transmute(self.layout_of(kind.wrap_type(*self.tcx, base.layout().ty))?, self)?
+            }
         })
     }
 

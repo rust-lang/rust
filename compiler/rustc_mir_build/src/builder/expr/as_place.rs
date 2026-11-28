@@ -106,9 +106,11 @@ fn convert_to_hir_projections_and_truncate_for_capture(
             ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. } => {
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Wrap(_) => {
                 // We don't capture array-access projections.
                 // We can stop here as arrays are captured completely.
+                // `Wrap` projections currently have no HIR equivalent.
                 break;
             }
         };
@@ -808,7 +810,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+                    | ProjectionElem::UnwrapUnsafeBinder(_)
+                    | ProjectionElem::Wrap(_) => (),
                 }
             }
         }
