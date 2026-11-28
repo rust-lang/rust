@@ -369,48 +369,49 @@ impl IntRange {
         self,
         column_ranges: impl Iterator<Item = (RowId, IntRange)> + Clone,
     ) -> impl Iterator<Item = (Presence, IntRange)> {
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        enum BoundarySrc {
+            Start(RowId),
+            End(RowId),
+            // The last boundary, which does nothing.
+            Last,
+        }
         // The boundaries of ranges in `column_ranges` intersected with `self`.
-        // We do parenthesis matching for input ranges. A boundary counts as +1 if it starts
-        // a range and -1 if it ends it. When the count is > 0 between two boundaries, we
-        // are within an input range.
-        let mut boundaries: Vec<(MaybeInfiniteInt, isize)> = column_ranges
+        // Each boundary recalls which row it comes from; when we cross that boundary, we add/remove
+        // its row id from the current set. Whenever that set is non-empty between two boundaries,
+        // we are within an input range.
+        let mut boundaries: Vec<(MaybeInfiniteInt, BoundarySrc)> = column_ranges
             .clone()
-            .map(|(_, r)| r)
-            .filter_map(|r| self.intersection(&r))
-            .flat_map(|r| [(r.lo, 1), (r.hi, -1)])
+            .filter_map(|(i, r)| Some((i, self.intersection(&r)?)))
+            .flat_map(|(i, r)| [(r.lo, BoundarySrc::Start(i)), (r.hi, BoundarySrc::End(i))])
             .collect();
-        // We sort by boundary. The order of +1/-1 for a same boundary value is irrelevant, because
-        // we only look at the accumulated count between distinct boundary values.
-        boundaries.sort_unstable_by_key(|(bdy, _)| *bdy);
-        // End with the end of the range. The count is ignored.
-        boundaries.push((self.hi, 0));
+        // We sort by boundary value, then by source. The order of start/end for a same boundary
+        // value is irrelevant because we only look at the current set between distinct boundary
+        // values. However we want the current set to be sorted by `RowId` and to always add an id
+        // before we remove it.
+        boundaries.sort_unstable();
+        // End with the end of the range.
+        boundaries.push((self.hi, BoundarySrc::Last));
 
         // Gather pairs of adjacent boundaries.
         let mut prev_bdy = self.lo;
-        // Accumulate parenthesis counts between two boundaries.
-        let mut paren_counter = 0isize;
+        // Between two boundaries, this tracks the set of input ranges we are within, by row id.
+        let mut current_set = SmallVec::new();
         let mut splitted: Vec<(Presence, IntRange)> = Vec::new();
-        for (bdy, delta) in boundaries {
-            // Skip empty ranges.
+        for (bdy, src) in boundaries {
             if prev_bdy != bdy {
                 use Presence::*;
                 let splitted_range = IntRange { lo: prev_bdy, hi: bdy };
-                let presence = if paren_counter > 0 {
-                    let covered_rows = column_ranges
-                        .clone()
-                        .filter(|(_, seen_range)| splitted_range.is_subrange(seen_range))
-                        .map(|(i, _)| i)
-                        .collect();
-                    Seen(covered_rows)
-                } else {
-                    Unseen
-                };
+                let presence =
+                    if !current_set.is_empty() { Seen(current_set.clone()) } else { Unseen };
                 splitted.push((presence, splitted_range));
             }
             prev_bdy = bdy;
-            // `delta` affects the count as we cross `bdy`, so the relevant count between
-            // `prev_bdy` and `bdy` is untouched by `delta`.
-            paren_counter += delta;
+            match src {
+                BoundarySrc::Start(row_id) => current_set.push(row_id),
+                BoundarySrc::End(row_id) => current_set.retain(|id| *id != row_id),
+                BoundarySrc::Last => {}
+            }
         }
         splitted.into_iter()
     }
