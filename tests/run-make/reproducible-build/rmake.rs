@@ -26,6 +26,7 @@
 
 use run_make_support::{
     bin_name, cwd, diff, is_darwin, is_windows, regex, rfs, run_in_tmpdir, rust_lib_name, rustc,
+    target,
 };
 
 fn main() {
@@ -47,32 +48,29 @@ fn main() {
     // Builds should be reproducible even if each build is done in a different directory,
     // with both --remap-path-prefix and -Z remap-cwd-prefix.
 
-    // FIXME(Oneirical): Building with crate type set to `bin` AND having -Cdebuginfo=2
-    // (or `-g`, the shorthand form) enabled will cause reproducibility failures.
-    // See https://github.com/rust-lang/rust/issues/89911
-
+    // FIXME: Cross-directory binary reproducibility checks are disabled on macOS and Windows.
     if !is_darwin() && !is_windows() {
-        // FIXME(Oneirical): Bin builds are not reproducible on non-Linux targets.
-        eprintln!("diff_dir_test => Bin, Path");
-        diff_dir_test(CrateType::Bin, RemapType::Path);
+        diff_dir_test(CrateType::Bin, RemapType::Path, 0);
+        if target().contains("-linux-") {
+            diff_dir_test(CrateType::Bin, RemapType::Path, 2);
+        }
     }
 
-    eprintln!("diff_dir_test => Rlib, Path");
-    diff_dir_test(CrateType::Rlib, RemapType::Path);
-
-    // FIXME(Oneirical): This specific case would fail on Linux, should -Cdebuginfo=2
-    // be added.
-    // FIXME(Oneirical): Bin builds are not reproducible on non-Linux targets.
-    // See https://github.com/rust-lang/rust/issues/89911
-    if !is_darwin() && !is_windows() {
-        eprintln!("diff_dir_test => Bin, Cwd false");
-        diff_dir_test(CrateType::Bin, RemapType::Cwd { is_empty: false });
+    diff_dir_test(CrateType::Rlib, RemapType::Path, 0);
+    if target().contains("-linux-") {
+        diff_dir_test(CrateType::Rlib, RemapType::Path, 2);
     }
 
-    eprintln!("diff_dir_test => Rlib, Cwd false");
-    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: false });
-    eprintln!("diff_dir_test => Rlib, Cwd true");
-    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: true });
+    // FIXME(#129117): Windows rlib builds with full debuginfo and
+    // -Zremap-cwd-prefix are not reproducible.
+    let debuginfo = if is_windows() { 0 } else { 2 };
+
+    if !is_darwin() && !is_windows() {
+        diff_dir_test(CrateType::Bin, RemapType::Cwd { is_empty: false }, debuginfo);
+    }
+
+    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: false }, debuginfo);
+    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: true }, debuginfo);
 
     eprintln!("final extern test");
     // Builds should be reproducible when using the --extern flag.
@@ -176,7 +174,8 @@ fn paths_test(flag: PathsFlag) {
 }
 
 #[track_caller]
-fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
+fn diff_dir_test(crate_type: CrateType, remap_type: RemapType, debuginfo: u32) {
+    eprintln!("diff_dir_test => {crate_type:?}, {remap_type:?}, debuginfo={debuginfo}");
     run_in_tmpdir(|| {
         let base_dir = cwd();
         rustc().input("reproducible-build-aux.rs").run();
@@ -201,12 +200,6 @@ fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
                     .arg(format!("--remap-path-prefix={}=/b", base_dir.join("test").display()));
             }
             RemapType::Cwd { is_empty } => {
-                // FIXME(#129117): Windows rlib + `-Cdebuginfo=2` + `-Z remap-cwd-prefix=.` seems
-                // to be unreproducible.
-                if !is_windows() {
-                    compiler1.arg("-Cdebuginfo=2");
-                    compiler2.arg("-Cdebuginfo=2");
-                }
                 if is_empty {
                     compiler1.arg("-Zremap-cwd-prefix=");
                     compiler2.arg("-Zremap-cwd-prefix=");
@@ -216,6 +209,9 @@ fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
                 }
             }
         }
+        compiler1.arg(format!("-Cdebuginfo={debuginfo}"));
+        compiler2.arg(format!("-Cdebuginfo={debuginfo}"));
+
         compiler1.input("reproducible-build.rs").run();
         match crate_type {
             CrateType::Bin => {
@@ -270,11 +266,13 @@ enum PathsFlag {
     Remap,
 }
 
+#[derive(Debug)]
 enum CrateType {
     Bin,
     Rlib,
 }
 
+#[derive(Debug)]
 enum RemapType {
     Path,
     Cwd { is_empty: bool },
