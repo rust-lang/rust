@@ -579,7 +579,7 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
     }
 
     if llvm_version >= (24, 0, 0) {
-        if sess.target.singlethread(&sess.internal_target_features) {
+        if sess.target.singlethread(&sess.rust_target_features) {
             llvm::add_module_flag_str(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Error,

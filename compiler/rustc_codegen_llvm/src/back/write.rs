@@ -198,11 +198,11 @@ pub(crate) fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    let singlethread = sess.target.singlethread(&sess.internal_target_features);
+    let singlethread = sess.target.singlethread(&sess.rust_target_features);
 
     let triple = SmallCStr::new(&llvm_util::llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = CString::new(sess.global_backend_features.join(",")).unwrap();
+    let features = CString::new(sess.backend_target_features.join(",")).unwrap();
     let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);

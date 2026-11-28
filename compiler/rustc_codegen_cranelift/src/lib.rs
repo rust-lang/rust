@@ -154,7 +154,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
 
         let init = CodegenBackendInit {
-            global_backend_features: vec![],
+            backend_target_features: vec![],
             replaced_rustc_intrinsics: vec![],
             fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
@@ -190,7 +190,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
 
         let config = TargetConfig {
-            internal_target_features: UnordSet::from_iter(target_features),
+            rust_target_features: UnordSet::from_iter(target_features),
             // `rustc_codegen_cranelift` polyfills functionality not yet
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,

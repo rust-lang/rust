@@ -170,7 +170,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     // FIXME(antoyo): cg_llvm adds global features to each function so that LTO keep them.
     // Check if GCC requires the same.
     let mut function_features: Vec<&str> =
-        cx.tcx.sess.global_backend_features.iter().map(|s| s.as_str()).collect();
+        cx.tcx.sess.backend_target_features.iter().map(|s| s.as_str()).collect();
 
     function_features.extend(
         codegen_fn_attrs

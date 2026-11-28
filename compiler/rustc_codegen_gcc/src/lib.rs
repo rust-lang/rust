@@ -83,7 +83,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::target_features::{self, internal_target_features};
+use rustc_codegen_ssa::target_features::{self, rust_target_features};
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -241,7 +241,7 @@ impl CodegenBackend for GccCodegenBackend {
         }
 
         // Get GCC features *without* `-Ctarget-feature`.
-        let mut global_backend_features = gcc_util::base_gcc_features(sess);
+        let mut backend_target_features = gcc_util::base_gcc_features(sess);
 
         #[cfg(feature = "master")]
         {
@@ -259,7 +259,7 @@ impl CodegenBackend for GccCodegenBackend {
             gcc_util::add_target_info_feature_options(
                 &context,
                 &sess.target.arch,
-                &global_backend_features,
+                &backend_target_features,
             );
             // libgccjit always passes -fPIC, which some targets reject (e.g. MIPS without -mabicalls).
             gcc_util::add_pic_option(&context, sess.relocation_model());
@@ -294,11 +294,11 @@ impl CodegenBackend for GccCodegenBackend {
         // Add `-Ctarget-feature`. This will later be picked up by `new_context` and `from_fn_attrs`.
         target_features::flag_to_backend_features(
             sess,
-            gcc_util::extend_with_gcc_features_for_rust_feature(sess, &mut global_backend_features),
+            gcc_util::extend_with_gcc_features_for_rust_feature(sess, &mut backend_target_features),
         );
 
         let init = CodegenBackendInit {
-            global_backend_features,
+            backend_target_features,
             replaced_rustc_intrinsics: vec![],
             fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
@@ -506,7 +506,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &EarlySession, target_info: &SharedTargetInfo) -> TargetConfig {
     // Compute Rust features from backend features. This also adds `-Ctarget-feature`.
-    let internal_target_features = internal_target_features(
+    let rust_target_features = rust_target_features(
         sess,
         |feature| to_gcc_features(&sess.target, feature),
         |feature| {
@@ -526,7 +526,7 @@ fn target_config(sess: &EarlySession, target_info: &SharedTargetInfo) -> TargetC
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);
 
     TargetConfig {
-        internal_target_features,
+        rust_target_features,
         // There are no known bugs with GCC support for f16 or f128
         has_reliable_f16,
         has_reliable_f16_math: has_reliable_f16,

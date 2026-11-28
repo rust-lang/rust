@@ -10,7 +10,7 @@ use libc::c_int;
 use rustc_abi::Endian;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::target_features::internal_target_features;
+use rustc_codegen_ssa::target_features::rust_target_features;
 use rustc_codegen_ssa::{TargetConfig, target_features};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -386,7 +386,7 @@ pub(crate) fn target_config(sess: &EarlySession, global_llvm_features: &[String]
     let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err));
 
-    let internal_target_features = internal_target_features(
+    let rust_target_features = rust_target_features(
         sess,
         |feature| {
             to_llvm_features(&sess.target, feature)
@@ -397,14 +397,14 @@ pub(crate) fn target_config(sess: &EarlySession, global_llvm_features: &[String]
             // This closure determines whether the target CPU has the feature according to LLVM. We
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
-            // `internal_target_features`.
+            // `rust_target_features`.
             to_llvm_features(&sess.target, feature)
                 .is_some_and(|feat| mc_subtarget_info.has_features(feat))
         },
     );
 
     let mut cfg = TargetConfig {
-        internal_target_features,
+        rust_target_features,
         has_reliable_f16: true,
         has_reliable_f16_math: true,
         has_reliable_f16b: true,
@@ -471,7 +471,7 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // AIX does not support f128.
         (Arch::PowerPC64, Os::Aix) => false,
         // ABI bugs on BE without +vsx <https://github.com/rust-lang/rust/issues/125109>.
-        (Arch::PowerPC64, _) => cfg.internal_target_features.contains(&sym::vsx),
+        (Arch::PowerPC64, _) => cfg.rust_target_features.contains(&sym::vsx),
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054> (fixed in llvm23)
         (Arch::X86_64, Os::Windows)
             if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm && major < 23 =>
@@ -633,7 +633,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
     let mut rustc_target_features = sess
         .target
-        .rust_target_features()
+        .existing_rust_target_features()
         .iter()
         .filter_map(|(feature, gate, _implied)| {
             if !gate.in_cfg() {
@@ -816,7 +816,7 @@ pub(crate) fn base_llvm_features(sess: &EarlySession) -> Vec<String> {
 
     // `-C` flags that map to LLVM target features.
     // We need to include them even with `only_base_features` as this is used to populate
-    // `sess.internal_target_features` where we very much want them to be present (e.g. the inline
+    // `sess.rust_target_features` where we very much want them to be present (e.g. the inline
     // asm logic uses that to check which registers may be used).
     llvm_features_by_flags(sess, &mut features);
 

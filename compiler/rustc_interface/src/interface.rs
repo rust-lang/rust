@@ -455,8 +455,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             // Store all of the target features in the session.
             // Needs to be done before `parse_cfg` because it checks this list.
-            sess.internal_target_features
-                .extend(target_config.internal_target_features.to_sorted_stable_ord());
+            sess.rust_target_features
+                .extend(target_config.rust_target_features.to_sorted_stable_ord());
 
             sess.config = parse_cfg(&sess, config.crate_cfg);
             let is_nightly_build = sess.is_nightly_build();

@@ -65,7 +65,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sse2.pause" => {
                 let [] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
-                if ecx.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
+                if ecx.tcx.sess.rust_target_features.contains(&Symbol::intern("sse2")) {
                     ecx.yield_active_thread();
                 }
             }

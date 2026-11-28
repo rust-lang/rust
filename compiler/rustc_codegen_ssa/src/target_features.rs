@@ -152,7 +152,7 @@ pub(crate) fn from_target_feature_attr(
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
 fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
-    let mut target_features = tcx.sess.internal_target_features.clone();
+    let mut target_features = tcx.sess.rust_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
         target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
@@ -240,7 +240,7 @@ fn parse_rust_feature_list<'a>(
 
             let inverse_implied_features = inverse_implied_features.get_or_insert_with(|| {
                 let mut set: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
-                for (f, _, is) in target.rust_target_features() {
+                for (f, _, is) in target.existing_rust_target_features() {
                     for i in is.iter() {
                         set.entry(i).or_default().insert(f);
                     }
@@ -269,19 +269,19 @@ fn parse_rust_feature_list<'a>(
 }
 
 /// Utility function for a codegen backend to compute the set of all actually enabled Rust target
-/// features (which will be stored in `sess.internal_target_features`).
+/// features (which will be stored in `sess.rust_target_features`).
 ///
 /// `to_backend_features` converts a Rust feature name into a list of backend feature names; this is
 /// used for diagnostic purposes only.
 ///
 /// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is
-/// enabled in the "base" target machine, i.e., without applying
-/// `-Ctarget-feature`/`-Zllvm-target-feature`. Note that LLVM may consider features to be implied
-/// that we do not and vice-versa. We want `cfg` to be entirely consistent with Rust feature
-/// implications, and thus only consult LLVM to expand the target CPU to target features.
+/// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature` (this is what
+/// `base_llvm_features` computes). Note that LLVM may consider features to be implied that we do
+/// not and vice-versa. We want `cfg` to be entirely consistent with Rust feature implications, and
+/// thus only consult LLVM to expand the target CPU to target features.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
-pub fn internal_target_features<'a, const N: usize>(
+pub fn rust_target_features<'a, const N: usize>(
     sess: &EarlySession,
     to_backend_features: impl Fn(&'a str) -> SmallVec<[&'a str; N]>,
     mut target_base_has_feature: impl FnMut(&str) -> bool,
@@ -292,7 +292,7 @@ pub fn internal_target_features<'a, const N: usize>(
     // every Rust target feature, ask the backend if it is enabled.
     let mut features: UnordSet<Symbol> = sess
         .target
-        .rust_target_features()
+        .existing_rust_target_features()
         .iter()
         .filter(|(feature, _, _)| target_base_has_feature(feature))
         .flat_map(|(base_feature, _, _)| {
@@ -326,7 +326,7 @@ pub fn internal_target_features<'a, const N: usize>(
                     // This is definitely not a valid Rust feature name. We do not add it to
                     // `features`. Maybe it is a backend feature name? If so, give a better error
                     // message.
-                    let rust_feature = sess.target.rust_target_features().iter().find_map(
+                    let rust_feature = sess.target.existing_rust_target_features().iter().find_map(
                         |&(rust_feature, _, _)| {
                             let backend_features = to_backend_features(rust_feature);
                             if backend_features.contains(&base_feature)
@@ -463,7 +463,7 @@ pub fn target_spec_to_backend_features<'a>(
         },
         |base_feature, new_features, enable| {
             // FIXME emit an error for unknown features in the target spec like
-            // internal_target_features would for -Ctarget-feature.
+            // rust_target_features would for -Ctarget-feature.
             let new_features =
                 new_features.unwrap_or_else(|| FxHashSet::from_iter(std::iter::once(base_feature)));
             for new_feature in UnordSet::from(new_features).to_sorted_stable_ord().iter() {
@@ -486,7 +486,7 @@ pub fn flag_to_backend_features<'a>(
         &sess.opts.cg.target_feature,
         /* err_callback */
         |_feature| {
-            // Errors are already emitted in `internal_target_features`; avoid duplicates.
+            // Errors are already emitted in `rust_target_features`; avoid duplicates.
         },
         |base_feature, new_features, enable| {
             // Forward unknown features to the backend as that's what we have always done.
@@ -572,7 +572,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             } else {
                 tcx.sess
                     .target
-                    .rust_target_features()
+                    .existing_rust_target_features()
                     .iter()
                     .map(|(feat, stab, _)| (feat.to_string(), *stab))
                     .collect()

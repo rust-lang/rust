@@ -527,7 +527,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         // Globally-enabled features that are already in the backend format.
-        let global_features = self.tcx.sess.global_backend_features.iter().map(String::as_str);
+        let global_features = self.tcx.sess.backend_target_features.iter().map(String::as_str);
 
         // Features enabled on a particular instance, in the rust format.
         // These need to be translated to the LLVM format.
@@ -1080,14 +1080,14 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> Ty
         Hexagon(HexagonInlineAsmRegClass::vreg) => {
             // HVX vector register size depends on the HVX mode.
             // LLVM's "v" constraint requires the exact vector width.
-            if cx.tcx.sess.internal_target_features.contains(&sym::hvx_length128b) {
+            if cx.tcx.sess.rust_target_features.contains(&sym::hvx_length128b) {
                 cx.type_vector(cx.type_i32(), 32) // 1024-bit for 128B mode
             } else {
                 cx.type_vector(cx.type_i32(), 16) // 512-bit for 64B mode
             }
         }
         Hexagon(HexagonInlineAsmRegClass::vreg_pair) => {
-            if cx.tcx.sess.internal_target_features.contains(&sym::hvx_length128b) {
+            if cx.tcx.sess.rust_target_features.contains(&sym::hvx_length128b) {
                 cx.type_vector(cx.type_i32(), 64) // 2048-bit for 128B mode
             } else {
                 cx.type_vector(cx.type_i32(), 32) // 1024-bit for 64B mode

@@ -46,7 +46,7 @@ use rustc_span::{Symbol, sym};
 use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen. Not to be included in
-/// `cfg(target_feature)`, `sess.internal_target_features`, or the backend's feature list.
+/// `cfg(target_feature)`, `sess.rust_target_features`, or the backend's feature list.
 /// These exist globally and are not in the target-specific lists below.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
@@ -1224,7 +1224,11 @@ pub struct FeatureConstraints {
 }
 
 impl Target {
-    pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
+    /// Returns which Rust target features *exist* on this target, independent of whether they are
+    /// enabled.
+    pub fn existing_rust_target_features(
+        &self,
+    ) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
         match &self.arch {
             Arch::Arm => ARM_FEATURES,
             Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES,
@@ -1251,7 +1255,7 @@ impl Target {
     pub fn rust_target_features_map(
         &self,
     ) -> FxHashMap<&'static str, (Stability, ImpliedFeatures)> {
-        self.rust_target_features()
+        self.existing_rust_target_features()
             .iter()
             .map(|&(f, s, i)| (f, (s, i)))
             .collect::<FxHashMap<_, _>>()

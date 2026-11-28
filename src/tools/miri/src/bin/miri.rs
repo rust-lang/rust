@@ -225,7 +225,7 @@ impl CodegenBackend for MiriCodegenBackend {
 
         let (_init, native_target_config) = self.native.init(sess);
         let config = TargetConfig {
-            internal_target_features: native_target_config.internal_target_features,
+            rust_target_features: native_target_config.rust_target_features,
 
             // The basic types and ABI always work.
             has_reliable_f16b: true,
