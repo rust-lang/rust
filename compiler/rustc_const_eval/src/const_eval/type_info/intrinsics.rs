@@ -7,9 +7,10 @@ use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty};
 use rustc_span::{Symbol, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
+use crate::interpret::Immediate::ScalarPair;
 use crate::interpret::{
-    CtfeProvenance, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Scalar, interp_ok, throw_ub,
-    type_implements_dyn_trait,
+    CtfeProvenance, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Scalar,
+    ensure_monomorphic_enough, interp_ok, throw_ub, type_implements_dyn_trait,
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
@@ -118,7 +119,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_target_usize(fields_num as u64, self), dest)?;
             }
 
-            sym::type_id_field_representing_type => {
+            sym::type_id_field_representing => {
                 let ty = self.read_type_id(&args[0])?;
                 let variant_idx = self.read_target_usize(&args[1])? as usize;
                 let field_idx = self.read_target_usize(&args[2])? as usize;
@@ -270,28 +271,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
-            sym::field_representing_type_name => {
-                let frt_ty = self.read_type_id(&args[0])?;
-
-                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(self.tcx.tcx, *args)
-                {
-                    name
-                } else {
-                    span_bug!(self.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                let ptr = self.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
-                self.write_immediate(
-                    Immediate::ScalarPair(
-                        Scalar::from_pointer(ptr, self),
-                        Scalar::from_target_usize(field_name.as_str().len() as u64, self),
-                    ),
-                    dest,
-                )?;
-            }
-
-            sym::field_representing_type_offset => {
+            sym::type_id_field_representing_field_offset => {
                 let frt_ty = self.read_type_id(&args[0])?;
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
@@ -311,7 +291,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
             }
 
-            sym::field_representing_type_actual_type_id => {
+            sym::type_id_field_representing_outer_type_id => {
                 let frt_ty = self.read_type_id(&args[0])?;
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
@@ -398,6 +378,20 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             sym::type_id_generics => {
                 let ty = self.read_type_id(&args[0])?;
                 self.write_type_id_generics(dest, ty)?;
+            }
+
+            sym::type_id_name => {
+                let ty = self.read_type_id(&args[0])?;
+                ensure_monomorphic_enough(ty)?;
+                let name = crate::util::type_name(self.tcx(), ty);
+                let ptr = self.allocate_bytes_dedup(name.as_str().as_bytes())?;
+                self.write_immediate(
+                    ScalarPair(
+                        Scalar::from_pointer(ptr, self),
+                        Scalar::from_target_usize(name.as_str().len() as u64, self),
+                    ),
+                    dest,
+                )?;
             }
 
             sym::type_id_non_exhaustive => {

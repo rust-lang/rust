@@ -3016,7 +3016,7 @@ pub fn type_name<T: ?Sized>() -> &'static str;
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub fn field_representing_type_actual_type_id(
+pub fn type_id_field_representing_outer_type_id(
     _frt_type_id: crate::any::TypeId,
 ) -> crate::any::TypeId;
 
@@ -3027,16 +3027,7 @@ pub fn field_representing_type_actual_type_id(
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str;
-
-/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
-///
-/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
-///
-/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
-#[rustc_intrinsic]
-#[rustc_comptime]
-pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
+pub fn type_id_field_representing_field_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///

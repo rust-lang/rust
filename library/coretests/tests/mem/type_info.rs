@@ -12,6 +12,7 @@ fn test_arrays() {
         let ty_id = TypeId::of::<[u16; 4]>();
         assert!(ty_id.element_ty() == Some(TypeId::of::<u16>()));
         assert!(ty_id.array_len() == 4);
+        assert!(ty_id.name() == "");
     }
 
     // Zero-length array.
@@ -43,6 +44,7 @@ fn test_tuples() {
         assert!(ty_id.size() == Some(size_of::<()>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 0);
+        assert!(ty_id.name() == "");
 
         let ty_id = TypeId::of::<(u8,)>();
         assert!(ty_id.size() == Some(size_of::<(u8,)>()));
@@ -81,6 +83,7 @@ fn test_structs() {
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::TestStruct]"]);
         assert!(ty_id.docs() == &["test-doc"]);
+        assert!(ty_id.name() == "TestStruct");
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 3);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
@@ -116,6 +119,7 @@ fn test_structs() {
 
         let ty_id = TypeId::of::<TupleStruct>();
         assert!(ty_id.size() == Some(size_of::<TupleStruct>()));
+        assert!(ty_id.name() == "TupleStruct");
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
@@ -135,6 +139,7 @@ fn test_structs() {
 
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
         assert!(ty_id.docs() == &["doc"]);
+        assert!(ty_id.name() == "Generics");
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.generics().len() == 3);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
@@ -167,6 +172,7 @@ fn test_unions() {
         let ty_id = TypeId::of::<TestUnion>();
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
         assert!(ty_id.docs() == &["test-doc 1", "test-doc 2"]);
+        assert!(ty_id.name() == "TestUnion");
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
@@ -190,6 +196,7 @@ fn test_unions() {
 
         let ty_id = TypeId::of::<Generics<'static, i32, 1_u64>>();
         assert!(ty_id.docs() == &["doc"]);
+        assert!(ty_id.name() == "Generics");
         assert!(ty_id.fields(0) == 2);
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.field(0, 1).offset() == offset_of!(Generics<'static, i32, 1_u64>, a));
@@ -234,6 +241,7 @@ fn test_enums() {
         assert!(ty_id.size() == Some(size_of::<E>()));
         assert!(ty_id.reflected_attrs() == &["#[reflective_tool::a]"]);
         assert!(ty_id.docs() == &["doc"]);
+        assert!(ty_id.name() == "E");
         assert!(ty_id.variants() == 3);
 
         assert!(ty_id.variant(0).name() == "Some");
@@ -265,20 +273,18 @@ fn test_enums() {
 
     const {
         let ty_id = TypeId::of::<Option<i32>>();
+        assert!(ty_id.size() == Some(size_of::<Option<i32>>()));
+        assert!(ty_id.name() == "Option");
         assert!(ty_id.variants() == 2);
         assert!(ty_id.generics().len() == 1);
+        assert!(ty_id.fields(0) == 0); // None
+        assert!(ty_id.fields(1) == 1);
+        assert!(ty_id.field(1, 0).type_id() == TypeId::of::<i32>());
 
         let Generic::Type(GenericType { ty: generic_ty, .. }) = ty_id.generics()[0] else {
             panic!()
         };
         assert!(generic_ty == TypeId::of::<i32>());
-
-        let ty_id = TypeId::of::<Option<i32>>();
-        assert!(ty_id.size() == Some(size_of::<Option<i32>>()));
-        assert!(ty_id.variants() == 2);
-        assert!(ty_id.fields(0) == 0);
-        assert!(ty_id.fields(1) == 1);
-        assert!(ty_id.field(1, 0).type_id() == TypeId::of::<i32>());
     }
 }
 
@@ -292,6 +298,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<bool>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Char = (const { TypeKind::of::<char>() }) else { panic!() };
@@ -299,6 +306,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<char>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Int = (const { TypeKind::of::<i32>() }) else { panic!() };
@@ -307,6 +315,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<i32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Int = (const { TypeKind::of::<isize>() }) else { panic!() };
@@ -315,6 +324,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<isize>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Int = (const { TypeKind::of::<u32>() }) else { panic!() };
@@ -323,6 +333,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<u32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Int = (const { TypeKind::of::<usize>() }) else { panic!() };
@@ -331,6 +342,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<usize>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Float = (const { TypeKind::of::<f32>() }) else { panic!() };
@@ -338,6 +350,7 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<f32>()));
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
 
         let Str = (const { TypeKind::of::<str>() }) else { panic!() };
@@ -345,6 +358,7 @@ fn test_primitives() {
         assert!(ty_id.size() == None);
         assert!(ty_id.reflected_attrs() == &[""; 0]);
         assert!(ty_id.docs() == &[""; 0]);
+        assert!(ty_id.name().is_empty());
         assert!(ty_id.variants() == 1);
     }
 }
@@ -358,6 +372,7 @@ fn test_references() {
     const {
         let ty = TypeId::of::<&u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
+        assert!(ty.name().is_empty());
         assert!(!ty.points_mutably());
     }
 
@@ -387,6 +402,7 @@ fn test_pointers() {
     const {
         let ty = TypeId::of::<*const u8>();
         assert!(ty.points_to() == Some(TypeId::of::<u8>()));
+        assert!(ty.name().is_empty());
         assert!(!ty.points_mutably());
     }
 
@@ -452,8 +468,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn Send>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn Send>()]);
 
-        let p = pred(preds, TypeId::of::<dyn Send>());
-        assert!(p.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn Send>();
+        assert!(pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "Send");
     }
 
     // dyn A<i32>
@@ -461,8 +478,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn A<i32>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn A<i32>>()]);
 
-        let p = pred(preds, TypeId::of::<dyn A<i32>>());
-        assert!(!p.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn A<i32>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "A");
     }
 
     // dyn B<5, Foo = i32>
@@ -470,8 +488,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn B<5, Foo = i32>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn B<5, Foo = i32>>()]);
 
-        let e = pred(preds, TypeId::of::<dyn B<5, Foo = i32>>());
-        assert!(!e.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn B<5, Foo = i32>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "B");
     }
 
     // dyn for<'a> FooTrait<'a, 'a, 7>
@@ -479,8 +498,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn for<'a> FooTrait<'a, 'a, 7>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>()]);
 
-        let foo = pred(preds, TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>());
-        assert!(!foo.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "FooTrait");
     }
 
     // dyn FooTrait<'static, 'static, 7>
@@ -488,8 +508,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn FooTrait<'static, 'static, 7>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn FooTrait<'static, 'static, 7>>()]);
 
-        let foo = pred(preds, TypeId::of::<dyn FooTrait<'static, 'static, 7>>());
-        assert!(!foo.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn FooTrait<'static, 'static, 7>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "FooTrait");
     }
 
     // dyn for<'a, 'b> FooTrait<'a, 'b, 7>
@@ -497,8 +518,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>()]);
 
-        let foo = pred(preds, TypeId::of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>());
-        assert!(!foo.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "FooTrait");
     }
 
     // dyn for<'a, 'b> ProjectorTrait<'a, 'b>
@@ -506,8 +528,9 @@ fn test_dynamic_traits() {
         let preds = preds_of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>();
         assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>()]);
 
-        let proj = pred(preds, TypeId::of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>());
-        assert!(!proj.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "ProjectorTrait");
     }
 
     // dyn for<'a> FooTrait<'a, 'a, 7> + Send + Sync
@@ -522,13 +545,14 @@ fn test_dynamic_traits() {
             ],
         );
 
-        let foo = pred(preds, TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>());
-        assert!(!foo.trait_ty.is_auto);
+        const TYPE_ID: TypeId = TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>();
+        assert!(!pred(preds, TYPE_ID).trait_ty.is_auto);
+        assert!(const { TYPE_ID.name() } == "FooTrait");
 
-        let send = pred(preds, TypeId::of::<dyn Send>());
-        assert!(send.trait_ty.is_auto);
+        let type_id: TypeId = TypeId::of::<dyn Send>();
+        assert!(pred(preds, type_id).trait_ty.is_auto);
 
-        let sync = pred(preds, TypeId::of::<dyn Sync>());
-        assert!(sync.trait_ty.is_auto);
+        let type_id: TypeId = TypeId::of::<dyn Sync>();
+        assert!(pred(preds, type_id).trait_ty.is_auto);
     }
 }
