@@ -167,6 +167,7 @@ macro_rules! assert_ne {
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
 #[stable(feature = "assert_matches", since = "1.96.0")]
+#[rustc_diagnostic_item = "assert_matches_macro"]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
@@ -396,6 +397,7 @@ macro_rules! debug_assert_ne {
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
 #[stable(feature = "assert_matches", since = "1.96.0")]
+#[rustc_diagnostic_item = "debug_assert_matches_macro"]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
