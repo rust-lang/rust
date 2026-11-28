@@ -35,3 +35,8 @@ fn infer_4() {
         extern "cmse-nonsecure-entry" fn(_: (i32, _)) -> (),
     >;
 }
+
+extern "cmse-nonsecure-entry" fn infer_const() -> [u8; _] {
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+    [0; 3]
+}

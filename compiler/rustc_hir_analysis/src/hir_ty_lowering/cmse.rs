@@ -85,8 +85,13 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
 
     for (ty, hir_ty) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
-        if ty.has_infer_types() {
+        if ty.has_non_region_infer() {
             let err = LayoutError::Unknown(*ty);
+            return Err((hir_ty.span, tcx.arena.alloc(err)));
+        }
+
+        if ty.has_param() {
+            let err = LayoutError::TooGeneric(*ty);
             return Err((hir_ty.span, tcx.arena.alloc(err)));
         }
 
@@ -142,8 +147,13 @@ fn is_valid_cmse_output<'tcx>(
         return Ok(());
     }
 
-    if return_type.has_infer_types() {
+    if return_type.has_non_region_infer() {
         let err = LayoutError::Unknown(return_type);
+        return Err(tcx.arena.alloc(err));
+    }
+
+    if return_type.has_param() {
+        let err = LayoutError::TooGeneric(return_type);
         return Err(tcx.arena.alloc(err));
     }
 

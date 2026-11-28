@@ -44,3 +44,20 @@ type WithTransparentTraitObject =
 
 type WithVarArgs = extern "cmse-nonsecure-call" fn(u32, ...);
 //~^ ERROR C-variadic functions with the "cmse-nonsecure-call" calling convention are not supported
+
+struct X<const N: usize> {}
+
+trait WithAssocTy {
+    type Output;
+}
+
+impl<const Z: usize> WithAssocTy for X<Z> {
+    type Output = usize;
+}
+
+impl<const Z: usize> X<Z> {
+    fn foo(f: extern "cmse-nonsecure-call" fn() -> <Self as WithAssocTy>::Output) {
+        //~^ ERROR: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
+        f();
+    }
+}

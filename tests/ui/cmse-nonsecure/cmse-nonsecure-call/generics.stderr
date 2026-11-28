@@ -69,6 +69,12 @@ error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatu
 LL |     f5: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,
    |                                         ^^^^^^^^^^
 
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
+  --> $DIR/generics.rs:59:52
+   |
+LL |     fn foo(f: extern "cmse-nonsecure-call" fn() -> <Self as WithAssocTy>::Output) {
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/generics.rs:31:71
    |
@@ -102,7 +108,7 @@ error[E0045]: C-variadic functions with the "cmse-nonsecure-call" calling conven
 LL | type WithVarArgs = extern "cmse-nonsecure-call" fn(u32, ...);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0045, E0425, E0562, E0798.
 For more information about an error, try `rustc --explain E0045`.
