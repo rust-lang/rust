@@ -169,8 +169,10 @@ macro_rules! define_cleanup {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
             unsafe {
                 if let Exception { data: Some(b), .. } = e.read() {
-                    drop(b);
+                    // Mark this panic as handled, even if dropping the panic
+                    // payload causes another exception.
                     super::__rust_drop_panic();
+                    drop(b);
                 }
             }
         }

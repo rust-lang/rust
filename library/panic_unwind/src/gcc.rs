@@ -76,8 +76,13 @@ pub(crate) fn panic(data: &mut dyn PanicPayload) -> u32 {
         _unwind_code: uw::_Unwind_Reason_Code,
         exception: *mut uw::_Unwind_Exception,
     ) {
-        let _: Box<Exception> = unsafe { Box::from_raw(exception as *mut Exception) };
+        let exception = unsafe { Box::from_raw(exception as *mut Exception) };
+        // Mark this panic as handled before dropping the payload. The payload's
+        // destructor might observe the panic count via `thread::panicking`, and
+        // it is more natural to say that the panic ends as soon as the exception
+        // is caught, no matter what happens to the payload.
         super::__rust_drop_panic();
+        drop(exception);
     }
 }
 
@@ -96,8 +101,10 @@ pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
         if !ptr::eq(canary, &CANARY) {
             // A foreign Rust exception, treat it slightly differently from other
             // foreign exceptions, because call into `_Unwind_DeleteException` will
-            // call into `__rust_drop_panic` which produces a confusing
-            // "Rust panic must be rethrown" message.
+            // call into `__rust_drop_panic` which used to produce a confusing
+            // "Rust panic must be rethrown" message. `__rust_foreign_exception`
+            // will abort the process anyway so leaking the exception doesn't
+            // matter.
             super::__rust_foreign_exception();
         }
 

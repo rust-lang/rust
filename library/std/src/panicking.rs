@@ -65,12 +65,12 @@ unsafe extern "Rust" {
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
-/// panic but doesn't rethrow it. We don't support this case since it messes
-/// with our panic count.
+/// panic but doesn't rethrow it, e.g. by using a C++ catch-all block. See the
+/// documentation in `panic_unwind` for more information.
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
-fn __rust_drop_panic() -> ! {
-    rtabort!("Rust panics must be rethrown");
+fn __rust_drop_panic() {
+    panic_count::decrease();
 }
 
 /// This function is called by the panic runtime if it catches an exception
