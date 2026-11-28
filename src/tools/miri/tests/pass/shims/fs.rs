@@ -5,6 +5,7 @@
 #![feature(io_error_uncategorized)]
 #![feature(dirfd)]
 #![feature(seek_stream_len)]
+#![feature(set_permissions_nofollow)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -39,26 +40,16 @@ fn main() {
     test_file_set_len();
     test_file_sync();
     test_rename();
-    // Only these targets lower `File::set_times` to the `futimens` shim (macOS/Windows differ).
+    // Only these targets lower `set_times` to `futimens`/`utimensat` (macOS/Windows differ).
     if cfg!(any(
         target_os = "linux",
+        target_os = "android",
         target_os = "freebsd",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "android",
         not(miri)
     )) {
         test_file_set_times();
-    }
-    // In Miri, only these targets lower `fs::set_times` to the `utimensat` shim. Natively, it
-    // works everywhere.
-    if cfg!(any(
-        target_os = "linux",
-        target_os = "freebsd",
-        target_os = "solaris",
-        target_os = "illumos",
-        not(miri)
-    )) {
         test_set_times();
         test_set_times_nofollow();
     }
@@ -66,6 +57,7 @@ fn main() {
     if cfg!(not(windows)) || cfg!(not(miri)) {
         test_append();
         test_fs_set_permissions();
+        test_set_permissions_nofollow();
         test_file_set_permissions();
 
         test_create_new_dangling_symlink();
@@ -874,12 +866,17 @@ fn test_directory_handle() {
     dir.create_dir("subdir").unwrap();
     let subdir = dir.open_dir("subdir").unwrap();
 
-    // Delete subdir.
-    // Close the handles first, Windows hosts may refuse to remove things that are still open.
+    // Close the file before going on. Windows hosts may refuse to rename a file that is still open.
     drop(file);
-    drop(subdir);
-    dir.remove_file("file.txt").unwrap();
+    // Move the file between directory handles and check that its contents survive at the new path.
+    dir.rename("file.txt", &subdir, "renamed.txt").unwrap();
     assert!(!filename.exists());
+    let renamed = dirname.join("subdir").join("renamed.txt");
+    assert_eq!(fs::read(&renamed).unwrap(), b"hello");
+    subdir.remove_file("renamed.txt").unwrap();
+    assert!(!renamed.exists());
+
+    drop(subdir);
     dir.remove_dir("subdir").unwrap();
     assert!(!dirname.join("subdir").exists());
 }
@@ -904,6 +901,29 @@ fn test_fs_set_permissions() {
     match fs::set_permissions(&file.with_file_name("foo"), p) {
         Ok(..) => panic!("wanted an error"),
         Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_set_permissions_nofollow() {
+    let path = utils::prepare_with_content("miri_test_fs_set_permissions_nofollow.txt", b"hello");
+
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_readonly(true);
+    fs::set_permissions_nofollow(&path, permissions.clone()).unwrap();
+    assert!(fs::metadata(&path).unwrap().permissions().readonly());
+
+    permissions.set_readonly(false);
+    if utils::have_symlink_permission() {
+        let link = utils::prepare("miri_test_fs_set_permissions_nofollow.link");
+        symlink_file(&path, &link).unwrap();
+        // Behavior depends on the host: on Linux, we get an error;
+        // on BSD, it changes the permissions of the link itself.
+        if let Err(err) = fs::set_permissions_nofollow(&link, permissions) {
+            assert_eq!(err.kind(), ErrorKind::Unsupported);
+        }
+        // But either way, the file is still readonly.
+        assert!(fs::metadata(&path).unwrap().permissions().readonly());
+        fs::remove_file(link).unwrap();
     }
 }
 

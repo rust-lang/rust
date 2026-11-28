@@ -162,6 +162,30 @@ unsafe fn test_sse() {
     }
     test_mm_rsqrt_ps();
 
+    // RCP and RSQRT treat denormal inputs as 0.0 of the same sign, and RCP flushes tiny results
+    // to 0.0 of the same sign. These results are exact, so compare bits to also check the sign.
+    #[target_feature(enable = "sse")]
+    unsafe fn test_mm_rcp_rsqrt_denormal_and_tiny() {
+        let min_denormal = f32::from_bits(0x0000_0001);
+        let max_denormal = f32::from_bits(0x007f_ffff);
+        // 2^127, whose reciprocal 2^-127 is tiny.
+        let pow2_127 = f32::from_bits(0x7f00_0000);
+        let inf = f32::INFINITY;
+
+        let denormals = _mm_setr_ps(min_denormal, max_denormal, -min_denormal, -max_denormal);
+        let e = [inf, inf, -inf, -inf].map(f32::to_bits);
+
+        let r: [f32; 4] = transmute(_mm_rcp_ps(denormals));
+        assert_eq!(r.map(f32::to_bits), e);
+        let r: [f32; 4] = transmute(_mm_rsqrt_ps(denormals));
+        assert_eq!(r.map(f32::to_bits), e);
+
+        let a = _mm_setr_ps(f32::MAX, pow2_127, -f32::MAX, -pow2_127);
+        let r: [f32; 4] = transmute(_mm_rcp_ps(a));
+        assert_eq!(r.map(f32::to_bits), [0.0, 0.0, -0.0, -0.0f32].map(f32::to_bits));
+    }
+    test_mm_rcp_rsqrt_denormal_and_tiny();
+
     #[target_feature(enable = "sse")]
     unsafe fn test_mm_min_ss() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);

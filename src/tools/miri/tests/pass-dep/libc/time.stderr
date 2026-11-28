@@ -1,0 +1,16 @@
+warning: TZ environment variable is set to unknown timezone "TimeZoneDoesNotExist"
+  --> tests/pass-dep/libc/time.rs:LL:CC
+   |
+LL |     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to resvoled timezone name
+   |
+   = help: Miri will fall back to UTC as the current timezone
+   = note: this warning is only shown once per program execution
+   = note: stack backtrace:
+           0: test_localtime_r_invalid_tz
+               at tests/pass-dep/libc/time.rs:LL:CC
+           1: main
+               at tests/pass-dep/libc/time.rs:LL:CC
+
+warning: 1 warning emitted
+

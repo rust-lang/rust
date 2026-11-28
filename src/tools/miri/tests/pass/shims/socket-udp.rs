@@ -2,6 +2,8 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
+#![feature(ipv6_hop_limit)]
+
 use std::io::ErrorKind;
 use std::net::UdpSocket;
 use std::thread;
@@ -16,6 +18,7 @@ fn main() {
     test_read_write();
     test_peek();
     test_sockopt_ttl();
+    test_sockopt_ipv6_hop_limit();
     test_sockopt_read_timeout();
     test_sockopt_write_timeout();
 }
@@ -95,11 +98,20 @@ fn test_peek() {
     handle.join().unwrap();
 }
 
-// Test setting and reading the TTL socket option.
+/// Test setting and reading the TTL socket option.
 fn test_sockopt_ttl() {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     socket.set_ttl(16).unwrap();
     assert_eq!(socket.ttl().unwrap(), 16);
+}
+
+/// Test setting and reading the IPV6 unicast and multicast hops socket options.
+fn test_sockopt_ipv6_hop_limit() {
+    let socket = UdpSocket::bind("[::1]:0").unwrap();
+    socket.set_hop_limit_v6(25).unwrap();
+    assert_eq!(socket.hop_limit_v6().unwrap(), 25);
+    socket.set_multicast_hop_limit_v6(32).unwrap();
+    assert_eq!(socket.multicast_hop_limit_v6().unwrap(), 32);
 }
 
 /// Test setting and reading the SNDTIMEO socket option.

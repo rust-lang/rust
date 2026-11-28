@@ -30,9 +30,9 @@ pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
-        // `futimens` is set up as a weak symbol in `init_extern_statics` (on Android), so we
-        // allow it here too (it exists on all our Unix targets).
-        "futimens" => true,
+        // These are set up as a weak symbol in `init_extern_statics` (on Android), so we
+        // allow them here too (they exist on all our Unix targets).
+        "futimens" | "utimensat" => true,
         // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
         // where std uses them via `weak!` since bionic only gained them in API level 24), so
         // we allow them here too. They do not exist on Solaris.
@@ -432,7 +432,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, libc::mode_t) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.chmod(path, mode)?;
+                let result = ecx.chmod(None, path, mode, None)?;
                 ecx.write_scalar(result, dest)?;
             }
             "fchmod" => {
@@ -443,13 +443,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = ecx.fchmod(fd, mode)?;
                 ecx.write_scalar(result, dest)?;
             }
+            "fchmodat" => {
+                let [dirfd, path, mode, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, libc::mode_t, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.chmod(Some(dirfd), path, mode, Some(flags))?;
+                ecx.write_scalar(result, dest)?;
+            }
             "rename" => {
                 let [oldpath, newpath] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.rename(oldpath, newpath)?;
-                ecx.write_scalar(result, dest)?;
+                ecx.rename(None, oldpath, None, newpath, dest)?;
+            }
+            "renameat" => {
+                let [oldfd, oldpath, newfd, newpath] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                ecx.rename(Some(oldfd), oldpath, Some(newfd), newpath, dest)?;
             }
             "mkdir" => {
                 let [path, mode] = &ecx.check_shim_sig(

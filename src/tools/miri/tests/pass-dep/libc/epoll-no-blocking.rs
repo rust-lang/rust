@@ -1,5 +1,8 @@
 //@only-target: linux android illumos
 //@revisions: edge_triggered level_triggered
+// Make sure we don't rely on scheduler intervention
+// (see e.g. https://github.com/rust-lang/miri/issues/5669)
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 #[path = "../../utils/libc.rs"]
@@ -36,6 +39,7 @@ fn main() {
     test_issue_3858();
     test_issue_4374();
     test_issue_4374_reads();
+    test_issue_5669_close_rdhup();
 }
 
 fn test_epoll_socketpair() {
@@ -740,4 +744,19 @@ fn test_issue_4374_reads() {
 
     // We should now still see a notification, but only about it being writable.
     check_epoll_wait_noblock(epfd0, &[Ev { events: EPOLLOUT, data: fds[0] }]);
+}
+
+fn test_issue_5669_close_rdhup() {
+    unsafe {
+        let epfd = errno_result(libc::epoll_create1(0)).unwrap();
+        let mut fds = [-1, -1];
+        errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()));
+        epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLRDHUP).unwrap();
+        // Closing one end makes the other end readable (EOF) and hung-up.
+        assert_eq!(libc::close(fds[0]), 0);
+        check_epoll_wait_noblock(
+            epfd,
+            &[Ev { events: EPOLLIN | EPOLLHUP | EPOLLRDHUP, data: fds[1] }],
+        );
+    }
 }

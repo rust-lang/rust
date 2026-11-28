@@ -367,23 +367,30 @@ enum FloatUnaryOp {
     Rsqrt,
 }
 
+/// Replaces a denormal value with 0.0 of the same sign.
+fn flush_denormal(x: Single) -> Single {
+    if x.is_denormal() { Single::ZERO.copy_sign(x) } else { x }
+}
+
 /// Performs `which` scalar operation on `op` and returns the result.
 fn unary_op_f32<'tcx>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     which: FloatUnaryOp,
     op: &ImmTy<'tcx>,
 ) -> InterpResult<'tcx, Scalar> {
+    let op = op.to_scalar().to_f32()?;
+    // RCP and RSQRT treat a denormal source value as 0.0 of the same sign.
+    let op = flush_denormal(op);
     match which {
         FloatUnaryOp::Rcp => {
-            let op = op.to_scalar().to_f32()?;
             let div = (Single::from_u128(1).value / op).value;
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
-            // inaccuracy of RCP.
-            let res = math::apply_random_float_error(ecx, div, -12);
+            // inaccuracy of RCP. Then flush tiny (i.e., denormal) results to 0.0 of the same sign,
+            // as RCP does.
+            let res = flush_denormal(math::apply_random_float_error(ecx, div, -12));
             interp_ok(Scalar::from_f32(res))
         }
         FloatUnaryOp::Rsqrt => {
-            let op = op.to_scalar().to_f32()?;
             let rsqrt = (Single::from_u128(1).value / math::sqrt(op)).value;
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
             // inaccuracy of RSQRT.
@@ -1285,7 +1292,7 @@ fn pmulhrsw<'tcx>(
         let res = (i32::from(left).strict_mul(right.into()) >> 14).strict_add(1) >> 1;
 
         // The result of this operation can overflow a signed 16-bit integer.
-        // When `left` and `right` are -0x8000, the result is 0x8000.
+        // When `left` and `right` are -0x8000, the result is 0x8000 which wraps to -0x8000.
         #[expect(clippy::as_conversions)]
         let res = res as i16;
 
