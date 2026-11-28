@@ -1,0 +1,8 @@
+error: Duplicated can not be used for this type
+  --> $DIR/param-patterns-error.rs:9:9
+   |
+LL | fn f(_: f64) -> f64 {
+   |         ^^^
+
+error: aborting due to 1 previous error
+
