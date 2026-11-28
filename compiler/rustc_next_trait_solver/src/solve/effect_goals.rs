@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{
     AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
@@ -155,19 +156,20 @@ where
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
         let cx = ecx.cx();
 
         match cx.impl_polarity(impl_def_id) {
-            ty::ImplPolarity::Negative => return Err(NoSolution.into()),
+            ty::ImplPolarity::Negative => return Ok(Err(CandidateHeadUsages::default())),
             ty::ImplPolarity::Positive => (),
         };
 
         if !cx.impl_is_const(impl_def_id) {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
-        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
+        let probe = ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id));
+        probe.enter_with_head_usages(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();

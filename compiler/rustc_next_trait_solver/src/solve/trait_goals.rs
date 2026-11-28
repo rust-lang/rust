@@ -4,10 +4,11 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
-    AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData,
-    IsIdentity, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
-    QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
+    CanonicalResponse, ExternalConstraintsData, IsIdentity, MaybeInfo, NoSolutionOrRerunNonErased,
+    OpaqueTypesJank, QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt,
+    SizedTraitKind,
 };
 use rustc_type_ir::{
     self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
@@ -63,7 +64,7 @@ where
         goal_trait_ref: TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+    ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
         let cx = ecx.cx();
 
         match (cx.impl_polarity(impl_def_id), goal.predicate.polarity) {
@@ -74,15 +75,16 @@ where
             // Impl doesn't match polarity
             (ty::ImplPolarity::Positive, ty::ClausePolarity::Negative)
             | (ty::ImplPolarity::Negative, ty::ClausePolarity::Positive) => {
-                return Err(NoSolution.into());
+                return Ok(Err(CandidateHeadUsages::default()));
             }
         }
 
         if ecx.typing_mode().is_reflection() && !cx.is_fully_generic_for_reflection(impl_def_id) {
-            return Err(NoSolution.into());
+            return Ok(Err(CandidateHeadUsages::default()));
         }
 
-        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
+        let probe = ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id));
+        probe.enter_with_head_usages(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
@@ -1654,71 +1656,63 @@ where
             return Err(NoSolution);
         }
 
-        let candidate_preference_mode = CandidatePreferenceMode::compute(self.cx(), trait_def_id);
-        if self.typing_mode().is_coherence() {
-            return Ok(match self.try_merge_impl_candidates(trait_def_id, &candidates) {
-                Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
-                None => (self.bail_with_ambiguity(&candidates), None),
-            });
-        }
+        use assembly::TraitCandidatePreference;
 
-        // We prefer trivial builtin candidates, i.e. builtin impls without any
-        // nested requirements, over all others. This is a fix for #53123 and
-        // prevents where-bounds from accidentally extending the lifetime of a
-        // variable.
-        let mut trivial_builtin_impls = candidates.iter().filter(|c| {
-            matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
-        });
-        if let Some(candidate) = trivial_builtin_impls.next() {
-            // There should only ever be a single trivial builtin candidate
-            // as they would otherwise overlap.
-            assert!(trivial_builtin_impls.next().is_none());
-            return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
-        }
+        match assembly::preferred_trait_candidates(
+            self.cx(),
+            self.typing_mode().is_coherence(),
+            trait_def_id,
+            &candidates,
+        ) {
+            TraitCandidatePreference::Coherence => {
+                return Ok(match self.try_merge_impl_candidates(trait_def_id, &candidates) {
+                    Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
+                    None => (self.bail_with_ambiguity(&candidates), None),
+                });
+            }
+            TraitCandidatePreference::TrivialBuiltin => {
+                let mut trivial_builtin_impls = candidates.iter().filter(|c| {
+                    matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
+                });
 
-        // Extract non-nested alias bound candidates, will be preferred over where bounds if
-        // we're proving an auto-trait, sizedness trait or default trait.
-        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker)
-            && candidates.iter().any(|c| {
-                matches!(c.source, CandidateSource::AliasBound(AliasBoundKind::SelfBounds))
-            })
-        {
-            let alias_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
-                .collect();
-            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
-            return Ok(self.merge_candidates_or_bail_with_ambiguity(
-                &alias_bounds,
-                TraitGoalProvenVia::AliasBound,
-            ));
-        }
+                let candidate = trivial_builtin_impls.next().unwrap();
 
-        // If there are non-global where-bounds, prefer where-bounds
-        // (including global ones) over everything else.
-        let has_non_global_where_bounds = candidates
-            .iter()
-            .any(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)));
-        if has_non_global_where_bounds {
-            let where_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                .collect();
-            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
-            let Some(response) = self.try_merge_candidates(&where_bounds) else {
-                return Ok((self.bail_with_ambiguity(&where_bounds), None));
-            };
-            return Ok((response, Some(TraitGoalProvenVia::ParamEnv)));
-        }
+                // There should only ever be a single trivial builtin candidate
+                // as they would otherwise overlap.
+                assert!(trivial_builtin_impls.next().is_none());
 
-        // Next, prefer any alias bound (nested or otherwise).
-        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound(_))) {
-            let alias_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
-                .collect();
-            candidates.into_iter().for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
-            return Ok(self.merge_candidates_or_bail_with_ambiguity(
-                &alias_bounds,
-                TraitGoalProvenVia::AliasBound,
-            ));
+                return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
+            }
+            TraitCandidatePreference::AliasBound => {
+                let alias_bounds: Vec<_> = candidates
+                    .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
+                    .collect();
+
+                candidates
+                    .into_iter()
+                    .for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
+
+                return Ok(self.merge_candidates_or_bail_with_ambiguity(
+                    &alias_bounds,
+                    TraitGoalProvenVia::AliasBound,
+                ));
+            }
+            TraitCandidatePreference::ParamEnv => {
+                let where_bounds: Vec<_> = candidates
+                    .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .collect();
+
+                candidates
+                    .into_iter()
+                    .for_each(|c| self.ignore_candidate_head_usages(c.head_usages));
+
+                let Some(response) = self.try_merge_candidates(&where_bounds) else {
+                    return Ok((self.bail_with_ambiguity(&where_bounds), None));
+                };
+
+                return Ok((response, Some(TraitGoalProvenVia::ParamEnv)));
+            }
+            TraitCandidatePreference::Other => {}
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
@@ -1747,8 +1741,11 @@ where
         goal: Goal<I, TraitClause<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolutionOrRerunNonErased>
     {
-        let (candidates, failed_candidate_info) =
-            self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
+        let (candidates, failed_candidate_info) = self.assemble_and_evaluate_candidates(
+            goal,
+            AssembleCandidatesFrom::All,
+            assembly::CandidateAssemblyMode::Trait,
+        )?;
         self.merge_trait_candidates(goal.predicate.def_id(), candidates, failed_candidate_info)
             .map_err(Into::into)
     }
