@@ -77,23 +77,6 @@ impl RcLayout {
         unsafe { Self::from_value_ptr::<H, T>(NonNull::from_ref(value)) }
     }
 
-    /// Creates an `RcLayout` for storing `value`, assuming the value is small enough to fit inside
-    /// a reference-counted allocation.
-    ///
-    /// # Safety
-    ///
-    /// Caller guarantees `T` we can store a `T` value inside a reference counted allocation with
-    /// type `H`.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    pub(super) unsafe fn from_value_unchecked<H, T>(value: &T) -> Self
-    where
-        T: ?Sized,
-    {
-        // SAFETY: Caller guarantees we are safe to calculate the allocation layout.
-        unsafe { Self::from_value_ptr_unchecked::<H, T>(NonNull::from_ref(value)) }
-    }
-
     /// Creates an `RcLayout` for storing a value that is pointed to by `value_ptr`.
     ///
     /// # Safety
