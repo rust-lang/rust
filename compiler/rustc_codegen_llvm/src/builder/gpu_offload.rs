@@ -17,12 +17,12 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::context::SimpleCx;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, Type, TypeKind, Value};
+use crate::llvm::{self, FunctionSignature, Linkage, Type, TypeKind, Value};
 
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
     pub launcher_fn: llvm::Value<'ll>,
-    pub launcher_ty: llvm::Type<'ll>,
+    pub launcher_ty: llvm::FunctionSignature<'ll>,
 
     pub kernel_args_ty: KernelArgsTy,
 
@@ -30,7 +30,7 @@ pub(crate) struct OffloadGlobals<'ll> {
 
     pub begin_mapper: llvm::Value<'ll>,
     pub end_mapper: llvm::Value<'ll>,
-    pub mapper_fn_ty: llvm::Type<'ll>,
+    pub mapper_fn_ty: llvm::FunctionSignature<'ll>,
 
     pub ident_t_global: llvm::Value<'ll>,
 }
@@ -120,7 +120,9 @@ impl<'ll> OffloadKernelDims<'ll> {
 
 // ; Function Attrs: nounwind
 // declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
-fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (llvm::Value<'ll>, llvm::Type<'ll>) {
+fn generate_launcher<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> (llvm::Value<'ll>, llvm::FunctionSignature<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -137,7 +139,7 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (llvm::Value<'ll>, llvm::T
 /// declaration together with its type.
 pub(crate) fn declare_omp_get_num_devices<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (llvm::Value<'ll>, llvm::Type<'ll>) {
+) -> (llvm::Value<'ll>, llvm::FunctionSignature<'ll>) {
     let ti32 = cx.type_i32();
     let tgt_fn_ty = cx.type_func(&[], ti32);
     let name = "omp_get_num_devices";
@@ -345,7 +347,7 @@ pub(crate) struct OffloadKernelGlobals<'ll> {
 
 fn gen_tgt_data_mappers<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (llvm::Value<'ll>, llvm::Value<'ll>, llvm::Value<'ll>, llvm::Type<'ll>) {
+) -> (llvm::Value<'ll>, llvm::Value<'ll>, llvm::Value<'ll>, llvm::FunctionSignature<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -512,7 +514,7 @@ pub(crate) fn gen_define_handling<'ll>(
 fn declare_offload_fn<'ll>(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
-    ty: llvm::Type<'ll>,
+    ty: llvm::FunctionSignature<'ll>,
 ) -> llvm::Value<'ll> {
     crate::declare::declare_simple_fn(
         cx,
@@ -709,7 +711,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         geps: [Value<'ll>; 3],
         o_type: Value<'ll>,
         fn_to_call: Value<'ll>,
-        fn_ty: Type<'ll>,
+        fn_ty: FunctionSignature<'ll>,
         num_args: u64,
         s_ident_t: Value<'ll>,
     ) {
