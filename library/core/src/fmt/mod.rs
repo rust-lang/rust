@@ -1891,6 +1891,9 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, buf: &str) -> Result {
+        if is_nonnegative && self.options.width == 0 && !self.sign_plus() && !self.alternate() {
+            return self.buf.write_str(buf);
+        }
         let mut width = buf.len();
 
         let mut sign = None;
