@@ -41,7 +41,7 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
 thorin-dwp = "0.11"
 tracing = "0.1"
-wasm-encoder = "0.247"
+wasm-encoder = "0.260"
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
