@@ -23,6 +23,8 @@ use crate::*;
 #[cfg(test)]
 mod tests;
 
+const SOURCE_FILE_ALIGN: u32 = 128;
+
 /// Returns the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_data` chain.
@@ -173,11 +175,12 @@ impl FileLoader for RealFileLoader {
 struct SourceMapFiles {
     source_files: monotonic::MonotonicVec<Arc<SourceFile>>,
     stable_id_to_source_file: UnhashMap<StableSourceFileId, Arc<SourceFile>>,
+    idx_lookup: Vec<u32>,
 }
 
 impl std::fmt::Debug for SourceMapFiles {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let SourceMapFiles { source_files, stable_id_to_source_file: _ } = self;
+        let SourceMapFiles { source_files, stable_id_to_source_file: _, idx_lookup: _ } = self;
 
         f.debug_list()
             .entries(
@@ -333,14 +336,26 @@ impl SourceMap {
         file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
             // Add one so there is some space between files. This lets us distinguish
             // positions in the `SourceMap`, even in the presence of zero-length files.
-            last_file.end_position().0.checked_add(1).ok_or(OffsetOverflowError)?
+            last_file
+                .end_position()
+                .0
+                .checked_add(1)
+                .ok_or(OffsetOverflowError)?
+                .checked_next_multiple_of(SOURCE_FILE_ALIGN)
+                .ok_or(OffsetOverflowError)?
         } else {
             0
         });
 
         let file = Arc::new(file);
+        let idx = u32::try_from(files.source_files.len()).unwrap();
         files.source_files.push(Arc::clone(&file));
         files.stable_id_to_source_file.insert(file_id, Arc::clone(&file));
+        // normalized_source_len is one less than the real len, so this is correct.
+        let lookup_len = (file.normalized_source_len.to_u32() / SOURCE_FILE_ALIGN) + 1;
+        for _ in 0..lookup_len {
+            files.idx_lookup.push(idx);
+        }
 
         Ok(file)
     }
@@ -1050,7 +1065,14 @@ impl SourceMap {
     /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
     /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        self.files.borrow().source_files.partition_point(|x| x.start_pos <= pos) - 1
+        let files = self.files.borrow();
+        if let Some(idx) =
+            files.idx_lookup.get(usize::try_from(pos.to_u32() / SOURCE_FILE_ALIGN).unwrap())
+        {
+            usize::try_from(*idx).unwrap()
+        } else {
+            files.source_files.len() - 1
+        }
     }
 
     pub fn count_lines(&self) -> usize {
