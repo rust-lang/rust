@@ -5042,19 +5042,16 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
 <b>${obj.alias}</b><i class="grey">&nbsp;- see&nbsp;</i>\
 </div>`;
         }
+        let emoji = "";
         if (obj.item.deprecated) {
-            resultName.insertAdjacentHTML(
-                "beforeend",
-                "<span class=emoji title=\"this item is deprecated\">👎</span>");
+            emoji += "<span class=emoji title=\"this item is deprecated\">👎</span>";
         }
         if (obj.item.unstable) {
-            resultName.insertAdjacentHTML(
-                "beforeend",
-                "<span class=emoji title=\"this item is unstable\">🔬</span>");
+            emoji += "<span class=emoji title=\"this item is unstable\">🔬</span>";
         }
         resultName.insertAdjacentHTML(
             "beforeend",
-            `<div class="path">${alias}\
+            `<div class="path">${emoji}${alias}\
 ${obj.displayPath}<span class="${type}">${name}</span>\
 </div>`);
 
