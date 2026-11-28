@@ -1917,6 +1917,11 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
+    // Codegen expects SIMD constants to be unevaluated, see `immediate_const_vector`.
+    if op.layout.ty.is_simd() {
+        return None;
+    }
+
     // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
     // avoid.
     // But we *do* want to synthesize any size constant if it is entirely uninit because that
