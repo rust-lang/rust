@@ -1495,6 +1495,8 @@ tool_doc!(
         "cargo-test-support",
         "cargo-util",
         "cargo-util-schemas",
+        "cargo-util-terminal",
+        "cargo-util-config",
         "crates-io",
         "mdman",
         "rustfix",
