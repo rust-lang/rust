@@ -430,6 +430,10 @@ mod xdg {
         let val = split.next()?;
         debug_assert_eq!(split.next(), None);
 
+        if matches!(val, br#""$HOME""# | br#""$HOME/""#) {
+            return Some((var, None));
+        }
+
         // the path value is quoted; unquote it
         let path = unquote(val, user_home)?;
 
@@ -444,12 +448,6 @@ mod xdg {
 
     fn unquote(bytes: &[u8], user_home: &Path) -> Option<PathBuf> {
         let [b'"', rest @ .., b'"'] = bytes else { return None };
-
-        // setting to the home dir disables the directory configuration;
-        // if done symbolically, return None here and bypass later work
-        if matches!(rest, b"$HOME" | b"$HOME/") {
-            return None;
-        }
 
         let mut rest = rest;
         let mut s = Vec::with_capacity(rest.len());
@@ -587,6 +585,51 @@ XDG_VIDEOS_DIR="Videos"
         assert_eq!(dirs.documents(), None);
         assert_eq!(dirs.music(), None);
         assert_eq!(dirs.pictures(), Some("/home/ferris/Pictures2".as_ref()));
+        assert_eq!(dirs.videos(), None);
+    }
+
+    #[test]
+    fn test_user_dirs_home_after_earlier_assignment() {
+        const TEST_USERDIRS: &'static str = r#"
+XDG_PICTURES_DIR="$HOME/Pictures"
+XDG_PICTURES_DIR="$HOME"
+XDG_VIDEOS_DIR="$HOME/Videos"
+XDG_VIDEOS_DIR="$HOME/"
+XDG_MUSIC_DIR="$HOME/Music"
+XDG_MUSIC_DIR="/home/ferris"
+"#;
+
+        let dirs = xdg::parse_user_dirs(TEST_USERDIRS.as_bytes(), Path::new("/home/ferris"));
+
+        assert_eq!(dirs.pictures(), None);
+        assert_eq!(dirs.videos(), None);
+        assert_eq!(dirs.music(), None);
+    }
+
+    #[test]
+    fn test_user_dirs_home_forms_after_earlier_assignment() {
+        const TEST_USERDIRS: &'static str = r#"
+XDG_DESKTOP_DIR="$HOME/Desktop"
+XDG_DESKTOP_DIR=$HOME
+XDG_DOCUMENTS_DIR="$HOME/Documents"
+XDG_DOCUMENTS_DIR=$HOME/
+XDG_DOWNLOAD_DIR="$HOME/Downloads"
+XDG_DOWNLOAD_DIR=/home/ferris
+XDG_MUSIC_DIR="$HOME/Music"
+XDG_MUSIC_DIR="$HOME"/
+XDG_PICTURES_DIR="$HOME/Pictures"
+XDG_PICTURES_DIR="$HOME//"
+XDG_VIDEOS_DIR="$HOME/Videos"
+XDG_VIDEOS_DIR="/home/ferris/"
+"#;
+
+        let dirs = xdg::parse_user_dirs(TEST_USERDIRS.as_bytes(), Path::new("/home/ferris"));
+
+        assert_eq!(dirs.desktop(), Some("/home/ferris/Desktop".as_ref()));
+        assert_eq!(dirs.documents(), Some("/home/ferris/Documents".as_ref()));
+        assert_eq!(dirs.downloads(), Some("/home/ferris/Downloads".as_ref()));
+        assert_eq!(dirs.music(), Some("/home/ferris/Music".as_ref()));
+        assert_eq!(dirs.pictures(), None);
         assert_eq!(dirs.videos(), None);
     }
 }
