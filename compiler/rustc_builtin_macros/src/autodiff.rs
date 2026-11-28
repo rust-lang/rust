@@ -16,9 +16,10 @@ use rustc_ast::{
 };
 use rustc_attr_ir::RustcAutodiff;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::hygiene::Transparency;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
-use tracing::{debug, trace};
+use tracing::trace;
 
 use crate::diagnostics;
 use crate::util::generic_param_to_arg;
@@ -522,7 +523,7 @@ fn call_autodiff(
             .iter()
             .map(|arg| match arg.pat.kind {
                 PatKind::Ident(_, ident, _) => ecx.expr_path(ecx.path_ident(span, ident)),
-                _ => unimplemented!(),
+                _ => unreachable!("`gen_enzyme_decl` binds each parameter to a name"),
             })
             .collect::<ThinVec<_>>(),
     );
@@ -555,7 +556,16 @@ fn gen_turbofish_expr(
         })
         .collect::<Vec<_>>();
 
-    let idents = if is_impl { &[Ident::new(kw::SelfUpper, span), ident][..] } else { &[ident] };
+    let idents = if is_impl {
+        &[Ident::new(kw::SelfUpper, span), ident][..]
+    } else {
+        // A parameter of the generated function can have the same name, as in
+        // `#[autodiff_reverse(x, Active, Active)] fn f(x: f64)`. Like an identifier from a
+        // `macro_rules` body, the marked path does not see the parameters, but it still finds
+        // the function.
+        let expn_id = ecx.current_expansion.id.to_expn_id();
+        &[Ident::new(ident.name, ident.span.apply_mark(expn_id, Transparency::SemiOpaque))]
+    };
     let path = ecx.path_all(span, idents, generic_args);
 
     ecx.expr_path(path)
@@ -570,7 +580,8 @@ fn gen_turbofish_expr(
 //
 // Error handling: If the user provides the wrong number of activities, we emit an error and
 // return `None`. If the types don't fit the activities, we emit an error and return the
-// original signature. This allows us to continue parsing.
+// original signature with each parameter bound to a plain name. This allows us to continue
+// parsing.
 // FIXME(Sa4dUs): make individual activities' span available so errors
 // can point to only the activity instead of the entire attribute
 fn gen_enzyme_decl(
@@ -595,6 +606,20 @@ fn gen_enzyme_decl(
     assert!(has_ret == x.has_ret_activity());
     let mut d_decl = sig.decl.clone();
     let mut d_inputs = ThinVec::new();
+
+    // The generated function only passes its arguments on to the intrinsic, so it binds each of
+    // them to a plain name. This drops `mut`, `ref` and subpatterns, and gives a fresh name to a
+    // parameter without one, such as `_` or `(a, b)`.
+    for (i, param) in d_decl.inputs.iter_mut().enumerate() {
+        let ident = match param.pat.kind {
+            PatKind::Ident(_, ident, _) => ident,
+            _ => Ident::new(
+                Symbol::intern(&format!("arg{i}")),
+                ecx.with_def_site_ctxt(param.pat.span),
+            ),
+        };
+        *param.pat = ecx.pat_name(ident.span, ident.name);
+    }
     let mut act_ret = ThinVec::new();
 
     // We have two loops, a first one just to check the activities and types and possibly report
@@ -630,15 +655,18 @@ fn gen_enzyme_decl(
 
     if errors {
         // This is not the right signature, but we can continue parsing.
-        return Some(sig.clone());
+        return Some(FnSig { decl: d_decl, ..sig.clone() });
     }
 
     let unsafe_activities = x
         .input_activity
         .iter()
         .any(|&act| matches!(act, DiffActivity::DuplicatedOnly | DiffActivity::DualOnly));
-    for (arg, activity) in sig.decl.inputs.iter().zip(x.input_activity.iter()) {
+    for (arg, activity) in d_decl.inputs.iter().zip(x.input_activity.iter()) {
         d_inputs.push(arg.clone());
+        let PatKind::Ident(_, ident, _) = arg.pat.kind else {
+            unreachable!("each parameter is bound to a name above");
+        };
         match activity {
             DiffActivity::Active => {
                 act_ret.push(arg.ty.clone());
@@ -653,13 +681,7 @@ fn gen_enzyme_decl(
                     let mut shadow_arg = arg.clone();
                     // We += into the shadow in reverse mode.
                     *shadow_arg.ty = assure_mut_ref(&arg.ty);
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name = format!("d{}_{}", old_name, i);
+                    let name = format!("d{}_{}", ident.name, i);
                     *shadow_arg.pat = ecx.pat_name(shadow_arg.pat.span, Symbol::intern(&name));
                     d_inputs.push(shadow_arg);
                 }
@@ -678,13 +700,7 @@ fn gen_enzyme_decl(
                     };
                 for i in 0..iterations {
                     let mut shadow_arg = arg.clone();
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name = format!("b{}_{}", old_name, i);
+                    let name = format!("b{}_{}", ident.name, i);
 
                     *shadow_arg.pat = ecx.pat_name(shadow_arg.pat.span, Symbol::intern(&name));
                     d_inputs.push(shadow_arg);
